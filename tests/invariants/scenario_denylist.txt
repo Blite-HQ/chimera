@@ -1,0 +1,30 @@
+# Scenario-specific terms that must NOT appear in any CapabilityManifest
+# (id, description, input_schema, output_schema — all checked by test_capability_genericity.py).
+#
+# These terms belong in the agent's knowledge base, NOT in generic capability manifests (ADR-029).
+#
+# Add new terms here as new scenarios are explored.
+
+# Reto 1 — electrical grid
+islanding
+grid partitioning
+power island
+outage
+microgrid
+
+# Reto 2 — water
+potabilidad
+water quality
+turbidez
+ph level
+contaminant
+
+# Reto 3 — materials / chemistry
+molecule name specific
+battery cathode
+lithium
+cobalt oxide
+
+# Domain-specific decision verbs (always belong in agent, not capability)
+decide which partition
+select the best island

@@ -1,0 +1,34 @@
+# Chimera CODEOWNERS — maps repo paths to GitHub handles.
+# Each PR touching a section requires approval from the owner(s).
+#
+# Fill in the @handle for each team member:
+#   Steven  → @<steven-github-handle>
+#   Dylan   → @<dylan-github-handle>
+#   Sebastián → @<sebastian-github-handle>
+#   Geovanni → @<geovanni-github-handle>
+#
+# Plano de ejecución (Steven + Dylan)
+/engine/src/blite/gateway/         @<steven-github-handle>
+/engine/src/blite/runtime/         @<steven-github-handle>
+/engine/src/blite/serving/         @<steven-github-handle>
+/apps/studio/                      @<steven-github-handle>
+
+# Plano de confianza (Dylan)
+/engine/src/blite/verification/    @<dylan-github-handle>
+/engine/src/blite/events/          @<dylan-github-handle>
+/engine/src/blite/certificate/     @<dylan-github-handle>
+/engine/src/blite/identity/        @<dylan-github-handle>
+/engine/src/blite/protocols/       @<dylan-github-handle>
+/engine/src/blite/guardrails/      @<dylan-github-handle>
+/engine/src/blite/authz/           @<dylan-github-handle>
+/sdk/                              @<dylan-github-handle>
+
+# Quantum capabilities (Sebastián)
+/capabilities/quantum/             @<sebastian-github-handle>
+
+# Repo setup & CI (Geovanni)
+/.github/                          @<geovanni-github-handle>
+/scripts/                          @<geovanni-github-handle>
+
+# Constitution — requires all owners
+/docs/invariants.md                @<dylan-github-handle> @<steven-github-handle> @<sebastian-github-handle> @<geovanni-github-handle>
