@@ -1,0 +1,46 @@
+{
+  "name": "chimera-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Open platform for trustworthy agentic scientific research.",
+  "license": "MIT",
+  "scripts": {
+    "lint": "pnpm -r --if-present run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "arch": "depcruise apps/studio/src --config .dependency-cruiser.cjs",
+    "docs:lint": "markdownlint '**/*.md' --ignore node_modules --ignore '**/node_modules/**'",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "dependency-cruiser": "^16.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "markdownlint-cli": "^0.43.0",
+    "prettier": "^3.0.0"
+  },
+  "lint-staged": {
+    "*.py": [
+      "uv run ruff format",
+      "uv run ruff check --fix"
+    ],
+    "*.{json,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.md": [
+      "prettier --write",
+      "markdownlint --fix"
+    ],
+    "apps/studio/**/*.{ts,tsx,js,jsx}": [
+      "pnpm -C apps/studio exec eslint --fix",
+      "pnpm -C apps/studio exec prettier --write"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

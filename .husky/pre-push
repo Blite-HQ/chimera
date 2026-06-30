@@ -1,0 +1,8 @@
+#!/bin/sh
+# Lightweight architecture gate before push (full gate runs in CI)
+set -e
+echo "[pre-push] Checking import boundaries..."
+uv run lint-imports --no-cache
+echo "[pre-push] Checking TypeScript..."
+pnpm -C apps/studio exec tsc --noEmit 2>/dev/null || true
+echo "[pre-push] Done."

@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Python: lint + types + tests + architecture gates ──────────────────────
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: '3.12'
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-packages --all-extras
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+
+      - name: Type check (pyright)
+        run: uv run pyright
+
+      - name: Tests + coverage
+        run: uv run pytest --cov --cov-report=xml
+
+      - name: Architecture gates (import-linter)
+        run: uv run lint-imports
+
+  # ── Web: lint + types + tests + dep-cruiser ─────────────────────────────────
+  web:
+    name: Web (Studio)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/studio/pnpm-lock.yaml
+
+      - name: Install root devDeps
+        run: pnpm install
+
+      - name: Install Studio deps
+        run: pnpm -C apps/studio install
+
+      - name: Lint (eslint)
+        run: pnpm -C apps/studio run lint
+
+      - name: Type check (tsc)
+        run: pnpm -C apps/studio run typecheck
+
+      - name: Tests (vitest)
+        run: pnpm -C apps/studio run test:run
+
+      - name: Architecture (dependency-cruiser)
+        run: |
+          if [ -d "apps/studio/src" ]; then
+            pnpm exec depcruise apps/studio/src --config .dependency-cruiser.cjs
+          fi
+
+  # ── Commit messages ───────────────────────────────────────────────────────
+  commits:
+    name: Commit messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.js
+
+  # ── Security ──────────────────────────────────────────────────────────────
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          python-version: '3.12'
+          enable-cache: true
+
+      - name: Audit Python deps
+        run: |
+          uv sync --all-packages
+          uv run pip-audit --skip-editable || true
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Audit Node deps
+        run: pnpm install && pnpm audit --audit-level moderate || true
+
+  # ── Docs ──────────────────────────────────────────────────────────────────
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install
+        run: pnpm install
+
+      - name: Lint Markdown
+        run: pnpm run docs:lint

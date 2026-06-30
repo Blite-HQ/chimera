@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pyright/
+
+# uv
+# uv.lock is intentionally committed for reproducibility
+
+# Node
+node_modules/
+.pnpm-store/
+
+# Build outputs
+apps/*/dist/
+apps/*/.next/
+apps/*/.nuxt/
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE & local tooling (private per-dev)
+.idea/
+.vscode/
+*.swp
+*.swo
+.cursor/
+.opencode/
+.aider*
+
+# Claude/ECC (private per-dev — each contributor keeps their own)
+.claude/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

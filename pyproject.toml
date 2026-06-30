@@ -1,0 +1,172 @@
+[project]
+name = "chimera-workspace"
+version = "0.0.0"
+description = "Workspace root — tooling and invariant tests for the Chimera monorepo."
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = ["sdk", "engine", "capabilities/*"]
+
+[tool.uv.sources]
+blite-capability = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9",
+    "pyright>=1.1.400",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "import-linter>=2.1",
+]
+
+# ── Ruff ──────────────────────────────────────────────────────────────────────
+
+[tool.ruff]
+target-version = "py312"
+src = [
+    "sdk/src",
+    "engine/src",
+    "capabilities/solvers/src",
+    "capabilities/graphs/src",
+    "capabilities/numeric/src",
+    "capabilities/sim/src",
+    "capabilities/ml/src",
+    "capabilities/smt/src",
+    "capabilities/quantum/src",
+    "tests",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ── Pyright ───────────────────────────────────────────────────────────────────
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = [
+    "sdk/src",
+    "engine/src",
+    "capabilities/*/src",
+    "tests",
+]
+
+# ── Pytest + Coverage ─────────────────────────────────────────────────────────
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+addopts = "--cov --cov-report=term-missing --cov-fail-under=30"
+
+[tool.coverage.run]
+source = [
+    "blite_capability",
+    "blite",
+    "blite_cap_solvers",
+    "blite_cap_graphs",
+    "blite_cap_numeric",
+    "blite_cap_sim",
+    "blite_cap_ml",
+    "blite_cap_smt",
+    "blite_cap_quantum",
+]
+branch = true
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]
+fail_under = 30
+
+# ── Import-Linter — Architecture gates ────────────────────────────────────────
+# Contract names must match anchors in docs/invariants.md
+# so tests/invariants/test_enforced_anchors.py can verify them.
+
+[tool.importlinter]
+root_packages = [
+    "blite",
+    "blite_capability",
+    "blite_cap_solvers",
+    "blite_cap_graphs",
+    "blite_cap_numeric",
+    "blite_cap_sim",
+    "blite_cap_ml",
+    "blite_cap_smt",
+    "blite_cap_quantum",
+]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "ADR-008: engine never imports capability packages"
+type = "forbidden"
+source_modules = ["blite"]
+forbidden_modules = [
+    "blite_cap_solvers",
+    "blite_cap_graphs",
+    "blite_cap_numeric",
+    "blite_cap_sim",
+    "blite_cap_ml",
+    "blite_cap_smt",
+    "blite_cap_quantum",
+]
+
+[[tool.importlinter.contracts]]
+name = "ADR-008: capabilities never import engine internals"
+type = "forbidden"
+source_modules = [
+    "blite_cap_solvers",
+    "blite_cap_graphs",
+    "blite_cap_numeric",
+    "blite_cap_sim",
+    "blite_cap_ml",
+    "blite_cap_smt",
+    "blite_cap_quantum",
+]
+forbidden_modules = ["blite"]
+
+[[tool.importlinter.contracts]]
+name = "INV-2: verification never touches model serving"
+type = "forbidden"
+source_modules = ["blite.verification"]
+forbidden_modules = ["blite.serving"]
+
+[[tool.importlinter.contracts]]
+name = "INV-3: guardrails do not decide egress"
+type = "forbidden"
+source_modules = ["blite.guardrails"]
+forbidden_modules = ["blite.authz", "blite.protocols"]
+
+[[tool.importlinter.contracts]]
+name = "INV-5: non-events modules cannot write to event log"
+type = "forbidden"
+source_modules = [
+    "blite.gateway",
+    "blite.runtime",
+    "blite.serving",
+    "blite.verification",
+    "blite.guardrails",
+    "blite.authz",
+    "blite.protocols",
+    "blite.certificate",
+    "blite.identity",
+]
+forbidden_modules = ["blite.events.writer"]
+
+[[tool.importlinter.contracts]]
+name = "INV-6: egress protocols sit above authz in the dependency hierarchy"
+type = "layers"
+layers = [
+    "blite.protocols",
+    "blite.authz",
+]
