@@ -10,16 +10,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege default (OpenSSF Scorecard "Token-Permissions"): every job
+# only gets read access to repo contents unless a step explicitly needs more.
+permissions:
+  contents: read
+
 jobs:
   # ── Python: lint + types + tests + architecture gates ──────────────────────
   python:
     name: Python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
         with:
           python-version: '3.12'
           enable-cache: true
@@ -47,25 +52,22 @@ jobs:
     name: Web (Studio)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 11
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: apps/studio/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install root devDeps
+      - name: Install dependencies
         run: pnpm install
-
-      - name: Install Studio deps
-        run: pnpm -C apps/studio install
 
       - name: Lint (eslint)
         run: pnpm -C apps/studio run lint
@@ -87,30 +89,28 @@ jobs:
     name: Commit messages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
-      - uses: wagoid/commitlint-github-action@v6
-        with:
-          configFile: commitlint.config.js
+      - uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6
 
   # ── Security ──────────────────────────────────────────────────────────────
   security:
     name: Security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Scan secrets (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
         with:
           python-version: '3.12'
           enable-cache: true
@@ -121,22 +121,41 @@ jobs:
           uv run pip-audit --skip-editable || true
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 11
 
       - name: Audit Node deps
         run: pnpm install && pnpm audit --audit-level moderate || true
 
+  # ── Semgrep (advisory, Tier 2) ───────────────────────────────────────────
+  # Not in branch-protection required checks — annotates findings, never
+  # blocks. Custom rules in semgrep.yml encode the base lógica (PR2, Inv-E,
+  # INV-3, AX3); p/python + p/secrets add general SAST/secret coverage.
+  semgrep:
+    name: Semgrep (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install semgrep
+        run: pip install semgrep
+
+      - name: Run semgrep
+        continue-on-error: true
+        run: |
+          semgrep --config semgrep.yml --config p/python --config p/secrets \
+            --error --metrics=off .
+
   # ── Docs ──────────────────────────────────────────────────────────────────
   docs:
     name: Docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 11
 
