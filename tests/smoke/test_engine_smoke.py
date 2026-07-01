@@ -17,8 +17,20 @@ import blite.verification
 
 def test_all_engine_subpackages_importable() -> None:
     """All engine subpackages are importable (skeleton check)."""
-    # If any import fails, pytest reports the import error above
+    # If any import fails, pytest reports the import error above. Referencing
+    # each submodule (not just importing it) keeps this a pure importability
+    # check while satisfying strict unused-import checking.
     assert blite is not None
+    assert blite.authz is not None
+    assert blite.certificate is not None
+    assert blite.events is not None
+    assert blite.gateway is not None
+    assert blite.guardrails is not None
+    assert blite.identity is not None
+    assert blite.protocols is not None
+    assert blite.runtime is not None
+    assert blite.serving is not None
+    assert blite.verification is not None
 
 
 def test_runtime_registry_importable() -> None:

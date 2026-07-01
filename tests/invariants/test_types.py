@@ -14,6 +14,7 @@ from typing import Any, assert_type
 
 import pytest
 
+from blite_capability.capability import Capability
 from blite_capability.manifest import CapabilityManifest
 from blite_capability.registry import discover_capabilities
 
@@ -69,7 +70,7 @@ def test_manifest_schemas_are_dicts() -> None:
 def test_registry_return_type() -> None:
     """discover_capabilities() must return a plain dict."""
     caps = discover_capabilities()
-    assert_type(caps, dict[str, Any])
+    assert_type(caps, dict[str, Capability])
     assert isinstance(caps, dict)
 
 
@@ -90,6 +91,27 @@ def test_event_log_is_append_only() -> None:
     )
 
 
+@pytest.mark.xfail(
+    reason=(
+        "AX1 (base lógica, Identidad): every action must be attributable to "
+        "exactly one actor. Event has no actor_id yet — the identity module "
+        "does not exist. Tracked placeholder; flip to a real assertion once "
+        "the gateway stamps identity on every event. Do not delete this test "
+        "to make it pass — that would silently drop AX1 enforcement."
+    ),
+    strict=False,
+)
+def test_event_has_non_null_actor_id() -> None:
+    """AX1: every Event must carry a required, non-empty actor_id."""
+    from blite.events.writer import Event
+
+    fields = {f.name: f for f in dataclasses.fields(Event)}
+    assert "actor_id" in fields, "Event is missing the actor_id field (AX1)"
+
+    event = Event(type="test.invariant", payload={}, actor_id="test-actor")  # type: ignore[call-arg]
+    assert event.actor_id, "actor_id must not be empty (AX1)"  # type: ignore[attr-defined]
+
+
 def test_event_append_produces_immutable_event() -> None:
     """Appended events must be immutable (frozen=True — INV-5)."""
     from blite.events.writer import Event, append, read_all
@@ -103,4 +125,4 @@ def test_event_append_produces_immutable_event() -> None:
 
     # Frozen: mutation should raise FrozenInstanceError
     with pytest.raises(dataclasses.FrozenInstanceError):
-        after[-1].type = "mutated"
+        after[-1].type = "mutated"  # type: ignore[misc]
