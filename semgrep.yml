@@ -1,0 +1,90 @@
+# Custom Semgrep rules encoding the frozen base lógica (docs/invariants.md).
+# These are the unique value here — the registry packs (p/python, p/secrets)
+# invoked alongside this file in CI are generic and kept narrow deliberately.
+#
+# Run locally: semgrep --config semgrep.yml .
+# CI: advisory only (non-blocking) — see the "Semgrep (advisory)" job in
+# .github/workflows/ci.yml. These rules target code that does not exist yet
+# in this hackathon-stage repo; they exist so a future PR that introduces a
+# violation gets flagged the moment real logic lands, not after the fact.
+
+rules:
+  - id: pr2-verifier-imports-model-client
+    languages: [python]
+    severity: ERROR
+    message: >-
+      PR2 / INV-2 (verifier is never a model): blite.verification must not
+      import an LLM client library. AnchorKind is
+      solver|execution|dataset|rule|human — 'model' is not a representable
+      anchor. Use a deterministic algorithm instead.
+    paths:
+      include:
+        - '**/engine/src/blite/verification/**'
+    patterns:
+      - pattern-either:
+          - pattern: import openai
+          - pattern: from openai import $X
+          - pattern: import anthropic
+          - pattern: from anthropic import $X
+          - pattern: import litellm
+          - pattern: from litellm import $X
+
+  - id: inv-e-egress-imports-verification-or-guardrails
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Inv-E (base lógica): egress (blite.protocols / blite.authz) must not
+      import blite.verification or blite.guardrails. Egress is governed only
+      by authorization — never by verification. This is the structural
+      defense against prompt injection (no context instruction can force
+      egress by fabricating a "verification").
+    paths:
+      include:
+        - '**/engine/src/blite/protocols/**'
+        - '**/engine/src/blite/authz/**'
+    patterns:
+      - pattern-either:
+          - pattern: import blite.verification
+          - pattern: from blite.verification import $X
+          - pattern: import blite.guardrails
+          - pattern: from blite.guardrails import $X
+
+  - id: guardrail-makes-egress-decision
+    languages: [python]
+    severity: WARNING
+    message: >-
+      INV-3 (base lógica): a guardrail function looks like it authorizes or
+      permits egress directly. Guardrails inform (probabilistic); only
+      blite.authz decides (deterministic). Move the decision into authz.
+    paths:
+      include:
+        - '**/engine/src/blite/guardrails/**'
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def $FUNC(...):
+                ...
+                return True
+          - pattern: |
+              def $FUNC(...):
+                ...
+                raise $EXC(...)
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: (?i).*(egress|authoriz|permit|allow).*
+
+  - id: ax3-serving-direct-shell-exec
+    languages: [python]
+    severity: ERROR
+    message: >-
+      AX3 (base lógica): a model never touches the world directly — it must
+      be mediated and sandboxed. blite.serving must not shell out or exec OS
+      commands directly.
+    paths:
+      include:
+        - '**/engine/src/blite/serving/**'
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.run(..., shell=True, ...)
+          - pattern: subprocess.Popen(..., shell=True, ...)
+          - pattern: os.system(...)
