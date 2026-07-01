@@ -19,11 +19,11 @@ module.exports = {
       comment:
         'Feature modules must not make direct fetch/http calls; route all egress via gatewayClient (INV-1).',
       from: {
-        path: '^src/(?!gatewayClient)',
+        path: '^src/(?!gatewayClient)'
       },
       to: {
-        path: '^(\\.\\./\\.\\./)?node_modules/(axios|node-fetch|got|superagent|ky)/',
-      },
+        path: '^(\\.\\./\\.\\./)?node_modules/(axios|node-fetch|got|superagent|ky)/'
+      }
     },
     {
       name: 'no-circular',
@@ -31,26 +31,26 @@ module.exports = {
       comment: 'Circular dependencies are forbidden.',
       from: {},
       to: {
-        circular: true,
-      },
-    },
+        circular: true
+      }
+    }
   ],
   options: {
     doNotFollow: {
-      path: 'node_modules',
+      path: 'node_modules'
     },
     tsPreCompilationDeps: true,
     tsConfig: {
-      fileName: 'tsconfig.json',
+      fileName: 'tsconfig.json'
     },
     enhancedResolveOptions: {
       exportsFields: ['exports'],
-      conditionNames: ['import', 'require', 'node', 'default'],
+      conditionNames: ['import', 'require', 'node', 'default']
     },
     reporterOptions: {
       dot: {
-        collapsePattern: 'node_modules/[^/]+',
-      },
-    },
-  },
+        collapsePattern: 'node_modules/[^/]+'
+      }
+    }
+  }
 };
