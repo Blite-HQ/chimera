@@ -1,0 +1,33 @@
+version: 2
+
+# Keeps dependencies patched across all three ecosystems in this polyglot
+# monorepo (OWASP A06 — vulnerable & outdated components; supply-chain
+# hygiene). PRs are advisory: they still have to pass the full CI suite
+# (Python/Web/Commits/Security/Docs) before merge, they don't auto-merge.
+updates:
+  # Python core (uv workspace root + all members share the root lockfile)
+  - package-ecosystem: 'pip'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'python'
+
+  # TS frontend (Studio) — pnpm workspace
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'javascript'
+
+  # GitHub Actions — keeps the SHA-pinned `uses:` refs in ci.yml current
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'ci'
