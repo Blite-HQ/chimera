@@ -16,7 +16,7 @@
 
 **Gate:** import-linter (Python boundary) + dependency-cruiser (Studio egress)
 
-<!-- enforced: .dependency-cruiser.cjs::INV-1 -->
+<!-- enforced: apps/studio/.dependency-cruiser.cjs::INV-1 -->
 <!-- enforced: apps/studio/src/gatewayClient.ts::invokeCapability -->
 
 ---
@@ -25,11 +25,36 @@
 
 **Statement:** The `verification` module must not import from `serving`, `model_router`, or any LLM library. Verification is deterministic, non-model computation only.
 
-**Rationale:** "Confiable ≠ plausible." If verification uses a model, it becomes opinion, not proof.
+**Rationale:** "Confiable ≠ plausible." If verification uses a model, it becomes opinion, not proof. This is also **PR2** in the frozen base lógica: `AnchorKind` is `solver | execution | dataset | rule | human` — `model` is not a representable anchor by construction.
 
-**Gate:** import-linter contract `INV-2`
+**Gate:** import-linter contract `INV-2` (extended to forbid direct LLM-client imports, not only `serving`)
 
 <!-- enforced: pyproject.toml::INV-2 -->
+<!-- enforced: pyproject.toml::PR2 -->
+
+---
+
+## Axiom AX3 — Model mediation (a model never touches the world directly)
+
+**Statement:** `blite.serving` (the model/model-router layer) must not import `blite.protocols`, `blite.gateway`, `blite.runtime`, `blite.authz`, or any HTTP/socket client (`httpx`, `requests`, `aiohttp`, `urllib3`, `socket`). A model's output only reaches the world by being _called through_ the gateway port — it cannot reach out on its own.
+
+**Rationale:** Base lógica AX3 (inviolable axiom, not a relaxable principle): every model-performed action passes through a port, sandboxed. This is what makes sandboxing and mediation enforceable rather than aspirational.
+
+**Gate:** import-linter contract `AX3`
+
+<!-- enforced: pyproject.toml::AX3 -->
+
+---
+
+## Principle Inv-E — Egress is governed only by authorization, never by verification
+
+**Statement:** `blite.protocols` and `blite.authz` must not import `blite.verification` or `blite.guardrails`. No egress decision may be justified by a verification or guardrail outcome — only by `authz`.
+
+**Rationale:** Base lógica Inv-E: _"el egreso lo gobierna SOLO la autorización... ninguna otra propiedad, en particular la verificación, satisface el antecedente de un egreso."_ This is the structural defense against prompt injection: no instruction embedded in model context can force egress by fabricating a "verification". When an output cannot be verified and the owner has not authorized egress, it is never exported — it is marked unverified or blocked, not sent out.
+
+**Gate:** import-linter contract `Inv-E` (complements INV-3, which forbids the reverse direction: guardrails importing authz/protocols)
+
+<!-- enforced: pyproject.toml::Inv-E -->
 
 ---
 
@@ -108,3 +133,27 @@
 
 <!-- enforced: tests/invariants/test_capability_genericity.py::test_all_manifests_are_generic -->
 <!-- enforced: tests/invariants/scenario_denylist.txt -->
+
+---
+
+## Axiom AX1 — Identity (placeholder, not yet fully enforced)
+
+**Statement:** Every action must be attributable to exactly one actor. Every `Event` must carry a required, non-empty `actor_id`.
+
+**Rationale:** Base lógica AX1 (inviolable axiom). This cannot be structurally enforced yet — the `Event` dataclass and the identity module do not exist as real code, so there is nothing to stamp an actor onto. A tracked, intentionally-failing (`xfail`) test exists so the gap is visible in CI output rather than silently absent. It must flip to a real, passing assertion — never be deleted — once the gateway/identity module stamps identity on every event.
+
+**Gate:** `xfail` placeholder test (tracked TODO, not yet a hard gate)
+
+<!-- enforced: tests/invariants/test_types.py::test_event_has_non_null_actor_id -->
+
+---
+
+## Principle — Sub-agent permission intersection
+
+**Statement:** A Claude sub-agent definition (`tools/claude/agents/*.md`) may only declare tools that are a subset of an explicit allowed superset (`Read`, `Grep`, `Glob`, `Bash`). A sub-agent may only ever _reduce_ the permission surface it inherits, never expand it.
+
+**Rationale:** Maps to the OWASP Agentic Top 10 (Excessive Agency / Privilege Compromise). Widening a sub-agent's tool access (e.g. adding `Edit`/`Write`/`Task`) must be a visible, reviewed decision — not something that slips in via an unreviewed prompt file.
+
+**Gate:** pytest parsing every agent's frontmatter `tools:` list
+
+<!-- enforced: tests/invariants/test_subagent_permissions.py::test_subagent_tools_are_subset_of_allowed_superset -->
