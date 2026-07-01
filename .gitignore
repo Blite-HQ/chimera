@@ -12,6 +12,7 @@ build/
 .mypy_cache/
 .ruff_cache/
 .pyright/
+.import_linter_cache/
 
 # uv
 # uv.lock is intentionally committed for reproducibility

@@ -22,7 +22,7 @@ class Event:
     type: str
     """Event type identifier (e.g., "capability.invoked", "override.requested")."""
 
-    payload: dict[str, Any] = field(default_factory=dict)
+    payload: dict[str, Any] = field(default_factory=dict[str, Any])
     """Generic event payload. Must not contain secrets."""
 
     timestamp: float = field(default_factory=time.time)
