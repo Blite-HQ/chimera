@@ -39,8 +39,15 @@ src = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B"]
+# S = flake8-bandit (SAST: injection, crypto, subprocess, etc. — OWASP A02/A03/A08)
+# ASYNC = flake8-async (blocking calls in async code)
+select = ["E", "F", "I", "N", "W", "UP", "B", "S", "ASYNC"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# assert is the normal pytest idiom — not a security concern in tests.
+"tests/**" = ["S101"]
+"*/tests/**" = ["S101"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -139,13 +146,54 @@ forbidden_modules = ["blite"]
 name = "INV-2: verification never touches model serving"
 type = "forbidden"
 source_modules = ["blite.verification"]
-forbidden_modules = ["blite.serving"]
+forbidden_modules = [
+    "blite.serving",
+    # PR2 (base lógica): AnchorKind is solver|execution|dataset|rule|human —
+    # 'model' is not a representable anchor. Forbid the verifier from
+    # reaching any LLM/model client directly, not just the serving module.
+    "openai",
+    "anthropic",
+    "cohere",
+    "litellm",
+    "transformers",
+]
 
 [[tool.importlinter.contracts]]
 name = "INV-3: guardrails do not decide egress"
 type = "forbidden"
 source_modules = ["blite.guardrails"]
 forbidden_modules = ["blite.authz", "blite.protocols"]
+
+[[tool.importlinter.contracts]]
+name = "AX3: model serving is mediated, never touches the world directly"
+type = "forbidden"
+# Base lógica AX3: a model never acts on the world directly; every model
+# action passes through the gateway port and runs sandboxed. `serving` may
+# be *called by* the gateway, but must not itself reach the gateway,
+# protocols, authz, runtime, or the network.
+source_modules = ["blite.serving"]
+forbidden_modules = [
+    "blite.protocols",
+    "blite.gateway",
+    "blite.runtime",
+    "blite.authz",
+    "httpx",
+    "requests",
+    "aiohttp",
+    "urllib3",
+    "socket",
+]
+
+[[tool.importlinter.contracts]]
+name = "Inv-E: egress is governed only by authorization, never by verification"
+type = "forbidden"
+# Base lógica Inv-E: "el egreso lo gobierna SOLO la autorización... ninguna
+# otra propiedad, en particular la verificación, satisface el antecedente de
+# un egreso." The egress path (protocols, authz) must not import
+# verification or guardrails — this closes the prompt-injection vector where
+# a "verification" outcome could be used to justify egress.
+source_modules = ["blite.protocols", "blite.authz"]
+forbidden_modules = ["blite.verification", "blite.guardrails"]
 
 [[tool.importlinter.contracts]]
 name = "INV-5: non-events modules cannot write to event log"
