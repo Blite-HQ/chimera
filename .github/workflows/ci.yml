@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,6 +21,7 @@ jobs:
   python:
     name: Python
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -30,7 +32,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-packages --all-extras
+        run: uv sync --locked --all-packages --all-extras
 
       - name: Lint (ruff)
         run: uv run ruff check .
@@ -51,13 +53,13 @@ jobs:
   web:
     name: Web (Studio)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      # pnpm version comes from the root package.json "packageManager" field.
       - name: Set up pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        with:
-          version: 11
 
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -78,16 +80,16 @@ jobs:
       - name: Tests (vitest)
         run: pnpm -C apps/studio run test:run
 
+      # Runs inside apps/studio so dependency-cruiser picks up the co-located
+      # .dependency-cruiser.cjs (INV-1 gate) — the config is not at repo root.
       - name: Architecture (dependency-cruiser)
-        run: |
-          if [ -d "apps/studio/src" ]; then
-            pnpm exec depcruise apps/studio/src --config .dependency-cruiser.cjs
-          fi
+        run: pnpm -C apps/studio exec depcruise src
 
   # ── Commit messages ───────────────────────────────────────────────────────
   commits:
     name: Commit messages
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -99,15 +101,21 @@ jobs:
   security:
     name: Security
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
+      # Pinned CLI instead of gitleaks-action: the action requires a paid
+      # GITLEAKS_LICENSE for organization-owned repos; the CLI does not.
       - name: Scan secrets (gitleaks)
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sSfL -o /tmp/gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          /tmp/gitleaks git --redact --no-banner .
 
       - name: Set up uv
         uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
@@ -115,52 +123,69 @@ jobs:
           python-version: '3.12'
           enable-cache: true
 
-      - name: Audit Python deps
+      - name: Audit Python deps (pip-audit)
         run: |
-          uv sync --all-packages
-          uv run pip-audit --skip-editable || true
+          uv sync --locked --all-packages
+          # CVE-2025-69872 (diskcache 5.6.3, via dwave-ocean-sdk → the
+          # quantum capability's 'dwave' extra): no fixed release exists as
+          # of 2026-07-02. Re-evaluate when dependabot bumps dwave/diskcache.
+          uv run pip-audit --skip-editable --ignore-vuln CVE-2025-69872
 
       - name: Set up pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        with:
-          version: 11
 
-      - name: Audit Node deps
-        run: pnpm install && pnpm audit --audit-level moderate || true
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Audit Node deps (pnpm audit)
+        run: |
+          pnpm install
+          pnpm audit --audit-level=high
 
   # ── Semgrep (advisory, Tier 2) ───────────────────────────────────────────
   # Not in branch-protection required checks — annotates findings, never
   # blocks. Custom rules in semgrep.yml encode the base lógica (PR2, Inv-E,
   # INV-3, AX3); p/python + p/secrets add general SAST/secret coverage.
+  # Registry-sourced packs require metrics, so they run as a separate step
+  # and the local rules keep --metrics=off.
   semgrep:
     name: Semgrep (advisory)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install semgrep
-        run: pip install semgrep
+        run: pip install semgrep==1.168.0
 
-      - name: Run semgrep
+      - name: Semgrep — custom base lógica rules
         continue-on-error: true
-        run: |
-          semgrep --config semgrep.yml --config p/python --config p/secrets \
-            --error --metrics=off .
+        run: semgrep --config semgrep.yml --error --metrics=off .
+
+      - name: Semgrep — registry packs (p/python, p/secrets)
+        continue-on-error: true
+        run: semgrep --config p/python --config p/secrets --error .
 
   # ── Docs ──────────────────────────────────────────────────────────────────
   docs:
     name: Docs
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        with:
-          version: 11
 
       - name: Install
         run: pnpm install
 
       - name: Lint Markdown
         run: pnpm run docs:lint
+
+      - name: Format check (prettier)
+        run: pnpm run format:check

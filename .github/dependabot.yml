@@ -4,12 +4,19 @@ version: 2
 # monorepo (OWASP A06 — vulnerable & outdated components; supply-chain
 # hygiene). PRs are advisory: they still have to pass the full CI suite
 # (Python/Web/Commits/Security/Docs) before merge, they don't auto-merge.
+# Minor+patch bumps arrive grouped (one PR per ecosystem per week) so the
+# hackathon month doesn't drown in dependency PRs; majors stay individual.
 updates:
-  # Python core (uv workspace root + all members share the root lockfile)
-  - package-ecosystem: 'pip'
+  # Python core — uv workspace (the root uv.lock covers all members; the
+  # dedicated 'uv' ecosystem understands it, the generic 'pip' one does not)
+  - package-ecosystem: 'uv'
     directory: '/'
     schedule:
       interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      python-minor-patch:
+        update-types: ['minor', 'patch']
     labels:
       - 'dependencies'
       - 'python'
@@ -19,6 +26,10 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: ['minor', 'patch']
     labels:
       - 'dependencies'
       - 'javascript'
@@ -28,6 +39,10 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ['*']
     labels:
       - 'dependencies'
       - 'ci'

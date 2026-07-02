@@ -4,5 +4,7 @@ set -e
 echo "[pre-push] Checking import boundaries..."
 uv run lint-imports --no-cache
 echo "[pre-push] Checking TypeScript..."
-pnpm -C apps/studio exec tsc --noEmit 2>/dev/null || true
+pnpm -C apps/studio exec tsc --noEmit
+echo "[pre-push] Running invariant tests..."
+uv run pytest tests/invariants -q --no-cov -p no:cacheprovider
 echo "[pre-push] Done."

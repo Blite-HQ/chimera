@@ -19,6 +19,7 @@ dev = [
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
     "import-linter>=2.1",
+    "pip-audit>=2.7",
 ]
 
 # ── Ruff ──────────────────────────────────────────────────────────────────────
@@ -217,4 +218,22 @@ type = "layers"
 layers = [
     "blite.protocols",
     "blite.authz",
+]
+
+[[tool.importlinter.contracts]]
+name = "SDK-standalone: the SDK never imports the engine or any capability package"
+type = "forbidden"
+# Extraction precondition (plan §1.A): blite_capability is the ONLY shared
+# interface between engine and capabilities. It must remain importable on its
+# own so the future repo split (engine+sdk → PyPI) stays mechanical.
+source_modules = ["blite_capability"]
+forbidden_modules = [
+    "blite",
+    "blite_cap_solvers",
+    "blite_cap_graphs",
+    "blite_cap_numeric",
+    "blite_cap_sim",
+    "blite_cap_ml",
+    "blite_cap_smt",
+    "blite_cap_quantum",
 ]
