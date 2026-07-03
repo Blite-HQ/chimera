@@ -90,6 +90,11 @@ jobs:
     name: Commit messages
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # On pull_request events the commitlint action lists the PR's commits
+    # via the REST API, which the global contents-only block doesn't allow.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
