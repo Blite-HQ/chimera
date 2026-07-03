@@ -6,6 +6,9 @@ packages:
 # are typically detected and unpublished within days; known-CVE fixes still
 # arrive via Dependabot security updates, which bypass cooldowns.
 minimumReleaseAge: 20160
+# Some packages lack registry time metadata; 'highest' keeps the age check
+# (warn+skip on missing metadata) instead of failing resolution outright.
+resolutionMode: highest
 
 # pnpm 11 blocks dependency install scripts by default (replaces
 # onlyBuiltDependencies). Keep this allowlist minimal — every entry here is
