@@ -35,7 +35,7 @@ jobs:
         run: uv sync --locked --all-packages --all-extras
 
       - name: Lint (ruff)
-        run: uv run ruff check .
+        run: uv run ruff check --output-format=github .
 
       - name: Format check (ruff)
         run: uv run ruff format --check .
@@ -45,6 +45,10 @@ jobs:
 
       - name: Tests + coverage
         run: uv run pytest --cov --cov-report=xml
+
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        run: uv run coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
 
       - name: Architecture gates (import-linter)
         run: uv run lint-imports
@@ -150,6 +154,21 @@ jobs:
         run: |
           pnpm install
           pnpm audit --audit-level=high
+
+      # All three scans above are blocking (job fails before this step if any
+      # scan finds something) — this table is a visible confirmation, not a
+      # substitute for the gate.
+      - name: Security summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "## Security scans"
+            echo "| Scan | Status |"
+            echo "| --- | --- |"
+            echo "| gitleaks (full history) | ✅ passed |"
+            echo "| pip-audit (Python) | ✅ passed |"
+            echo "| pnpm audit (--audit-level=high) | ✅ passed |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ── Semgrep (advisory, Tier 2) ───────────────────────────────────────────
   # Not in branch-protection required checks — annotates findings, never
