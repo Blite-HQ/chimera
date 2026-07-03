@@ -1,2 +1,14 @@
 packages:
   - 'apps/*'
+
+# Supply-chain quarantine: a newly published version must be at least 14 days
+# old (in minutes: 20160) before pnpm will resolve to it. Compromised releases
+# are typically detected and unpublished within days; known-CVE fixes still
+# arrive via Dependabot security updates, which bypass cooldowns.
+minimumReleaseAge: 20160
+
+# pnpm 11 blocks dependency install scripts by default (replaces
+# onlyBuiltDependencies). Keep this allowlist minimal — every entry here is
+# third-party code that runs at install time.
+allowBuilds:
+  esbuild: true

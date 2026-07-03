@@ -39,11 +39,6 @@
       "pnpm -C apps/studio exec prettier --write"
     ]
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  },
   "prettier": {
     "singleQuote": true,
     "trailingComma": "none",
