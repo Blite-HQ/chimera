@@ -1,3 +1,3 @@
 # blite-capability
 
-Capability SDK — port, manifest, and registry for Blite Engine.
+Capability SDK — port, manifest, and registry for Chimera.

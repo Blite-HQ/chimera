@@ -1,3 +1,3 @@
-# blite-engine
+# Chimera Engine
 
-Blite Engine core — agentic execution with anchored verification.
+Chimera engine core — agentic execution with anchored verification.

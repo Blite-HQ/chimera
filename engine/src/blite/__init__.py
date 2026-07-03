@@ -1,1 +1,1 @@
-"""Blite Engine core package."""
+"""Chimera engine core package."""

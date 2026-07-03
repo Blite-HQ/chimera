@@ -1,6 +1,6 @@
 # Security Policy
 
-Chimera / Blite Engine handles research data and, eventually, credentials for
+Chimera handles research data and, eventually, credentials for
 model providers and scientific tooling. Report suspected vulnerabilities
 responsibly — do not open a public issue.
 
