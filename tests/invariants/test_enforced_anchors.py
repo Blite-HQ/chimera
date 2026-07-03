@@ -73,3 +73,18 @@ def test_invariants_doc_exists() -> None:
         "docs/invariants.md is missing. "
         "This file is the frozen constitution of Chimera — recreate it."
     )
+
+
+def test_enforced_anchors_exist() -> None:
+    """docs/invariants.md must declare at least one enforced anchor.
+
+    Backstop for the parametrized skipif above: without this, removing every
+    <!-- enforced: ... --> anchor would make test_enforced_anchor_resolves
+    silently *skip* (0 params) instead of fail, disabling the doc<->gate
+    divergence check. Mirrors test_denylist_is_not_empty in
+    test_capability_genericity.py.
+    """
+    assert _ANCHORS, (
+        "No <!-- enforced: ... --> anchors found in docs/invariants.md. "
+        "The doc<->gate anchor check would silently skip — restore the anchors."
+    )
