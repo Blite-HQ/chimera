@@ -1,1 +1,1 @@
-"""REDACTED core package."""
+"""Chimera engine core package."""

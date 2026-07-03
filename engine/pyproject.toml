@@ -1,7 +1,7 @@
 [project]
-name = "REDACTED"
+name = "chimera-engine"
 version = "0.1.0"
-description = "REDACTED — agentic execution core with anchored verification."
+description = "Chimera engine — agentic execution core with anchored verification."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }

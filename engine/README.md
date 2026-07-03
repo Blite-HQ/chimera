@@ -1,3 +1,3 @@
-# REDACTED
+# Chimera Engine
 
-REDACTED core — agentic execution with anchored verification.
+Chimera engine core — agentic execution with anchored verification.

@@ -1,7 +1,7 @@
 # Chimera — Constitution: Logical Invariants
 
 > **Status: FROZEN.**
-> These invariants define the logical core of REDACTED / Chimera.
+> These invariants define the logical core of Chimera.
 > They are not subject to revision. Enforcement mechanisms may be added or improved, never weakened.
 >
 > _"Lo cuántico propone, las anclas no-modelo verifican; confiable ≠ plausible."_

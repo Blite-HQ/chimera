@@ -1,7 +1,7 @@
 [project]
 name = "blite-capability"
 version = "0.1.0"
-description = "SDK: Capability port and CapabilityManifest contract for REDACTED."
+description = "SDK: Capability port and CapabilityManifest contract for Chimera."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }

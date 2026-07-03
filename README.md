@@ -4,14 +4,14 @@
 >
 > _"Lo cuántico propone, las anclas no-modelo verifican; confiable ≠ plausible."_
 
-Chimera is the first distribution of **REDACTED** — a sovereign, open-source AI substrate with anchored verification and provenance. It powers verified scientific research by combining quantum and classical computation tools with a deterministic verification layer.
+Chimera is a sovereign, open-source AI substrate with anchored verification and provenance. It powers verified scientific research by combining quantum and classical computation tools with a deterministic verification layer.
 
 ## Monorepo layout
 
 ```
 chimera/
 ├─ sdk/                  blite-capability SDK (Capability port + CapabilityManifest + registry)
-├─ engine/               REDACTED core (gateway, runtime, serving, verification, events, …)
+├─ engine/               Chimera engine core (gateway, runtime, serving, verification, events, …)
 ├─ capabilities/         Generic tool packages — discovered at runtime via entry points (ADR-008)
 │  ├─ solvers/           QUBO/MILP solvers (OR-Tools, Gurobi) — anchor
 │  ├─ graphs/            Graph algorithms (NetworkX, igraph) — baseline

@@ -1,4 +1,4 @@
-"""Smoke tests for the REDACTED skeleton."""
+"""Smoke tests for the Chimera engine skeleton."""
 
 from __future__ import annotations
 
