@@ -2,7 +2,7 @@
 
 **Ítem del plan (§4 Dylan):** Congelar esquema `events` + puerto writer (seq por stream, idempotencia por UNIQUE, LISTEN/NOTIFY u outbox → SSE)
 **Fecha:** 2026-07-02 · **Estado:** insumo para el contract freeze del viernes
-**Fuentes:** Esquema semilla (interno) · message-db estudiado en vivo 2026-07-02 · EventStoreDB (conceptos) · Revisión Versión Dios ADR-016/ADR-021 · MS Agent Governance Toolkit (audit log tamper-evident, MIT)
+**Fuentes:** Esquema semilla (interno) · message-db estudiado en vivo 2026-07-02 · EventStoreDB (conceptos) · Revisión de arquitectura de referencia de Chimera (ADR-016/ADR-021) · MS Agent Governance Toolkit (audit log tamper-evident, MIT)
 
 ---
 
@@ -38,7 +38,7 @@ CREATE TRIGGER events_immutable BEFORE UPDATE OR DELETE ON events
 ### 1.4 Separación de concerns (ADR-021) y forma tamper-evident (ADR-016)
 
 - **Tres usos, un sustrato, costuras explícitas:** log de procedencia (inmutable, larga retención) / streams operativos (estado de runs) / read models (`runs_projection`, `attestations`, `trust_certificates` — ya en la semilla). En Fase 1 la misma tabla `events` sirve procedencia + operación (escala de hackathon); el Studio **solo lee proyecciones** (regla ya establecida). La separación física es Fase 2 — la costura queda en que nadie consume eventos crudos salvo los proyectores y el endpoint SSE.
-- **Tamper-evident desde el día 1, criptográfico en Fase 2:** columnas `prev_hash`/`hash` presentes y vacías (ya en semilla — se confirma). La forma futura: `hash = H(prev_hash ‖ canónico(evento))` por stream — cadena estilo transparency log (Certificate Transparency/Rekor). El audit log del MS Agent Governance Toolkit (MIT) es la referencia implementable más cercana. **Por qué importa** (hallazgo 4 de la Revisión Versión Dios): una tabla editable contradice la tesis — "cualquiera con acceso a la DB puede editarla silenciosamente"; el hash-chain convierte el registro en prueba. La FORMA se congela hoy; el cálculo se difiere.
+- **Tamper-evident desde el día 1, criptográfico en Fase 2:** columnas `prev_hash`/`hash` presentes y vacías (ya en semilla — se confirma). La forma futura: `hash = H(prev_hash ‖ canónico(evento))` por stream — cadena estilo transparency log (Certificate Transparency/Rekor). El audit log del MS Agent Governance Toolkit (MIT) es la referencia implementable más cercana. **Por qué importa** (hallazgo 4 de la arquitectura de referencia de Chimera): una tabla editable contradice la tesis — "cualquiera con acceso a la DB puede editarla silenciosamente"; el hash-chain convierte el registro en prueba. La FORMA se congela hoy; el cálculo se difiere.
 
 ### 1.5 El puerto en Python (reemplaza el writer in-memory)
 
