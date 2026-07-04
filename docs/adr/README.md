@@ -30,9 +30,9 @@ not a separate sequential counter. This keeps one traceable ID across doc, code,
 
 **Why only two are "Accepted":** ADR-008 and ADR-029 are the only IDs with a full
 statement + rationale + enforced gate already frozen in `invariants.md` today. The other six
-are cited across `knowledge/trust/*` notes as **"Revisión Versión Dios"** — an external
-decision review being evaluated for what to port into Chimera — not decisions Chimera itself
-has made yet. Listing them as ADR files here would misattribute provenance. Promote a row to
+are cited across `knowledge/trust/*` notes as input from Chimera's own reference
+architecture review — still being evaluated for what to formalize, not decisions frozen into
+`invariants.md` yet. Listing them as ADR files here would misattribute provenance. Promote a row to
 "Accepted" (and add its `ADR-<id>-*.md` file) only once its decision lands in `invariants.md`
 with a real enforcement gate — mirrors the rule in [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md):
 "if `lint-imports` or an invariant test fails, fix the code, not the test."

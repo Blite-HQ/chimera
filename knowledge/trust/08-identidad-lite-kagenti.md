@@ -2,7 +2,7 @@
 
 **Ítem del plan (§4 Dylan):** Identidad lite — JWT claims scoped + intersección de permisos (forma SPIFFE/RFC 8693 sin SPIRE); nota de diseño
 **Fecha:** 2026-07-03 · **Estado:** insumo para el contract freeze
-**Fuentes:** Kagenti verificado en vivo 2026-07-03 (Apache-2.0, "Identity and Auth Bridge") · compass panorama (patrón Kagenti detallado, AgentCore Identity, Entra Agent ID) · Revisión Versión Dios ADR-018 · RFC 8693 (OAuth Token Exchange) · semilla TS §1
+**Fuentes:** Kagenti verificado en vivo 2026-07-03 (Apache-2.0, "Identity and Auth Bridge") · compass panorama (patrón Kagenti detallado, AgentCore Identity, Entra Agent ID) · Revisión de arquitectura de referencia de Chimera (ADR-018) · RFC 8693 (OAuth Token Exchange) · semilla TS §1
 
 ---
 
@@ -69,7 +69,7 @@ Hoy: `test_event_has_non_null_actor_id` es xfail porque ni `Event` tiene `actor_
 | Token theft / replay largo                 | ❌ parcial: exp corto sí; rotación/attestation de workload no — Fase 2 |
 | Memory poisoning / tool misuse             | fuera de esta capa (gateway/guardrails/verificación)                   |
 
-Esta tabla va al pitch técnico si preguntan "¿y la seguridad?" — decir qué no cubrimos es la postura de la Versión Dios ("la honestidad como postura de seguridad").
+Esta tabla va al pitch técnico si preguntan "¿y la seguridad?" — decir qué no cubrimos es la postura de la arquitectura de referencia de Chimera ("la honestidad como postura de seguridad").
 
 ## 2 · Decisión
 
