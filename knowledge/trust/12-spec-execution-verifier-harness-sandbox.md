@@ -2,11 +2,13 @@
 
 **Ítem del plan (§4 Dylan / ficha A1):** Anclas duras — de decisión a diseño de adapter. Parte 3: el adapter rung 2 (ejecución/factibilidad) y su costura Fase 2.
 **Fecha:** 2026-07-07 · **Estado:** spec de diseño — insumo de la sesión 11 (rung 2 = pandapower) + semilla de la ficha A7. **SOLO diseño; nada implementado.**
-**Fuentes:** nota 03 §1.2 (forma `evidence` `execution`) · nota 04 §1.1 (pandapower rung 2, "correr y observar") y §2/§4 (E2B/Firecracker como forma, microVM Fase 2) · `contract-freeze.md` §4 y §9 (verificación POR ISLA) · anexo de canonicalización §2 (`C()` para `input_digest`) · anatomía de HumanEval (OpenAI) y SWE-bench (Princeton) · `docs/invariants.md` AX3.
+**Fuentes:** nota 03 §1.2 (forma `evidence` `execution`) · nota 04 §1.1 (pandapower rung 2, "correr y observar") y §2/§4 (E2B/Firecracker como forma, microVM Fase 2) · `contract-freeze.md` §4 y §9 (verificación POR ISLA) · anexo de canonicalización §2 (`C()` para `input_digest`) · anatomía de HumanEval (OpenAI) y SWE-bench (Princeton) · `docs/invariants.md` AX3 · `CHIMERA-Harness-Metodologias.md` (§1 def. de harness, §4–5 pool + árbol PEV, §6 mapeo Reto 1).
 
 ---
 
 ## 1 · Patrón / mecanismo
+
+**Encuadre — dos sentidos de "harness" (para no confundirlos).** `CHIMERA-Harness-Metodologias.md` usa "harness" en el sentido **de agente** (ADR-004): el loop configurable _plan → execute → verify_ (PEV), con descomposición jerárquica + subagentes, cuyo **gate de verificación es el gateway** (carril de orquestación de Steven — [frontera]). Esta nota especifica el otro sentido, más angosto: el **harness de EJECUCIÓN** — la maquinaria de aislamiento/timeout/colección que _corre y observa_. Encaja como el **método rung 2 del paso "V" (verify)** de ese PEV: el árbol de decisión de ese doc (§5, DECISIÓN 2: "¿se puede ejecutar y medir? → escalón 2") baja hasta este adapter. Validación externa directa: ese doc §6 mapea el verify del Reto 1 a **OR-Tools → rung 1** (nota 10) + **pandapower → rung 2** (esta nota); su "restricción-como-ancla (validez, no optimalidad)" (§4.4 transversal) es exactamente lo que chequea el `ExecutionVerifier` — factibilidad, no óptimo; y su disciplina de "colección sin interpretación" (invariante #3, §1.2) es el mismo principio que el **pipeline fijo de Agentless** (localizar→generar→testear) de ese doc §2.
 
 ### 1.1 Por qué mirar HumanEval/SWE-bench
 

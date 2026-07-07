@@ -2,7 +2,7 @@
 
 **Ítem del plan (§4 Dylan / ficha A1):** Anclas duras — de decisión a diseño de adapter. Parte 1: el adapter rung 1 (verificación diferencial contra CP-SAT).
 **Fecha:** 2026-07-07 · **Estado:** spec de diseño — insumo directo de la sesión 11 (escalera 1–3, TDD). **SOLO diseño; nada implementado.**
-**Fuentes:** nota 03 §1.2 (forma `evidence` `differential`) y §1.4 (verdict tri-estado) · nota 04 §1.1 (CP-SAT como ancla estrella, diversidad) · `contract-freeze.md` §4 · anexo de canonicalización §5 (`claim_digest`) · docs OR-Tools CP-SAT (`CpSolverStatus`, parámetros de determinismo) · óptimos de Max-Cut calculados a mano.
+**Fuentes:** nota 03 §1.2 (forma `evidence` `differential`) y §1.4 (verdict tri-estado) · nota 04 §1.1 (CP-SAT como ancla estrella, diversidad) · `contract-freeze.md` §4 · anexo de canonicalización §5 (`claim_digest`) · docs OR-Tools CP-SAT (`CpSolverStatus`, parámetros de determinismo) · óptimos de Max-Cut calculados a mano · `CHIMERA-Harness-Metodologias.md` §4.4/§6 (ubicación del diferencial cuántico-clásico en escalón 5; verify Reto 1 → OR-Tools rung 1).
 
 ---
 
@@ -19,6 +19,8 @@ Tres pasos, todos deterministas:
 3. **Comparar** dentro de tolerancia (§1.4) y **mapear** `(status × claim_type × comparación) → verdict` (§1.2).
 
 El **segundo ancla independiente** para instancias chicas es la **fuerza bruta ≤ ~20 variables** (nota 04): enumeración completa, trivialmente auditable. Los vectores de prueba (§1.6) se validan por fuerza bruta — no por CP-SAT — de modo que CP-SAT queda a su vez verificado contra la enumeración. Esto es el principio de diversidad de nota 04 §1.1 llevado al propio verificador: dos anclas de rung 1 (CP-SAT exacto + enumeración) deben coincidir.
+
+> **Aclaración de nombre — reconciliación con `CHIMERA-Harness-Metodologias.md` §4.4.** "Verificación diferencial" en esta nota = contraste contra un solver **exacto e independiente** (el oráculo) → **rung 1**. NO es lo mismo que la "verificación diferencial cuántico-vs-clásico" que ese documento ubica en el **escalón 5**: dos heurísticas **sin oráculo** que convergen son **consenso** (rung 5), y por construcción → `GuardrailSignal`, **no** `Attestation` (notas 03 §1.1 / 04 §1.3). El nombre está sobrecargado; **el tipo de ancla decide el rung**: oráculo exacto (rung 1) vs muestras que coinciden (rung 5). Ambos documentos coinciden bajo esta distinción — se anota, no se cede (el freeze §4 manda). Práctica: si el "diferencial" del run es cuántico-vs-clásico, ese paso es rung 5 (guardrail) y necesita ADEMÁS este adapter (CP-SAT exacto) para tener un ancla rung 1.
 
 ### 1.2 El mapeo EXACTO `CpSolverStatus → verdict` (el núcleo de la ficha)
 
