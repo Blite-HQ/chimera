@@ -1,5 +1,7 @@
 import React from 'react';
 
+import GridSpike from './spike/GridSpike';
+
 /**
  * Chimera Studio root application component.
  *
@@ -7,10 +9,5 @@ import React from 'react';
  * This component never calls fetch/axios directly.
  */
 export default function App(): React.ReactElement {
-  return (
-    <div>
-      <h1>Chimera Studio</h1>
-      <p>Open platform for trustworthy agentic scientific research.</p>
-    </div>
-  );
+  return <GridSpike />;
 }

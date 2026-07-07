@@ -63,3 +63,6 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Playwright MCP artifacts (screenshots, snapshots)
+.playwright-mcp/

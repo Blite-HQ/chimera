@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+
+/* shadcn-style base: neutral background, system font stack. */
+body {
+  @apply bg-zinc-100 font-sans text-zinc-900 antialiased;
+}
