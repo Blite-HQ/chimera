@@ -40,6 +40,7 @@ El campo `protocol` de la semilla TS **se elimina** del manifest: el protocolo e
 - Tabla `attestations`: `+ rung SMALLINT NOT NULL`, CHECK de verdict tri-estado.
 - La **escalera 1–7 queda formalizada como registro**: escalones 5–6 (consenso/detección) NO producen attestation por construcción → §5.
 - Adapters hackathon: CP-SAT/fuerza bruta (rung 1), pandapower (rung 2), corpus IEEE (rung 3), Hypothesis/metamórficas (rung 4).
+- **Diseño de los adapters (de decisión a diseño, sesión 3):** el freeze define el PUERTO y el contrato; el DISEÑO del adapter detrás del puerto vive en las notas [10](../knowledge/trust/10-spec-exact-solver-verifier-cpsat.md) (`ExactSolverVerifier`/CP-SAT: mapeo status→verdict, determinismo, tolerancias, formulación de referencia + vectores), [11](../knowledge/trust/11-spec-rule-verifier-backend-z3.md) (`RuleVerifier`: backend Python/Z3, unsat core, ruta rung 4→1) y [12](../knowledge/trust/12-spec-execution-verifier-harness-sandbox.md) (`ExecutionVerifier` + puerto `ExecutionHarness`, semilla A7). **A ratificar en el cierre** (§4 de cada nota, operación regla 4): refinamientos ADITIVOS de la unión `evidence` — enum real de CP-SAT en `differential` (`OPTIMAL|FEASIBLE|INFEASIBLE|MODEL_INVALID|UNKNOWN`, con `MODEL_INVALID`/`INFEASIBLE`→error, no verdict), campos del backend formal en `property` (`backend`/`status`/`unsat_core`), y `timed_out` en `execution`; la distinción `error` (falla de proceso, no emite `Attestation`) vs `verdict:"fail"`.
 
 ## 5 · `GuardrailSignal` **[confianza]** — nota 04
 
