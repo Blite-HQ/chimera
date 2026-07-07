@@ -79,6 +79,18 @@ De objeto plano (semilla TS §6) a **Statement in-toto + envelope DSSE firmado**
 - Decisión de streaming: **SSE simple** (AG-UI descartado este mes — vocabulario de chat-agente, no de procedencia; candidato Fase 2 para canal interactivo).
 - Stack Studio validado por spike: Cytoscape.js (API directa, MIT) + Tailwind v4 + convención shadcn.
 
+## 10 · `OverrideEvent` / `OverridePayload` **[confianza]** — notas 01/05/08 (hueco A8.1 cerrado)
+
+No es tabla nueva: `override.applied` es una fila más de `events` (§2) como cualquier otra — ya reconciliado en nota 01 §5 (INV-4/AX2 soportado). Forma semilla confirmada del `payload`:
+
+- `target: str` — qué se relaja: `"principle:PR2"` | `"guardrail:<name>"` | `"subsystem:logging"`.
+- `reason: str`.
+- `authorizedBy: str` — URN estilo nota 08, pero **restringido a `user:*`**: un override lo autoriza siempre un humano, nunca un agente ni un servicio (AX2 — la relajación exige responsable identificable fuera del propio sistema que se relaja).
+- `scope: Literal["run","domain","global"]`.
+- `policy_id: str | None` — referencia opcional a la `VerificationPolicy`/regla que se relaja (§6); cruza con el `policy_id` que ya se estampa en `verification.completed`, de modo que un override sobre una regla de verificación queda enlazado a esa regla, no solo descrito en prosa.
+
+`OverrideEvent` = `Event` (§2) con `type = "override.applied"` y `payload` con la forma de arriba. **Regla dura (AX2):** desactivar el propio registro de overrides es, a su vez, un override — se escribe _antes_ de surtir efecto (mismo `events` append-only con REVOKE+trigger de nota 01 §1.2, sin excepción para este tipo). Sin cambio de esquema SQL: vive en `events.payload` (JSONB), no en tabla aparte.
+
 ---
 
 ## Dependencias nuevas que este freeze implica (todas verificadas 2026-07-02/03)
