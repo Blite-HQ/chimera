@@ -61,7 +61,7 @@ De objeto plano (semilla TS §6) a **Statement in-toto + envelope DSSE firmado**
 - `statement`: `subject = [{name: "run:<id>", digest: {sha256: provenance_hash}}]`, `predicate = {run_id, actor, aggregate_rung, unanchored_steps, attestations[], policy_id, issued_at}`, `predicateType` versionado.
 - `envelope`: `{payload_type, payload_b64, signatures[{keyid, sig}]}` — **firma Ed25519 local** (lib `cryptography`), PAE de DSSE implementado tal cual; verificable **offline** (air-gap).
 - `aggregate_rung` = el escalón MÁS DÉBIL del camino crítico, nunca promedio; `unanchored_steps` explícito.
-- `provenance_hash` = SHA-256 del stream canónico del run; en Fase 2 lo sustituye el head del hash-chain **sin cambiar la forma**.
+- `provenance_hash` = SHA-256 del stream canónico del run; en Fase 2 lo sustituye el head del hash-chain **sin cambiar la forma**. Los BYTES exactos (canonicalización RFC 8785, vista canónica del evento, prefijos de dominio, vectores de prueba): **[anexo de canonicalización](contract-freeze-anexo-canonicalizacion.md)** (G2, nota 09).
 - Tabla `trust_certificates`: `+ aggregate_rung`, `+ certificate JSONB`, `+ keyid`.
 - Sigstore/Fulcio/Rekor: descartados este mes (rompen air-gap); Rekor como opción de transparencia Fase 2.
 
