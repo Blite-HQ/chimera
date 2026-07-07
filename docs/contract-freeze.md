@@ -60,7 +60,7 @@ Política declarativa (Pydantic + YAML versionado en `distributions/chimera/`): 
 De objeto plano (semilla TS §6) a **Statement in-toto + envelope DSSE firmado**:
 
 - `statement`: `subject = [{name: "run:<id>", digest: {sha256: provenance_hash}}]`, `predicate = {run_id, actor, aggregate_rung, unanchored_steps, attestations[], policy_id, issued_at}`, `predicateType` versionado.
-- `envelope`: `{payload_type, payload_b64, signatures[{keyid, sig}]}` — **firma Ed25519 local** (lib `cryptography`), PAE de DSSE implementado tal cual; verificable **offline** (air-gap).
+- `envelope`: `{payload_type, payload_b64, signatures[{keyid, sig}]}` — **firma Ed25519 local** (lib `cryptography`), PAE de DSSE implementado tal cual; verificable **offline** (air-gap). La firma se pide a través del puerto `KeyProvider` (contrato nuevo, nota [15](../knowledge/trust/15-keyprovider-custodia-llaves.md)): `keyid = "<purpose>:v<version>"`, env hoy → OpenBao (Transit engine) Fase 2, misma forma en ambas fases.
 - `aggregate_rung` = el escalón MÁS DÉBIL del camino crítico, nunca promedio; `unanchored_steps` explícito.
 - `provenance_hash` = SHA-256 del stream canónico del run; en Fase 2 lo sustituye el head del hash-chain **sin cambiar la forma**. Los BYTES exactos (canonicalización RFC 8785, vista canónica del evento, prefijos de dominio, vectores de prueba): **[anexo de canonicalización](contract-freeze-anexo-canonicalizacion.md)** (G2, nota 09).
 - Tabla `trust_certificates`: `+ aggregate_rung`, `+ certificate JSONB`, `+ keyid`.
@@ -69,7 +69,7 @@ De objeto plano (semilla TS §6) a **Statement in-toto + envelope DSSE firmado**
 ## 8 · `Identity` + JWT + intersección de permisos **[confianza / frontera en la etapa 1]** — nota 08
 
 - **`Identity`**: `id` = URN estable estilo SPIFFE (`user:dylan`, `agent:planner-7`, regex validada), `kind`, `domain_id`, `permissions: frozenset[str]`, `spiffe_id?` (Fase 2).
-- **JWT** emitido/verificado por el engine con llave local: claims `iss/sub/kind/domain_id/permissions/act/iat/exp`; **`act` (RFC 8693)** = cadena de delegación en el token.
+- **JWT** emitido/verificado por el engine con llave local: claims `iss/sub/kind/domain_id/permissions/act/iat/exp`; **`act` (RFC 8693)** = cadena de delegación en el token. Firma **Ed25519/EdDSA** (no HS256 — punto abierto de la nota 08 cerrado por la nota [15](../knowledge/trust/15-keyprovider-custodia-llaves.md)), vía el puerto `KeyProvider` que también firma el certificado (§7).
 - **Derivación con intersección garantizada**: `derive(parent, requested)` — el delegado solo atenúa, jamás amplía (mismo principio que el gate de sub-agentes del repo) + property-test.
 - **Ruta del flip AX1**: Event.actor_id obligatorio (§2) → etapa identity estampa **[frontera]** → el xfail se voltea a aserción real (nunca se borra). Eventos fuera de request usan `service:*`.
 
