@@ -1,6 +1,7 @@
 # Chimera Studio — Sistema de diseño
 
-> **v2 (2026-07-08, sesión F1 + feedback de Dylan).** Este documento es la fuente de
+> **v3 (2026-07-08, sesión F1 + feedback de Dylan + investigación profunda de la
+> landing).** Este documento es la fuente de
 > verdad visual del Studio. Toda sesión posterior (F2–F7) toma decisiones de color,
 > tipografía y componentes DESDE acá, nunca inventando valores nuevos en los
 > componentes. Regla dura: **ningún hex hardcodeado fuera de `src/index.css`** — todo
@@ -70,6 +71,62 @@ regla air-gap §4.9 del plan):
 
 Regla: **todo valor verificable va en mono** — los digests son material de primera
 clase, se muestran contenidos, con copy, nunca como pared.
+
+## 3b · Escalas y ritmo (extraídos del código de la landing)
+
+Todo valor sale de los **defaults de Tailwind** (tamaños de fuente, spacing,
+breakpoints — solo los que vienen por defecto). Auditado sobre
+`blite/brand/clean/website/src` el 2026-07-08.
+
+**Tipografía en uso** — el peso "fuerte" de todo el sistema es `font-medium`
+(no existe semibold/bold); headings siempre `font-display font-medium tracking-tight`,
+eyebrows siempre `tracking-wider`:
+
+| Uso             | Landing                                                  | Studio (densidad app)               |
+| --------------- | -------------------------------------------------------- | ----------------------------------- |
+| h1 hero         | `text-5xl md:text-6xl lg:text-7xl`                       | — (no hay hero)                     |
+| h2 de sección   | `text-3xl md:text-4xl`                                   | h1 de vista: `text-2xl md:text-3xl` |
+| Lead            | `mt-4 text-base leading-relaxed` + `max-w-xl…3xl`        | ídem                                |
+| Título de card  | `text-base leading-snug font-medium` (CardTitle)         | ídem                                |
+| UI general      | `text-sm` (el tamaño dominante del sitio)                | ídem                                |
+| Eyebrow/caption | `text-xs uppercase tracking-wider text-muted-foreground` | ídem                                |
+
+**Controles — un solo eje de alturas, compartido por Button e Input:**
+`sm` = `h-8` (32px), `default` = `h-10` (40px), `lg` = `h-12` (48px); `icon` =
+`size-10`, `icon-sm` = `size-8`. No existen tallas xs/xl. _Nota de Dylan: primero
+validar visualmente estos defaults en el Studio; si se ven mal, se ajustan._
+
+**Espaciado — potencias de 2 en px:** clases permitidas `0.5`(2px) `1`(4) `2`(8)
+`4`(16) `8`(32) `16`(64) `32`(128); prohibidos los pasos intermedios (1.5, 2.5, 3,
+5, 6…). Grillas de contenido: `gap-8 lg:gap-16` en la landing; en la densidad del
+Studio `gap-4 md:gap-8`. Ritmo vertical: secciones de la landing `py-16 md:py-32`;
+vistas del Studio `py-8`.
+
+**Contenedores:** `mx-auto px-4 md:px-8` siempre; anchos `max-w-7xl` (shell),
+`max-w-3xl` (narrow), `max-w-2xl` (prose). El texto nunca corre a ancho completo —
+acotar con `max-w-xl/2xl/3xl`.
+
+**Radius por componente:** `sm` chips/imágenes inline · `md` tabs/thumbnails · `lg`
+botones/inputs/popovers · `xl` cards · `4xl` SOLO el Badge (pill) · `full` solo
+avatares/dots. Conservador: nada más grande que `xl` en superficies.
+
+**Elevación y bordes — flat:** cards con `ring-1 ring-foreground/10`, sin sombra;
+`shadow-md/lg` reservado a capas flotantes (dropdown/select/sheet) y `shadow-sm` al
+tab activo. Bordes SIEMPRE de 1px (`border`); `border-2` no existe en el sistema.
+
+**Transiciones:** `transition-colors` (150ms default) como única animación de hover;
+el press de botón es `active:translate-y-px`; overlays Radix 100–200ms. No se anima
+transform/tamaño en contenido.
+
+**Íconos:** `size-4` (16px) inline por defecto — Button/Badge/Tabs lo fuerzan vía CSS;
+`size-6` para el logo; `size-3` dentro de badges.
+
+**Dimensiones de componentes complejos:** múltiplos de 2 sobre la escala default
+(sheet `w-64`, avatares 24/32px, `min-h-32/64/128`). En el Studio: asides `w-80`/`w-96`,
+canvas del grafo `h-128`.
+
+**Foco:** los componentes shadcn traen su propio ring; para interactivos custom se usa
+la utilidad `.focus-ring` (`ring-2 ring-ring offset-2`, definida en `index.css`).
 
 ## 4 · La escalera de verificación (elemento de firma)
 
@@ -153,6 +210,12 @@ completa en F2/F7).
 ---
 
 ## Registro de decisiones
+
+- **2026-07-08 (v3):** investigación profunda del código de la landing → §3b (escalas,
+  ritmo, controles, elevación). Se vendorea el Button de la landing (alturas 32/40/48)
+  y el Studio adopta sus defaults en todos los clickeables — pendiente la validación
+  visual de Dylan sobre esas tallas. Barrida de espaciado a potencias de 2 y de pesos
+  a `font-medium` en toda la app.
 
 - **2026-07-08 (v2):** se descarta la dirección v1 "sala de control nocturna" (serif +
   ámbar) por feedback de Dylan — se sentía pobre/incompleta. Se adopta el design system

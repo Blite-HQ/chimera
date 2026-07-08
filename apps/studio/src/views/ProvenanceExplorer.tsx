@@ -18,6 +18,7 @@
 import React from 'react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 import { groupByStep } from './RunTimeline';
 import type { ProjectedEvent, ProvenanceFilters } from './types';
@@ -63,13 +64,13 @@ function FilterBar({
   const actorIds = uniqueSorted(events.map(event => event.actorId));
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card px-3 py-2 text-xs">
+    <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card px-4 py-2 text-xs">
       <label className="flex items-center gap-2 text-muted-foreground">
         type
         <select
           value={filters.type ?? ''}
           onChange={event => onFilterChange({ ...filters, type: event.target.value || undefined })}
-          className="rounded-md border bg-background px-2 py-1 text-foreground"
+          className="focus-ring h-8 rounded-lg border bg-background px-2 text-sm text-foreground"
         >
           <option value="">todos</option>
           {types.map(type => (
@@ -86,7 +87,7 @@ function FilterBar({
           onChange={event =>
             onFilterChange({ ...filters, actorId: event.target.value || undefined })
           }
-          className="rounded-md border bg-background px-2 py-1 text-foreground"
+          className="focus-ring h-8 rounded-lg border bg-background px-2 text-sm text-foreground"
         >
           <option value="">todos</option>
           {actorIds.map(actorId => (
@@ -107,9 +108,9 @@ function CompactRow({
 }): React.ReactElement {
   const last = group.events[group.events.length - 1];
   return (
-    <li className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
+    <li className="flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-2 text-sm">
       <div className="flex flex-col">
-        <span className="font-mono font-semibold text-foreground">{group.stepId ?? last.type}</span>
+        <span className="font-mono font-medium text-foreground">{group.stepId ?? last.type}</span>
         <span className="text-xs text-muted-foreground">
           {group.events.length} evento{group.events.length > 1 ? 's' : ''} · {last.resumen}
         </span>
@@ -121,7 +122,7 @@ function CompactRow({
 
 function RawRow({ event }: { readonly event: ProjectedEvent }): React.ReactElement {
   return (
-    <li className="rounded-lg border bg-card p-3">
+    <li className="rounded-lg border bg-card p-4">
       <pre className="overflow-x-auto text-xs text-foreground">
         {JSON.stringify(event, null, 2)}
       </pre>
@@ -140,7 +141,7 @@ export default function ProvenanceExplorer({
   const filtered = applyFilters(events, filters);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <FilterBar events={events} filters={filters} onFilterChange={onFilterChange} />
 
       <p className="font-mono text-xs text-muted-foreground">
@@ -149,7 +150,7 @@ export default function ProvenanceExplorer({
       </p>
 
       {filtered.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
           Ningún evento coincide con los filtros.
         </p>
       ) : (
@@ -161,14 +162,14 @@ export default function ProvenanceExplorer({
       )}
 
       <div className="flex justify-end">
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           disabled={!page.hasMore}
           onClick={() => onPageChange(page.cursor + page.pageSize)}
-          className="rounded-md border bg-card px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-40"
         >
           Página siguiente
-        </button>
+        </Button>
       </div>
     </div>
   );

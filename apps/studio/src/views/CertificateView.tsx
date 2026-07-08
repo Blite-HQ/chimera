@@ -15,6 +15,7 @@
 
 import React, { useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { RungBadge } from '@/components/verification/RungBadge';
 
@@ -33,7 +34,7 @@ function IdentityRow({
   readonly value: string;
 }): React.ReactElement {
   return (
-    <div className="flex items-center justify-between gap-4 py-1.5 text-sm">
+    <div className="flex items-center justify-between gap-4 py-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-mono text-foreground">{value}</span>
     </div>
@@ -78,36 +79,28 @@ export default function CertificateView({
       {/* Nivel 3 — envelope crudo colapsado + descarga */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowRaw(current => !current)}
-            className="rounded-md border bg-card px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowRaw(current => !current)}>
             {showRaw ? 'Ocultar envelope crudo' : 'Ver envelope crudo'}
-          </button>
-          <button
-            type="button"
-            onClick={onDownload}
-            className="rounded-md border bg-card px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
-          >
+          </Button>
+          <Button variant="outline" size="sm" onClick={onDownload}>
             Descargar JSON
-          </button>
+          </Button>
         </div>
         {showRaw && (
           <div className="flex flex-col gap-2">
             <div>
-              <p className="mb-1 text-xs font-semibold text-muted-foreground uppercase">
+              <p className="mb-1 text-xs tracking-wider text-muted-foreground uppercase">
                 Payload (Statement decodificado)
               </p>
-              <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
+              <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs text-foreground">
                 {JSON.stringify(envelope.payload, null, 2)}
               </pre>
             </div>
             <div>
-              <p className="mb-1 text-xs font-semibold text-muted-foreground uppercase">
+              <p className="mb-1 text-xs tracking-wider text-muted-foreground uppercase">
                 Firmas (DSSE)
               </p>
-              <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
+              <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs text-foreground">
                 {JSON.stringify(envelope.signatures, null, 2)}
               </pre>
             </div>

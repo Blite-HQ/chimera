@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
+import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import { ThemeProvider } from '@/lib/theme';
 
@@ -49,18 +50,14 @@ function ToggleButton({
   readonly onClick: () => void;
 }): React.ReactElement {
   return (
-    <button
-      type="button"
+    <Button
+      variant={isActive ? 'default' : 'outline'}
+      size="sm"
       onClick={onClick}
       aria-pressed={isActive}
-      className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
-        isActive
-          ? 'border-primary bg-primary text-primary-foreground'
-          : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
-      }`}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -90,7 +87,7 @@ export default function App(): React.ReactElement {
         </TabsContent>
 
         <TabsContent value="timeline">
-          <div className="mx-auto flex max-w-6xl gap-4 p-6">
+          <div className="mx-auto flex max-w-7xl gap-4 px-4 py-8 md:gap-8 md:px-8">
             <div className="flex-1">
               <div className="mb-2 flex justify-end gap-1">
                 <ToggleButton
@@ -112,14 +109,14 @@ export default function App(): React.ReactElement {
                 playback={playback}
               />
             </div>
-            <aside className="w-[380px] shrink-0">
+            <aside className="w-96 shrink-0">
               <StepInspector step={selectedStep} />
             </aside>
           </div>
         </TabsContent>
 
         <TabsContent value="certificado">
-          <div className="mx-auto max-w-3xl p-6">
+          <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
             <CertificateView
               envelope={EXAMPLE_CERTIFICATE}
               onDownload={() => downloadJson('trust-certificate.example.json', EXAMPLE_CERTIFICATE)}
@@ -128,13 +125,13 @@ export default function App(): React.ReactElement {
         </TabsContent>
 
         <TabsContent value="ablacion">
-          <div className="mx-auto max-w-5xl p-6">
+          <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
             <AblationPanel metrics={ABLATION_METRICS} />
           </div>
         </TabsContent>
 
         <TabsContent value="procedencia">
-          <div className="mx-auto max-w-5xl p-6">
+          <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
             <div className="mb-2 flex justify-end gap-1">
               <ToggleButton
                 label="compacto"
