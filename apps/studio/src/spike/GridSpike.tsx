@@ -27,10 +27,22 @@ const RUNG_LABELS: Readonly<Record<number, string>> = {
   7: 'humano'
 };
 
+const BADGE_MARGIN_PX = 8;
+const BADGE_MAX_WIDTH_PX = 200;
+const BADGE_HEIGHT_PX = 28;
+const PAN_MARGIN_PX = 80;
+const MIN_ZOOM = 0.3;
+const MAX_ZOOM = 3;
+
+function clamp(value: number, min: number, max: number): number {
+  return min > max ? (min + max) / 2 : Math.min(max, Math.max(min, value));
+}
+
 interface IslandOverlay {
   readonly island: Island;
   readonly left: number;
   readonly top: number;
+  readonly isVisible: boolean;
 }
 
 function islandOfBus(busId: string): string {
@@ -98,6 +110,7 @@ const CY_STYLE: cytoscape.StylesheetJson = [
 
 export default function GridSpike(): React.ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const cyRef = useRef<cytoscape.Core | null>(null);
   const [overlays, setOverlays] = useState<readonly IslandOverlay[]>([]);
 
   useEffect(() => {
@@ -111,37 +124,102 @@ export default function GridSpike(): React.ReactElement {
       elements: buildElements(),
       style: CY_STYLE,
       layout: { name: 'preset' },
-      autoungrabify: true
+      autoungrabify: true,
+      minZoom: MIN_ZOOM,
+      maxZoom: MAX_ZOOM
     });
+    cyRef.current = cy;
 
     const updateOverlays = (): void => {
+      const { width, height } = container.getBoundingClientRect();
       const next = PARTITION.islands.map((island): IslandOverlay => {
         const members = cy.nodes().filter(node => island.busIds.includes(node.id()));
         const box = members.renderedBoundingBox();
-        return { island, left: box.x1, top: box.y1 - 34 };
+        return {
+          island,
+          left: clamp(box.x1, BADGE_MARGIN_PX, width - BADGE_MAX_WIDTH_PX - BADGE_MARGIN_PX),
+          top: clamp(box.y1 - 34, BADGE_MARGIN_PX, height - BADGE_HEIGHT_PX - BADGE_MARGIN_PX),
+          // Hide instead of clamp when the island itself has panned fully
+          // out of view — clamping would otherwise pin the badge to the
+          // container edge over empty canvas, floating with nothing to
+          // anchor to (ficha B4).
+          isVisible: box.x2 > 0 && box.x1 < width && box.y2 > 0 && box.y1 < height
+        };
       });
       setOverlays(next);
     };
 
-    // Defer the initial fit to the next animation frame: when GridSpike
-    // mounts inside a layout that's still settling (e.g. nested under the
-    // Tabs navigation — the container's first paint can measure a stale
-    // rect before flex layout stabilizes), fitting synchronously fits to
-    // the wrong size and the graph renders empty/mispositioned. One rAF
-    // guarantees a layout pass has completed before Cytoscape measures it.
-    const rafId = requestAnimationFrame(() => {
-      cy.resize();
-      cy.fit(undefined, 48);
-      updateOverlays();
-    });
+    // cytoscape's minZoom/maxZoom (above) bound zoom but not pan (B3): an
+    // unbounded pan lets the whole graph drift out of the container with
+    // no way back short of a reload. Clamp on every 'pan' event so the
+    // bounding box always keeps a margin inside the viewport; a clamped
+    // cy.pan() re-fires 'pan' but converges immediately since the second
+    // pass computes a no-op delta.
+    const clampPan = (): void => {
+      const bb = cy.elements().boundingBox();
+      const zoom = cy.zoom();
+      const pan = cy.pan();
+      const { width, height } = container.getBoundingClientRect();
 
+      const nextX = clamp(
+        pan.x,
+        PAN_MARGIN_PX - bb.x2 * zoom,
+        width - PAN_MARGIN_PX - bb.x1 * zoom
+      );
+      const nextY = clamp(
+        pan.y,
+        PAN_MARGIN_PX - bb.y2 * zoom,
+        height - PAN_MARGIN_PX - bb.y1 * zoom
+      );
+
+      if (Math.abs(nextX - pan.x) > 0.5 || Math.abs(nextY - pan.y) > 0.5) {
+        cy.pan({ x: nextX, y: nextY });
+      }
+    };
+
+    // The old rAF-deferred fit (session 6) still raced the Tabs layout
+    // pass and could measure a stale zero-size rect (B2). A ResizeObserver
+    // reacts to every real size change so cytoscape's cached container
+    // dimensions never go stale (cy.resize() must run every time, or a
+    // later resize renders against the old, wrong size) — but cy.fit()
+    // itself only runs once, the first time the container reports a real
+    // size, so it doesn't keep yanking the view out from under a user who
+    // has since panned or zoomed.
+    let hasFitted = false;
+    const handleContainerResize = (): void => {
+      const { width, height } = container.getBoundingClientRect();
+      if (width === 0 || height === 0) {
+        return;
+      }
+      cy.resize();
+      if (!hasFitted) {
+        hasFitted = true;
+        cy.fit(undefined, 48);
+      }
+      updateOverlays();
+    };
+
+    const resizeObserver = new ResizeObserver(handleContainerResize);
+    resizeObserver.observe(container);
+    handleContainerResize();
+
+    cy.on('pan', clampPan);
     cy.on('pan zoom resize', updateOverlays);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      cyRef.current = null;
       cy.destroy();
     };
   }, []);
+
+  const handleCenter = (): void => {
+    const cy = cyRef.current;
+    if (!cy) {
+      return;
+    }
+    cy.animate({ fit: { eles: cy.elements(), padding: 48 } }, { duration: 200 });
+  };
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -159,23 +237,38 @@ export default function GridSpike(): React.ReactElement {
         <div className="relative flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
           {/* Cytoscape fuerza position:relative inline en su contenedor — necesita altura explícita, no absolute/inset (hallazgo del spike). */}
           <div ref={containerRef} className="h-[560px] w-full" data-testid="cy-container" />
-          {overlays.map(({ island, left, top }) => (
-            <div
-              key={island.id}
-              className="pointer-events-none absolute z-10"
-              style={{ left: Math.max(left, 8), top: Math.max(top, 8) }}
-            >
-              <Badge variant={island.verification.verdict} title={island.verification.summary}>
-                <span
-                  className="inline-block h-2 w-2 rounded-full"
-                  style={{ backgroundColor: ISLAND_COLORS[island.id] }}
-                />
-                {island.name}:{' '}
-                {island.verification.verdict === 'pass' ? 'factible' : island.verification.verdict}
-                {' · '}escalón {island.verification.rung}
-              </Badge>
-            </div>
-          ))}
+          {overlays
+            .filter(overlay => overlay.isVisible)
+            .map(({ island, left, top }) => (
+              <div
+                key={island.id}
+                className="pointer-events-none absolute z-10"
+                style={{ left, top }}
+              >
+                <Badge
+                  variant={island.verification.verdict}
+                  title={island.verification.summary}
+                  className="max-w-[200px]"
+                >
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: ISLAND_COLORS[island.id] }}
+                  />
+                  {island.name}:{' '}
+                  {island.verification.verdict === 'pass'
+                    ? 'factible'
+                    : island.verification.verdict}
+                  {' · '}escalón {island.verification.rung}
+                </Badge>
+              </div>
+            ))}
+          <button
+            type="button"
+            onClick={handleCenter}
+            className="absolute top-2 right-2 z-10 rounded-md border border-zinc-300 bg-white/90 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-white"
+          >
+            Centrar
+          </button>
           <div className="absolute bottom-2 left-2 z-10 rounded-md bg-white/90 px-2 py-1 text-xs text-zinc-600">
             ▢ generador · ─ ─ arista cortada
           </div>

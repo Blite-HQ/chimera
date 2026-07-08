@@ -31,7 +31,13 @@ export interface ProjectedEvent {
 
 /** nota 18 §2.1 — fixture/demo-only playback simulation for RunTimeline. */
 export interface PlaybackControls {
-  readonly state: 'playing' | 'paused' | 'idle';
+  /**
+   * `finished` is distinct from `idle`: `idle` is "never started",
+   * `finished` is "ran to completion" — the UI needs to tell them apart to
+   * offer "Repetir" instead of re-showing "Reproducir" over an already-full
+   * timeline (ficha B5).
+   */
+  readonly state: 'playing' | 'paused' | 'finished' | 'idle';
   readonly onPlay: () => void;
   readonly onPause: () => void;
   readonly onScrub: (globalSeq: number) => void;
