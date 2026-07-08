@@ -9,12 +9,12 @@
  * metric: the same two hues repeat across all three charts, with a
  * single shared legend above them instead of one repeated per chart.
  *
- * Palette: reuses this app's existing island colors (sky-500/purple-500,
- * spike/ieee14.ts ISLAND_COLORS) rather than an unrelated categorical
- * palette, so the Ablación tab reads as the same system as the rest of
- * the Studio. Validated with the dataviz skill's palette validator
- * (CVD ΔE 20.5, PASS; sky-500 vs white surface is 2.77:1 — below 3:1, so
- * every bar also carries a direct value label, not color alone).
+ * Palette: the same island hues as the network view, via the chart tokens
+ * (--color-chart-2 = Isla A cian, --color-chart-3 = Isla B magenta,
+ * DESIGN.md §5), so the Ablación tab reads as the same system as the rest
+ * of the Studio and re-themes with data-theme (SVG fills accept var()).
+ * Mid-tone fills can sit under 3:1 against the card surface, so every bar
+ * also carries a direct value label, not color alone.
  */
 
 import React from 'react';
@@ -37,8 +37,8 @@ export interface AblationPanelProps {
 }
 
 const VARIANT_COLORS: Readonly<Record<AblationMetric['variant'], string>> = {
-  quantum: '#0ea5e9', // sky-500 — same hue as Isla A in the network view
-  classical: '#a855f7' // purple-500 — same hue as Isla B in the network view
+  quantum: 'var(--color-chart-2)', // misma familia que Isla A (cian de traza)
+  classical: 'var(--color-chart-3)' // misma familia que Isla B (magenta)
 };
 
 const VARIANT_LABELS: Readonly<Record<AblationMetric['variant'], string>> = {
@@ -77,7 +77,7 @@ function buildChartData(
 
 function Legend(): React.ReactElement {
   return (
-    <div className="flex items-center gap-4 text-xs text-zinc-600">
+    <div className="flex items-center gap-4 text-xs text-muted-foreground">
       {(['quantum', 'classical'] as const).map(variant => (
         <span key={variant} className="flex items-center gap-1.5">
           <span
@@ -100,31 +100,45 @@ function MetricChart({
 }): React.ReactElement {
   const data = buildChartData(metrics, config);
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3">
-      <p className="mb-2 text-sm font-semibold text-zinc-700">
+    <div className="rounded-lg border bg-card p-3">
+      <p className="mb-2 text-sm font-semibold text-foreground">
         {config.title}
-        {config.unit && <span className="text-zinc-400"> ({config.unit})</span>}
+        {config.unit && <span className="text-muted-foreground"> ({config.unit})</span>}
       </p>
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={[...data]} margin={{ top: 16, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e1e0d9" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
           <XAxis
             dataKey="variant"
-            tick={{ fontSize: 12, fill: '#898781' }}
-            axisLine={{ stroke: '#c3c2b7' }}
+            tick={{ fontSize: 12, fill: 'var(--color-muted-foreground)' }}
+            axisLine={{ stroke: 'var(--color-border)' }}
           />
           <YAxis
-            tick={{ fontSize: 12, fill: '#898781' }}
-            axisLine={{ stroke: '#c3c2b7' }}
+            tick={{ fontSize: 12, fill: 'var(--color-muted-foreground)' }}
+            axisLine={{ stroke: 'var(--color-border)' }}
             width={40}
           />
-          <Tooltip />
-          {/* default tooltip is already clear (variant + value); a custom formatter isn't worth fighting recharts' generic ValueType for */}
+          <Tooltip
+            cursor={{ fill: 'var(--color-muted)' }}
+            contentStyle={{
+              backgroundColor: 'var(--color-popover)',
+              borderColor: 'var(--color-border)',
+              borderRadius: 8,
+              color: 'var(--color-popover-foreground)'
+            }}
+            itemStyle={{ color: 'var(--color-popover-foreground)' }}
+            labelStyle={{ color: 'var(--color-popover-foreground)' }}
+          />
+          {/* default tooltip content is already clear (variant + value); a custom formatter isn't worth fighting recharts' generic ValueType for */}
           <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={false}>
             {data.map(row => (
               <Cell key={row.variant} fill={row.fill} />
             ))}
-            <LabelList dataKey="value" position="top" style={{ fill: '#0b0b0b', fontSize: 12 }} />
+            <LabelList
+              dataKey="value"
+              position="top"
+              style={{ fill: 'var(--color-foreground)', fontSize: 12 }}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>

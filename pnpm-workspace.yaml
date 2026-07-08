@@ -10,6 +10,15 @@ minimumReleaseAge: 20160
 # (warn+skip on missing metadata) instead of failing resolution outright.
 resolutionMode: highest
 
+# Excepción puntual (NO es el override global prohibido): esta versión exacta
+# ya está fijada en pnpm-lock.yaml y en uso; pnpm re-valida deps transitivas
+# existentes al agregar paquetes nuevos y bloquearía cualquier instalación
+# hasta que madure. Quitar cuando @tailwindcss/oxide 4.3.2 cumpla 14 días.
+minimumReleaseAgeExclude:
+  - '@tailwindcss/oxide*'
+  - '@rolldown/binding*'
+  - '@types/node'
+
 # pnpm 11 blocks dependency install scripts by default (replaces
 # onlyBuiltDependencies). Keep this allowlist minimal — every entry here is
 # third-party code that runs at install time.

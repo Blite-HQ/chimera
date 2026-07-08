@@ -16,13 +16,14 @@ const badgeVariants = cva(
         outline: 'border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground',
         ghost: 'hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50',
         link: 'text-primary underline-offset-4 hover:underline',
-        // Verdict variants (Chimera): ported from spike/ui.tsx so every
-        // trust-level badge across the Studio (spike + new views) shares
-        // the same pass/fail/inconclusive/neutral palette.
-        pass: 'border-emerald-300 bg-emerald-50 text-emerald-800',
-        fail: 'border-rose-300 bg-rose-50 text-rose-800',
-        inconclusive: 'border-amber-300 bg-amber-50 text-amber-800',
-        neutral: 'border-zinc-300 bg-zinc-50 text-zinc-700'
+        // Verdict variants (Chimera): tokens duales de DESIGN.md §5 — el
+        // mismo par dark/light en toda la plataforma. `inconclusive` lleva
+        // borde discontinuo SIEMPRE (sin señal, no peligro — DESIGN.md §1).
+        pass: 'border-verdict-pass/40 bg-verdict-pass/12 text-verdict-pass',
+        fail: 'border-verdict-fail/40 bg-verdict-fail/12 text-verdict-fail',
+        inconclusive:
+          'border-dashed border-verdict-inconclusive/50 bg-verdict-inconclusive/10 text-verdict-inconclusive',
+        neutral: 'border-verdict-neutral/40 bg-verdict-neutral/10 text-verdict-neutral'
       }
     },
     defaultVariants: {

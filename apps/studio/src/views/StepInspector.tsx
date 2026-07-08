@@ -17,23 +17,14 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
+import { RungBadge } from '@/components/verification/RungBadge';
+import { rungLabel } from '@/components/verification/rungs';
 
 import type { StepDetail } from './types';
 
 export interface StepInspectorProps {
-  readonly step: StepDetail | null; // null = "seleccioná un paso en el timeline"
+  readonly step: StepDetail | null; // null = "seleccione un paso en el timeline"
 }
-
-const RUNG_LABELS: Readonly<Record<number, string>> = {
-  1: 'óptimo exacto',
-  2: 'ejecución',
-  3: 'verdad conocida',
-  4: 'propiedad',
-  5: 'consenso',
-  6: 'detección',
-  7: 'humano'
-};
 
 function DigestRow({
   label,
@@ -44,8 +35,8 @@ function DigestRow({
 }): React.ReactElement {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs font-semibold text-zinc-400 uppercase">{label}</span>
-      <code className="truncate font-mono text-xs text-zinc-600" title={digest}>
+      <span className="text-xs font-semibold text-muted-foreground uppercase">{label}</span>
+      <code className="truncate font-mono text-xs text-muted-foreground" title={digest}>
         {digest}
       </code>
     </div>
@@ -55,16 +46,16 @@ function DigestRow({
 export default function StepInspector({ step }: StepInspectorProps): React.ReactElement {
   if (!step) {
     return (
-      <div className="rounded-lg border border-dashed border-zinc-300 px-3 py-6 text-center text-sm text-zinc-400">
-        Seleccioná un paso en el timeline para ver su detalle.
+      <div className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+        Seleccione un paso en el timeline para ver su detalle.
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white p-3">
-        <p className="text-sm font-semibold text-zinc-800">{step.capabilityId}</p>
+      <div className="flex flex-col gap-2 rounded-lg border bg-card p-3">
+        <p className="font-mono text-sm font-semibold text-foreground">{step.capabilityId}</p>
         <DigestRow label="Input digest" digest={step.inputDigest} />
         <DigestRow label="Output digest" digest={step.outputDigest} />
       </div>
@@ -74,23 +65,26 @@ export default function StepInspector({ step }: StepInspectorProps): React.React
           <AccordionItem
             key={`${attestation.verifierId}-${index}`}
             value={`${attestation.verifierId}-${index}`}
-            className="rounded-lg border border-zinc-200 bg-white px-3"
+            className="rounded-lg border bg-card px-3"
           >
             <AccordionTrigger>
               <div className="flex flex-1 flex-wrap items-center gap-2 pr-2">
-                <Badge variant={attestation.verdict}>
-                  escalón {attestation.rung} ·{' '}
-                  {RUNG_LABELS[attestation.rung] ?? attestation.anchorKind}
-                </Badge>
-                <span className="text-xs text-zinc-400">{attestation.verifierId}</span>
-                <span className="text-sm text-zinc-700">{attestation.summary}</span>
+                <RungBadge
+                  rung={attestation.rung}
+                  verdict={attestation.verdict}
+                  detail={rungLabel(attestation.rung, attestation.anchorKind)}
+                />
+                <span className="font-mono text-xs text-muted-foreground">
+                  {attestation.verifierId}
+                </span>
+                <span className="text-sm text-foreground">{attestation.summary}</span>
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <p className="mb-2 text-xs text-zinc-400">
+              <p className="mb-2 text-xs text-muted-foreground">
                 método: <span className="font-mono">{attestation.method}</span>
               </p>
-              <pre className="overflow-x-auto rounded-md bg-zinc-50 p-2 text-xs text-zinc-700">
+              <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs text-foreground">
                 {JSON.stringify(attestation.evidence, null, 2)}
               </pre>
             </AccordionContent>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AppShell } from '@/components/app-shell/AppShell';
+import { TabsContent } from '@/components/ui/tabs';
+import { ThemeProvider } from '@/lib/theme';
 
 import { ABLATION_METRICS } from './fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE } from './fixtures/certificate';
@@ -23,8 +25,8 @@ import { usePlaybackReveal } from './views/usePlaybackReveal';
  * chokepoint). This component never calls fetch/axios directly — every
  * view here renders static fixtures (src/fixtures/), no backend.
  *
- * Navigation is a plain useState segmented control — this is a demo
- * shell, not a production nav system, so no router library.
+ * Navigation is a plain useState segmented control presented by AppShell
+ * (topbar real, F1) — still a demo shell; F2 lo migra a TanStack Router.
  */
 
 type TabId = 'red' | 'timeline' | 'certificado' | 'ablacion' | 'procedencia';
@@ -51,10 +53,10 @@ function ToggleButton({
       type="button"
       onClick={onClick}
       aria-pressed={isActive}
-      className={`rounded-md border px-2 py-1 text-xs font-medium ${
+      className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors ${
         isActive
-          ? 'border-zinc-400 bg-zinc-800 text-white'
-          : 'border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100'
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
       }`}
     >
       {label}
@@ -77,18 +79,12 @@ export default function App(): React.ReactElement {
   const selectedStep = selectedEvent?.stepId ? (STEP_EVIDENCE[selectedEvent.stepId] ?? null) : null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Tabs value={activeTab} onValueChange={value => setActiveTab(value as TabId)}>
-        <div className="mx-auto max-w-6xl px-6 pt-6">
-          <TabsList>
-            {TABS.map(tab => (
-              <TabsTrigger key={tab.id} value={tab.id}>
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-
+    <ThemeProvider>
+      <AppShell
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={value => setActiveTab(value as TabId)}
+      >
         <TabsContent value="red">
           <GridSpike />
         </TabsContent>
@@ -161,7 +157,7 @@ export default function App(): React.ReactElement {
             />
           </div>
         </TabsContent>
-      </Tabs>
-    </div>
+      </AppShell>
+    </ThemeProvider>
   );
 }

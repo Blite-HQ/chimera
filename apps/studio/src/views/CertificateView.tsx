@@ -15,8 +15,8 @@
 
 import React, { useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { RungBadge } from '@/components/verification/RungBadge';
 
 import type { DsseEnvelope } from './types';
 
@@ -34,8 +34,8 @@ function IdentityRow({
 }): React.ReactElement {
   return (
     <div className="flex items-center justify-between gap-4 py-1.5 text-sm">
-      <span className="text-zinc-400">{label}</span>
-      <span className="font-mono text-zinc-800">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono text-foreground">{value}</span>
     </div>
   );
 }
@@ -51,18 +51,18 @@ export default function CertificateView({
   return (
     <div className="flex flex-col gap-4">
       {/* Nivel 1 — veredicto en una línea */}
-      <div className="rounded-lg border border-zinc-200 bg-white p-4">
-        <p className="text-base font-semibold text-zinc-900">
+      <div className="rounded-lg border bg-card p-4">
+        <p className="font-serif text-base font-semibold text-foreground">
           Certificado · escalón agregado {predicate.aggregateRung} · política {predicate.policyId}
         </p>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Verificado contra la llave local <code className="font-mono">{keyid}</code> — sin log
           público ni OIDC: la verificación es offline (nota 02).
         </p>
       </div>
 
       {/* Nivel 2 — tabla compacta */}
-      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+      <div className="rounded-lg border bg-card p-4">
         <IdentityRow label="run_id" value={predicate.runId} />
         <Separator />
         <IdentityRow
@@ -81,14 +81,14 @@ export default function CertificateView({
           <button
             type="button"
             onClick={() => setShowRaw(current => !current)}
-            className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
+            className="rounded-md border bg-card px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
           >
             {showRaw ? 'Ocultar envelope crudo' : 'Ver envelope crudo'}
           </button>
           <button
             type="button"
             onClick={onDownload}
-            className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
+            className="rounded-md border bg-card px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
           >
             Descargar JSON
           </button>
@@ -96,16 +96,18 @@ export default function CertificateView({
         {showRaw && (
           <div className="flex flex-col gap-2">
             <div>
-              <p className="mb-1 text-xs font-semibold text-zinc-400 uppercase">
+              <p className="mb-1 text-xs font-semibold text-muted-foreground uppercase">
                 Payload (Statement decodificado)
               </p>
-              <pre className="overflow-x-auto rounded-md bg-zinc-50 p-3 text-xs text-zinc-700">
+              <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
                 {JSON.stringify(envelope.payload, null, 2)}
               </pre>
             </div>
             <div>
-              <p className="mb-1 text-xs font-semibold text-zinc-400 uppercase">Firmas (DSSE)</p>
-              <pre className="overflow-x-auto rounded-md bg-zinc-50 p-3 text-xs text-zinc-700">
+              <p className="mb-1 text-xs font-semibold text-muted-foreground uppercase">
+                Firmas (DSSE)
+              </p>
+              <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
                 {JSON.stringify(envelope.signatures, null, 2)}
               </pre>
             </div>
@@ -115,9 +117,12 @@ export default function CertificateView({
 
       <div className="flex flex-wrap gap-2">
         {predicate.attestations.map((attestation, index) => (
-          <Badge key={`${attestation.verifierId}-${index}`} variant={attestation.verdict}>
-            {attestation.verifierId} · escalón {attestation.rung}
-          </Badge>
+          <RungBadge
+            key={`${attestation.verifierId}-${index}`}
+            rung={attestation.rung}
+            verdict={attestation.verdict}
+            detail={attestation.verifierId}
+          />
         ))}
       </div>
     </div>

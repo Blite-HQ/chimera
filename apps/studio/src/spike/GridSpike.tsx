@@ -6,7 +6,9 @@
  * highlighted cut edges, and per-island verification badges.
  *
  * No network access: data is static spike data (ieee14.ts). All future
- * real data flows through gatewayClient (INV-1).
+ * real data flows through gatewayClient (INV-1). Colors come from the
+ * design tokens (readToken — canvas can't read CSS vars) and the whole
+ * instance re-initializes on theme change so the canvas re-themes too.
  */
 
 import cytoscape from 'cytoscape';
@@ -14,18 +16,20 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { RungBadge } from '@/components/verification/RungBadge';
+import { RungLadder } from '@/components/verification/RungLadder';
+import { rungLabel } from '@/components/verification/rungs';
+import { useTheme } from '@/lib/theme';
+import { readToken } from '@/lib/tokens';
 
-import { BRANCHES, BUSES, ISLAND_COLORS, PARTITION, RUN_VERIFICATION, type Island } from './ieee14';
-
-const RUNG_LABELS: Readonly<Record<number, string>> = {
-  1: 'óptimo exacto',
-  2: 'ejecución',
-  3: 'verdad conocida',
-  4: 'propiedad',
-  5: 'consenso',
-  6: 'detección',
-  7: 'humano'
-};
+import {
+  BRANCHES,
+  BUSES,
+  ISLAND_COLOR_TOKENS,
+  PARTITION,
+  RUN_VERIFICATION,
+  type Island
+} from './ieee14';
 
 const BADGE_MARGIN_PX = 8;
 const BADGE_MAX_WIDTH_PX = 200;
@@ -50,6 +54,10 @@ function islandOfBus(busId: string): string {
   return island ? island.id : 'unassigned';
 }
 
+function islandToken(islandId: string): string {
+  return ISLAND_COLOR_TOKENS[islandId] ?? '--color-verdict-neutral';
+}
+
 function buildElements(): cytoscape.ElementDefinition[] {
   const nodes: cytoscape.ElementDefinition[] = BUSES.map(bus => ({
     data: { id: bus.id, islandId: islandOfBus(bus.id), isGenerator: bus.isGenerator },
@@ -66,52 +74,65 @@ function buildElements(): cytoscape.ElementDefinition[] {
   return [...nodes, ...edges];
 }
 
-const CY_STYLE: cytoscape.StylesheetJson = [
-  {
-    selector: 'node',
-    style: {
-      width: 34,
-      height: 34,
-      label: 'data(id)',
-      'text-valign': 'center',
-      'text-halign': 'center',
-      color: '#ffffff',
-      'font-size': 13,
-      'font-weight': 'bold',
-      'background-color': (ele: cytoscape.NodeSingular): string =>
-        ISLAND_COLORS[ele.data('islandId') as string] ?? '#71717a'
+/**
+ * Lee los tokens en el momento de construir el estilo: cytoscape pinta
+ * canvas y no sigue var(--color-*) — el efecto principal se re-ejecuta al
+ * cambiar el tema para re-aplicar estos valores (DESIGN.md §5).
+ */
+function buildCyStyle(): cytoscape.StylesheetJson {
+  const nodeLabelColor = readToken('--color-background');
+  const generatorBorderColor = readToken('--color-foreground');
+  const edgeColor = readToken('--color-muted-foreground');
+  const cutEdgeColor = readToken('--color-verdict-fail');
+
+  return [
+    {
+      selector: 'node',
+      style: {
+        width: 34,
+        height: 34,
+        label: 'data(id)',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        color: nodeLabelColor,
+        'font-size': 13,
+        'font-weight': 'bold',
+        'background-color': (ele: cytoscape.NodeSingular): string =>
+          readToken(islandToken(ele.data('islandId') as string))
+      }
+    },
+    {
+      selector: 'node[?isGenerator]',
+      style: {
+        shape: 'round-rectangle',
+        'border-width': 3,
+        'border-color': generatorBorderColor
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        width: 2,
+        'line-color': edgeColor,
+        'curve-style': 'bezier'
+      }
+    },
+    {
+      selector: 'edge[?isCut]',
+      style: {
+        width: 3.5,
+        'line-color': cutEdgeColor,
+        'line-style': 'dashed'
+      }
     }
-  },
-  {
-    selector: 'node[?isGenerator]',
-    style: {
-      shape: 'round-rectangle',
-      'border-width': 3,
-      'border-color': '#18181b'
-    }
-  },
-  {
-    selector: 'edge',
-    style: {
-      width: 2,
-      'line-color': '#a1a1aa',
-      'curve-style': 'bezier'
-    }
-  },
-  {
-    selector: 'edge[?isCut]',
-    style: {
-      width: 3.5,
-      'line-color': '#e11d48',
-      'line-style': 'dashed'
-    }
-  }
-];
+  ];
+}
 
 export default function GridSpike(): React.ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
   const [overlays, setOverlays] = useState<readonly IslandOverlay[]>([]);
+  const { theme } = useTheme();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -122,7 +143,7 @@ export default function GridSpike(): React.ReactElement {
     const cy = cytoscape({
       container,
       elements: buildElements(),
-      style: CY_STYLE,
+      style: buildCyStyle(),
       layout: { name: 'preset' },
       autoungrabify: true,
       minZoom: MIN_ZOOM,
@@ -211,7 +232,10 @@ export default function GridSpike(): React.ReactElement {
       cyRef.current = null;
       cy.destroy();
     };
-  }, []);
+    // `theme` como dependencia: el canvas no sigue los tokens CSS, así que
+    // el toggle re-crea la instancia con los valores del tema nuevo (el
+    // re-fit resultante es aceptable en el spike; F4 lo refina).
+  }, [theme]);
 
   const handleCenter = (): void => {
     const cy = cyRef.current;
@@ -224,17 +248,17 @@ export default function GridSpike(): React.ReactElement {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <header className="mb-4">
-        <h1 className="text-xl font-bold text-zinc-900">
-          Chimera Studio · spike — red IEEE-14, partición verificada
+        <h1 className="font-serif text-xl font-semibold text-foreground">
+          Red IEEE-14 · partición verificada
         </h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted-foreground">
           Lo cuántico propone la partición; las anclas no-modelo la verifican. Cada isla lleva su
           badge; el nivel agregado es el escalón más débil del camino crítico.
         </p>
       </header>
 
       <div className="flex gap-4">
-        <div className="relative flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+        <div className="relative flex-1 overflow-hidden rounded-xl border bg-card">
           {/* Cytoscape fuerza position:relative inline en su contenedor — necesita altura explícita, no absolute/inset (hallazgo del spike). */}
           <div ref={containerRef} className="h-[560px] w-full" data-testid="cy-container" />
           {overlays
@@ -252,24 +276,27 @@ export default function GridSpike(): React.ReactElement {
                 >
                   <span
                     className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: ISLAND_COLORS[island.id] }}
+                    style={{ backgroundColor: `var(${islandToken(island.id)})` }}
                   />
                   {island.name}:{' '}
                   {island.verification.verdict === 'pass'
                     ? 'factible'
                     : island.verification.verdict}
-                  {' · '}escalón {island.verification.rung}
+                  <span className="flex items-center">
+                    <RungLadder rung={island.verification.rung} />
+                  </span>
+                  <span className="font-mono font-medium">{island.verification.rung}</span>
                 </Badge>
               </div>
             ))}
           <button
             type="button"
             onClick={handleCenter}
-            className="absolute top-2 right-2 z-10 rounded-md border border-zinc-300 bg-white/90 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-white"
+            className="absolute top-2 right-2 z-10 rounded-md border bg-background/90 px-2 py-1 text-xs font-medium text-foreground backdrop-blur hover:bg-accent"
           >
             Centrar
           </button>
-          <div className="absolute bottom-2 left-2 z-10 rounded-md bg-white/90 px-2 py-1 text-xs text-zinc-600">
+          <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/80 px-2 py-1 text-xs text-muted-foreground backdrop-blur">
             ▢ generador · ─ ─ arista cortada
           </div>
         </div>
@@ -284,17 +311,18 @@ export default function GridSpike(): React.ReactElement {
                     <span className="flex items-center gap-2">
                       <span
                         className="inline-block h-3 w-3 rounded-full"
-                        style={{ backgroundColor: ISLAND_COLORS[island.id] }}
+                        style={{ backgroundColor: `var(${islandToken(island.id)})` }}
                       />
                       {island.name} · {island.busIds.length} buses
                     </span>
-                    <Badge variant={island.verification.verdict}>
-                      escalón {island.verification.rung}
-                    </Badge>
+                    <RungBadge
+                      rung={island.verification.rung}
+                      verdict={island.verification.verdict}
+                    />
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 border-t border-zinc-100 pt-2 text-sm text-zinc-600">
+              <p className="mt-3 border-t pt-2 text-sm text-muted-foreground">
                 Corte: {PARTITION.cutBranchIds.join(', ')} · costo {PARTITION.cutCost}
               </p>
             </CardContent>
@@ -307,20 +335,32 @@ export default function GridSpike(): React.ReactElement {
                 {RUN_VERIFICATION.attestations.map(att => (
                   <li key={att.verifierId} className="text-sm">
                     <div className="mb-1 flex items-center gap-2">
-                      <Badge variant={att.verdict}>
-                        escalón {att.rung} · {RUNG_LABELS[att.rung] ?? att.anchorKind}
-                      </Badge>
-                      <span className="text-xs text-zinc-400">{att.verifierId}</span>
+                      <RungBadge
+                        rung={att.rung}
+                        verdict={att.verdict}
+                        detail={rungLabel(att.rung, att.anchorKind)}
+                      />
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {att.verifierId}
+                      </span>
                     </div>
-                    <p className="text-zinc-600">{att.summary}</p>
+                    <p className="text-muted-foreground">{att.summary}</p>
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 border-t border-zinc-100 pt-2 text-sm font-semibold text-zinc-800">
-                Nivel agregado: escalón {RUN_VERIFICATION.aggregateRung} (
-                {RUNG_LABELS[RUN_VERIFICATION.aggregateRung]}) — el más débil del camino crítico ·{' '}
-                {RUN_VERIFICATION.unanchoredSteps} pasos sin anclar
-              </p>
+              <div className="mt-3 flex items-center gap-2.5 border-t pt-3">
+                <RungLadder
+                  rung={RUN_VERIFICATION.aggregateRung}
+                  size="md"
+                  className="text-foreground"
+                />
+                <p className="text-sm font-semibold text-foreground">
+                  Nivel agregado: escalón{' '}
+                  <span className="font-mono">{RUN_VERIFICATION.aggregateRung}</span> (
+                  {rungLabel(RUN_VERIFICATION.aggregateRung)}) — el más débil del camino crítico ·{' '}
+                  {RUN_VERIFICATION.unanchoredSteps} pasos sin anclar
+                </p>
+              </div>
             </CardContent>
           </Card>
         </aside>
