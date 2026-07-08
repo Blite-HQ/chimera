@@ -42,8 +42,9 @@ def test_runtime_registry_importable() -> None:
 
 def test_events_writer_importable_within_events() -> None:
     """blite.events.writer is importable (for use within events only — INV-5)."""
-    from blite.events.writer import Event, append, read_all
+    from blite.events.writer import InMemoryEventStore
 
-    assert Event is not None
-    assert callable(append)
-    assert callable(read_all)
+    assert InMemoryEventStore is not None
+    assert callable(InMemoryEventStore.append)
+    assert callable(InMemoryEventStore.read_stream)
+    assert callable(InMemoryEventStore.read_all)

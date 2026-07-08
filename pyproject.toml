@@ -58,6 +58,10 @@ quote-style = "double"
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
+# Makes `# type: ignore` negative type-tests load-bearing (e.g. AnchorKind
+# excluding "model" — tests/invariants/test_verifier_contract.py): an ignore
+# comment that silences nothing becomes a pyright error itself.
+reportUnnecessaryTypeIgnoreComment = "error"
 include = [
     "sdk/src",
     "engine/src",

@@ -8,6 +8,14 @@ license = { text = "MIT" }
 
 dependencies = [
     "blite-capability",
+    "pydantic>=2.9",
+    "cryptography>=43",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.100",
 ]
 
 [build-system]
