@@ -17,6 +17,7 @@
 import React from 'react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import type { PlaybackControls, ProjectedEvent } from './types';
@@ -82,7 +83,7 @@ function EventRow({ event, isSelected, onSelectEvent }: EventRowProps): React.Re
         onClick={() => onSelectEvent(event.globalSeq)}
         aria-pressed={isSelected}
         className={cn(
-          'flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+          'focus-ring flex w-full flex-col gap-1 rounded-lg border px-4 py-2 text-left text-sm transition-colors',
           isSelected ? 'border-ring/60 bg-accent' : 'border-transparent hover:bg-muted'
         )}
       >
@@ -123,14 +124,14 @@ function PlaybackBar({
   readonly revealedGlobalSeq: number;
 }): React.ReactElement {
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2">
-      <button
-        type="button"
+    <div className="flex items-center gap-4 rounded-lg border bg-card px-4 py-2">
+      <Button
+        variant="outline"
+        size="sm"
         onClick={playback.state === 'playing' ? playback.onPause : playback.onPlay}
-        className="rounded-md border bg-background px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-accent"
       >
         {PLAYBACK_BUTTON_LABELS[playback.state]}
-      </button>
+      </Button>
       <input
         type="range"
         min={0}
@@ -155,7 +156,7 @@ export default function RunTimeline({
   playback
 }: RunTimelineProps): React.ReactElement {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {playback && (
         <PlaybackBar
           playback={playback}
@@ -164,7 +165,7 @@ export default function RunTimeline({
       )}
 
       {events.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
           Sin eventos todavía — presione Reproducir para simular la llegada del stream.
         </p>
       ) : (
@@ -173,7 +174,7 @@ export default function RunTimeline({
             ? groupByStep(events).map(group => (
                 <li key={group.key} className="flex flex-col gap-1">
                   {group.stepId && (
-                    <p className="px-1 font-mono text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    <p className="px-1 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
                       {group.stepId}
                     </p>
                   )}

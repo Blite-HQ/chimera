@@ -79,7 +79,7 @@ function Legend(): React.ReactElement {
   return (
     <div className="flex items-center gap-4 text-xs text-muted-foreground">
       {(['quantum', 'classical'] as const).map(variant => (
-        <span key={variant} className="flex items-center gap-1.5">
+        <span key={variant} className="flex items-center gap-2">
           <span
             className="inline-block h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: VARIANT_COLORS[variant] }}
@@ -100,12 +100,12 @@ function MetricChart({
 }): React.ReactElement {
   const data = buildChartData(metrics, config);
   return (
-    <div className="rounded-lg border bg-card p-3">
-      <p className="mb-2 text-sm font-semibold text-foreground">
+    <div className="rounded-lg border bg-card p-4">
+      <p className="mb-2 text-sm font-medium text-foreground">
         {config.title}
         {config.unit && <span className="text-muted-foreground"> ({config.unit})</span>}
       </p>
-      <ResponsiveContainer width="100%" height={180}>
+      <ResponsiveContainer width="100%" height={192}>
         <BarChart data={[...data]} margin={{ top: 16, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
           <XAxis
@@ -148,9 +148,9 @@ function MetricChart({
 
 export default function AblationPanel({ metrics }: AblationPanelProps): React.ReactElement {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <Legend />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {METRIC_CONFIGS.map(config => (
           <MetricChart key={config.key} config={config} metrics={metrics} />
         ))}

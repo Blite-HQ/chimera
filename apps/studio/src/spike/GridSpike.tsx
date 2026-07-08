@@ -15,7 +15,8 @@ import cytoscape from 'cytoscape';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RungBadge } from '@/components/verification/RungBadge';
 import { RungLadder } from '@/components/verification/RungLadder';
 import { rungLabel } from '@/components/verification/rungs';
@@ -254,21 +255,21 @@ export default function GridSpike(): React.ReactElement {
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <header className="mb-4">
-        <h1 className="font-display text-xl font-medium tracking-tight text-foreground">
+    <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+      <header className="mb-8">
+        <h1 className="font-display text-2xl leading-tight font-medium tracking-tight text-foreground md:text-3xl">
           Red IEEE-14 · partición verificada
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground">
           Lo cuántico propone la partición; las anclas no-modelo la verifican. Cada isla lleva su
           badge; el nivel agregado es el escalón más débil del camino crítico.
         </p>
       </header>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 md:gap-8">
         <div className="relative flex-1 overflow-hidden rounded-xl border bg-card">
           {/* Cytoscape fuerza position:relative inline en su contenedor — necesita altura explícita, no absolute/inset (hallazgo del spike). */}
-          <div ref={containerRef} className="h-[560px] w-full" data-testid="cy-container" />
+          <div ref={containerRef} className="h-128 w-full" data-testid="cy-container" />
           {overlays
             .filter(overlay => overlay.isVisible)
             .map(({ island, left, top }) => (
@@ -297,21 +298,24 @@ export default function GridSpike(): React.ReactElement {
                 </Badge>
               </div>
             ))}
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleCenter}
-            className="absolute top-2 right-2 z-10 rounded-md border bg-background/90 px-2 py-1 text-xs font-medium text-foreground backdrop-blur hover:bg-accent"
+            className="absolute top-2 right-2 z-10 bg-background/90 backdrop-blur"
           >
             Centrar
-          </button>
+          </Button>
           <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/80 px-2 py-1 text-xs text-muted-foreground backdrop-blur">
             ▢ generador · ─ ─ arista cortada
           </div>
         </div>
 
-        <aside className="flex w-[340px] flex-col gap-4">
+        <aside className="flex w-80 flex-col gap-4">
           <Card>
-            <CardHeader>Partición propuesta</CardHeader>
+            <CardHeader>
+              <CardTitle>Partición propuesta</CardTitle>
+            </CardHeader>
             <CardContent>
               <ul className="flex flex-col gap-2 text-sm">
                 {PARTITION.islands.map(island => (
@@ -330,16 +334,18 @@ export default function GridSpike(): React.ReactElement {
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 border-t pt-2 text-sm text-muted-foreground">
+              <p className="mt-4 border-t pt-4 text-sm text-muted-foreground">
                 Corte: {PARTITION.cutBranchIds.join(', ')} · costo {PARTITION.cutCost}
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>Verificación del run</CardHeader>
+            <CardHeader>
+              <CardTitle>Verificación del run</CardTitle>
+            </CardHeader>
             <CardContent>
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col gap-4">
                 {RUN_VERIFICATION.attestations.map(att => (
                   <li key={att.verifierId} className="text-sm">
                     <div className="mb-1 flex items-center gap-2">
@@ -356,13 +362,13 @@ export default function GridSpike(): React.ReactElement {
                   </li>
                 ))}
               </ul>
-              <div className="mt-3 flex items-center gap-2.5 border-t pt-3">
+              <div className="mt-4 flex items-center gap-2 border-t pt-4">
                 <RungLadder
                   rung={RUN_VERIFICATION.aggregateRung}
                   size="md"
                   className="text-foreground"
                 />
-                <p className="text-sm font-semibold text-foreground">
+                <p className="text-sm font-medium text-foreground">
                   Nivel agregado: escalón{' '}
                   <span className="font-mono">{RUN_VERIFICATION.aggregateRung}</span> (
                   {rungLabel(RUN_VERIFICATION.aggregateRung)}) — el más débil del camino crítico ·{' '}

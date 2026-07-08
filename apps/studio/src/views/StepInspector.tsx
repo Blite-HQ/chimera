@@ -35,7 +35,7 @@ function DigestRow({
 }): React.ReactElement {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs font-semibold text-muted-foreground uppercase">{label}</span>
+      <span className="text-xs tracking-wider text-muted-foreground uppercase">{label}</span>
       <code className="truncate font-mono text-xs text-muted-foreground" title={digest}>
         {digest}
       </code>
@@ -46,7 +46,7 @@ function DigestRow({
 export default function StepInspector({ step }: StepInspectorProps): React.ReactElement {
   if (!step) {
     return (
-      <div className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+      <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
         Seleccione un paso en el timeline para ver su detalle.
       </div>
     );
@@ -54,8 +54,8 @@ export default function StepInspector({ step }: StepInspectorProps): React.React
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2 rounded-lg border bg-card p-3">
-        <p className="font-mono text-sm font-semibold text-foreground">{step.capabilityId}</p>
+      <div className="flex flex-col gap-2 rounded-lg border bg-card p-4">
+        <p className="font-mono text-sm font-medium text-foreground">{step.capabilityId}</p>
         <DigestRow label="Input digest" digest={step.inputDigest} />
         <DigestRow label="Output digest" digest={step.outputDigest} />
       </div>
@@ -65,7 +65,7 @@ export default function StepInspector({ step }: StepInspectorProps): React.React
           <AccordionItem
             key={`${attestation.verifierId}-${index}`}
             value={`${attestation.verifierId}-${index}`}
-            className="rounded-lg border bg-card px-3"
+            className="rounded-lg border bg-card px-4"
           >
             <AccordionTrigger>
               <div className="flex flex-1 flex-wrap items-center gap-2 pr-2">

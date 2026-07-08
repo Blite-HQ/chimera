@@ -33,11 +33,13 @@ export function AppShell({
 }: AppShellProps): React.ReactElement {
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="min-h-screen gap-0">
+      {/* Header calcado de la landing: h-16, contenedor px-4 md:px-8, gap-8,
+          wordmark en display text-lg md:text-xl (DESIGN.md §10). */}
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6">
-          <div className="flex items-baseline gap-2.5">
-            <BrandMark className="self-center" />
-            <span className="font-display text-lg leading-none font-medium tracking-tight">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 md:px-8">
+          <div className="flex items-baseline gap-2">
+            <BrandMark className="h-6 self-center" />
+            <span className="font-display text-lg leading-none font-medium tracking-tight md:text-xl">
               Chimera
             </span>
             <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
@@ -48,7 +50,7 @@ export function AppShell({
           <nav aria-label="Vistas del run" className="flex flex-1 items-center">
             <TabsList variant="line">
               {tabs.map(tab => (
-                <TabsTrigger key={tab.id} value={tab.id} className="px-2.5">
+                <TabsTrigger key={tab.id} value={tab.id} className="px-2">
                   {tab.label}
                 </TabsTrigger>
               ))}
