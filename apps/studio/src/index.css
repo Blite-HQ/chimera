@@ -2,6 +2,20 @@
 @import 'tw-animate-css';
 
 /*
+ * shadcn "radix-nova" style components (tabs.tsx, accordion.tsx,
+ * separator.tsx) use bare `data-active:`/`data-horizontal:` etc. Tailwind
+ * v4's shorthand data-* variant only matches a same-named boolean attribute
+ * (`[data-active]`), never Radix's actual `data-state="active"` /
+ * `data-orientation="horizontal"` value pairs — so these must be mapped
+ * explicitly or every consumer silently no-ops (ficha B1).
+ */
+@custom-variant data-active (&[data-state='active']);
+@custom-variant data-open (&[data-state='open']);
+@custom-variant data-closed (&[data-state='closed']);
+@custom-variant data-horizontal (&[data-orientation='horizontal']);
+@custom-variant data-vertical (&[data-orientation='vertical']);
+
+/*
  * shadcn/ui theme tokens — base color "zinc" (components.json), built on
  * Tailwind v4's own --color-zinc-* variables rather than a hand-copied
  * OKLCH table, so the palette is guaranteed to match Tailwind's zinc scale

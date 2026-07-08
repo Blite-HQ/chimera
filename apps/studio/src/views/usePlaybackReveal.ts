@@ -40,12 +40,16 @@ export function usePlaybackReveal(events: readonly ProjectedEvent[]): PlaybackRe
     if (intervalRef.current !== null) {
       return;
     }
+    // Replaying after a finished run starts the reveal over from zero
+    // instead of being a no-op (ficha B5: "Reproducir" on a finished
+    // timeline must act as "Repetir", not silently do nothing).
+    setRevealedCount(current => (current >= events.length ? 0 : current));
     setState('playing');
     intervalRef.current = setInterval(() => {
       setRevealedCount(current => {
         if (current >= events.length) {
           clearTimer();
-          setState('idle');
+          setState('finished');
           return current;
         }
         return current + 1;
