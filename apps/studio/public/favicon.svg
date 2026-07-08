@@ -1,9 +1,10 @@
 <!-- Logomark Chimera (DESIGN.md §7): la escalera de verificación reducida a
-     tres barras descendentes en Ámbar de sodio sobre Noche de maniobra.
-     Asset de marca: único lugar (junto a BrandMark) donde el hex es legal. -->
+     tres barras descendentes en turquesa (teal-400) sobre el neutro oscuro
+     del chasis Blite. Asset de marca: único lugar (junto a BrandMark) donde
+     el hex es legal. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="7" fill="#111823" />
-  <rect x="6" y="7" width="5.5" height="18" rx="1.5" fill="#E9A94F" />
-  <rect x="13.25" y="13" width="5.5" height="12" rx="1.5" fill="#E9A94F" />
-  <rect x="20.5" y="19" width="5.5" height="6" rx="1.5" fill="#E9A94F" />
+  <rect width="32" height="32" rx="7" fill="#171717" />
+  <rect x="6" y="7" width="5.5" height="18" rx="1.5" fill="#2DD4BF" />
+  <rect x="13.25" y="13" width="5.5" height="12" rx="1.5" fill="#2DD4BF" />
+  <rect x="20.5" y="19" width="5.5" height="6" rx="1.5" fill="#2DD4BF" />
 </svg>

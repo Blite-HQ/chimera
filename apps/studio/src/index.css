@@ -1,10 +1,8 @@
-/* Tipografía self-hosted (@fontsource, cero CDNs — gate air-gap, plan §4.9). */
-@import '@fontsource/ibm-plex-sans/400.css';
-@import '@fontsource/ibm-plex-sans/500.css';
-@import '@fontsource/ibm-plex-sans/600.css';
-@import '@fontsource/ibm-plex-serif/600.css';
-@import '@fontsource/ibm-plex-mono/400.css';
-@import '@fontsource/ibm-plex-mono/500.css';
+/* Tipografía self-hosted (@fontsource, cero CDNs — gate air-gap, plan §4.9).
+   Misma pareja que la landing de Blite: Plus Jakarta Sans (display) + Inter
+   (cuerpo/UI). El mono es el stack por defecto de Tailwind (sistema). */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/plus-jakarta-sans';
 
 @import 'tailwindcss';
 @import 'tw-animate-css';
@@ -31,92 +29,117 @@
 @custom-variant data-vertical (&[data-orientation='vertical']);
 
 /*
- * Tokens del sistema (DESIGN.md §2/§5 — paleta "sala de control nocturna"):
- * :root = light ("Papel técnico"), [data-theme='dark'] = dark ("Noche de
- * maniobra"). Valores canónicos en OKLCH; los hex de referencia viven en
- * DESIGN.md. Ningún componente hardcodea color: todo pasa por estos tokens
- * (o readToken() para lienzos que no leen CSS, p. ej. cytoscape).
+ * Tokens del sistema (DESIGN.md §2): tres niveles independientes.
+ *   1. MARCA — chasis neutro heredado verbatim de la landing de Blite
+ *      (escala neutral de Tailwind) + una sola voz de acento: turquesa
+ *      (teal de Tailwind; el valor exacto se anota en cada token).
+ *   2. STATUS — info/success/warning/danger: funcionales, aparte de la
+ *      marca (sky/emerald/amber/red de Tailwind).
+ *   3. DATOS — escala para charts/categóricos; puede salirse de la paleta
+ *      de marca (chart-1..5). Los elementos consumen DESDE estos niveles.
+ * Ningún componente hardcodea color: todo pasa por estos tokens (o
+ * readToken() para lienzos que no leen CSS, p. ej. cytoscape).
  */
 :root {
   color-scheme: light;
-  --radius: 0.5rem;
+  --radius: 0.45rem;
 
-  --background: oklch(0.97 0.005 240);
-  --foreground: oklch(0.25 0.02 255);
-  --card: oklch(0.995 0.002 240);
-  --card-foreground: oklch(0.25 0.02 255);
-  --popover: oklch(0.995 0.002 240);
-  --popover-foreground: oklch(0.25 0.02 255);
-  /* Primario light = tinta; el ámbar claro sobre papel no alcanza AA como
-     fondo de botón (DESIGN.md §2) — acá el ámbar queda en ring/marca. */
-  --primary: oklch(0.27 0.025 255);
-  --primary-foreground: oklch(0.97 0.005 240);
-  --secondary: oklch(0.93 0.008 245);
-  --secondary-foreground: oklch(0.25 0.02 255);
-  --muted: oklch(0.94 0.007 245);
-  --muted-foreground: oklch(0.46 0.02 255);
-  --accent: oklch(0.92 0.01 250);
-  --accent-foreground: oklch(0.25 0.02 255);
-  --destructive: oklch(0.52 0.17 25);
-  --border: oklch(0.885 0.008 245);
-  --input: oklch(0.885 0.008 245);
-  --ring: oklch(0.62 0.12 70);
+  /* Nivel 1a — chasis Blite (light) */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
 
-  --brand: oklch(0.55 0.12 70);
-  --verdict-pass: oklch(0.5 0.1 160);
-  --verdict-fail: oklch(0.52 0.16 25);
-  --verdict-inconclusive: oklch(0.52 0.06 90);
-  --verdict-neutral: oklch(0.46 0.02 255);
-  --island-a: oklch(0.55 0.1 225);
-  --island-b: oklch(0.55 0.13 330);
-  --chart-1: oklch(0.62 0.13 70);
-  --chart-2: var(--island-a);
-  --chart-3: var(--island-b);
-  --chart-4: oklch(0.55 0.11 160);
-  --chart-5: oklch(0.55 0.03 255);
+  /* Nivel 1b — la voz: turquesa (teal-600); también firma el foco */
+  --brand: oklch(0.6 0.118 184.704);
+  --ring: oklch(0.6 0.118 184.704);
+
+  /* Nivel 2 — status (sky/emerald/amber/red-600) */
+  --status-info: oklch(0.588 0.158 241.966);
+  --status-success: oklch(0.596 0.145 163.225);
+  --status-warning: oklch(0.666 0.179 58.318);
+  --status-danger: oklch(0.577 0.245 27.325);
+  --destructive: var(--status-danger);
+
+  /* Veredictos: consumen status/neutros (inconcluso = neutro + borde
+     discontinuo en el componente — sin señal, no peligro) */
+  --verdict-pass: var(--status-success);
+  --verdict-fail: var(--status-danger);
+  --verdict-inconclusive: oklch(0.439 0 0);
+  --verdict-neutral: oklch(0.439 0 0);
+
+  /* Nivel 3 — escala de datos (teal/violet/sky/amber-600 + neutral-600) */
+  --chart-1: oklch(0.6 0.118 184.704);
+  --chart-2: oklch(0.541 0.281 293.009);
+  --chart-3: oklch(0.588 0.158 241.966);
+  --chart-4: oklch(0.666 0.179 58.318);
+  --chart-5: oklch(0.439 0 0);
+  --island-a: var(--chart-1);
+  --island-b: var(--chart-2);
 }
 
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --background: oklch(0.19 0.02 255);
-  --foreground: oklch(0.93 0.008 250);
-  --card: oklch(0.225 0.02 253);
-  --card-foreground: oklch(0.93 0.008 250);
-  --popover: oklch(0.225 0.02 253);
-  --popover-foreground: oklch(0.93 0.008 250);
-  /* Primario dark = Ámbar de sodio: el indicador encendido del panel. */
-  --primary: oklch(0.78 0.13 75);
-  --primary-foreground: oklch(0.17 0.02 255);
-  --secondary: oklch(0.27 0.02 252);
-  --secondary-foreground: oklch(0.93 0.008 250);
-  --muted: oklch(0.255 0.018 252);
-  --muted-foreground: oklch(0.72 0.02 250);
-  --accent: oklch(0.29 0.022 252);
-  --accent-foreground: oklch(0.93 0.008 250);
-  --destructive: oklch(0.68 0.15 25);
-  --border: oklch(0.31 0.02 252);
-  --input: oklch(0.31 0.02 252);
-  --ring: oklch(0.78 0.13 75);
+  /* Nivel 1a — chasis Blite (dark) */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
 
-  --brand: oklch(0.78 0.13 75);
-  --verdict-pass: oklch(0.76 0.12 160);
-  --verdict-fail: oklch(0.72 0.14 25);
-  --verdict-inconclusive: oklch(0.74 0.06 95);
-  --verdict-neutral: oklch(0.72 0.02 250);
-  --island-a: oklch(0.73 0.1 225);
-  --island-b: oklch(0.72 0.12 330);
-  --chart-1: oklch(0.78 0.13 75);
-  --chart-2: var(--island-a);
-  --chart-3: var(--island-b);
-  --chart-4: oklch(0.72 0.11 160);
-  --chart-5: oklch(0.65 0.02 252);
+  /* Nivel 1b — la voz: turquesa (teal-400) */
+  --brand: oklch(0.777 0.152 181.912);
+  --ring: oklch(0.777 0.152 181.912);
+
+  /* Nivel 2 — status (sky/emerald/amber/red-400) */
+  --status-info: oklch(0.746 0.16 232.661);
+  --status-success: oklch(0.765 0.177 163.223);
+  --status-warning: oklch(0.828 0.189 84.429);
+  --status-danger: oklch(0.704 0.191 22.216);
+  --destructive: var(--status-danger);
+
+  --verdict-pass: var(--status-success);
+  --verdict-fail: var(--status-danger);
+  --verdict-inconclusive: oklch(0.708 0 0);
+  --verdict-neutral: oklch(0.708 0 0);
+
+  /* Nivel 3 — escala de datos (teal/violet/sky/amber-400 + neutral-400) */
+  --chart-1: oklch(0.777 0.152 181.912);
+  --chart-2: oklch(0.702 0.183 293.541);
+  --chart-3: oklch(0.746 0.16 232.661);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.708 0 0);
+  --island-a: var(--chart-1);
+  --island-b: var(--chart-2);
 }
 
 @theme {
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-serif: 'IBM Plex Serif', ui-serif, Georgia, serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme inline {
@@ -139,6 +162,10 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-brand: var(--brand);
+  --color-status-info: var(--status-info);
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-status-danger: var(--status-danger);
   --color-verdict-pass: var(--verdict-pass);
   --color-verdict-fail: var(--verdict-fail);
   --color-verdict-inconclusive: var(--verdict-inconclusive);
@@ -150,10 +177,14 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /* Escala de radios de la landing de Blite (multiplicativa) */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 @layer base {

@@ -37,7 +37,7 @@ export function AppShell({
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6">
           <div className="flex items-baseline gap-2.5">
             <BrandMark className="self-center" />
-            <span className="font-serif text-lg leading-none font-semibold tracking-tight">
+            <span className="font-display text-lg leading-none font-medium tracking-tight">
               Chimera
             </span>
             <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">

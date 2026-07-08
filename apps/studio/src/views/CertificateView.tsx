@@ -52,7 +52,7 @@ export default function CertificateView({
     <div className="flex flex-col gap-4">
       {/* Nivel 1 — veredicto en una línea */}
       <div className="rounded-lg border bg-card p-4">
-        <p className="font-serif text-base font-semibold text-foreground">
+        <p className="font-display text-base font-medium tracking-tight text-foreground">
           Certificado · escalón agregado {predicate.aggregateRung} · política {predicate.policyId}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
