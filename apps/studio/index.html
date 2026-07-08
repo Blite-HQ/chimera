@@ -1,10 +1,29 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Chimera Studio — investigación científica agéntica con verificación por anclas: runs en vivo, escalera de verificación y certificados comprobables offline."
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Chimera Studio</title>
+    <script>
+      // Aplica el tema persistido antes del primer paint (sin flash).
+      // El default de identidad es dark (DESIGN.md §6); ThemeProvider
+      // (src/lib/theme.tsx) toma el control después del montaje.
+      (function () {
+        try {
+          var stored = localStorage.getItem('chimera-theme');
+          if (stored === 'light' || stored === 'dark') {
+            document.documentElement.setAttribute('data-theme', stored);
+          }
+        } catch (error) {
+          // localStorage bloqueado: queda el default dark del atributo.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

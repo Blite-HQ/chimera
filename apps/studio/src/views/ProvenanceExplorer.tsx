@@ -63,13 +63,13 @@ function FilterBar({
   const actorIds = uniqueSorted(events.map(event => event.actorId));
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs">
-      <label className="flex items-center gap-2 text-zinc-600">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card px-3 py-2 text-xs">
+      <label className="flex items-center gap-2 text-muted-foreground">
         type
         <select
           value={filters.type ?? ''}
           onChange={event => onFilterChange({ ...filters, type: event.target.value || undefined })}
-          className="rounded-md border border-zinc-300 bg-white px-2 py-1"
+          className="rounded-md border bg-background px-2 py-1 text-foreground"
         >
           <option value="">todos</option>
           {types.map(type => (
@@ -79,14 +79,14 @@ function FilterBar({
           ))}
         </select>
       </label>
-      <label className="flex items-center gap-2 text-zinc-600">
+      <label className="flex items-center gap-2 text-muted-foreground">
         actorId
         <select
           value={filters.actorId ?? ''}
           onChange={event =>
             onFilterChange({ ...filters, actorId: event.target.value || undefined })
           }
-          className="rounded-md border border-zinc-300 bg-white px-2 py-1"
+          className="rounded-md border bg-background px-2 py-1 text-foreground"
         >
           <option value="">todos</option>
           {actorIds.map(actorId => (
@@ -107,10 +107,10 @@ function CompactRow({
 }): React.ReactElement {
   const last = group.events[group.events.length - 1];
   return (
-    <li className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm">
+    <li className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
       <div className="flex flex-col">
-        <span className="font-semibold text-zinc-700">{group.stepId ?? last.type}</span>
-        <span className="text-xs text-zinc-400">
+        <span className="font-mono font-semibold text-foreground">{group.stepId ?? last.type}</span>
+        <span className="text-xs text-muted-foreground">
           {group.events.length} evento{group.events.length > 1 ? 's' : ''} · {last.resumen}
         </span>
       </div>
@@ -121,8 +121,10 @@ function CompactRow({
 
 function RawRow({ event }: { readonly event: ProjectedEvent }): React.ReactElement {
   return (
-    <li className="rounded-lg border border-zinc-200 bg-white p-3">
-      <pre className="overflow-x-auto text-xs text-zinc-700">{JSON.stringify(event, null, 2)}</pre>
+    <li className="rounded-lg border bg-card p-3">
+      <pre className="overflow-x-auto text-xs text-foreground">
+        {JSON.stringify(event, null, 2)}
+      </pre>
     </li>
   );
 }
@@ -141,13 +143,13 @@ export default function ProvenanceExplorer({
     <div className="flex flex-col gap-3">
       <FilterBar events={events} filters={filters} onFilterChange={onFilterChange} />
 
-      <p className="text-xs text-zinc-400">
+      <p className="font-mono text-xs text-muted-foreground">
         {filtered.length} / {events.length} eventos · cursor {page.cursor} ·{' '}
         {page.hasMore ? 'hay más páginas' : 'fin del stream'}
       </p>
 
       {filtered.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 px-3 py-6 text-center text-sm text-zinc-400">
+        <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
           Ningún evento coincide con los filtros.
         </p>
       ) : (
@@ -163,7 +165,7 @@ export default function ProvenanceExplorer({
           type="button"
           disabled={!page.hasMore}
           onClick={() => onPageChange(page.cursor + page.pageSize)}
-          className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 disabled:opacity-40"
+          className="rounded-md border bg-card px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-40"
         >
           Página siguiente
         </button>

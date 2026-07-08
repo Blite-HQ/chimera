@@ -83,15 +83,17 @@ function EventRow({ event, isSelected, onSelectEvent }: EventRowProps): React.Re
         aria-pressed={isSelected}
         className={cn(
           'flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-          isSelected ? 'border-zinc-400 bg-zinc-100' : 'border-transparent hover:bg-zinc-50'
+          isSelected ? 'border-ring/60 bg-accent' : 'border-transparent hover:bg-muted'
         )}
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="font-mono text-xs text-zinc-400">{formatTime(event.occurredAt)}</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {formatTime(event.occurredAt)}
+          </span>
           {event.verdict && <Badge variant={event.verdict}>{event.verdict}</Badge>}
         </div>
-        <p className="text-zinc-700">{event.resumen}</p>
-        <p className="text-xs text-zinc-400">
+        <p className="text-foreground">{event.resumen}</p>
+        <p className="font-mono text-xs text-muted-foreground">
           {event.actorId} · {event.type}
         </p>
       </button>
@@ -121,11 +123,11 @@ function PlaybackBar({
   readonly revealedGlobalSeq: number;
 }): React.ReactElement {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+    <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2">
       <button
         type="button"
         onClick={playback.state === 'playing' ? playback.onPause : playback.onPlay}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
+        className="rounded-md border bg-background px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-accent"
       >
         {PLAYBACK_BUTTON_LABELS[playback.state]}
       </button>
@@ -136,9 +138,11 @@ function PlaybackBar({
         value={revealedGlobalSeq}
         aria-label="Saltar a un punto del stream"
         onChange={event => playback.onScrub(Number(event.target.value))}
-        className="h-1.5 flex-1 accent-zinc-700"
+        className="h-1.5 flex-1 accent-primary"
       />
-      <span className="text-xs text-zinc-400">{PLAYBACK_STATUS_LABELS[playback.state]}</span>
+      <span className="text-xs text-muted-foreground">
+        {PLAYBACK_STATUS_LABELS[playback.state]}
+      </span>
     </div>
   );
 }
@@ -160,8 +164,8 @@ export default function RunTimeline({
       )}
 
       {events.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 px-3 py-6 text-center text-sm text-zinc-400">
-          Sin eventos todavía — presioná Reproducir para simular la llegada del stream.
+        <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+          Sin eventos todavía — presione Reproducir para simular la llegada del stream.
         </p>
       ) : (
         <ol className="flex flex-col gap-2">
@@ -169,7 +173,7 @@ export default function RunTimeline({
             ? groupByStep(events).map(group => (
                 <li key={group.key} className="flex flex-col gap-1">
                   {group.stepId && (
-                    <p className="px-1 text-xs font-semibold tracking-wide text-zinc-400 uppercase">
+                    <p className="px-1 font-mono text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       {group.stepId}
                     </p>
                   )}

@@ -1,5 +1,20 @@
+/* Tipografía self-hosted (@fontsource, cero CDNs — gate air-gap, plan §4.9). */
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-serif/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
 @import 'tailwindcss';
 @import 'tw-animate-css';
+
+/*
+ * Tema dual (DESIGN.md §6): la variante `dark:` de Tailwind sigue al
+ * atributo data-theme en <html>, nunca al sistema operativo — el default
+ * de identidad es dark y el toggle del topbar decide.
+ */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 /*
  * shadcn "radix-nova" style components (tabs.tsx, accordion.tsx,
@@ -16,33 +31,92 @@
 @custom-variant data-vertical (&[data-orientation='vertical']);
 
 /*
- * shadcn/ui theme tokens — base color "zinc" (components.json), built on
- * Tailwind v4's own --color-zinc-* variables rather than a hand-copied
- * OKLCH table, so the palette is guaranteed to match Tailwind's zinc scale
- * exactly. No .dark overrides: this Studio has no theme toggle (YAGNI).
- * --background/--foreground keep the exact zinc-100/zinc-900 pair the
- * spike (spike/ui.tsx) used, so existing and new views read as one system.
+ * Tokens del sistema (DESIGN.md §2/§5 — paleta "sala de control nocturna"):
+ * :root = light ("Papel técnico"), [data-theme='dark'] = dark ("Noche de
+ * maniobra"). Valores canónicos en OKLCH; los hex de referencia viven en
+ * DESIGN.md. Ningún componente hardcodea color: todo pasa por estos tokens
+ * (o readToken() para lienzos que no leen CSS, p. ej. cytoscape).
  */
 :root {
-  --radius: 0.625rem;
-  --background: var(--color-zinc-100);
-  --foreground: var(--color-zinc-900);
-  --card: var(--color-white);
-  --card-foreground: var(--color-zinc-900);
-  --popover: var(--color-white);
-  --popover-foreground: var(--color-zinc-900);
-  --primary: var(--color-zinc-900);
-  --primary-foreground: var(--color-zinc-50);
-  --secondary: var(--color-zinc-100);
-  --secondary-foreground: var(--color-zinc-900);
-  --muted: var(--color-zinc-100);
-  --muted-foreground: var(--color-zinc-500);
-  --accent: var(--color-zinc-100);
-  --accent-foreground: var(--color-zinc-900);
-  --destructive: var(--color-red-600);
-  --border: var(--color-zinc-200);
-  --input: var(--color-zinc-200);
-  --ring: var(--color-zinc-400);
+  color-scheme: light;
+  --radius: 0.5rem;
+
+  --background: oklch(0.97 0.005 240);
+  --foreground: oklch(0.25 0.02 255);
+  --card: oklch(0.995 0.002 240);
+  --card-foreground: oklch(0.25 0.02 255);
+  --popover: oklch(0.995 0.002 240);
+  --popover-foreground: oklch(0.25 0.02 255);
+  /* Primario light = tinta; el ámbar claro sobre papel no alcanza AA como
+     fondo de botón (DESIGN.md §2) — acá el ámbar queda en ring/marca. */
+  --primary: oklch(0.27 0.025 255);
+  --primary-foreground: oklch(0.97 0.005 240);
+  --secondary: oklch(0.93 0.008 245);
+  --secondary-foreground: oklch(0.25 0.02 255);
+  --muted: oklch(0.94 0.007 245);
+  --muted-foreground: oklch(0.46 0.02 255);
+  --accent: oklch(0.92 0.01 250);
+  --accent-foreground: oklch(0.25 0.02 255);
+  --destructive: oklch(0.52 0.17 25);
+  --border: oklch(0.885 0.008 245);
+  --input: oklch(0.885 0.008 245);
+  --ring: oklch(0.62 0.12 70);
+
+  --brand: oklch(0.55 0.12 70);
+  --verdict-pass: oklch(0.5 0.1 160);
+  --verdict-fail: oklch(0.52 0.16 25);
+  --verdict-inconclusive: oklch(0.52 0.06 90);
+  --verdict-neutral: oklch(0.46 0.02 255);
+  --island-a: oklch(0.55 0.1 225);
+  --island-b: oklch(0.55 0.13 330);
+  --chart-1: oklch(0.62 0.13 70);
+  --chart-2: var(--island-a);
+  --chart-3: var(--island-b);
+  --chart-4: oklch(0.55 0.11 160);
+  --chart-5: oklch(0.55 0.03 255);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --background: oklch(0.19 0.02 255);
+  --foreground: oklch(0.93 0.008 250);
+  --card: oklch(0.225 0.02 253);
+  --card-foreground: oklch(0.93 0.008 250);
+  --popover: oklch(0.225 0.02 253);
+  --popover-foreground: oklch(0.93 0.008 250);
+  /* Primario dark = Ámbar de sodio: el indicador encendido del panel. */
+  --primary: oklch(0.78 0.13 75);
+  --primary-foreground: oklch(0.17 0.02 255);
+  --secondary: oklch(0.27 0.02 252);
+  --secondary-foreground: oklch(0.93 0.008 250);
+  --muted: oklch(0.255 0.018 252);
+  --muted-foreground: oklch(0.72 0.02 250);
+  --accent: oklch(0.29 0.022 252);
+  --accent-foreground: oklch(0.93 0.008 250);
+  --destructive: oklch(0.68 0.15 25);
+  --border: oklch(0.31 0.02 252);
+  --input: oklch(0.31 0.02 252);
+  --ring: oklch(0.78 0.13 75);
+
+  --brand: oklch(0.78 0.13 75);
+  --verdict-pass: oklch(0.76 0.12 160);
+  --verdict-fail: oklch(0.72 0.14 25);
+  --verdict-inconclusive: oklch(0.74 0.06 95);
+  --verdict-neutral: oklch(0.72 0.02 250);
+  --island-a: oklch(0.73 0.1 225);
+  --island-b: oklch(0.72 0.12 330);
+  --chart-1: oklch(0.78 0.13 75);
+  --chart-2: var(--island-a);
+  --chart-3: var(--island-b);
+  --chart-4: oklch(0.72 0.11 160);
+  --chart-5: oklch(0.65 0.02 252);
+}
+
+@theme {
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'IBM Plex Serif', ui-serif, Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
 }
 
 @theme inline {
@@ -64,6 +138,18 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-verdict-pass: var(--verdict-pass);
+  --color-verdict-fail: var(--verdict-fail);
+  --color-verdict-inconclusive: var(--verdict-inconclusive);
+  --color-verdict-neutral: var(--verdict-neutral);
+  --color-island-a: var(--island-a);
+  --color-island-b: var(--island-b);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -77,5 +163,17 @@
 
   body {
     @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  /* Piso de calidad (DESIGN.md §9): movimiento respetuoso, sin excepciones. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

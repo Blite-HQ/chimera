@@ -163,7 +163,12 @@ export const RUN_VERIFICATION: RunVerificationSummary = {
   ]
 };
 
-export const ISLAND_COLORS: Readonly<Record<string, string>> = {
-  'island-a': '#0ea5e9', // sky-500
-  'island-b': '#a855f7' // purple-500
+/**
+ * Token semántico de color por isla (DESIGN.md §5 — nada de hex acá): el
+ * canvas de cytoscape resuelve el valor con readToken(); el DOM/SVG usa
+ * `var(<token>)` directo y se re-tema solo.
+ */
+export const ISLAND_COLOR_TOKENS: Readonly<Record<string, string>> = {
+  'island-a': '--color-island-a',
+  'island-b': '--color-island-b'
 };
