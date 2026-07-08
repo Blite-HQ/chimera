@@ -12,8 +12,10 @@
 import cytoscape from 'cytoscape';
 import React, { useEffect, useRef, useState } from 'react';
 
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
 import { BRANCHES, BUSES, ISLAND_COLORS, PARTITION, RUN_VERIFICATION, type Island } from './ieee14';
-import { Badge, Card, CardContent, CardHeader } from './ui';
 
 const RUNG_LABELS: Readonly<Record<number, string>> = {
   1: 'óptimo exacto',
@@ -111,7 +113,6 @@ export default function GridSpike(): React.ReactElement {
       layout: { name: 'preset' },
       autoungrabify: true
     });
-    cy.fit(undefined, 48);
 
     const updateOverlays = (): void => {
       const next = PARTITION.islands.map((island): IslandOverlay => {
@@ -122,10 +123,22 @@ export default function GridSpike(): React.ReactElement {
       setOverlays(next);
     };
 
-    updateOverlays();
+    // Defer the initial fit to the next animation frame: when GridSpike
+    // mounts inside a layout that's still settling (e.g. nested under the
+    // Tabs navigation — the container's first paint can measure a stale
+    // rect before flex layout stabilizes), fitting synchronously fits to
+    // the wrong size and the graph renders empty/mispositioned. One rAF
+    // guarantees a layout pass has completed before Cytoscape measures it.
+    const rafId = requestAnimationFrame(() => {
+      cy.resize();
+      cy.fit(undefined, 48);
+      updateOverlays();
+    });
+
     cy.on('pan zoom resize', updateOverlays);
 
     return () => {
+      cancelAnimationFrame(rafId);
       cy.destroy();
     };
   }, []);
