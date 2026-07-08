@@ -26,9 +26,18 @@ La consolidación de todas: **`docs/contract-freeze.md`** (DRAFT para el freeze 
 | [15](15-keyprovider-custodia-llaves.md)                      | Puerto `KeyProvider` para las 2 llaves del engine (certificado + JWT, ambas Ed25519); env hoy → OpenBao Fase 2; rotación por keyid                                                                                                                    | contrato nuevo `KeyProvider`; cierra el punto abierto de la nota 08 §4.2 (JWT firma Ed25519, no HS256)        |
 | [16](16-guardrails-nemo-guardrailsai-detectores-whitebox.md) | NeMo Guardrails (5 rails) + Guardrails AI (validadores) a fondo → vocabulario `{etapa}.{mecanismo}` de `GuardrailSignal.name` + forma de registro de adapters; tabla de detectores (HHEM primer pick Fase 2); 1-pager white-box (SEPs)                | ninguno cambia; convención de nomenclatura para `GuardrailSignal.name` (nota 04), material de pitch           |
 | [17](17-evaluacion-inspect-tres-planos.md)                   | Inspect (UK AISI, Dataset→Task→Solver→Scorer) → forma del corpus runner (rung 3 + KPIs over-refusal + ablación); decisiones DeepEval/Promptfoo; descartes RAGAS/TruLens/Giskard/LM-Eval/OpenAI-Evals; "los tres planos" (eval≠guardrail≠verificación) | ninguno cambia; conecta con métricas por run (nota 05 §1.3)                                                   |
+| [18](18-ux-confianza-componentes-studio.md)                  | Langfuse (trace jerárquico + jump-to-detail), Temporal UI (event history), Rekor/GitHub attestations → specs de `RunTimeline`, `StepInspector`, `CertificateView`, `ProvenanceExplorer` sobre los payloads de la nota 07 §1.3                         | ninguno cambia; specs de componentes del Studio (ficha B3)                                                    |
 
-## El spike (código)
+## El Studio (código)
 
 `apps/studio/src/spike/` — IEEE-14 en Cytoscape con partición coloreada, aristas de corte y
-overlay de badges de verificación (Tailwind v4 + convención shadcn). Verificado: build + lint +
-dependency-cruiser (INV-1) verdes. Correr: `pnpm -C apps/studio dev`.
+overlay de badges de verificación (Tailwind v4 + shadcn real, `shadcn init` completo).
+
+`apps/studio/src/views/` — las 4 vistas de la nota 18 (`RunTimeline`, `StepInspector`,
+`CertificateView`, `AblationPanel` con Recharts, `ProvenanceExplorer`) sobre fixtures estáticas
+(`apps/studio/src/fixtures/`) — cero backend. El `TrustCertificate` de ejemplo que renderiza
+`CertificateView` se genera con `scripts/gen-example-trust-certificate.py` (DSSE + Ed25519 vía
+`cryptography`, PAE real, round-trip de firma validado en el propio script).
+
+Verificado: build + lint + typecheck + dependency-cruiser (INV-1) verdes; las 5 vistas
+recorridas en navegador (Playwright) con consola limpia. Correr: `pnpm -C apps/studio dev`.
