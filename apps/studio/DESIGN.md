@@ -1,94 +1,80 @@
 # Chimera Studio — Sistema de diseño
 
-> **v1 (2026-07-08, sesión F1).** Este documento es la fuente de verdad visual del Studio.
-> Toda sesión posterior (F2–F7) toma decisiones de color, tipografía y componentes DESDE acá,
-> nunca inventando valores nuevos en los componentes. Regla dura: **ningún hex hardcodeado
-> fuera de `src/index.css`** — todo color se consume vía token semántico (clases Tailwind o
-> `var(--color-*)`), y los lienzos que no leen CSS (cytoscape) usan `readToken()` de
-> `src/lib/tokens.ts`.
+> **v2 (2026-07-08, sesión F1 + feedback de Dylan).** Este documento es la fuente de
+> verdad visual del Studio. Toda sesión posterior (F2–F7) toma decisiones de color,
+> tipografía y componentes DESDE acá, nunca inventando valores nuevos en los
+> componentes. Regla dura: **ningún hex hardcodeado fuera de `src/index.css`** — todo
+> color se consume vía token semántico (clases Tailwind o `var(--color-*)`), y los
+> lienzos que no leen CSS (cytoscape) usan `readToken()` de `src/lib/tokens.ts`.
 
 ---
 
 ## 1 · Dirección
 
-**Sujeto:** plataforma de investigación científica agéntica — lo cuántico propone, las anclas
-verifican. **Audiencia:** investigadores (de estudiante a catedrático) y jueces de la
-Quantathon. **El trabajo de la pantalla:** hacer legible la confianza de un run científico en
-vivo; la plataforma es un libro abierto que resiste el escrutinio metódico.
+**Sujeto:** plataforma de investigación científica agéntica — lo cuántico propone, las
+anclas verifican. **Audiencia:** investigadores (de estudiante a catedrático) y jueces
+de la Quantathon. **El trabajo de la pantalla:** hacer legible la confianza de un run
+científico en vivo.
 
-El mundo visual sale del sujeto, no de un template:
+**Chimera es un producto Blite y se ve como uno.** El Studio hereda el design system de
+la landing de Blite (`blite/brand/clean/website`): chasis acromático disciplinado,
+Plus Jakarta Sans + Inter, radios contenidos, espaciado en potencias de 2, pesos máximos 500. Sobre ese chasis, Chimera agrega UNA voz de acento propia: **turquesa**. El
+resultado: una UI 99% neutra donde el color, cuando aparece, significa algo — estética
+de instrumento científico.
 
-- **Sala de control nocturna** — los centros de despacho eléctrico operan de noche sobre
-  paneles oscuros azulados con indicadores ámbar (lámparas de vapor de sodio, trazas SCADA).
-  De ahí el dark-first: azul-noche profundo, nunca negro puro, con ámbar como color de marca.
-- **Publicación científica** — lo que se muestra debe leerse como material publicable:
-  display serif contenido para títulos (gravitas de journal), sans neutral para UI,
-  mono para todo dato verificable (digests, timestamps, IDs, escalones).
-- **Sello de certificación** — el certificado y los badges de veredicto son artefactos
-  emitidos, no decoración: colores de veredicto sobrios, sin neón.
+**Proceso (regla de Dylan, no negociable):** el diseño va de lo general a lo específico.
+Sentimiento → paleta → asignación a elementos. Ningún elemento del dominio define un
+color de marca; los elementos consumen los niveles de abajo, nunca al revés.
 
-**Clichés prohibidos (decisión del plan, no re-litigar):** negro + verde ácido,
-cream + terracotta, broadsheet de columnas densas. Esta paleta no es ninguno de los tres.
+## 2 · Paleta — tres niveles independientes
 
-**El riesgo asumido:** `inconclusive` NO es ámbar de precaución (el default de toda UI).
-Epistémicamente significa "el ancla no pudo decidir" — sin señal, no peligro. Se representa
-gris-ocre apagado **con borde discontinuo** (patrón, no solo matiz — además es seguro para
-daltonismo). Esto libera el ámbar para la marca sin ambigüedad semántica.
+Los valores canónicos viven en `src/index.css` (par dark/light por token). Todos los
+valores salen de la paleta nombrada de Tailwind — cero colores inventados.
 
----
+### Nivel 1 — Marca (look & feel)
 
-## 2 · Paleta nombrada
+| Rol                          | Valor                                                        | Notas                                                                                                                |
+| ---------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Chasis                       | escala **neutral** de Tailwind, verbatim de la landing Blite | light: fondo blanco, tinta `neutral-950`; dark: fondo `neutral-950`, superficies `neutral-900`, bordes blanco al 10% |
+| La voz: **Turquesa Chimera** | `teal-400` (dark) / `teal-600` (light) → token `brand`       | la única voz de acento; firma el foco (`ring`), el subrayado de tab activa y la marca                                |
 
-Los seis colores con nombre propio. Cada uno existe en par dark/light (el token semántico
-resuelve según `data-theme`); el hex listado es el del tema indicado.
+### Nivel 2 — Status (funcional, aparte de la marca)
 
-| Nombre                | Rol                                | Dark              | Light             |
-| --------------------- | ---------------------------------- | ----------------- | ----------------- |
-| **Noche de maniobra** | fondo (dark) / tinta (light)       | `#111823`         | `#1F2733` (tinta) |
-| **Papel técnico**     | fondo (light) / tinta (dark)       | `#E9EDF2` (tinta) | `#F3F5F8`         |
-| **Ámbar de sodio**    | marca, primario dark, ring, activo | `#E9A94F`         | `#A9741E`         |
-| **Verde de despacho** | veredicto `pass`                   | `#55C795`         | `#1F7A56`         |
-| **Rojo de disparo**   | veredicto `fail`, destructivo      | `#E87766`         | `#B23A2E`         |
-| **Cian de traza**     | isla A, chart-2                    | `#56B7DA`         | `#2F7FA6`         |
+`status-info` (sky), `status-success` (emerald), `status-warning` (amber),
+`status-danger` (red) — 400 en dark / 600 en light. Siempre contemplados; no compiten
+con la marca porque aparecen tenues (tintes al 10–15%) y solo donde hay estado que
+comunicar. `destructive` = `status-danger`.
 
-Colores de apoyo (sin nombre de marquesina, mismos pares dark/light):
-**magenta de isla B** (`#D389C6` / `#A0538F`), **ocre inconcluso** (`#BFB183` / `#7A6C3E`,
-siempre con borde discontinuo), y la escala neutra azulada de superficies/bordes que sale de
-Noche de maniobra.
+Los **veredictos** consumen este nivel: `pass` → success, `fail` → danger,
+`inconclusive`/`neutral` → neutro. `inconclusive` SIEMPRE lleva `border-dashed`
+(sin señal, no peligro — el patrón comunica, no solo el matiz).
 
-En CSS los valores canónicos están en OKLCH (perceptualmente uniformes; los hex de arriba son
-la aproximación sRGB). **La fuente de verdad es `src/index.css`**, no esta tabla.
+### Nivel 3 — Escala de datos (charts/categóricos)
 
-### Primario por tema (deliberado)
+`chart-1..5` = teal / violet / sky / amber / neutral (400 dark, 600 light). Este nivel
+**puede salirse de la paleta de marca** — un chart de N series no obliga a N colores de
+marca. Si una visualización futura necesita más categorías, se amplía ESTA escala (con
+tonos de Tailwind), nunca la marca. Las islas del grafo consumen de acá
+(`island-a`/`island-b` = chart-1/chart-2), igual que la ablación.
 
-- **Dark:** primario = Ámbar de sodio con texto casi-negro (el indicador encendido del panel).
-- **Light:** primario = tinta (Noche de maniobra) con texto claro; el ámbar queda para ring de
-  foco, subrayado de tab activa y marca. El ámbar claro sobre papel no alcanza AA como fondo
-  de botón — no forzarlo.
+## 3 · Tipografía
 
----
+Idéntica a la landing de Blite, self-hosted vía `@fontsource-variable` (cero CDNs,
+regla air-gap §4.9 del plan):
 
-## 3 · Tipografía — IBM Plex (self-hosted)
+| Rol                      | Familia                                      | Uso                                                                                     |
+| ------------------------ | -------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Display (`font-display`) | Plus Jakarta Sans Variable                   | h1/h2, wordmark; **peso máx 500** (`font-medium`) + `tracking-tight` — disciplina Blite |
+| UI/Cuerpo (`font-sans`)  | Inter Variable                               | todo lo demás                                                                           |
+| Datos (`font-mono`)      | stack mono por defecto de Tailwind (sistema) | digests, IDs, timestamps, números de escalón, JSON                                      |
 
-Trío de una sola superfamilia (herencia científica IBM Research, español impecable, métricas
-compartidas). Self-hosted vía `@fontsource/*` — cero CDNs (gate air-gap, regla §4.9 del plan).
-
-| Rol                     | Familia        | Pesos           | Uso                                                                                                 |
-| ----------------------- | -------------- | --------------- | --------------------------------------------------------------------------------------------------- |
-| Display (`font-serif`)  | IBM Plex Serif | 600             | h1/h2 de vista, wordmark, cifras protagonistas. **Con moderación**: si todo es display, nada lo es. |
-| UI/Cuerpo (`font-sans`) | IBM Plex Sans  | 400 · 500 · 600 | todo lo demás — labels, párrafos, botones, nav                                                      |
-| Datos (`font-mono`)     | IBM Plex Mono  | 400 · 500       | digests, IDs, timestamps, números de escalón, JSON                                                  |
-
-Regla: **todo valor verificable va en mono** — es el ADN del producto (los digests son
-material de primera clase, se muestran contenidos, con copy, nunca como pared).
-
----
+Regla: **todo valor verificable va en mono** — los digests son material de primera
+clase, se muestran contenidos, con copy, nunca como pared.
 
 ## 4 · La escalera de verificación (elemento de firma)
 
 Los escalones (rungs) 1–7 son el concepto más propio del producto y su marca visual.
-Semántica (de `components/verification/rungs.ts`, módulo único — el duplicado
-GridSpike/StepInspector se eliminó en F1):
+Semántica (de `components/verification/rungs.ts`, módulo único):
 
 | Rung | Etiqueta        | Fuerza del ancla                  |
 | ---- | --------------- | --------------------------------- |
@@ -100,89 +86,79 @@ GridSpike/StepInspector se eliminó en F1):
 | 6    | detección       | ↓                                 |
 | 7    | humano          | la más débil (juicio humano)      |
 
-**Menor número = ancla más fuerte.** El nivel agregado de un run es el escalón **más débil**
-(número más alto) de su camino crítico.
+**Menor número = ancla más fuerte.** El nivel agregado de un run es el escalón **más
+débil** (número más alto) de su camino crítico.
 
-### El glifo `<RungLadder>`
-
-Siete barras verticales alineadas por la base, de altura **descendente** izquierda→derecha
-(rung 1 la más alta = la más fuerte). La barra del escalón alcanzado se pinta con el color del
-veredicto; las demás quedan en tinta al 25%. La silueta de escalera se reconoce a cualquier
-tamaño y la posición del destaque se lee de un vistazo sin leer texto.
-
-```
-█
-█ ▊
-█ ▊ ▓   ← rung 3 alcanzado (▓ = color del veredicto)
-█ ▊ ▓ ▂
-█ ▊ ▓ ▂ ▂ ▁ ▁
-1 2 3 4 5 6 7
-```
-
-- Geometría: barras de 3px, gap 2px, alturas 14→2px lineales (total ≈ 33×14 px en `size="md"`,
-  22×10 en `size="sm"` para badges).
-- Accesible: `role="img"` + `aria-label="escalón N de 7 — {etiqueta}"`.
-- API: `<RungLadder rung={3} verdict="pass" size="sm" />`.
-
-### El badge `<RungBadge>`
-
-Composición canónica glifo + texto que reemplaza todo `escalón {n} · {label}` manual:
-`<RungBadge rung={3} verdict="pass" />` → `[glifo] escalón 3 · verdad conocida` (número en
-mono). `detail` reemplaza la etiqueta por texto propio (p. ej. el `verifierId` en el
-certificado). Aparece idéntico en grafo, timeline, inspector, certificado y ablación — una
-sola forma de decir "confianza" en toda la plataforma.
-
----
+- **`<RungLadder>`**: siete barras alineadas por la base, altura descendente
+  izquierda→derecha (rung 1 la más alta). La barra alcanzada se pinta con el color del
+  veredicto (nivel status); las demás en tinta al 25%. `role="img"` +
+  `aria-label="escalón N de 7 — {etiqueta}"`. Tamaños `sm` (badges) y `md`.
+- **`<RungBadge>`**: composición canónica glifo + `escalón N · etiqueta` (número en
+  mono); `detail` reemplaza la etiqueta cuando el contexto aporta otra (p. ej.
+  `verifierId`). Es la única forma de decir "confianza" en toda la plataforma.
 
 ## 5 · Tokens semánticos (contrato anti-retrabajo)
 
 Definidos en `src/index.css` en `:root` (light) + `[data-theme='dark']`, registrados en
-`@theme inline`. Los que toda sesión debe conocer:
+`@theme inline`:
 
-- **shadcn estándar:** `background/foreground`, `card`, `popover`, `primary`, `secondary`,
-  `muted`, `accent`, `destructive`, `border`, `input`, `ring` (+ sus `-foreground`).
-- **Dominio:** `--color-verdict-pass`, `--color-verdict-fail`, `--color-verdict-inconclusive`,
-  `--color-verdict-neutral`, `--color-island-a`, `--color-island-b`, `--color-brand`.
-- **Charts:** `--color-chart-1..5` (1=ámbar, 2=cian isla A, 3=magenta isla B, 4=verde,
-  5=neutro). Los charts SIEMPRE toman color de acá.
+- **shadcn estándar:** `background/foreground`, `card`, `popover`, `primary`,
+  `secondary`, `muted`, `accent`, `destructive`, `border`, `input`, `ring`.
+- **Marca:** `--color-brand`.
+- **Status:** `--color-status-{info,success,warning,danger}` y los veredictos
+  `--color-verdict-{pass,fail,inconclusive,neutral}` que los consumen.
+- **Datos:** `--color-chart-1..5`, `--color-island-a/b`.
 
 Reglas de consumo:
 
-1. Componentes React/DOM/SVG: clases Tailwind (`text-verdict-pass`, `bg-island-a/15`…) o
+1. Componentes React/DOM/SVG: clases Tailwind (`text-verdict-pass`, `bg-brand/10`…) o
    `var(--color-…)` en `style` — ambos re-teman gratis al cambiar `data-theme`.
-2. Lienzos que no leen CSS (cytoscape): `readToken('--color-island-a')` de `src/lib/tokens.ts`
-   y re-aplicar estilo cuando cambia el tema (el hook `useTheme()` expone el valor reactivo).
-3. Los badges de veredicto usan tinte al 12–15% + texto al 100% del token (AA garantizado por
-   los valores elegidos en ambos temas). `inconclusive` SIEMPRE lleva `border-dashed`.
-
----
+2. Lienzos que no leen CSS (cytoscape): `readToken('--color-island-a')` de
+   `src/lib/tokens.ts` (resuelve a rgba por píxel — el parser de cytoscape no entiende
+   oklch) y re-aplicar al cambiar el tema (`useTheme()`).
+3. Badges de estado: tinte al 10–15% + texto al 100% del token. `inconclusive` SIEMPRE
+   `border-dashed`.
 
 ## 6 · Theming dual
 
-- `@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *))` en `index.css`
-  — la variante `dark:` de Tailwind sigue al atributo, no al sistema operativo.
-- `data-theme` vive en `<html>`. **Default: dark** (identidad). Preferencia persistida en
-  `localStorage['chimera-theme']`; un script inline en `index.html` la aplica antes del primer
-  paint (sin flash). `color-scheme` acompaña para que form controls y scrollbars nativos
-  concuerden.
+- `@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *))` — la
+  variante `dark:` sigue al atributo, no al sistema operativo.
+- `data-theme` vive en `<html>`. **Default: dark** (decisión del plan). Preferencia en
+  `localStorage['chimera-theme']`; script inline en `index.html` la aplica antes del
+  primer paint. `color-scheme` acompaña (form controls y scrollbars nativos).
 - `ThemeProvider`/`useTheme()` en `src/lib/theme.tsx`; el toggle vive en el topbar.
 
 ## 7 · Shell y marca
 
-- **Topbar** (única navegación): logomark + wordmark "Chimera **Studio**" (serif + mono
-  apagado), tabs variante línea con subrayado ámbar en la activa, toggle de tema a la derecha.
-  Sin columna muerta: el contenido ocupa todo el ancho bajo el topbar.
-- **Logomark:** la escalera reducida a tres barras descendentes en Ámbar de sodio sobre Noche
-  de maniobra (esquinas 22%). Mismo dibujo en favicon y topbar — la marca ES el elemento de
-  firma.
+- **Topbar** (única navegación): logomark + wordmark "Chimera **STUDIO**" (display 500 +
+  mono apagado), tabs variante línea con subrayado turquesa en la activa, toggle de tema
+  a la derecha. El contenido ocupa todo el ancho bajo el topbar.
+- **Logomark:** la escalera reducida a tres barras descendentes en turquesa
+  (`--color-brand` en la UI; `#2DD4BF` sobre `#171717` en el favicon). La marca ES el
+  elemento de firma.
 
 ## 8 · Voz
 
-Ustedeo siempre ("Seleccione", "presione"). Labels humanos primero; los nombres crudos del
-esquema (`run_id`, `actorId`) solo en el nivel técnico del progressive disclosure (regla §4.5
-del plan). Los errores dicen qué pasó y cómo seguir; los estados vacíos invitan a actuar.
+Ustedeo siempre ("Seleccione", "presione"). Labels humanos primero; los nombres crudos
+del esquema (`run_id`, `actorId`) solo en el nivel técnico del progressive disclosure
+(regla §4.5 del plan). Los errores dicen qué pasó y cómo seguir; los estados vacíos
+invitan a actuar.
 
 ## 9 · Piso de calidad (no negociable, sin anunciarlo)
 
-Foco visible en todo interactivo (ring ámbar), `prefers-reduced-motion` respetado globalmente,
-contraste AA en texto de ambos temas, jerarquía de headings por vista (se completa en F2/F7).
+Foco visible en todo interactivo (ring turquesa), `prefers-reduced-motion` respetado
+globalmente, contraste AA en texto de ambos temas, jerarquía de headings por vista (se
+completa en F2/F7).
+
+---
+
+## Registro de decisiones
+
+- **2026-07-08 (v2):** se descarta la dirección v1 "sala de control nocturna" (serif +
+  ámbar) por feedback de Dylan — se sentía pobre/incompleta. Se adopta el design system
+  de la landing de Blite como chasis + turquesa como única voz. Modelo de paleta en tres
+  niveles (marca / status / datos) con la regla paleta-primero: los elementos consumen
+  la paleta, nunca la definen. STEAM (5 acentos) evaluado y descartado: diluye la
+  identidad sobre un chasis acromático.
+- **2026-07-08 (v1):** `inconclusive` con borde discontinuo (sin señal ≠ peligro) —
+  se mantiene en v2. Escalera de rungs como firma — se mantiene.

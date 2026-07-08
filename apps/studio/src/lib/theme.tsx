@@ -1,4 +1,11 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useState
+} from 'react';
 
 /**
  * Tema dual del Studio (DESIGN.md §6): data-theme en <html>, default dark,
@@ -35,7 +42,13 @@ export function ThemeProvider({
 }): React.ReactElement {
   const [theme, setTheme] = useState<Theme>(readStoredTheme);
 
-  useEffect(() => {
+  // useLayoutEffect (no useEffect): los efectos de React corren hijo→padre,
+  // así que con un efecto pasivo los consumidores de useTheme() que leen
+  // tokens computados (p. ej. GridSpike/readToken) se ejecutarían ANTES del
+  // flip de data-theme y pintarían con los valores del tema viejo. Los
+  // layout effects del padre corren antes que los efectos pasivos de todo
+  // el árbol, garantizando que el atributo ya está aplicado.
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     try {
       window.localStorage.setItem(STORAGE_KEY, theme);

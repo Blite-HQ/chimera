@@ -84,6 +84,14 @@ function buildCyStyle(): cytoscape.StylesheetJson {
   const generatorBorderColor = readToken('--color-foreground');
   const edgeColor = readToken('--color-muted-foreground');
   const cutEdgeColor = readToken('--color-verdict-fail');
+  // Colores por isla resueltos EAGER, todos en este mismo instante:
+  // cytoscape evalúa las funciones de estilo en su propio frame de render,
+  // que puede caer a caballo del flip de data-theme — leerlos lazy pintaba
+  // nodos con temas mezclados (hallazgo de la verificación MCP).
+  const fallbackFill = readToken('--color-verdict-neutral');
+  const islandFill = new Map(
+    PARTITION.islands.map(island => [island.id, readToken(islandToken(island.id))])
+  );
 
   return [
     {
@@ -98,7 +106,7 @@ function buildCyStyle(): cytoscape.StylesheetJson {
         'font-size': 13,
         'font-weight': 'bold',
         'background-color': (ele: cytoscape.NodeSingular): string =>
-          readToken(islandToken(ele.data('islandId') as string))
+          islandFill.get(ele.data('islandId') as string) ?? fallbackFill
       }
     },
     {
@@ -248,7 +256,7 @@ export default function GridSpike(): React.ReactElement {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <header className="mb-4">
-        <h1 className="font-serif text-xl font-semibold text-foreground">
+        <h1 className="font-display text-xl font-medium tracking-tight text-foreground">
           Red IEEE-14 · partición verificada
         </h1>
         <p className="text-sm text-muted-foreground">
