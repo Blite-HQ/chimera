@@ -1,0 +1,19 @@
+# VerificationPolicy — dato declarativo versionado, NO código.
+# docs/contract-freeze.md SS6 / knowledge/trust/05-verificacion-adaptativa-politica-tradeoffs.md SS1.2.
+# Valida contra engine/src/blite/verification/policy.py::VerificationPolicy
+# (tests/unit/verification/test_verification_policy.py lo carga byte a byte).
+policy_id: chimera-default
+version: 0.1.0
+rules:
+  - match: { side_effects: pure, claim_type: solution }
+    min_rung: 1 # el resultado final del demo se ancla al optimo exacto
+    required_anchors: [solver, execution]
+    on_inconclusive: mark
+  - match: { side_effects: pure, claim_type: intermediate }
+    min_rung: 4
+    on_inconclusive: mark
+  - match: { side_effects: irreversible-external }
+    min_rung: 1
+    required_anchors: [solver, execution]
+    escalation: human # rung 7 en el borde irreversible
+    on_inconclusive: hold_run

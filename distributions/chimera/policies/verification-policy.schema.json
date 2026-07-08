@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "MatchCondition": {
+      "description": "What a rule applies to. Unset fields match any value.",
+      "properties": {
+        "side_effects": {
+          "anyOf": [
+            {
+              "enum": ["pure", "reversible-external", "irreversible-external"],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Side Effects"
+        },
+        "claim_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Type"
+        }
+      },
+      "title": "MatchCondition",
+      "type": "object"
+    },
+    "VerificationRule": {
+      "description": "One row of the policy: for claims matching `match`, require this much.",
+      "properties": {
+        "match": {
+          "$ref": "#/$defs/MatchCondition"
+        },
+        "min_rung": {
+          "title": "Min Rung",
+          "type": "integer"
+        },
+        "required_anchors": {
+          "default": [],
+          "items": {
+            "enum": ["solver", "execution", "dataset", "rule", "human"],
+            "type": "string"
+          },
+          "title": "Required Anchors",
+          "type": "array"
+        },
+        "escalation": {
+          "anyOf": [
+            {
+              "const": "human",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Escalation"
+        },
+        "on_inconclusive": {
+          "enum": ["mark", "escalate_human", "hold_run"],
+          "title": "On Inconclusive",
+          "type": "string"
+        }
+      },
+      "required": ["match", "min_rung", "on_inconclusive"],
+      "title": "VerificationRule",
+      "type": "object"
+    }
+  },
+  "description": "A versioned, auditable set of verification rules.",
+  "properties": {
+    "policy_id": {
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/VerificationRule"
+      },
+      "title": "Rules",
+      "type": "array"
+    }
+  },
+  "required": ["policy_id", "version", "rules"],
+  "title": "VerificationPolicy",
+  "type": "object"
+}
