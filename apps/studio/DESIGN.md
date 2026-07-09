@@ -50,6 +50,10 @@ Los **veredictos** consumen este nivel: `pass` → success, `fail` → danger,
 `inconclusive`/`neutral` → neutro. `inconclusive` SIEMPRE lleva `border-dashed`
 (sin señal, no peligro — el patrón comunica, no solo el matiz).
 
+Los **Alert** también consumen este nivel: `components/ui/alert.tsx` (vendoreado de la
+landing, que solo trae default/destructive) extendido con `info/success/warning` — mismo
+patrón flat (bg-card + texto/ícono en el color del status), sin tintes de fondo.
+
 ### Nivel 3 — Escala de datos (charts/categóricos)
 
 `chart-1..5` = teal / violet / sky / amber / neutral (400 dark, 600 light). Este nivel
