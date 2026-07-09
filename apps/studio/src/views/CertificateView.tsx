@@ -13,6 +13,7 @@
  * public/third-party trust root.
  */
 
+import { Download, Eye, EyeOff } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -80,9 +81,11 @@ export default function CertificateView({
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowRaw(current => !current)}>
+            {showRaw ? <EyeOff data-icon="inline-start" /> : <Eye data-icon="inline-start" />}
             {showRaw ? 'Ocultar envelope crudo' : 'Ver envelope crudo'}
           </Button>
           <Button variant="outline" size="sm" onClick={onDownload}>
+            <Download data-icon="inline-start" />
             Descargar JSON
           </Button>
         </div>

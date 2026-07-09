@@ -119,7 +119,10 @@ el press de botón es `active:translate-y-px`; overlays Radix 100–200ms. No se
 transform/tamaño en contenido.
 
 **Íconos:** `size-4` (16px) inline por defecto — Button/Badge/Tabs lo fuerzan vía CSS;
-`size-6` para el logo; `size-3` dentro de badges.
+`size-6` para el logo; `size-3` dentro de badges. En botones: icon+label marca el ícono
+con `data-icon="inline-start|end"` (ajusta el padding del Button); los botones
+**solo-ícono** (`size="icon"/"icon-sm"`) llevan SIEMPRE `aria-label` + `title` — se
+reservan para acciones universalmente reconocibles (play/pausa, centrar, tema).
 
 **Dimensiones de componentes complejos:** múltiplos de 2 sobre la escala default
 (sheet `w-64`, avatares 24/32px, `min-h-32/64/128`). En el Studio: asides `w-80`/`w-96`,
