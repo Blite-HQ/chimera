@@ -51,8 +51,10 @@ Los **veredictos** consumen este nivel: `pass` → success, `fail` → danger,
 (sin señal, no peligro — el patrón comunica, no solo el matiz).
 
 Los **Alert** también consumen este nivel: `components/ui/alert.tsx` (vendoreado de la
-landing, que solo trae default/destructive) extendido con `info/success/warning` — mismo
-patrón flat (bg-card + texto/ícono en el color del status), sin tintes de fondo.
+landing, que solo trae default/destructive) extendido con `info/success/warning`. A
+diferencia del patrón bg-card de la landing, las variantes de status llevan **el tinte
+del propio status de fondo (10%) y borde (40%)** — decisión de Dylan, mismo lenguaje que
+los badges de veredicto (tinte + texto al 100% del token).
 
 ### Nivel 3 — Escala de datos (charts/categóricos)
 
