@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-    full = ['numpy>=1.26', 'scipy>=1.13', 'pandas>=2.0']
+    full = ['numpy>=1.26', 'scipy>=1.18.0', 'pandas>=2.0']
 
 [project.entry-points."blite.capabilities"]
 "blite.numeric.matrix_ops" = "blite_cap_numeric:MatrixOps"
