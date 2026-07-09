@@ -14,6 +14,7 @@
  * (see usePlaybackReveal.ts for the actual simulation).
  */
 
+import { Pause, Play, RotateCcw } from 'lucide-react';
 import React from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -109,6 +110,15 @@ const PLAYBACK_BUTTON_LABELS: Readonly<Record<PlaybackControls['state'], string>
   finished: 'Repetir'
 };
 
+// Ícono-solo (DESIGN.md §3b): el estado ya se narra en el label accesible
+// y el texto de estado a la derecha del slider.
+const PLAYBACK_ICONS: Readonly<Record<PlaybackControls['state'], React.ReactElement>> = {
+  idle: <Play />,
+  playing: <Pause />,
+  paused: <Play />,
+  finished: <RotateCcw />
+};
+
 const PLAYBACK_STATUS_LABELS: Readonly<Record<PlaybackControls['state'], string>> = {
   idle: 'sin iniciar',
   playing: 'reproduciendo',
@@ -127,10 +137,12 @@ function PlaybackBar({
     <div className="flex items-center gap-4 rounded-lg border bg-card px-4 py-2">
       <Button
         variant="outline"
-        size="sm"
+        size="icon-sm"
         onClick={playback.state === 'playing' ? playback.onPause : playback.onPlay}
+        aria-label={PLAYBACK_BUTTON_LABELS[playback.state]}
+        title={PLAYBACK_BUTTON_LABELS[playback.state]}
       >
-        {PLAYBACK_BUTTON_LABELS[playback.state]}
+        {PLAYBACK_ICONS[playback.state]}
       </Button>
       <input
         type="range"

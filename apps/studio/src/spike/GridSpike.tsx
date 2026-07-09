@@ -12,6 +12,7 @@
  */
 
 import cytoscape from 'cytoscape';
+import { Crosshair } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -300,11 +301,13 @@ export default function GridSpike(): React.ReactElement {
             ))}
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={handleCenter}
+            aria-label="Centrar el diagrama"
+            title="Centrar el diagrama"
             className="absolute top-2 right-2 z-10 bg-background/90 backdrop-blur"
           >
-            Centrar
+            <Crosshair />
           </Button>
           <div className="absolute bottom-2 left-2 z-10 rounded-md bg-background/80 px-2 py-1 text-xs text-muted-foreground backdrop-blur">
             ▢ generador · ─ ─ arista cortada

@@ -1,3 +1,4 @@
+import { Braces, LayoutList, List, ListTree } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
@@ -42,10 +43,12 @@ const TABS: readonly { readonly id: TabId; readonly label: string }[] = [
 
 function ToggleButton({
   label,
+  icon,
   isActive,
   onClick
 }: {
   readonly label: string;
+  readonly icon: React.ReactNode;
   readonly isActive: boolean;
   readonly onClick: () => void;
 }): React.ReactElement {
@@ -56,6 +59,7 @@ function ToggleButton({
       onClick={onClick}
       aria-pressed={isActive}
     >
+      {icon}
       {label}
     </Button>
   );
@@ -92,11 +96,13 @@ export default function App(): React.ReactElement {
               <div className="mb-2 flex justify-end gap-1">
                 <ToggleButton
                   label="árbol"
+                  icon={<ListTree data-icon="inline-start" />}
                   isActive={timelineViewMode === 'tree'}
                   onClick={() => setTimelineViewMode('tree')}
                 />
                 <ToggleButton
                   label="timeline"
+                  icon={<List data-icon="inline-start" />}
                   isActive={timelineViewMode === 'timeline'}
                   onClick={() => setTimelineViewMode('timeline')}
                 />
@@ -135,11 +141,13 @@ export default function App(): React.ReactElement {
             <div className="mb-2 flex justify-end gap-1">
               <ToggleButton
                 label="compacto"
+                icon={<LayoutList data-icon="inline-start" />}
                 isActive={provenanceViewMode === 'compact'}
                 onClick={() => setProvenanceViewMode('compact')}
               />
               <ToggleButton
                 label="crudo"
+                icon={<Braces data-icon="inline-start" />}
                 isActive={provenanceViewMode === 'raw'}
                 onClick={() => setProvenanceViewMode('raw')}
               />

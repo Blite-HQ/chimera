@@ -15,10 +15,18 @@
  * further to fetch (cursor = global_seq, notify-then-catchup, nota 01).
  */
 
+import { ChevronRight } from 'lucide-react';
 import React from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 import { groupByStep } from './RunTimeline';
 import type { ProjectedEvent, ProvenanceFilters } from './types';
@@ -51,6 +59,44 @@ function uniqueSorted(values: readonly string[]): readonly string[] {
   return Array.from(new Set(values)).sort();
 }
 
+// Radix Select no admite value="" en un item — sentinela para "sin filtro"
+// que no puede colisionar con un type/actorId real del esquema.
+const ALL_VALUE = '__todos__';
+
+function FilterSelect({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  readonly label: string;
+  readonly value: string | undefined;
+  readonly options: readonly string[];
+  readonly onChange: (value: string | undefined) => void;
+}): React.ReactElement {
+  return (
+    <div className="flex items-center gap-2 text-muted-foreground">
+      {label}
+      <Select
+        value={value ?? ALL_VALUE}
+        onValueChange={next => onChange(next === ALL_VALUE ? undefined : next)}
+      >
+        <SelectTrigger size="sm" aria-label={`Filtrar por ${label}`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_VALUE}>todos</SelectItem>
+          {options.map(option => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function FilterBar({
   events,
   filters,
@@ -65,38 +111,18 @@ function FilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card px-4 py-2 text-xs">
-      <label className="flex items-center gap-2 text-muted-foreground">
-        type
-        <select
-          value={filters.type ?? ''}
-          onChange={event => onFilterChange({ ...filters, type: event.target.value || undefined })}
-          className="focus-ring h-8 rounded-lg border bg-background px-2 text-sm text-foreground"
-        >
-          <option value="">todos</option>
-          {types.map(type => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex items-center gap-2 text-muted-foreground">
-        actorId
-        <select
-          value={filters.actorId ?? ''}
-          onChange={event =>
-            onFilterChange({ ...filters, actorId: event.target.value || undefined })
-          }
-          className="focus-ring h-8 rounded-lg border bg-background px-2 text-sm text-foreground"
-        >
-          <option value="">todos</option>
-          {actorIds.map(actorId => (
-            <option key={actorId} value={actorId}>
-              {actorId}
-            </option>
-          ))}
-        </select>
-      </label>
+      <FilterSelect
+        label="type"
+        value={filters.type}
+        options={types}
+        onChange={type => onFilterChange({ ...filters, type })}
+      />
+      <FilterSelect
+        label="actorId"
+        value={filters.actorId}
+        options={actorIds}
+        onChange={actorId => onFilterChange({ ...filters, actorId })}
+      />
     </div>
   );
 }
@@ -169,6 +195,7 @@ export default function ProvenanceExplorer({
           onClick={() => onPageChange(page.cursor + page.pageSize)}
         >
           Página siguiente
+          <ChevronRight data-icon="inline-end" />
         </Button>
       </div>
     </div>
