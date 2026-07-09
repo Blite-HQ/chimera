@@ -5,24 +5,24 @@ import { cn } from '@/lib/utils';
 
 /**
  * Alert — vendoreado de la landing de Blite y extendido con las variantes
- * del nivel de status (DESIGN.md §2 nivel 2): mismo patrón flat de la
- * landing (bg-card + texto/ícono en el color del status), sin tintes de
- * fondo ni sombras. La landing solo trae default/destructive; info/
- * success/warning consumen los tokens status-*.
+ * del nivel de status (DESIGN.md §2 nivel 2). Decisión de Dylan
+ * (2026-07-08): a diferencia del patrón bg-card de la landing, las
+ * variantes de status llevan el tinte del propio status de fondo (10%) y
+ * borde (40%) — el mismo lenguaje que los badges de veredicto.
  */
 const alertVariants = cva(
   "group/alert relative grid w-full gap-1 rounded-lg border px-2 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-16 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: 'bg-card text-card-foreground',
-        info: 'bg-card text-status-info *:data-[slot=alert-description]:text-status-info/90 *:[svg]:text-current',
+        default: 'bg-muted/50 text-foreground',
+        info: 'border-status-info/40 bg-status-info/10 text-status-info *:data-[slot=alert-description]:text-status-info/90 *:[svg]:text-current',
         success:
-          'bg-card text-status-success *:data-[slot=alert-description]:text-status-success/90 *:[svg]:text-current',
+          'border-status-success/40 bg-status-success/10 text-status-success *:data-[slot=alert-description]:text-status-success/90 *:[svg]:text-current',
         warning:
-          'bg-card text-status-warning *:data-[slot=alert-description]:text-status-warning/90 *:[svg]:text-current',
+          'border-status-warning/40 bg-status-warning/10 text-status-warning *:data-[slot=alert-description]:text-status-warning/90 *:[svg]:text-current',
         destructive:
-          'bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current'
+          'border-destructive/40 bg-destructive/10 text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current'
       }
     },
     defaultVariants: {
