@@ -12,10 +12,9 @@
  */
 
 import cytoscape from 'cytoscape';
-import { CircleAlert, CircleCheck, Crosshair, Info, TriangleAlert } from 'lucide-react';
+import { Crosshair } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -383,52 +382,6 @@ export default function GridSpike(): React.ReactElement {
           </Card>
         </aside>
       </div>
-
-      {/* Muestrario de estados (nivel 2 de la paleta, DESIGN.md §2) —
-          pedido por Dylan para calibrar los colores de status en ambos
-          temas; retirar cuando el sistema quede validado. */}
-      <section aria-label="Muestrario de estados" className="mt-8 flex flex-col gap-2">
-        <p className="text-xs tracking-wider text-muted-foreground uppercase">
-          Estados del sistema · muestrario
-        </p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Alert>
-            <Info />
-            <AlertTitle>Modo demostración</AlertTitle>
-            <AlertDescription>
-              Este run corre sobre fixtures locales; no hay egress fuera del gateway.
-            </AlertDescription>
-          </Alert>
-          <Alert variant="info">
-            <Info />
-            <AlertTitle>Nuevo evento en el stream</AlertTitle>
-            <AlertDescription>
-              El run recibió el evento 14 · verification.completed.
-            </AlertDescription>
-          </Alert>
-          <Alert variant="success">
-            <CircleCheck />
-            <AlertTitle>Verificación completada</AlertTitle>
-            <AlertDescription>
-              Las 3 anclas confirmaron la partición; escalón agregado 3.
-            </AlertDescription>
-          </Alert>
-          <Alert variant="warning">
-            <TriangleAlert />
-            <AlertTitle>Verificación degradada</AlertTitle>
-            <AlertDescription>
-              Un ancla no respondió a tiempo; el escalón agregado puede bajar.
-            </AlertDescription>
-          </Alert>
-          <Alert variant="destructive">
-            <CircleAlert />
-            <AlertTitle>Ancla en fallo</AlertTitle>
-            <AlertDescription>
-              pandapower-powerflow reportó divergencia del flujo en la Isla B.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </section>
     </div>
   );
 }
