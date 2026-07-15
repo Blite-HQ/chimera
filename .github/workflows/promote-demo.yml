@@ -1,0 +1,37 @@
+name: Promote to demo
+
+# Prueba el MECANISMO de promoción (environments + gate), sin deploy real todavía —
+# knowledge/infra/03 sigue como diseño pendiente de ratificación de Geovanni. Reemplazar
+# los pasos "TODO" por el deploy real cuando esa nota se ratifique.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: promote-demo
+  cancel-in-progress: false
+
+jobs:
+  dev:
+    name: Deploy — dev
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Placeholder — dev
+        run: |
+          echo "TODO: reemplazar con el deploy real de knowledge/infra/03 una vez ratificado."
+          echo "main@${{ github.sha }} listo para dev." >> "$GITHUB_STEP_SUMMARY"
+
+  demo:
+    name: Promote — demo
+    needs: dev
+    runs-on: ubuntu-latest
+    environment: demo
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Placeholder — demo
+        run: |
+          echo "TODO: reemplazar con el deploy real de knowledge/infra/03 una vez ratificado."
+          echo "main@${{ github.sha }} promovido a demo (gate real pendiente de upgrade de plan)." >> "$GITHUB_STEP_SUMMARY"
