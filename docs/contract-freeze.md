@@ -94,6 +94,24 @@ No es tabla nueva: `override.applied` es una fila más de `events` (§2) como cu
 
 ---
 
+## 11 · `evidence` — campos aditivos del plano cuántico **[confianza / ciencia]** — quantum/03 y quantum/04
+
+> Agregado en la consolidación del knowledge base (2026-07-14) para que estos campos dejen de ser
+> contratos fantasma; **pendiente ratificación de Sebas** (autor de las notas que los proponen).
+
+Campos **aditivos** a la unión discriminada de `evidence` (§4) — nunca debilitan lo existente:
+
+- `evidence.circuit_digest: str` — SHA-256 del OpenQASM 3 exacto del circuito ejecutado (`qasm3.dumps` → hash; coherente con la Regla 1 del anexo de canonicalización). El circuito deja de ser anécdota y se vuelve auditable (quantum/03 §1).
+- `evidence.differential.approximation_ratio: float` — `r = C(candidato)/C_óptimo`; con CP-SAT en `OPTIMAL` el denominador es exacto ⇒ r es un hecho, no una estimación (quantum/04 §1).
+- `evidence.se_estimado: float` — error estándar de la estimación por shots (quantum/04 §2).
+- `evidence.exact: bool` — distingue valor por statevector (exacto) de valor por shots (muestral) (quantum/04).
+- `evidence.seeds.*` — semillas del proponente (primitive, optimizador, numpy) para replay — el equivalente proponente del `params_digest` del verificador (quantum/04 §8).
+- Detalle de `GuardrailSignal` para `self-consistency` (el consenso rung 5 es señal, jamás attestation) — usa la convención `{etapa}.{mecanismo}` de la nota 16; no cambia el contrato de §5.
+
+Ninguno modifica formas existentes; entran como claves opcionales por método.
+
+---
+
 ## Dependencias nuevas que este freeze implica (todas verificadas 2026-07-02/03)
 
 | Dependencia                          | Licencia                              | Rol                                    |
@@ -116,5 +134,5 @@ No es tabla nueva: `override.applied` es una fila más de `events` (§2) como cu
 ## Para cerrar el freeze el viernes
 
 1. Merge con las correcciones de Steven a `Capability`/`GatewayStage`/`Run`/`ModelServer` (los puntos **[frontera]** de arriba son la lista de coordinación).
-2. Confirmar con Sebas el formato del corpus IEEE (`dataset_id`/versionado — lo consume el ancla rung 3).
+2. Confirmar con Sebas el formato del corpus IEEE (`dataset_id`/versionado — lo consume el ancla rung 3). **Avance (consolidación 2026-07-14):** el corpus v0 ya existe en `knowledge/islanding/corpus/` (6 instancias con óptimos probados, doble ancla, digests SHA-256) — falta su ratificación y el mapeo `dataset_id`↔digest.
 3. Traducir este doc a los modelos Pydantic reales en la sesión de construcción (§5.3 del plan maestro) — TDD, gates verdes.
