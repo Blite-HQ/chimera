@@ -15,6 +15,13 @@ This installs: Python workspace (uv), Node deps (pnpm), Husky git hooks, and the
 - 1 CODEOWNERS review required.
 - No force-push to `main`.
 
+## Promoción a demo (interino, hasta que exista el reviewer-gate real)
+
+Antes de correr `promote-demo` manualmente para el `demo` del hackathon, avisar en el grupo
+del equipo y esperar un OK de alguien más. Esto es convención, no está aplicado
+técnicamente todavía (pendiente del upgrade de plan de la org — ver
+`scripts/setup-branch-protection.sh`).
+
 ## Commit messages (Conventional Commits)
 
 ```
