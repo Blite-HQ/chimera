@@ -31,8 +31,8 @@
       "prettier --write"
     ],
     "*.md": [
-      "prettier --write",
-      "markdownlint --fix"
+      "markdownlint --fix",
+      "prettier --write"
     ],
     "apps/studio/**/*.{ts,tsx,js,jsx}": [
       "pnpm -C apps/studio exec eslint --fix",
@@ -46,44 +46,5 @@
     "tabWidth": 2,
     "printWidth": 100,
     "arrowParens": "avoid"
-  },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ],
-    "rules": {
-      "type-enum": [
-        2,
-        "always",
-        [
-          "feat",
-          "fix",
-          "docs",
-          "style",
-          "refactor",
-          "perf",
-          "test",
-          "chore",
-          "ci",
-          "build",
-          "revert"
-        ]
-      ],
-      "subject-case": [
-        2,
-        "never",
-        [
-          "sentence-case",
-          "start-case",
-          "pascal-case",
-          "upper-case"
-        ]
-      ],
-      "header-max-length": [
-        2,
-        "always",
-        100
-      ]
-    }
   }
 }
