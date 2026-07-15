@@ -1,6 +1,6 @@
 # KB2-02 — Recetario de formulación por reto: del problema al circuito, con la matemática completa
 
-**Rol:** las derivaciones paso a paso que convierten cada reto en algo ejecutable. El lado *proponente* (cuántico/heurístico); el lado *verificador* ya está especificado en las notas 10–12 y NO se repite aquí — solo se referencia.
+**Rol:** las derivaciones paso a paso que convierten cada reto en algo ejecutable. El lado _proponente_ (cuántico/heurístico); el lado _verificador_ ya está especificado en las notas 10–12 y NO se repite aquí — solo se referencia.
 **Convención:** se reutilizan los vectores de prueba de la nota 10 (G1–G6) como ejemplos, para que la formulación cuántica y el verificador compartan la misma verdad.
 **Prerrequisito:** KB2-01 (fundamentos).
 
@@ -42,7 +42,7 @@ Verificación puntual: x=[0,0,1] ⇒ xᵀQx = Q₂₂ = 5 ✓ ; x=[0,1,1] ⇒ Q�
 
 Sea dᵢ la demanda (MW) del nodo i, D = Σdᵢ, y τ la tolerancia de desbalance.
 
-**Ruta A — no codificar, verificar/reparar (la que CHIMERA ya adopta):** el QUBO queda Max-Cut puro; el balance y la conectividad los chequea el `ExecutionVerifier` post-hoc (nota 12) y, si hace falta, se repara clásicamente. Es el patrón validado por la literatura de islanding con QAOA (REGRID, en KB-fuentes §1.2). Ventaja: circuito mínimo. Costo: el muestreador puede proponer soluciones infactibles (y eso es *información*, no vergüenza — queda en la traza).
+**Ruta A — no codificar, verificar/reparar (la que CHIMERA ya adopta):** el QUBO queda Max-Cut puro; el balance y la conectividad los chequea el `ExecutionVerifier` post-hoc (nota 12) y, si hace falta, se repara clásicamente. Es el patrón validado por la literatura de islanding con QAOA (REGRID, en KB-fuentes §1.2). Ventaja: circuito mínimo. Costo: el muestreador puede proponer soluciones infactibles (y eso es _información_, no vergüenza — queda en la traza).
 
 **Ruta B — codificar el balance como penalización** (para comparar en la ablación, o si el jurado pregunta "¿y las restricciones dónde están?"):
 
@@ -66,7 +66,7 @@ En moneda Ising queda aún más limpio (con x=(1−s)/2): la penalización = (λ
 3. **Cota de cordura:** λ demasiado grande aplana el paisaje (el espectro lo domina la penalización y QAOA deja de "ver" el corte). Guía práctica del tutorial de QUBO de Glover et al. (arXiv:1811.11538): penalización del orden de 0.75–1.5× la magnitud estimada del objetivo, y ajuste empírico: resolver → correr el constraint checker → si infactible, λ×2; si factible con margen, probar λ/2.
 4. **λ es dato, no código:** vive en `knowledge/islanding/` con digest (corrección #4 / nota 11) y se registra en la evidencia — sin eso, dos corridas con λ distinto no son comparables.
 
-**Conectividad de islas — por qué NO se codifica:** la conexidad es una propiedad *global* del subgrafo; expresarla en un QUBO exige variables auxiliares de flujo o de árbol generador (O(n·|E|) qubits extra — Lucas, arXiv:1302.5843, ya en KB-fuentes). A escala NISQ nadie lo hace: se verifica post-hoc (chequeo `island_connectivity` de la nota 12). Tener esta razón matemática a mano evita que alguien "mejore" el QUBO agregando 40 qubits.
+**Conectividad de islas — por qué NO se codifica:** la conexidad es una propiedad _global_ del subgrafo; expresarla en un QUBO exige variables auxiliares de flujo o de árbol generador (O(n·|E|) qubits extra — Lucas, arXiv:1302.5843, ya en KB-fuentes). A escala NISQ nadie lo hace: se verifica post-hoc (chequeo `island_connectivity` de la nota 12). Tener esta razón matemática a mano evita que alguien "mejore" el QUBO agregando 40 qubits.
 
 ### 1.4 QUBO → Ising → Hamiltoniano (con el ejemplo G6 cerrado)
 
@@ -180,11 +180,11 @@ H = Σ_pq h_pq · a†_p a_q  +  ½ Σ_pqrs g_pqrs · a†_p a†_q a_r a_s   (+
 
 **Base STO-3G (mínima) y presupuesto de qubits (JW: qubits = spin-orbitales = 2 × orbitales espaciales):**
 
-| Molécula | Orbitales espaciales | Qubits (JW) | Qubits (Parity + reducción) |
-| --- | --- | --- | --- |
-| H₂ | 2 (1s de cada H) | 4 | **2** |
-| LiH | 6 (Li: 1s,2s,2p×3 + H: 1s) | 12 | 10 (menos con active space) |
-| BeH₂ | 7 | 14 | 12 |
+| Molécula | Orbitales espaciales       | Qubits (JW) | Qubits (Parity + reducción) |
+| -------- | -------------------------- | ----------- | --------------------------- |
+| H₂       | 2 (1s de cada H)           | 4           | **2**                       |
+| LiH      | 6 (Li: 1s,2s,2p×3 + H: 1s) | 12          | 10 (menos con active space) |
+| BeH₂     | 7                          | 14          | 12                          |
 
 ### 3.2 Mapeo fermión → qubit
 
@@ -229,10 +229,10 @@ Unidades y precisión química (tabla completa en KB2-04 §7): trabajar TODO en 
 
 ## 4 · Mapa de conexión con el resto del corpus
 
-| Este doc produce | Lo consume |
-| --- | --- |
-| Q, H_C, circuito, claim del Reto 1 | `ExactSolverVerifier` (nota 10) y `ExecutionVerifier` (nota 12) los verifican |
-| λ, features seleccionados, scaler, seeds | `knowledge/` versionado + campos de `evidence` (notas 03/11) |
-| decodificación canónica x₀=0 | estadísticas de consenso rung 5 (KB2-04 §4) y corpus rung 3 |
-| anclas FCI/NumPy del Reto 3 | mismo patrón de diversidad de anclas de la nota 04 §1.1 |
-| conteos de circuitos/presupuestos | planificación del demo + `runtime_ms` esperado |
+| Este doc produce                         | Lo consume                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------- |
+| Q, H_C, circuito, claim del Reto 1       | `ExactSolverVerifier` (nota 10) y `ExecutionVerifier` (nota 12) los verifican |
+| λ, features seleccionados, scaler, seeds | `knowledge/` versionado + campos de `evidence` (notas 03/11)                  |
+| decodificación canónica x₀=0             | estadísticas de consenso rung 5 (KB2-04 §4) y corpus rung 3                   |
+| anclas FCI/NumPy del Reto 3              | mismo patrón de diversidad de anclas de la nota 04 §1.1                       |
+| conteos de circuitos/presupuestos        | planificación del demo + `runtime_ms` esperado                                |
