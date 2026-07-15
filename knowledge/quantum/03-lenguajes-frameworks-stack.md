@@ -1,7 +1,8 @@
-# KB2-03 — Lenguajes y frameworks del stack cuántico: modelos mentales, APIs mínimas y trampas
+# Nota 03 (KB2-03) — Lenguajes y frameworks del stack cuántico: modelos mentales, APIs mínimas y trampas
 
 **Rol:** dominio operativo de las herramientas. Qué es cada pieza, cómo se piensa, los 5 idioms de API que el equipo va a escribir, y las trampas de convención entre frameworks.
-**No repite:** tutoriales/links/pinning de versiones (KB-fuentes §0.4 y §1–3) ni las decisiones de adapters (notas 04/10/12). Aquí está el _cómo se usa y cómo se piensa_.
+**No repite:** tutoriales/links/pinning de versiones (KB-fuentes §0.4 y §1–3, nota 00) ni las decisiones de adapters (notas trust/04/10/12). Aquí está el _cómo se usa y cómo se piensa_.
+**Fecha:** 2026-07-14 · **Estado:** vigente — movida de `docs/kb2-03…` a `knowledge/quantum/` en la consolidación (2026-07-14); el template de nota se aplica en la sección final.
 
 ---
 
@@ -80,15 +81,15 @@ K_test  = qml.kernels.kernel_matrix(X_te, X_tr, kernel)
 
 ## 5 · El resto del paisaje (qué es cada cosa y por qué NO este mes)
 
-| Herramienta                     | Qué es                                                                         | Postura CHIMERA                                                                                                                      | Licencia                                          |
-| ------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| **OpenQASM 3**                  | IR textual estándar de circuitos                                               | **usar como artefacto de evidencia** (§1) — costo cero                                                                               | spec abierta ⚠️                                   |
-| **dimod + neal** (D-Wave Ocean) | `BinaryQuadraticModel` = contenedor QUBO/Ising agnóstico + simulated annealing | **candidato liviano**: un baseline heurístico extra (diversidad, nota 04 §1.1) y un QUBO portable entre solvers, sin hardware D-Wave | Apache-2.0 ⚠️ verificar en vivo antes de depender |
-| Cirq                            | DSL de Google, momentos explícitos                                             | descartar: duplica a Qiskit sin ganancia aquí                                                                                        | Apache-2.0 ⚠️                                     |
-| CUDA-Q                          | simulación acelerada por GPU (NVIDIA)                                          | anotar Fase 2 si crecen las instancias; nada que ganar ≤ 14 qubits                                                                   | ⚠️ verificar                                      |
-| Amazon Braket / cloud QPUs      | acceso cloud multi-vendor                                                      | **descartar: rompe air-gap** (misma lógica que Sigstore en nota 02 §1.2)                                                             | —                                                 |
-| Qulacs / qsim                   | simuladores C++ ultrarrápidos                                                  | innecesario a esta escala; `lightning`/`Aer` sobran                                                                                  | ⚠️                                                |
-| Yao.jl                          | el stack cuántico de Julia                                                     | fuera del stack Python del freeze                                                                                                    | ⚠️                                                |
+| Herramienta                     | Qué es                                                                         | Postura CHIMERA                                                                                                                      | Licencia                                         |
+| ------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| **OpenQASM 3**                  | IR textual estándar de circuitos                                               | **usar como artefacto de evidencia** (§1) — costo cero                                                                               | Apache-2.0 (spec; verificada en vivo 2026-07-14) |
+| **dimod + neal** (D-Wave Ocean) | `BinaryQuadraticModel` = contenedor QUBO/Ising agnóstico + simulated annealing | **candidato liviano**: un baseline heurístico extra (diversidad, nota 04 §1.1) y un QUBO portable entre solvers, sin hardware D-Wave | Apache-2.0 (verificada en vivo 2026-07-14)       |
+| Cirq                            | DSL de Google, momentos explícitos                                             | descartar: duplica a Qiskit sin ganancia aquí                                                                                        | Apache-2.0 ⚠️                                    |
+| CUDA-Q                          | simulación acelerada por GPU (NVIDIA)                                          | anotar Fase 2 si crecen las instancias; nada que ganar ≤ 14 qubits                                                                   | ⚠️ verificar                                     |
+| Amazon Braket / cloud QPUs      | acceso cloud multi-vendor                                                      | **descartar: rompe air-gap** (misma lógica que Sigstore en nota 02 §1.2)                                                             | —                                                |
+| Qulacs / qsim                   | simuladores C++ ultrarrápidos                                                  | innecesario a esta escala; `lightning`/`Aer` sobran                                                                                  | ⚠️                                               |
+| Yao.jl                          | el stack cuántico de Julia                                                     | fuera del stack Python del freeze                                                                                                    | ⚠️                                               |
 
 ```python
 # Idiom 5 — el QUBO portable + tercer baseline en 6 líneas (si se adopta dimod/neal)
@@ -127,3 +128,13 @@ Regla derivada: **todo lo del hackathon (≤14 qubits) es territorio de simulaci
 - **IBM Quantum Learning: "Basics of Quantum Information"** (curso de J. Watrous) — <https://learning.quantum.ibm.com> — el formal riguroso; el viejo Qiskit Textbook quedó deprecado a favor de esta plataforma.
 - **Nielsen & Chuang**, _Quantum Computation and Quantum Information_ — la referencia canónica de escritorio (capítulos 1–2 y 4 bastan para CHIMERA).
 - **Docs de OpenQASM 3** — <https://openqasm.com> — para el artefacto de evidencia de §1.
+
+---
+
+## Template de nota (consolidación 2026-07-14)
+
+- **Patrón / mecanismo:** modelos mentales + 5 idioms de API (Qiskit/PennyLane/OpenQASM 3/dimod-neal), trampas de convención entre frameworks (§4), y la frontera honesta de simulación statevector (§7).
+- **Decisión:** la tabla §5 fija posturas por herramienta (usar / candidato / descartar / Fase 2) — en particular: OpenQASM 3 **integrar** como artefacto de evidencia; dimod+neal **candidato**; Cirq/Qulacs/Yao **descartar**; Braket/cloud QPUs **descartar por air-gap**; CUDA-Q **Fase 2**.
+- **Licencias:** **verificadas en vivo en la consolidación (2026-07-14, contra el LICENSE del repo oficial de cada una):** Qiskit, qiskit-aer, qiskit-optimization, qiskit-nature, PennyLane, dimod, dwave-neal, PySCF y la spec de OpenQASM 3 — todas **Apache-2.0**. Sin conflicto con la postura open-core. Ratificación de Sebas pendiente.
+- **Impacto en contrato:** propone `evidence.circuit_digest` (aditivo — `qasm3.dumps` → SHA-256, alineado con el anexo de canonicalización). **PENDIENTE: registrarlo como ítem en `docs/contract-freeze.md`** — hoy es un contrato fantasma sin dueño en el freeze.
+- **Reconciliación contra la base lógica:** revisada en la consolidación — sin contradicciones; el descarte de Braket usa la misma lógica air-gap de trust/02. Observación de alcance: el plan decía "No frameworks" para Sebas — esta nota se justifica por las trampas de convención y la procedencia, pero las posturas integrar/descartar tocan vocabulario del plano de confianza: coordinar formato con Dylan. **Ratificación de Sebas: PENDIENTE.**

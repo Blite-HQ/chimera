@@ -1,9 +1,21 @@
-# CHIMERA — Knowledge Base de Investigación
+# Nota 00 — KB-fuentes: fuentes, repositorios, papers y gotchas por reto
 
-## Quantathon CR 2026 · Fuentes, repositorios, papers y gotchas por reto
+**Ítem del plan (§4, Sebas):** la capa de fuentes del plano cuántico — URLs, versiones, migraciones de API y gotchas operativos. Las notas 01–04 la referencian como "KB-fuentes" y no repiten su contenido.
+**Fecha:** 2026-07-08 · **Estado:** vigente como capa de fuentes — importada desde `docs/research/` en la consolidación del knowledge base (2026-07-14).
+**Fuentes:** este documento ES la capa de fuentes; ninguna verificada en vivo durante la consolidación.
+
+> **Nota de consolidación (Dylan, 2026-07-14):** anterior al template de notas (no tiene los 4 campos ni
+> reconciliación — ver el README del directorio para los pendientes). Advertencia de vocabulario: varias
+> secciones usan nombres de la arquitectura pre-reconciliación ("Verification Service", `quantum_agent`,
+> `run_events`, rutas `distributions/chimera/datasets/docs/`) que no existen en el layout vigente
+> (`blite.gateway/verification/serving/...`) — leer los conceptos, no los nombres. La recomendación de
+> vendorizar código de demos de terceros (§1–3) queda sujeta a verificación de licencia previa (regla open-core).
+
+---
 
 > Documento fuente para el RAG de CHIMERA y para el equipo. Complementa
-> `CHIMERA_Proyecto_Quantathon_CR2026` y `REDACTED_Arquitectura_POC`.
+> `CHIMERA_Proyecto_Quantathon_CR2026` y el set de arquitectura del engine
+> (hoy consolidado en `docs/` — ver `docs/README.md`).
 > Última actualización: julio 2026.
 
 ---
@@ -273,7 +285,7 @@ Fuentes que respaldan el diferenciador central de CHIMERA (verificar, no confiar
 
 1. **REGRID-QAOA** (ver §1.2) — post-procesamiento y verificación clásica de salidas
    cuánticas como metodología, no como parche. Es literalmente tu Verification Service
-   con otro nombre; úsalo como validación externa de la tesis del REDACTED.
+   con otro nombre; úsalo como validación externa de la tesis del engine.
 2. **Power of data in QML** (ver §2.3, punto 4) — por qué reportar baselines clásicos
    fuertes es requisito científico, no cortesía.
 3. **Migrating QAOA 1.x→2.x** (ver §0.3) — por qué loggear shots/seeds/versiones en los

@@ -1,8 +1,9 @@
-# KB2-01 — Fundamentos matemáticos de computación cuántica (lo mínimo indispensable para CHIMERA)
+# Nota 01 (KB2-01) — Fundamentos matemáticos de computación cuántica (lo mínimo indispensable para CHIMERA)
 
 **Rol:** base teórica del equipo. Todo lo que aparece en los retos (QAOA, VQE, kernels) se reduce a lo de este documento.
-**No repite:** contratos/arquitectura (notas 01–18) ni fuentes externas (KB-fuentes). Aquí está _la matemática_, no los links ni los adapters.
-**Convención:** notación Dirac + unicode; verificable a mano con los vectores de la nota 10.
+**No repite:** contratos/arquitectura (notas 01–18 de trust) ni fuentes externas (KB-fuentes, nota 00). Aquí está _la matemática_, no los links ni los adapters.
+**Convención:** notación Dirac + unicode; verificable a mano con los vectores de la nota trust/10.
+**Fecha:** 2026-07-14 · **Estado:** vigente — movida de `docs/kb2-01…` a `knowledge/quantum/` en la consolidación (2026-07-14); el template de nota se aplica en la sección final.
 
 ---
 
@@ -154,3 +155,13 @@ Mismo principio variacional, pero: (a) H es **arbitrario** (no diagonal — el m
 - McClean et al. — _Barren plateaus in quantum neural network training landscapes_ — arXiv:1803.11173.
 - Thanasilp et al. — _Exponential concentration in quantum kernel methods_ — arXiv:2208.11060.
 - Goemans & Williamson 1995 (JACM) — cota clásica 0.878 para Max-Cut vía SDP.
+
+---
+
+## Template de nota (consolidación 2026-07-14)
+
+- **Patrón / mecanismo:** el cuerpo completo — la base teórica común (estados, compuertas, principio variacional, QUBO↔Ising con cambio de moneda exacto, teoría QAOA/VQE/kernels, parameter-shift, barren plateaus).
+- **Decisión:** N/A — documento de fundamentos; no evalúa herramientas ni repos externos.
+- **Licencias:** N/A — cita papers (arXiv/JACM), no librerías.
+- **Impacto en contrato:** ninguno directo. Sostiene la regla fail-loud "candidato mejor que el óptimo probado ⇒ error" (§5, espejo de trust/10 §1.2 llevado a química) y alimenta las fórmulas de `evidence` de la nota 04.
+- **Reconciliación contra la base lógica:** revisada en la consolidación — sin contradicciones con `docs/invariants.md` (todo lo verificante propuesto es determinista no-modelo; INV-2 intacto). **Ratificación de Sebas: PENDIENTE.**
