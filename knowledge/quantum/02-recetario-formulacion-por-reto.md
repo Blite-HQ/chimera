@@ -1,8 +1,9 @@
-# KB2-02 — Recetario de formulación por reto: del problema al circuito, con la matemática completa
+# Nota 02 (KB2-02) — Recetario de formulación por reto: del problema al circuito, con la matemática completa
 
-**Rol:** las derivaciones paso a paso que convierten cada reto en algo ejecutable. El lado _proponente_ (cuántico/heurístico); el lado _verificador_ ya está especificado en las notas 10–12 y NO se repite aquí — solo se referencia.
-**Convención:** se reutilizan los vectores de prueba de la nota 10 (G1–G6) como ejemplos, para que la formulación cuántica y el verificador compartan la misma verdad.
-**Prerrequisito:** KB2-01 (fundamentos).
+**Rol:** las derivaciones paso a paso que convierten cada reto en algo ejecutable. El lado _proponente_ (cuántico/heurístico); el lado _verificador_ ya está especificado en las notas trust/10–12 y NO se repite aquí — solo se referencia.
+**Convención:** se reutilizan los vectores de prueba de la nota trust/10 (G1–G6) como ejemplos, para que la formulación cuántica y el verificador compartan la misma verdad.
+**Prerrequisito:** nota 01 (fundamentos).
+**Fecha:** 2026-07-14 · **Estado:** vigente — movida de `docs/kb2-02…` a `knowledge/quantum/` en la consolidación (2026-07-14); el template de nota se aplica en la sección final.
 
 ---
 
@@ -236,3 +237,13 @@ Unidades y precisión química (tabla completa en KB2-04 §7): trabajar TODO en 
 | decodificación canónica x₀=0             | estadísticas de consenso rung 5 (KB2-04 §4) y corpus rung 3                   |
 | anclas FCI/NumPy del Reto 3              | mismo patrón de diversidad de anclas de la nota 04 §1.1                       |
 | conteos de circuitos/presupuestos        | planificación del demo + `runtime_ms` esperado                                |
+
+---
+
+## Template de nota (consolidación 2026-07-14)
+
+- **Patrón / mecanismo:** las derivaciones proponente por reto (§1–3) con G6 cerrado de punta a punta como verdad compartida con el verificador.
+- **Decisión:** Ruta A (no codificar restricciones; verificar/reparar post-hoc) como default del Reto 1, Ruta B solo para la ablación (§1.3); kernel primero / VQC como stretch en el Reto 2 (§2.4, justificado con números, no con gusto).
+- **Licencias:** N/A directo (derivación matemática); las licencias de las librerías del stack corresponden a la nota 03.
+- **Impacto en contrato:** produce los claims que consumen `ExactSolverVerifier` (trust/10) y `ExecutionVerifier` (trust/12); λ/features/scaler/seeds viven en `knowledge/` versionado con digest y se registran en `evidence` (§4). **PENDIENTE:** los valores de referencia H₂ de §3.5 deben regenerarse con PySCF y congelarse como vectores del corpus — el corpus de benchmarks todavía no existe (ver README del directorio).
+- **Reconciliación contra la base lógica:** revisada en la consolidación — respeta la separación proponente/verificador (trust/10–12) y ADR-029 (λ es dato versionado en `knowledge/islanding/`, no código del engine). **Ratificación de Sebas: PENDIENTE.**

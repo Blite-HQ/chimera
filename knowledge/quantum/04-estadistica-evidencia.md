@@ -1,7 +1,8 @@
-# KB2-04 — Estadística y matemática de la evidencia: los números correctos para cada campo de `evidence`
+# Nota 04 (KB2-04) — Estadística y matemática de la evidencia: los números correctos para cada campo de `evidence`
 
-**Rol:** el puente entre la salida cuántica (probabilística) y el contrato de verificación (determinista). Las notas 03/04/10–12 definen las FORMAS (`evidence`, `GuardrailSignal`, verdicts); este doc da las FÓRMULAS para llenarlas sin mentir.
-**No repite:** tolerancias float/`isclose`/escala entera (nota 10 §1.5), tri-estado (nota 03 §1.4), tipos disjuntos guardrail/attestation (nota 04 §1.3) — se referencian.
+**Rol:** el puente entre la salida cuántica (probabilística) y el contrato de verificación (determinista). Las notas trust/03/04/10–12 definen las FORMAS (`evidence`, `GuardrailSignal`, verdicts); este doc da las FÓRMULAS para llenarlas sin mentir.
+**No repite:** tolerancias float/`isclose`/escala entera (trust/10 §1.5), tri-estado (trust/03 §1.4), tipos disjuntos guardrail/attestation (trust/04 §1.3) — se referencian.
+**Fecha:** 2026-07-14 · **Estado:** vigente — movida de `docs/kb2-04…` a `knowledge/quantum/` en la consolidación (2026-07-14); el template de nota se aplica en la sección final.
 
 ---
 
@@ -149,3 +150,13 @@ Registrar la historia de energía (callback) y declarar plateau si |E_t − E_{t
 | §6 McNemar                             | verificación del Reto 2 + copy del certificado                           |
 | §7 unidades                            | tolerancias del Reto 3                                                   |
 | §8 semillas                            | `params_digest`-equivalente del proponente                               |
+
+---
+
+## Template de nota (consolidación 2026-07-14)
+
+- **Patrón / mecanismo:** las fórmulas para llenar `evidence` sin mentir — approximation ratio, estadística de shots, baselines de enriquecimiento, consenso rung 5, catálogo de propiedades rung 4, McNemar, unidades Hartree, checklist de semillas/replay.
+- **Decisión:** N/A en el sentido del template (no evalúa repos externos); la decisión de fondo que fija: el consenso rung 5 es **señal, jamás attestation** (coherente con trust/04).
+- **Licencias:** N/A — fórmulas; menciona Hypothesis/sklearn sin introducir dependencia nueva.
+- **Impacto en contrato:** propone campos **aditivos** a `evidence` (`approximation_ratio`, `se_estimado`, `exact`, `seeds.*`) y detalle de `GuardrailSignal` para self-consistency. **PENDIENTE: registrarlos como ítems en `docs/contract-freeze.md`** — hoy son contratos fantasma sin dueño en el freeze.
+- **Reconciliación contra la base lógica:** revisada en la consolidación — respeta el verdict tri-estado (trust/03), la separación guardrail ≠ attestation (trust/04) y las tolerancias de trust/10. Es la nota kb2 más alineada con el plano de confianza. **Ratificación de Sebas: PENDIENTE.**
