@@ -1,0 +1,22 @@
+{
+  "aristas": [
+    [0, 3, 7195],
+    [1, 7, 16300],
+    [2, 5, 8500],
+    [3, 4, 3073],
+    [3, 8, 4096],
+    [4, 5, 5945],
+    [5, 6, 2411],
+    [6, 7, 7599],
+    [7, 8, 8650]
+  ],
+  "asignacion_canonica": [0, 0, 0, 1, 0, 1, 0, 1, 0],
+  "convencion": "flujo",
+  "digest": "59fb22e6ec0afd3b3caf34fb4e46b2f8003c1ea8524fcd8b06dabd3f1c52477b",
+  "escala": 100,
+  "instancia": "ieee9",
+  "metodos": ["cpsat", "bruteforce"],
+  "n_nodos": 9,
+  "optimo": 63769,
+  "solver_status": "OPTIMAL"
+}
