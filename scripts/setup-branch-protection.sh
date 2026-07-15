@@ -1,4 +1,28 @@
 #!/usr/bin/env bash
+# =============================================================================
+# SUPERSEDED (2026-07-15) — no correr esto para Blite-HQ/Chimera.
+#
+# La protección de main para Blite-HQ/Chimera ahora se define como un GitHub
+# REPOSITORY RULESET, no con la API clásica de branch-protection que usa este
+# script (PUT /repos/{owner}/{repo}/branches/main/protection, abajo). El
+# ruleset se crea con:
+#     gh api repos/Blite-HQ/Chimera/rulesets -X POST --input -   (ver el plan)
+#
+# Por qué: los rulesets son el reemplazo moderno y apilable de la protección
+# clásica. Expresan las mismas garantías — status checks requeridos, review
+# con CODEOWNERS, historia lineal, sin force-push, sin borrado de branch, y
+# (con bypass list vacía) aplican también a admins — más restricción de
+# método de merge, y pueden convivir con otros rulesets.
+#
+# NOTA: tanto la protección clásica como los rulesets están inertes en este
+# repo hasta que la org Blite-HQ se actualice de GitHub Free a GitHub Team.
+# Hasta entonces cualquier llamada devuelve 403 "Upgrade to GitHub Pro or
+# make this repository public".
+#
+# Este archivo se mantiene funcional a propósito: la lógica de la API clásica
+# sigue siendo reusable para otros repos/orgs en planes donde los rulesets no
+# están disponibles.
+# =============================================================================
 # setup-branch-protection.sh — configure main branch protection on GitHub.
 # Requires: gh auth login (authenticated gh CLI)
 set -euo pipefail

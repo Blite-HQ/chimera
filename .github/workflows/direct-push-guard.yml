@@ -1,0 +1,61 @@
+name: Direct-push guard
+
+# Solo advisory. Se dispara cuando un commit llega a main; avisa (nunca bloquea) si ese
+# commit no llegó vía un PR mergeado. NO es un required status check — está ausente a
+# propósito de la lista required_status_checks del ruleset (ver scripts/setup-branch-protection.sh).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # trigger manual para validar que el job corre en verde
+
+permissions:
+  contents: read
+  pull-requests: read # commits/{sha}/pulls necesita leer PRs
+
+concurrency:
+  group: direct-push-guard-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Direct-push guard (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Detect direct push to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha="${{ github.sha }}"
+
+          # commits/{sha}/pulls lista los PRs asociados a un commit. Reintenta unas
+          # veces para absorber el delay de propagación justo después de un merge.
+          merged=0
+          for attempt in 1 2 3; do
+            merged="$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              "repos/${{ github.repository }}/commits/${sha}/pulls" \
+              --jq '[.[] | select(.merged_at != null)] | length' || echo 0)"
+            [ "${merged}" -gt 0 ] && break
+            sleep 5
+          done
+
+          if [ "${merged}" -gt 0 ]; then
+            echo "OK: ${sha} llego via un PR mergeado." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          msg="El commit ${sha} se pusheo directo a main sin pasar por un PR mergeado."
+          echo "::warning title=Direct push to main::${msg}"
+          {
+            echo "## :warning: Push directo a main detectado"
+            echo ""
+            echo "${msg}"
+            echo ""
+            echo "- Autor: ${{ github.actor }}"
+            echo "- Commit: ${{ github.server_url }}/${{ github.repository }}/commit/${sha}"
+            echo ""
+            echo "Segun CONTRIBUTING.md, los cambios a \`main\` entran via PR revisado."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0 # advisory: nunca falla el run
