@@ -1,7 +1,7 @@
 # KB2-03 — Lenguajes y frameworks del stack cuántico: modelos mentales, APIs mínimas y trampas
 
 **Rol:** dominio operativo de las herramientas. Qué es cada pieza, cómo se piensa, los 5 idioms de API que el equipo va a escribir, y las trampas de convención entre frameworks.
-**No repite:** tutoriales/links/pinning de versiones (KB-fuentes §0.4 y §1–3) ni las decisiones de adapters (notas 04/10/12). Aquí está el *cómo se usa y cómo se piensa*.
+**No repite:** tutoriales/links/pinning de versiones (KB-fuentes §0.4 y §1–3) ni las decisiones de adapters (notas 04/10/12). Aquí está el _cómo se usa y cómo se piensa_.
 
 ---
 
@@ -15,7 +15,7 @@ Problema → formulación (KB2-02) → circuito (DSL Python) → transpilación 
                                OpenQASM 3 (artefacto textual portable)
 ```
 
-**Gancho de procedencia (propio de CHIMERA):** `qiskit.qasm3.dumps(circuito)` produce los *bytes exactos* del circuito ejecutado → SHA-256 → `circuit_digest` en la evidencia (Regla 1 del anexo de canonicalización: artefacto versionado, como `policy_digest`). El circuito deja de ser una anécdota y se vuelve auditable — un campo aditivo natural para `evidence` que ninguna nota tiene aún.
+**Gancho de procedencia (propio de CHIMERA):** `qiskit.qasm3.dumps(circuito)` produce los _bytes exactos_ del circuito ejecutado → SHA-256 → `circuit_digest` en la evidencia (Regla 1 del anexo de canonicalización: artefacto versionado, como `policy_digest`). El circuito deja de ser una anécdota y se vuelve auditable — un campo aditivo natural para `evidence` que ninguna nota tiene aún.
 
 ## 2 · Qiskit: el mapa del ecosistema y los 3 idioms
 
@@ -71,24 +71,24 @@ K_test  = qml.kernels.kernel_matrix(X_te, X_tr, kernel)
 
 ## 4 · La tabla de trampas de convención (donde mueren las horas)
 
-| Convención | Qiskit | PennyLane | Consecuencia |
-| --- | --- | --- | --- |
-| Orden de bits en resultados | **little-endian**: el string lista q_{n−1}…q₀ (el qubit 0 a la DERECHA) | wire 0 = bit MÁS significativo (a la izquierda, según el orden de `wires`) | La misma medición se lee al revés entre frameworks. Congelar `decode()` por framework con G6 como vector (KB2-02 §1.6) |
-| Pauli string "ZZI" | actúa Z en q₁ y q₂ (¡leído de derecha a izquierda!) | los operadores se declaran por wire explícito (`qml.PauliZ(0) @ qml.PauliZ(1)`) | Construir `SparsePauliOp` con un helper que reciba (i, j) y arme el string — nunca a mano |
-| Ángulo de rotación | RZZ(θ) = e^(−i(θ/2)ZZ) | `qml.IsingZZ(φ)` = e^(−i(φ/2)ZZ) — igual, pero verificar SIEMPRE al portar | Factores de 2 silenciosos entre papers/frameworks: validar contra el mínimo autovalor NumPy |
-| Semillas | `seed=` en el primitive + `algorithm_globals.random_seed` | `np.random.seed` / seed del optimizador | Una capa sin semilla = corrida no replayable (checklist completo en KB2-04 §8) |
+| Convención                  | Qiskit                                                                  | PennyLane                                                                       | Consecuencia                                                                                                           |
+| --------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Orden de bits en resultados | **little-endian**: el string lista q_{n−1}…q₀ (el qubit 0 a la DERECHA) | wire 0 = bit MÁS significativo (a la izquierda, según el orden de `wires`)      | La misma medición se lee al revés entre frameworks. Congelar `decode()` por framework con G6 como vector (KB2-02 §1.6) |
+| Pauli string "ZZI"          | actúa Z en q₁ y q₂ (¡leído de derecha a izquierda!)                     | los operadores se declaran por wire explícito (`qml.PauliZ(0) @ qml.PauliZ(1)`) | Construir `SparsePauliOp` con un helper que reciba (i, j) y arme el string — nunca a mano                              |
+| Ángulo de rotación          | RZZ(θ) = e^(−i(θ/2)ZZ)                                                  | `qml.IsingZZ(φ)` = e^(−i(φ/2)ZZ) — igual, pero verificar SIEMPRE al portar      | Factores de 2 silenciosos entre papers/frameworks: validar contra el mínimo autovalor NumPy                            |
+| Semillas                    | `seed=` en el primitive + `algorithm_globals.random_seed`               | `np.random.seed` / seed del optimizador                                         | Una capa sin semilla = corrida no replayable (checklist completo en KB2-04 §8)                                         |
 
 ## 5 · El resto del paisaje (qué es cada cosa y por qué NO este mes)
 
-| Herramienta | Qué es | Postura CHIMERA | Licencia |
-| --- | --- | --- | --- |
-| **OpenQASM 3** | IR textual estándar de circuitos | **usar como artefacto de evidencia** (§1) — costo cero | spec abierta ⚠️ |
+| Herramienta                     | Qué es                                                                         | Postura CHIMERA                                                                                                                      | Licencia                                          |
+| ------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| **OpenQASM 3**                  | IR textual estándar de circuitos                                               | **usar como artefacto de evidencia** (§1) — costo cero                                                                               | spec abierta ⚠️                                   |
 | **dimod + neal** (D-Wave Ocean) | `BinaryQuadraticModel` = contenedor QUBO/Ising agnóstico + simulated annealing | **candidato liviano**: un baseline heurístico extra (diversidad, nota 04 §1.1) y un QUBO portable entre solvers, sin hardware D-Wave | Apache-2.0 ⚠️ verificar en vivo antes de depender |
-| Cirq | DSL de Google, momentos explícitos | descartar: duplica a Qiskit sin ganancia aquí | Apache-2.0 ⚠️ |
-| CUDA-Q | simulación acelerada por GPU (NVIDIA) | anotar Fase 2 si crecen las instancias; nada que ganar ≤ 14 qubits | ⚠️ verificar |
-| Amazon Braket / cloud QPUs | acceso cloud multi-vendor | **descartar: rompe air-gap** (misma lógica que Sigstore en nota 02 §1.2) | — |
-| Qulacs / qsim | simuladores C++ ultrarrápidos | innecesario a esta escala; `lightning`/`Aer` sobran | ⚠️ |
-| Yao.jl | el stack cuántico de Julia | fuera del stack Python del freeze | ⚠️ |
+| Cirq                            | DSL de Google, momentos explícitos                                             | descartar: duplica a Qiskit sin ganancia aquí                                                                                        | Apache-2.0 ⚠️                                     |
+| CUDA-Q                          | simulación acelerada por GPU (NVIDIA)                                          | anotar Fase 2 si crecen las instancias; nada que ganar ≤ 14 qubits                                                                   | ⚠️ verificar                                      |
+| Amazon Braket / cloud QPUs      | acceso cloud multi-vendor                                                      | **descartar: rompe air-gap** (misma lógica que Sigstore en nota 02 §1.2)                                                             | —                                                 |
+| Qulacs / qsim                   | simuladores C++ ultrarrápidos                                                  | innecesario a esta escala; `lightning`/`Aer` sobran                                                                                  | ⚠️                                                |
+| Yao.jl                          | el stack cuántico de Julia                                                     | fuera del stack Python del freeze                                                                                                    | ⚠️                                                |
 
 ```python
 # Idiom 5 — el QUBO portable + tercer baseline en 6 líneas (si se adopta dimod/neal)
@@ -109,21 +109,21 @@ best = ss.first                                                # .sample, .energ
 
 Un statevector de n qubits = 2ⁿ amplitudes complex128 = **16 · 2ⁿ bytes**:
 
-| n | Memoria | Veredicto para el demo |
-| --- | --- | --- |
-| 8 (grid CR) | 4 KB | instantáneo |
-| 12 (LiH JW) | 64 KB | instantáneo |
-| 20 | 16 MB | fácil |
-| 24 | 256 MB | laptop ok |
-| 28 | 4 GB | frontera de laptop |
-| 30 | 16 GB | no en vivo |
+| n           | Memoria | Veredicto para el demo |
+| ----------- | ------- | ---------------------- |
+| 8 (grid CR) | 4 KB    | instantáneo            |
+| 12 (LiH JW) | 64 KB   | instantáneo            |
+| 20          | 16 MB   | fácil                  |
+| 24          | 256 MB  | laptop ok              |
+| 28          | 4 GB    | frontera de laptop     |
+| 30          | 16 GB   | no en vivo             |
 
-Regla derivada: **todo lo del hackathon (≤14 qubits) es territorio de simulación exacta** — lo que convierte al `StatevectorSampler/Estimator` en un cuasi-oráculo y hace reproducibles los verdicts. La frontera ~28–30 qubits es el número honesto para la pregunta "¿por qué simulan en vez de usar hardware?": debajo de ella el simulador es *mejor* evidencia (exacto, determinista, air-gapped).
+Regla derivada: **todo lo del hackathon (≤14 qubits) es territorio de simulación exacta** — lo que convierte al `StatevectorSampler/Estimator` en un cuasi-oráculo y hace reproducibles los verdicts. La frontera ~28–30 qubits es el número honesto para la pregunta "¿por qué simulan en vez de usar hardware?": debajo de ella el simulador es _mejor_ evidencia (exacto, determinista, air-gapped).
 
 ## 8 · Recursos de estudio de fundamentos (nuevos — no están en KB-fuentes)
 
-- **Quantum Country** (Matuschak & Nielsen) — https://quantum.country — el mejor onboarding conceptual corto (memoria espaciada) para quien entra de cero.
-- **PennyLane Codebook** — https://pennylane.ai/codebook — ejercicios interactivos exactamente sobre las piezas del Reto 2.
-- **IBM Quantum Learning: "Basics of Quantum Information"** (curso de J. Watrous) — https://learning.quantum.ibm.com — el formal riguroso; el viejo Qiskit Textbook quedó deprecado a favor de esta plataforma.
-- **Nielsen & Chuang**, *Quantum Computation and Quantum Information* — la referencia canónica de escritorio (capítulos 1–2 y 4 bastan para CHIMERA).
-- **Docs de OpenQASM 3** — https://openqasm.com — para el artefacto de evidencia de §1.
+- **Quantum Country** (Matuschak & Nielsen) — <https://quantum.country> — el mejor onboarding conceptual corto (memoria espaciada) para quien entra de cero.
+- **PennyLane Codebook** — <https://pennylane.ai/codebook> — ejercicios interactivos exactamente sobre las piezas del Reto 2.
+- **IBM Quantum Learning: "Basics of Quantum Information"** (curso de J. Watrous) — <https://learning.quantum.ibm.com> — el formal riguroso; el viejo Qiskit Textbook quedó deprecado a favor de esta plataforma.
+- **Nielsen & Chuang**, _Quantum Computation and Quantum Information_ — la referencia canónica de escritorio (capítulos 1–2 y 4 bastan para CHIMERA).
+- **Docs de OpenQASM 3** — <https://openqasm.com> — para el artefacto de evidencia de §1.

@@ -1,7 +1,7 @@
 # KB2-01 — Fundamentos matemáticos de computación cuántica (lo mínimo indispensable para CHIMERA)
 
 **Rol:** base teórica del equipo. Todo lo que aparece en los retos (QAOA, VQE, kernels) se reduce a lo de este documento.
-**No repite:** contratos/arquitectura (notas 01–18) ni fuentes externas (KB-fuentes). Aquí está *la matemática*, no los links ni los adapters.
+**No repite:** contratos/arquitectura (notas 01–18) ni fuentes externas (KB-fuentes). Aquí está _la matemática_, no los links ni los adapters.
 **Convención:** notación Dirac + unicode; verificable a mano con los vectores de la nota 10.
 
 ---
@@ -23,19 +23,19 @@ Todo estado cuántico de n qubits es un **vector complejo unitario** en dimensi�
 1. Un circuito cuántico es una **fábrica de distribuciones de probabilidad** sobre bitstrings — por eso QAOA "muestrea candidatos" en vez de "devolver la respuesta".
 2. Repetir el circuito N veces ("shots") estima las probabilidades con error estadístico ~1/√N (la matemática exacta está en KB2-04 §2 — es lo que llena `evidence` honestamente).
 
-**Multi-qubit y entrelazamiento:** |ψ⟩ = Σ_z c_z |z⟩ sobre los 2ⁿ bitstrings z. Un estado es *entrelazado* si no se factoriza como producto de qubits individuales (ej. Bell: (|00⟩+|11⟩)/√2). El entrelazamiento es lo que las capas ZZ de QAOA y los feature maps entrelazantes de QML introducen.
+**Multi-qubit y entrelazamiento:** |ψ⟩ = Σ_z c_z |z⟩ sobre los 2ⁿ bitstrings z. Un estado es _entrelazado_ si no se factoriza como producto de qubits individuales (ej. Bell: (|00⟩+|11⟩)/√2). El entrelazamiento es lo que las capas ZZ de QAOA y los feature maps entrelazantes de QML introducen.
 
 ## 3 · Compuertas que CHIMERA realmente usa
 
-| Compuerta | Matriz / acción | Dónde aparece |
-| --- | --- | --- |
-| X | intercambia \|0⟩↔\|1⟩ | mixer de QAOA (vía RX) |
-| Z | \|1⟩ → −\|1⟩ (fase) | Hamiltonianos de costo |
-| H | \|0⟩ → (\|0⟩+\|1⟩)/√2 | superposición inicial de QAOA; feature maps |
-| RY(θ) = e^(−iθY/2) | rotación en Y | AngleEmbedding (Reto 2) |
-| RX(θ), RZ(θ) | rotaciones análogas | mixer QAOA; ansätze |
-| CNOT (CX) | flip del target si control=1 | entrelazamiento; compilación de RZZ |
-| **RZZ(θ) = e^(−i(θ/2)·Z⊗Z)** | fase condicional a la paridad de 2 qubits | **la capa de costo de QAOA** |
+| Compuerta                    | Matriz / acción                           | Dónde aparece                               |
+| ---------------------------- | ----------------------------------------- | ------------------------------------------- |
+| X                            | intercambia \|0⟩↔\|1⟩                     | mixer de QAOA (vía RX)                      |
+| Z                            | \|1⟩ → −\|1⟩ (fase)                       | Hamiltonianos de costo                      |
+| H                            | \|0⟩ → (\|0⟩+\|1⟩)/√2                     | superposición inicial de QAOA; feature maps |
+| RY(θ) = e^(−iθY/2)           | rotación en Y                             | AngleEmbedding (Reto 2)                     |
+| RX(θ), RZ(θ)                 | rotaciones análogas                       | mixer QAOA; ansätze                         |
+| CNOT (CX)                    | flip del target si control=1              | entrelazamiento; compilación de RZZ         |
+| **RZZ(θ) = e^(−i(θ/2)·Z⊗Z)** | fase condicional a la paridad de 2 qubits | **la capa de costo de QAOA**                |
 
 Identidad de compilación clave (para leer circuitos transpilados): `RZZ(θ) = CX · RZ(θ)_target · CX`. Cada arista del grafo = 2 CNOT + 1 RZ por capa QAOA — de ahí la estimación de profundidad.
 
@@ -85,7 +85,7 @@ offset = (Σ_i Q_ii)/2 + (Σ_{i<j} Q_ij)/2
 
 ## 7 · QAOA: la teoría en una página
 
-**Intuición adiabática:** si evolucionás lentamente desde el fundamental de un H fácil (el *mixer* H_M = Σ Xᵢ, cuyo fundamental es la superposición uniforme |+⟩^⊗n) hacia el H_C del problema, terminás en el fundamental de H_C (teorema adiabático). QAOA discretiza esa evolución en p pasos parametrizados.
+**Intuición adiabática:** si evolucionás lentamente desde el fundamental de un H fácil (el _mixer_ H_M = Σ Xᵢ, cuyo fundamental es la superposición uniforme |+⟩^⊗n) hacia el H_C del problema, terminás en el fundamental de H_C (teorema adiabático). QAOA discretiza esa evolución en p pasos parametrizados.
 
 **El ansatz:**
 
@@ -127,29 +127,30 @@ Mismo principio variacional, pero: (a) H es **arbitrario** (no diagonal — el m
 ```
 
 **Exacta** (no es diferencia finita) y evaluable con el mismo circuito en 2 puntos — es lo que PennyLane usa por debajo cuando entrenás el VQC. Costo: 2 evaluaciones por parámetro por paso ⇒ el VQC del Reto 2 es caro por diseño (otra razón matemática para preferir el kernel, que no entrena circuito).
+
 - **Barren plateaus** (McClean et al., arXiv:1803.11173): en circuitos aleatorios profundos, la varianza del gradiente decae exponencialmente con n ⇒ paisajes planos inentrenables. A la escala CHIMERA (4–12 qubits, p≤2, ansätze someros) **no es bloqueante**, pero es la respuesta técnica si un juez pregunta "¿y esto entrena a escala?": mitigaciones conocidas = circuitos someros, costos locales, inicialización estructurada (HF en VQE; INTERP en QAOA).
 
 ## 11 · Glosario relámpago ES/EN
 
-| ES | EN | Una línea |
-| --- | --- | --- |
-| escalón / peldaño | rung | nivel de la escalera de verificación (nota 03) |
-| estado fundamental | ground state | autovector de energía mínima |
-| valor esperado | expectation value | ⟨ψ\|H\|ψ⟩ |
-| recocido | annealing | evolución hacia el fundamental (simulado o cuántico) |
-| ansatz | ansatz | familia parametrizada de circuitos |
-| capa / profundidad | layer / depth | repeticiones p; # de compuertas secuenciales |
-| muestreo / disparos | sampling / shots | ejecuciones repetidas del circuito |
-| mapeo fermión→qubit | fermion-to-qubit mapping | Jordan–Wigner, Parity (Reto 3) |
-| brecha de optimalidad | optimality gap | \|cota − incumbente\| (nota 10 §1.3) |
-| razón de aproximación | approximation ratio | valor obtenido / óptimo (KB2-04 §1) |
+| ES                    | EN                       | Una línea                                            |
+| --------------------- | ------------------------ | ---------------------------------------------------- |
+| escalón / peldaño     | rung                     | nivel de la escalera de verificación (nota 03)       |
+| estado fundamental    | ground state             | autovector de energía mínima                         |
+| valor esperado        | expectation value        | ⟨ψ\|H\|ψ⟩                                            |
+| recocido              | annealing                | evolución hacia el fundamental (simulado o cuántico) |
+| ansatz                | ansatz                   | familia parametrizada de circuitos                   |
+| capa / profundidad    | layer / depth            | repeticiones p; # de compuertas secuenciales         |
+| muestreo / disparos   | sampling / shots         | ejecuciones repetidas del circuito                   |
+| mapeo fermión→qubit   | fermion-to-qubit mapping | Jordan–Wigner, Parity (Reto 3)                       |
+| brecha de optimalidad | optimality gap           | \|cota − incumbente\| (nota 10 §1.3)                 |
+| razón de aproximación | approximation ratio      | valor obtenido / óptimo (KB2-04 §1)                  |
 
 ---
 
 ### Referencias nuevas introducidas por este doc (no están en KB-fuentes ni en las notas)
 
-- Zhou, Wang, Choi, Pichler, Lukin — *QAOA: Performance, Mechanism, and Implementation on Near-Term Devices* — arXiv:1812.01041 (concentración/transferencia de parámetros, INTERP).
-- Mitarai et al. — *Quantum Circuit Learning* — arXiv:1803.00745 · Schuld et al. — *Evaluating analytic gradients on quantum hardware* — arXiv:1811.11184 (parameter-shift).
-- McClean et al. — *Barren plateaus in quantum neural network training landscapes* — arXiv:1803.11173.
-- Thanasilp et al. — *Exponential concentration in quantum kernel methods* — arXiv:2208.11060.
+- Zhou, Wang, Choi, Pichler, Lukin — _QAOA: Performance, Mechanism, and Implementation on Near-Term Devices_ — arXiv:1812.01041 (concentración/transferencia de parámetros, INTERP).
+- Mitarai et al. — _Quantum Circuit Learning_ — arXiv:1803.00745 · Schuld et al. — _Evaluating analytic gradients on quantum hardware_ — arXiv:1811.11184 (parameter-shift).
+- McClean et al. — _Barren plateaus in quantum neural network training landscapes_ — arXiv:1803.11173.
+- Thanasilp et al. — _Exponential concentration in quantum kernel methods_ — arXiv:2208.11060.
 - Goemans & Williamson 1995 (JACM) — cota clásica 0.878 para Max-Cut vía SDP.
