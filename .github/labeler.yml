@@ -1,0 +1,35 @@
+# Auto-labels PRs by plano — mirrors .github/CODEOWNERS 1:1 so the label
+# always matches who gets auto-requested for review. Advisory only: labels
+# make ownership visible, they don't gate anything (see CONTRIBUTING.md
+# "enforced vs. convention").
+
+verification:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'engine/src/blite/verification/**'
+          - 'engine/src/blite/events/**'
+          - 'engine/src/blite/certificate/**'
+          - 'engine/src/blite/identity/**'
+          - 'engine/src/blite/protocols/**'
+          - 'engine/src/blite/guardrails/**'
+          - 'engine/src/blite/authz/**'
+          - 'sdk/**'
+
+execution:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'engine/src/blite/gateway/**'
+          - 'engine/src/blite/runtime/**'
+          - 'engine/src/blite/serving/**'
+          - 'apps/studio/**'
+
+quantum:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'capabilities/quantum/**'
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'scripts/**'
