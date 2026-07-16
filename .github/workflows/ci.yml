@@ -25,6 +25,13 @@ jobs:
     name: Detect changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # On pull_request events dorny/paths-filter lists changed files via the
+    # REST API (the default shallow checkout doesn't have the base commit
+    # locally), which the global contents-only block doesn't allow — same
+    # reason the "commits" job below needs this.
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       python: ${{ steps.filter.outputs.python }}
       web: ${{ steps.filter.outputs.web }}
