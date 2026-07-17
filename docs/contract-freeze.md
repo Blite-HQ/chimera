@@ -110,6 +110,8 @@ Campos **aditivos** a la unión discriminada de `evidence` (§4) — nunca debil
 
 Ninguno modifica formas existentes; entran como claves opcionales por método.
 
+**Agregado 2026-07-17 (quantum/09):** bloque aditivo `mitigation.{method, model_digest, training_digest, noise_model_digest, baseline}` en el claim **proponente** cuando el resultado pasó por el corrector AI-QEM. El corrector propone, jamás verifica (S7/INV-2); su performance se certifica aparte contra el corpus (GROUND_TRUTH, techo AL3) con controles negativos obligatorios.
+
 ---
 
 ## Dependencias nuevas que este freeze implica (todas verificadas 2026-07-02/03)
