@@ -211,8 +211,8 @@ jobs:
 
   # ── Security ──────────────────────────────────────────────────────────────
   # Deliberately ungated: gitleaks scans full history regardless of which
-  # paths changed in this PR, and a secret or the internal-branding string
-  # (see the check below) can land in any file type — not just python/web.
+  # paths changed in this PR, and a secret can land in any file type — not
+  # just python/web.
   security:
     name: Security
     runs-on: ubuntu-latest
