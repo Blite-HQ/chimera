@@ -14,7 +14,8 @@ Trunk-based development on a single `main` — no long-lived `dev`/`staging`/`de
 Quality is enforced in layers: local git hooks catch formatting/commit-style/architecture
 issues before anything leaves your machine, CI re-checks everything on every PR, and a
 GitHub branch-protection Ruleset is drafted and staged to make the CI checks and review
-actually mandatory.
+actually mandatory. For who decides what and why review is shaped the way it is, see
+[`GOVERNANCE.md`](GOVERNANCE.md).
 
 **Important right now:** the Ruleset (and the reviewer-gate on the `demo` environment,
 see "Promotion to demo" below) cannot be turned on yet — Blite-HQ is on GitHub Free, and
@@ -61,6 +62,19 @@ Two Husky hooks run on every `git commit` and can reject it outright:
   `dependabot[bot]` are exempt (its auto-generated changelog bodies routinely exceed the
   line-length rule and that's not something we can reformat).
 
+- **Sign off your commits (DCO).** Every commit should carry a
+  `Signed-off-by: Your Name <you@example.com>` trailer, certifying you have the right to
+  submit the change under the project's license (the standard [Developer Certificate of
+  Origin](https://developercertificate.org/)). Add it automatically with:
+
+  ```bash
+  git commit -s -m "feat: add quantum QAOA capability"
+  ```
+
+  This is **convention today, not bot-enforced** — see the enforced-vs-convention table below.
+  It becomes an actual PR gate (a DCO check bot) once the project starts taking outside
+  contributions; documenting and practicing it now avoids a painful retrofit later.
+
 If a hook rejects your commit, **fix the code/message, don't bypass it** — see "Don't" below.
 
 ### 3. Push — another real, local gate
@@ -90,12 +104,17 @@ Fill out the PR template's invariant checklist (`.github/pull_request_template.m
 
 ### 5. Review
 
-Convention (see "enforced vs. convention" table below): 1 approving review, and if your
-change touches a path listed in `.github/CODEOWNERS`, that owner's review. Current owners
-by plano: **Steven** (`engine/src/blite/{gateway,runtime,serving}/`, `apps/studio/`),
-**Dylan** (`engine/src/blite/{verification,events,certificate,identity,protocols,
+See [`GOVERNANCE.md`](GOVERNANCE.md) for the full policy and why it's shaped this way — in
+short (and per the "enforced vs. convention" table below, still convention today): 1
+approving review from **any** maintainer is enough to merge, and if your change touches a
+path listed in `.github/CODEOWNERS` that owner is auto-requested as the preferred reviewer,
+but their approval is never a hard requirement — ownership is advisory on purpose, so the
+team is never blocked by one person's availability. Current owners by plano: **Steven**
+(`engine/src/blite/{gateway,runtime,serving}/`, `apps/studio/`), **Dylan**
+(`engine/src/blite/{verification,events,certificate,identity,protocols,
 guardrails,authz}/`, `sdk/`), **Sebastián** (`capabilities/quantum/`), **Geovanni**
-(`.github/`, `scripts/`). `docs/invariants.md` needs all four.
+(`.github/`, `scripts/`). `docs/invariants.md` is the one exception — changes there need
+consensus from all four.
 
 **Known gap, left as-is on purpose:** CODEOWNERS has no catch-all rule. `knowledge/`, most
 of `docs/`, and root configs have no required reviewer today — a deliberate hackathon-speed
@@ -138,6 +157,7 @@ calling this out.
 | 1 approving + CODEOWNERS review       | Convention                                          | GitHub Team upgrade (Ruleset)                   |
 | No force-push / no deleting `main`    | Convention (technically possible today)             | GitHub Team upgrade (Ruleset)                   |
 | Manual gate before `demo`             | Convention (team channel OK)                        | GitHub Team upgrade (Environment reviewer rule) |
+| DCO sign-off (`git commit -s`)        | Convention — documented, not checked                | A DCO check bot, once there are outside PRs     |
 
 ## Do / Don't
 
@@ -145,6 +165,7 @@ calling this out.
 
 - Use the Conventional Commit types listed above; let `lint-staged` auto-fix formatting
   instead of fighting it manually.
+- Sign off your commits (`git commit -s`) — see the DCO note in step 2.
 - Keep branches short-lived and rebase/merge `main` in often if a branch lives more than a
   day or two.
 - Ask the relevant plano owner (CODEOWNERS) for review when touching their area, even
