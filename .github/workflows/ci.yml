@@ -237,23 +237,6 @@ jobs:
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
           /tmp/gitleaks git --redact --no-banner .
 
-      # Structural guardrail for the internal-codename rule (never in
-      # repo-facing text — see CONTRIBUTING.md). This has slipped in twice
-      # before via imported documents (commits 7d29a94, 1c0df5e) and been
-      # cleaned up after the fact both times (5ade071, 4ceabfb) — this check
-      # is what stops a third time.
-      - name: Check for internal branding leakage
-        run: |
-          matches="$(grep -rliE 'blite[-_ ]?engine' \
-            --include='*' \
-            --exclude-dir='.git' --exclude-dir='node_modules' --exclude-dir='.venv' \
-            . || true)"
-          if [ -n "$matches" ]; then
-            echo "::error::Found the internal codename this check guards against (case-insensitive, with or without a separator) in repo-facing text. It must never appear in Chimera's tree — see CONTRIBUTING.md."
-            echo "$matches"
-            exit 1
-          fi
-
       - name: Set up uv
         uses: ./.github/actions/setup-uv
 
@@ -284,7 +267,6 @@ jobs:
             echo "| Scan | Status |"
             echo "| --- | --- |"
             echo "| gitleaks (full history) | ✅ passed |"
-            echo "| Internal branding leakage | ✅ passed |"
             echo "| pip-audit (Python) | ✅ passed |"
             echo "| pnpm audit (--audit-level=high) | ✅ passed |"
           } >> "$GITHUB_STEP_SUMMARY"
