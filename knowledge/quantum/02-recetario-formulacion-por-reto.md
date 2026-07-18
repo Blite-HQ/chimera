@@ -167,6 +167,19 @@ Forma de Havlíček et al. (ya citado en KB-fuentes): capa H + fases e^(i·φ(x)
 
 ## 3 · RETO 3 — Simulación de materiales: de la molécula al VQE
 
+> **Nota de drift (2026-07-18, contra el enunciado oficial de la Quantathon CR 2026):** esta
+> sección se escribió ANTES de los enunciados. El Challenge 3 oficial NO es química
+> molecular/VQE: es **TFIM (Ising de campo transversal) con Trotterización** — circuito de
+> Trotter eficiente; corrección física = ⟨Zᵢ⟩ y ⟨ZᵢZᵢ₊₁⟩ dentro de **5%** de la diagonalización
+> exacta (ED vía PySCF/SciPy); barrido h/J ∈ {0.5, 1, 2}; análisis del error de Trotter;
+> escalado en número de espines; ODS 7/9/12/13. Todo lo de abajo queda como conocimiento de
+> química (Fase 2 / referencia), NO como receta del reto. La receta TFIM se escribe como nota
+> nueva si se activa el segundo reto condicional (= C3, decisión 2026-07-18; el patrón de doble
+> ancla NumPy/ED se traslada tal cual — la ED del TFIM juega el mismo rol FORMAL_EXACT). Si
+> alguna vez se retomara el Reto 2: el baseline oficial es SVM-RBF con validación cruzada de 5
+> particiones, 5 métricas + matriz de confusión — la §2 (split único estratificado) difiere de
+> ese protocolo.
+
 ### 3.1 El Hamiltoniano electrónico (segunda cuantización)
 
 Bajo Born–Oppenheimer (núcleos fijos a distancia r), el problema es electrónico:

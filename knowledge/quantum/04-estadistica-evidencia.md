@@ -84,7 +84,8 @@ Complementa las relaciones ya enunciadas en la nota 03 §1.2 con su enunciado ex
 4. _Etiquetas barajadas (detector de fuga):_ re-entrenar con y permutado al azar debe rendir ≈ clase mayoritaria (~61%). Si rinde alto con etiquetas rotas, hay leakage en el pipeline (KB2-02 §2.1) — la propiedad más barata y letal del reto.
 5. _Consistencia de duplicado:_ duplicar un punto de train no cambia la predicción sobre test más allá de tolerancia.
 
-**Reto 3 (VQE):**
+**Química/VQE (ya no es el Reto 3 — el C3 oficial es TFIM/Trotter, ver 02 §3; estas propiedades
+quedan como conocimiento de química y su patrón se traslada tal cual a la ED del TFIM):**
 
 1. _Cota variacional (unilateral, fail-loud):_ E_VQE ≥ E_exacta − tol_num. Violarla no es un `fail` del candidato: es `error` del proceso (unidades, E_NN omitida, Hamiltoniano distinto) — el espejo químico exacto del caso "mejor que el óptimo probado" de la nota 10 §1.2.
 2. _Ancla HF gratis:_ UCCSD(θ=0) ⇒ E = E_HF exacta (chequeo previo a optimizar).

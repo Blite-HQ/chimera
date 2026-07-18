@@ -195,6 +195,14 @@ Alineada al roadmap (feature freeze ~23 jul, semana 4; evento ~1 ago). Las fecha
 
 Regla propuesta: si el dry-run 1 falla, el 28 se usa para arreglar y el video se corre al 29 junto al dry-run 2; si el dry-run 2 falla, el demo cloud se degrada a "URL de respaldo" y el local es el principal — **nunca al revés**, porque el local air-gapped es el que prueba la tesis de soberanía.
 
+> **Actualización (2026-07-18, entregables oficiales del enunciado):** cada dry-run incluye
+> además: (a) ensayo del guion recortado a **5 minutos exactos** (slot oficial); (b) corrida
+> limpia del **script/notebook único de entrada** que regenera todas las figuras y cifras desde
+> repo clonado + `requirements.txt` (incumplir reproducibilidad deduce en TODOS los criterios de
+> la rúbrica); (c) checklist de entrega: README, informe PDF ≤8 páginas (barras de error +
+> sección de limitaciones obligatoria), statement de SDK ≤200 palabras. El demo dual es capa
+> encima de eso, jamás su sustituto.
+
 ## 2 · Decisión
 
 | Referencia                                                       | Decisión                                               | Racional                                                                                  |

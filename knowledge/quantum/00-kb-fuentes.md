@@ -148,12 +148,18 @@ partición de redes eléctricas con QUBO/QAOA.
 - **Brute force**: para n ≤ 16 nodos es trivial (2^n) y te da el **óptimo exacto** →
   tu score de verificación puede ser `cut_qaoa / cut_óptimo` (approximation ratio),
   que es la métrica estándar de la literatura QAOA. Para el demo de 6-8 nodos, hazlo siempre.
-- **Goemans-Williamson (SDP, ratio garantizado 0.878)**: implementable con `cvxpy`;
-  baseline "serio" si quieren impresionar. Opcional.
+- **Goemans-Williamson (SDP, ratio garantizado 0.878)**: vía `cvxpy` — **BASELINE OBLIGATORIO
+  del enunciado oficial (2026-07-18)**, junto con **greedy (~0.5), también obligatorio y hoy
+  ausente de esta lista**; comparar además con recocido simulado / fuerza bruta. CVXPY y
+  NetworkX/SciPy son herramientas oficiales del reto.
 
 ### 1.5 Datasets
 
-- Tu grafo sintético de 8 subestaciones CR está bien para el demo (control total + narrativa local).
+- **Actualizado 2026-07-18:** la instancia core debe ser una red regional **real** de 6–12 nodos —
+  el enunciado sugiere textualmente una versión simplificada de la red de transmisión del ICE
+  (fuente oficial: datos-ice-se.opendata.arcgis.com). El grafo sintético de 8 subestaciones queda
+  superseded; la red CR ~8 nodos se construye desde los datos abiertos del ICE. Los IEEE quedan
+  como escalera de escalado (cr8 → ieee9 → ieee14 → ieee30, este último solo clásico).
 - Para credibilidad extra: **sistemas de prueba IEEE (9, 14, 30 buses)** vía
   `pandapower.networks` (`pip install pandapower`, `pn.case14()`) o MATPOWER.
   REGRID-QAOA usa exactamente estos — puedes decir "validamos en el mismo benchmark que el estado del arte".
@@ -165,8 +171,12 @@ partición de redes eléctricas con QUBO/QAOA.
   ya está en tu doc ("escala mejor en grafos grandes") y coincide con la literatura.
 - `AerSimulator(method="statevector")` con más de ~25 qubits explota en RAM. Irrelevante
   para 8 nodos, pero no prometan demos de 50 nodos en vivo.
-- COBYLA se atasca en mesetas (barren plateaus suaves incluso en p bajo): correr con
-  3-5 seeds y quedarse con la mejor energía; loggear cada intento como evento (¡más trazabilidad!).
+- COBYLA se atasca en mesetas (barren plateaus suaves incluso en p bajo): correr **≥5 corridas
+  con inicializaciones distintas** y reportar **media ± std por cada p** (graficar r vs p) — es
+  el protocolo oficial del enunciado (2026-07-18); el mejor sample se puede mostrar además,
+  jamás en lugar de la distribución (cherry-picking = red flag explícita de jueces). Umbral
+  oficial de suficiencia: p=1 con r ≥ 0.6 en la instancia de 6 nodos. Loggear cada intento como
+  evento (¡más trazabilidad!).
 
 ---
 
@@ -240,6 +250,12 @@ partición de redes eléctricas con QUBO/QAOA.
 
 ## 3. RETO 3 — Simulación de materiales (VQE) — BONUS
 
+> **Nota de drift (2026-07-18):** el Challenge 3 oficial es **TFIM con Trotterización** (ver
+> quantum/02 §3, nota de drift) — estas fuentes son de VQE/química y NO aplican al reto;
+> conservadas como referencia. Además, C3 es el **segundo reto condicional del equipo** (no
+> "bonus"; solo si la entrega del C1 está completa — decisión 2026-07-18). Fuentes a levantar si
+> se activa: Trotter–Suzuki para TFIM, ED con SciPy/PySCF, Jin et al. arXiv:2504.21172 (Iceberg).
+
 ### 3.1 Tutoriales canónicos
 
 | Recurso                                | URL                                                                                       | Por qué                                                                                                                                             |
@@ -293,7 +309,9 @@ Fuentes que respaldan el diferenciador central de CHIMERA (verificar, no confiar
 4. **Métricas estándar a reportar por reto**:
    - Reto 1: approximation ratio (cut/cut_óptimo por brute force), factibilidad, gap vs baseline.
    - Reto 2: accuracy, F1, matriz de confusión, mismas condiciones para quantum y clásico.
-   - Reto 3: error absoluto vs FCI en mHa, ¿< 1.6 mHa?, número de parámetros e iteraciones.
+   - Reto 3 (oficial, TFIM/Trotter): ⟨Zᵢ⟩ y ⟨ZᵢZᵢ₊₁⟩ vs diagonalización exacta, ¿dentro de 5%?;
+     error de Trotter vs número de pasos; escalado en espines. (La métrica vieja "error vs FCI
+     en mHa" era del supuesto VQE/química — ver nota de drift en §3.)
 5. **Benchmarks de comunidad** (para contexto/roadmap, no para el POC):
    - QED-C Application-Oriented Benchmarks: <https://github.com/SRI-International/QC-App-Oriented-Benchmarks>
      (incluye Max-Cut/QAOA y VQE como benchmarks estandarizados — tu `benchmarks/` de la

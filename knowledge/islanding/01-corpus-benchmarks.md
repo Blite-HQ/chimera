@@ -85,7 +85,15 @@ La definición completa (lista de aristas + pesos) **no existe en el repo** — 
 - Es un "grafo sintético de 8 subestaciones CR" (`knowledge/quantum/00` §1.5), "modelo estilizado de la red CR (ICE)" (`docs/arquitectura-reconciliada.md`), con narrativa San José/Cartago/Heredia (`docs/arquitectura-python.md`).
 - La definición aristas+pesos vive — si existe — en el doc CHIMERA original fuera del repo.
 
-**Acción pendiente (dueño: Sebas):** aportar la lista de aristas+pesos, verificar que W = 5.9 y g = 2 se cumplen, y congelarla con el mismo formato + doble ancla + digest (`cr8-uniforme.json` / `cr8-flujo.json` o la convención de pesos que corresponda a su definición).
+**Acción pendiente (dueño: Sebas · ACTUALIZADA 2026-07-18 contra el enunciado oficial):**
+construir `cr8` desde los **datos abiertos del ICE** (datos-ice-se.opendata.arcgis.com —
+sugerencia textual del enunciado: "versión simplificada de la red de transmisión del ICE"), NO
+desde el doc CHIMERA original: los valores W = 5.9 y g = 2 del grafo sintético quedan superseded
+y se recalculan sobre la red real (recalibrar λ y el cálculo de shots de `quantum/04` §3 con los
+valores nuevos). Congelar con el mismo formato + doble ancla + digest (`cr8-uniforme.json` /
+`cr8-flujo.json`). **Agregar además una instancia de 6 nodos** (p. ej. reducción de la misma red
+CR): el criterio oficial de suficiencia (p=1 con r ≥ 0.6) se define sobre una instancia de 6
+nodos y hoy el corpus no tiene ninguna.
 
 ### 1.9 Script de generación completo (para regenerar y ratificar)
 

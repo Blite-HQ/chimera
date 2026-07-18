@@ -2,6 +2,18 @@
 
 **Ítem del plan:** contingencia Quantathon CR (~1 ago 2026): con ~80% de certeza el evento usará el emulador de **Quantinuum** y probablemente pida **Guppy**. Esta nota fija la ruta de transpilación desde nuestro stack (Qiskit Reto 1 / PennyLane Reto 2), el veredicto sobre el modelo de ruido del emulador (gate del feature AI-QEM de la nota 09) y el plan B.
 **Fecha:** 2026-07-17 · **Estado:** investigación de consolidación (Dylan) — ratificación final de Sebas.
+
+> **Actualización oficial (2026-07-18, PDFs del evento):** confirmado **emulador H2, tratamiento
+> exacto hasta 26 qubits** (única disponibilidad confirmada; hardware real SIN confirmar — vale
+> 10% de la rúbrica si aparece). SDK de libre elección con **Guppy "encarecidamente
+> recomendado"** — NO obligatorio; la ruta §2.1 (Qiskit→pytket sin Guppy) sigue siendo válida
+> pero es una elección consciente contra una recomendación oficial fuerte: se defiende en el
+> **statement de SDK ≤200 palabras** (entregable oficial nuevo) o se reconsidera activando el
+> puente `guppy.load_pytket()` de §1.2 (decisión de equipo 2026-07-18: core QAOA en Guppy
+> nativo, Qiskit para baselines/statevector). El tope de 26 qubits confirma la escalera de
+> instancias: cr8/ieee9/ieee14 en emulador; ieee30 solo clásico. Pendientes REALES restantes:
+> ver el bloque PENDIENTE al final de §2.3.
+
 **Fuentes:** (todas **verificadas en vivo 2026-07-17**)
 
 - Modelo de ruido del emulador — <https://docs.quantinuum.com/systems/user_guide/emulator_user_guide/noise_model.html> (fuente primaria del veredicto §1.3)
@@ -38,7 +50,7 @@ PennyLane (Reto 2) ──(vía QASM/──┘        │
   2. **Selene** (`selene-sim`, PyPI, open source): emulador **local** de programas Guppy/HUGR. Backends: statevector (QuEST), stabilizer (Stim), coinflip, classical replay, quantum replay. Modelos de error: `IdealErrorModel`, `DepolarizingErrorModel`, `SimpleLeakageErrorModel`.
   3. **Nexus** (`qnexus`): la PaaS cloud — acceso a Helios, emuladores H-series e instancias Selene cloud. Flujo next-gen: Guppy → HUGR → upload → `qnx.start_execute_job()`.
 
-### 1.2 ¿Guppy es obligatorio? **NO** (para el emulador; el evento puede exigirlo igual — PENDIENTE)
+### 1.2 ¿Guppy es obligatorio? **NO — RESUELTO por el enunciado oficial (2026-07-18): SDK libre, Guppy "encarecidamente recomendado"**
 
 Veredicto técnico verificado:
 
@@ -106,7 +118,7 @@ Gate set nativo Quantinuum: **{Rz, PhasedX, ZZMax, ZZPhase}** — con ZZPhase = 
 
 Correr el **mismo circuito** (mismo QASM fuente, seeds pinned) en ≥2 emuladores independientes — mínimo **Aer + (Selene o emulador H-series)** — y tratar cada corrida como una pata de **CONSENSUS_REPLICATION** (clase decisoria, techo **AL2**, convergencia v3.2 §2.1): son **procesos no-modelo con seeds pinned**, exactamente el caso que la spec admite como decisorio. El reporte de primera clase es el **balance entre el resultado más favorable y el más pesimista** entre patas (p.ej. mejor corte hallado y su frecuencia, con y sin ruido): la banda [pesimista, favorable] es evidencia, no adorno. La verificación del corte sigue siendo backend-agnóstica (§5) — el consenso solo suma fuerza, nunca sustituye al verificador exacto (FORMAL_EXACT/AL4 del corpus).
 
-**PENDIENTE (no confirmable hoy):** qué exigirá exactamente la Quantathon (¿Guppy obligatorio?, ¿acceso Nexus con créditos?, ¿emulador H2 o Helios?); parámetro de seed del emulador H-series remoto (§1.5). Revalidar esta nota la semana del evento — el stack next-gen se mueve rápido (selene-sim publicó release el 2026-07-16).
+**PENDIENTE (actualizado 2026-07-18 — el enunciado oficial resolvió parte):** RESUELTO: emulador = **H2** (tratamiento exacto hasta 26 qubits) y Guppy NO obligatorio (SDK libre, "encarecidamente recomendado" — nota al inicio). SIGUEN pendientes: créditos/acceso Nexus; parámetro de seed del emulador H-series remoto (§1.5 — los organizadores darán detalles finos en el evento); si habrá acceso a hardware real (10% de la rúbrica). Revalidar esta nota la semana del evento — el stack next-gen se mueve rápido (selene-sim publicó release el 2026-07-16).
 
 ## 3 · Licencias
 

@@ -8,6 +8,16 @@
 
 ## 1 · Patrón / mecanismo
 
+> **Actualización oficial (2026-07-18):** la mitigación de ruido (**ZNE, Pauli twirling**) y la
+> **QEC con código Iceberg de Quantinuum** (reportar el tradeoff de profundidad; Jin et al.
+> arXiv:2504.21172) son ahora **extensiones oficiales opcionales del C1** — el ZNE propio de
+> esta nota cubre además esa extensión oficial (celda "Excelente" de la rúbrica: "hardware +
+> mitigación de ruido O QEC con comparación cuantitativa"); Pauli twirling e Iceberg quedan como
+> candidatos a catalogar. Sobre el GATE de §1.4: el enunciado solo confirma tratamiento
+> **exacto** ≤26 qubits en el H2 — el modo ruidoso del emulador está documentado por Quantinuum
+> (nota 08 §1.3) pero NO prometido por el evento ⇒ el "modo demostración" (ruido local declarado
+> con digest) pasa a ser el escenario BASE, no el fallback.
+
 ### 1.1 Qué es (y qué NO es): QEM, no QEC
 
 **QEM (Quantum Error Mitigation)** — lo nuestro — es post-proceso estadístico en la era NISQ: no toca el hardware ni el circuito lógico; toma valores esperados ruidosos y estima el valor sin ruido. **QEC (Quantum Error Correction)** es otra cosa: corrección en tiempo real con qubits físicos redundantes y decodificadores de síndromes en hardware tolerante a fallas. El ejemplo estrella de "un modelo ML hace la corrección" en QEC es **AlphaQubit** (DeepMind, _Learning high-accuracy error decoding for quantum processors_, Nature 2024): transformer recurrente que decodifica el surface code, 6% mejor que redes tensoriales y 30% mejor que correlated matching en datos reales de Sycamore (distancias 3/5, escala a 11 en simulación). Se cita SOLO como contexto y validación del patrón "el modelo hace el trabajo" — **no es nuestro scope**. Nuestro corrector es un mitigador NISQ de expectation values, el plano donde un hackathon con emulador puede jugar de verdad.

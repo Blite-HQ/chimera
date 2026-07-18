@@ -63,7 +63,7 @@ Los Hamiltonianos de los Retos 1 y (mapeado) 3 viven aquí; en Qiskit es literal
 ⇒ **ningún estado da energía menor que la del fundamental**. Corolarios operativos:
 
 1. Minimizar ⟨H(θ)⟩ sobre parámetros θ acota E₀ **desde arriba** — VQE/QAOA solo pueden sobreestimar, nunca subestimar.
-2. **Regla de verificación gratis (Reto 3):** si `E_VQE < E_FCI − tol` ⇒ hay un **bug**, no un descubrimiento (unidades mezcladas, Hamiltoniano distinto, energía nuclear omitida). Es el espejo exacto del caso "candidato mejor que el óptimo probado ⇒ error fail-loud" de la nota 10 §1.2, ahora para química.
+2. **Regla de verificación gratis (química — ya no es el Reto 3; el C3 oficial es TFIM/Trotter, ver 02 §3):** si `E_VQE < E_FCI − tol` ⇒ hay un **bug**, no un descubrimiento (unidades mezcladas, Hamiltoniano distinto, energía nuclear omitida). Es el espejo exacto del caso "candidato mejor que el óptimo probado ⇒ error fail-loud" de la nota 10 §1.2, ahora para química.
 
 ## 6 · Ising y QUBO: el mismo objeto en dos monedas
 

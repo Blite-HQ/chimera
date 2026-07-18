@@ -15,6 +15,12 @@ con su reconciliación contra `docs/invariants.md` (la base lógica no está baj
 > plano cuántico. **Esperan validación y ratificación de Sebas** (dueño de este
 > directorio): regenerar con el script inline de la nota 01 §1.9, comparar digests,
 > y resolver los PENDIENTE (segunda ancla de ieee30, red CR estilizada).
+>
+> **Actualización (2026-07-18, enunciado oficial):** el C1 se modela oficialmente como
+> **Max-Cut** — el corpus queda ALINEADO tal como está (no se regenera). La red CR (~8 nodos) se
+> construye desde los **datos abiertos del ICE** (datos-ice-se.opendata.arcgis.com — sugerencia
+> textual del enunciado), no desde el doc original; falta además una **instancia de 6 nodos**
+> (el criterio oficial de suficiencia p=1, r≥0.6 se mide en 6 nodos). Detalle: nota 01 §1.8.
 
 ## Índice
 

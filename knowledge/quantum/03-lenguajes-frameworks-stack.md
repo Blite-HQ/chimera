@@ -121,6 +121,12 @@ Un statevector de n qubits = 2ⁿ amplitudes complex128 = **16 · 2ⁿ bytes**:
 
 Regla derivada: **todo lo del hackathon (≤14 qubits) es territorio de simulación exacta** — lo que convierte al `StatevectorSampler/Estimator` en un cuasi-oráculo y hace reproducibles los verdicts. La frontera ~28–30 qubits es el número honesto para la pregunta "¿por qué simulan en vez de usar hardware?": debajo de ella el simulador es _mejor_ evidencia (exacto, determinista, air-gapped).
 
+> **Nota (2026-07-18, enunciado oficial):** para el evento manda otra cifra: el **emulador H2 de
+> Quantinuum ofrece tratamiento exacto hasta 26 qubits** (única disponibilidad confirmada;
+> hardware real sin confirmar). La tabla de arriba sigue valiendo para simulación local
+> (Aer/Selene). Consecuencia para la escalera de instancias: ieee30 (30 nodos) queda fuera del
+> emulador — solo clásico.
+
 ## 8 · Recursos de estudio de fundamentos (nuevos — no están en KB-fuentes)
 
 - **Quantum Country** (Matuschak & Nielsen) — <https://quantum.country> — el mejor onboarding conceptual corto (memoria espaciada) para quien entra de cero.
