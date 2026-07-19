@@ -229,9 +229,11 @@ Ninguna de las decisiones toca los contratos del engine (`Event`, `Verifier`, `C
 - **El escalón de aislamiento de cada recurso queda registrado** (tags/metadata, §5) — extensión natural del `TrustCertificate` a "tres planos, una sola tesis" (§6); es narrativa de pitch + metadato, no cambio de contrato este mes.
 - El perfil `remote-job` del `CapabilityManifest` v2 (freeze §1) es el punto de encuentro con "task efímera por trabajo" (§4.3) — coordinar con Steven (serving/execution_profile).
 
-## R · Reconciliación contra la base lógica — PENDIENTE (dueño: Geovanni)
+## R · Reconciliación contra la base lógica — asignada (dueño: Geovanni; ratificación final)
 
-La reconciliación formal contra `docs/invariants.md` no fue hecha. Puntos detectados en la consolidación que deben resolverse antes del freeze (no se editaron en el cuerpo):
+La reconciliación formal contra `docs/invariants.md` la hace Geovanni como parte de su
+ratificación final (S-E cerró el freeze sin hallar contradicción en estos puntos — ninguno toca
+contratos del engine este mes). Puntos detectados en la consolidación (no se editaron en el cuerpo):
 
 1. **Drift de stack (§3, §6) — RESUELTO en la consolidación (2026-07-14):** el documento original fijaba "control plane NestJS + BullMQ + RDS/Redis" (stack TS supersedido, ver `docs/README.md`). Los pasajes se migraron al stack vigente — FastAPI (`apps/api`) + cola de jobs en Python + Postgres; la elección concreta de la cola se investiga en la **nota 02**. Queda a Geovanni ratificar la migración.
 2. **Estado del repo (§3, §7):** "lo que hoy está en Terraform" — el repo no tiene `infra/` ni Terraform todavía (el plan lo lista como estructura a crear). El baseline descrito parece referirse a infraestructura externa al repo.

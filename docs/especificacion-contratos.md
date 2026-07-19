@@ -2,7 +2,7 @@
 
 _Firmas TypeScript de puertos y entidades · Fase 1_
 
-> **Estado: SEMILLA.** Contratos TypeScript de la investigación inicial (Fase 1). La fuente de verdad actual de qué cambia al traducir a Python/Pydantic es [`contract-freeze.md`](contract-freeze.md) — no implementar directo de este documento. Ver [`README.md`](README.md).
+> **Estado: SUPERSEDIDO (2026-07-18, barrido S-E) por [`especificacion-contratos-v2.md`](especificacion-contratos-v2.md).** Se conserva como registro histórico de la investigación inicial. La fuente de verdad de la traducción a Python/Pydantic es [`contract-freeze.md`](contract-freeze.md) — no implementar de este documento. Ver [`README.md`](README.md).
 >
 > **Propósito.** Define los contratos (interfaces, tipos) que el código debe satisfacer. Es la realización en TypeScript de las entidades de la base lógica y de los puertos de la arquitectura. Cada contrato está anotado con el invariante que materializa.
 >

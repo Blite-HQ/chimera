@@ -3,6 +3,7 @@
 ## El documento autoritativo para construir (POC de Steven + adiciones)
 
 > **Estado: PARCIALMENTE SUPERSEDIDO.** Vale: el modelo agente/runtime (§2), la pieza de formulación QUBO de _islanding_ (§4), el mapa de protocolos (§5), la ablación cuántico ON/OFF (§6), y la frontera Plan A/B/C con sus puntos de pivote (§7). No vale: core en TypeScript/NestJS (§1 fila 1, "Por qué TS core"), monorepo TS (§3), carriles en TS (§9) — la decisión vigente es core Python, ver [`arquitectura-python.md`](arquitectura-python.md). Ver [`README.md`](README.md) para el índice completo.
+> **Corrección S-E (2026-07-18, contra el enunciado oficial):** §4 formula ahora el **Max-Cut oficial** (la penalización/factibilidad se re-scopea a limitaciones + extensión "constraint mixers"), y la columna Plan B de §7 es el **Challenge 3 oficial (TFIM/Trotter)**, no VQE/química; su regla de activación es "segundo reto condicional", no "pivote ante fallo".
 >
 > **Qué es esto.** El merge de las dos arquitecturas: la **POC de Steven** (la mejor base _para construir_ — concreta, con DDL, contratos TS, endpoints, monorepo) + las **4 piezas y 2 arreglos** del documento de arquitectura/estrategia, + el **modelo agente/runtime** que resuelve la discusión del equipo. Este es el documento contra el cual se construye.
 >
@@ -108,11 +109,13 @@ Se construye tal cual la POC. Resumen de lo que se confirma (ver la POC para DDL
 
 **Términos del QUBO** (`Q = Σ λ_i Q_i`):
 
-- **Corte (objetivo):** `min Σ_(i,j)∈E w_ij·(x_i + x_j − 2·x_i·x_j)`, con `w_ij = |P_ij|` (flujo de potencia activa interrumpido).
+- **Corte (objetivo — corregido S-E 2026-07-18 al enunciado oficial):** el Challenge 1 formula OFICIALMENTE **Max-Cut**: `max Σ_(i,j)∈E w_ij·(x_i + x_j − 2·x_i·x_j)`, con `w_ij = |P_ij|` (peso de la línea; convenciones congeladas del corpus en `knowledge/islanding/01`). La formulación min-corte de REGRID (minimizar la potencia interrumpida sujeta a islas conexas) queda como **capa de realismo para la conversación ICE**, no como el core del reto.
 - **Balance de tamaño:** `γ·(Σ_i x_i − |V|/2)²`. Iniciar `γ ≈ óptimo estimado`; `chain_strength = γ·len(nodes)`; `num_reads = 1000`.
 - **Balance generación-carga por isla:** `(Σ_gen − Σ_carga)²` por isla.
 - **Coherencia de generadores:** _must-link_/_cannot-link_ (generadores que oscilan juntos en la misma isla).
 - **Conectividad:** NO cabe limpio en el QUBO → se verifica/repara clásicamente con DFS (componentes conexas).
+
+> **Re-scope S-E (2026-07-18, Δ1 del stress test):** bajo el Max-Cut oficial (sin restricciones), los términos de penalización de arriba y los chequeos físicos (`island_connectivity`, `power_balance`) se re-scopean como **análisis de limitaciones + extensión oficial "constraint mixers"** — exactamente la sección de limitaciones obligatoria del enunciado ("el óptimo Max-Cut de ieee9 corta todas las líneas — físicamente degenerado; lo cuantificamos con pandapower y mostramos constraint mixers como ruta"). La reparación M.3 y el corredor de factibilidad viven en esa extensión, no en el camino core del claim de optimalidad.
 
 **Trucos accionables (lo que separa del baseline ingenuo):**
 
@@ -169,18 +172,18 @@ La POC es Plan A, pero su **`DistributionManifest` es exactamente el mecanismo d
 
 **El delta por plan (solo Zona B):**
 
-| Componente               | Plan A (Reto 1)                           | Plan B (Reto 3)             | Plan C (Reto 2)              |
-| ------------------------ | ----------------------------------------- | --------------------------- | ---------------------------- |
-| Herramienta MCP          | `qubo_solver` (ya en el demo)             | `vqe_simulator`             | `qml_kernel`                 |
-| Plantilla de formulación | _islanding_ → QUBO                        | active space → Hamiltoniano | imputación+PCA → feature map |
-| Ancla clásica            | Gurobi/CP-SAT                             | PySCF (HF/CCSD)             | RandomForest/XGBoost         |
-| Dataset ground-truth     | IEEE 9/14/30                              | H₂, LiH, BeH₂               | Kaggle Water Potability      |
-| Verifier                 | `qubo-constraint` + `baseline-comparison` | `energy-vs-reference`       | `f1-vs-classical`            |
-| Narrativa ODS            | 7/11/13                                   | 3/7                         | 6                            |
+| Componente               | Plan A (Challenge 1)                      | Plan B (Challenge 3 — TFIM, corregido S-E)                                        | Plan C (Challenge 2)         |
+| ------------------------ | ----------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------- |
+| Herramienta MCP          | `qubo_solver` (ya en el demo)             | `dynamics_simulator` (Trotter — reusa el builder de capas ZZ+X del QAOA)          | `qml_kernel`                 |
+| Plantilla de formulación | _islanding_ → QUBO                        | TFIM 1D: H = −J Σ ZᵢZᵢ₊₁ − h Σ Xᵢ → circuito de Trotter (ángulos J·dt, h·dt)      | imputación+PCA → feature map |
+| Ancla clásica            | Gurobi/CP-SAT                             | diagonalización exacta — ED (SciPy/PySCF), criterio oficial ≤5% en N=8            | RandomForest/XGBoost         |
+| Dataset ground-truth     | IEEE 9/14/30 (+ cr8/cr6 del ICE, P0-7)    | cadenas N ∈ {6, 8, 12}; barrido h/J ∈ {0.5, 1.0, 2.0}; ⟨Z⟩ y ⟨ZᵢZⱼ⟩ vs tiempo     | Kaggle Water Potability      |
+| Verifier                 | `qubo-constraint` + `baseline-comparison` | `observables-vs-ED` (attestation `differential` con tolerancia — textual del PDF) | `f1-vs-classical`            |
+| Narrativa ODS            | 7/9/13                                    | 7/9/12/13 (transmisión/almacenamiento sin pérdidas)                               | 6                            |
 
 **Punto de inserción del pivote (qué se toca):** (1) registrar la nueva herramienta MCP, (2) cambiar la plantilla de formulación, (3) apuntar el ancla/verifier, (4) cargar el dataset, (5) reconfigurar Formulador/Verificador por prompt — **todo dentro del `DistributionManifest`.** El Engine (runtime, registro, eventos, verificación, Studio) **no se toca.** Eso hace el pivote "limpio".
 
-> **En el plan de hackathon (#2):** el punto donde se ejecuta "resolver el Reto 1 con los datos del evento" es exactamente donde, ante un fallo, se sustituye la distribución por la de Plan B (o C).
+> **Corrección S-E (2026-07-18, Δ9 del stress test):** esta tabla recetaba el Reto 3 como VQE/química — el **Challenge 3 oficial es TFIM/Trotter** (columna corregida arriba; ficha completa en el post-scriptum del reporte S-D y `knowledge/quantum/02` ya corregida). Y la regla de activación cambió: ya no es "pivote ante fallo" sino **segundo reto condicional** — C1 es EL reto; el kit C3 se activa SOLO con la entrega de C1 COMPLETA contra el checklist oficial (gate duro; LEAN = recorte de ceremonia de entrega, JAMÁS de rigor de ejecución). Plan C (C2/QSVM) queda **descartado como segundo reto** (sin ancla exacta — es el modo amortizado: historia de inversión, no de jueces), con línea de respaldo si preguntan. El mecanismo del `DistributionManifest` de abajo sigue vigente tal cual — es lo que hace barato el kit C3.
 
 ---
 
@@ -208,7 +211,7 @@ Merge del roadmap de 4 semanas de la POC con el orden de-riskeado. **Dos carrile
 1. Formulación QUBO de _islanding_ + validación en IEEE 9/14/30 contra Gurobi. _(Sem 1–2, lo más urgente)_
 2. `qubo_solver` + `classical_baseline_solver` + `constraint_checker` como servicios FastAPI. _(Sem 2)_
 3. Post-proceso M.3 + corredor de ablación. _(Sem 3)_
-4. (Si sobra) `vqe_simulator` / `qrng`. _(Sem 4, bonus)_
+4. (Si sobra) kit C3: capability `dynamics_simulator` (TFIM/Trotter sobre el builder QAOA) + adapter ED. _(Sem 4, bonus — gate duro Δ9: solo con C1 entregado completo)_
 
 **Integración (Dylan, conector):** contrato agente, exposición MCP de las herramientas, transmisión de eventos al Studio, el `DistributionManifest` de CHIMERA. _(continuo)_
 

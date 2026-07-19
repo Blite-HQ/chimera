@@ -1,10 +1,15 @@
 # Convergencia — diseño vigente ↔ spec de confianza v3.2 (cal-2.4)
 
-> **Estado: DRAFT — veredicto de la validación de convergencia (2026-07-17), insumo obligatorio
-> para el cierre del contract freeze.** Compara el set nuevo (spec de confianza v3.2, Perfil STEM
-> v1.0, Especificación de Contratos v2 y Esquema de Datos v2 — hoy en el working set externo,
-> pendientes de importarse sanitizados) contra lo vigente en el repo: `docs/invariants.md`
-> (congelado), `docs/contract-freeze.md` (DRAFT §1–§11) y las notas de `knowledge/`.
+> **Estado: VIGENTE — veredicto EJECUTADO en el cierre S-E (2026-07-18).** Las acciones de §6
+> quedaron aplicadas: freeze reescrito al vocabulario v3.2 con §12–§15 nuevos y CONGELADO; el
+> set nuevo importado sanitizado a `docs/` ([spec v3.2](spec-confianza-v3-2.md),
+> [Perfil STEM](perfil-stem-v1-0.md), [contratos v2](especificacion-contratos-v2.md) y
+> [esquema v2](esquema-datos-v2.md) como SEMILLA; v1 supersedidas); marcas aplicadas en
+> `knowledge/` (trust/03 supersedida, ajustes quantum/04 §4, execution/01/07, trust/18).
+> Este documento se conserva como **mapa de traducción** (§2) y registro de resolución de
+> conflictos (§3). Comparaba el set nuevo (entonces en el working set externo) contra lo
+> vigente: `docs/invariants.md` (congelado), `docs/contract-freeze.md` (entonces DRAFT §1–§11,
+> hoy CONGELADO) y las notas de `knowledge/`.
 > Convención de veredictos: **CONVERGE** (sin acción) · **SUPERSEDE** (el nuevo reemplaza, con
 > mapa) · **GANA-FREEZE** (lo vigente gana; el doc nuevo no vio esa investigación) ·
 > **ADOPTAR** (pieza nueva sin contraparte) · **AJUSTAR** (nota puntual a corregir).

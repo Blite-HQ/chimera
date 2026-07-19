@@ -38,7 +38,7 @@
 
 **Ancla 2 — fuerza bruta (n ≤ 14):** enumeración completa de las 2^(n−1) asignaciones con `x_0 = 0` fijo (2⁸ = 256 para ieee9, 2¹³ = 8 192 para ieee14) y recómputo directo del corte. Sin solver, auditable por inspección.
 
-**IEEE 30 (n = 30):** solo CP-SAT — 2²⁹ ≈ 5.4×10⁸ asignaciones quedan fuera del presupuesto de enumeración en Python puro. CP-SAT probó `OPTIMAL` (no hizo falta registrar cota+incumbente), así que el valor es exacto, pero tiene **una sola ancla**; `metodos: ["cpsat"]` lo dice explícitamente. **PENDIENTE (para la ratificación):** segunda ancla independiente para ieee30 — p. ej. enumeración compilada, u otro solver exacto de la lista de la nota trust/04.
+**IEEE 30 (n = 30):** solo CP-SAT — 2²⁹ ≈ 5.4×10⁸ asignaciones quedan fuera del presupuesto de enumeración en Python puro. CP-SAT probó `OPTIMAL` (no hizo falta registrar cota+incumbente), así que el valor es exacto, pero hoy tiene **una sola ancla**; `metodos: ["cpsat"]` lo dice explícitamente. **Segunda ancla — DECIDIDA en S-E (2026-07-18, freeze §15.3; ratificación final de Sebas = correrla y comparar digests):** **enumeración exhaustiva vectorizada** (numpy por bloques, x₀=0, las 2²⁹ asignaciones — cero dependencias nuevas, cero código compartido con CP-SAT), integrada a este script §1.9 con presupuesto explícito; al ratificar, `metodos` pasa a `["cpsat","bruteforce_vectorized"]` y el digest se re-estampa. La cota superior del SDP de Goemans-Williamson (cvxpy, ya dep obligatoria) se registra como **chequeo de cordura** (UB ≥ óptimo), no como ancla.
 
 ### 1.5 Canonicalización de la asignación (documentada)
 
@@ -61,6 +61,11 @@ reg = json.load(open("ieee9-uniforme.json")); d = reg.pop("digest")
 assert hashlib.sha256(json.dumps(reg, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()).hexdigest() == d
 ```
 
+**Identidad como ancla (congelada en S-E, 2026-07-18):** el mapeo `dataset_id`↔digest quedó
+fijado en `docs/contract-freeze.md` §15.3 — `dataset_id = "islanding-corpus/<instancia>-<convencion>@v1"`,
+digest = el embebido de cada JSON (esta regla §1.6). IDs reservados para cr8/cr6 (§1.8); sus
+digests se estampan en el freeze al congelar los JSON.
+
 ### 1.7 Resultados (tabla resumen)
 
 | Instancia | Convención | n   | \|E\| | W (peso total) | **Óptimo** | Métodos            | `solver_status` | digest (prefijo) |
@@ -76,7 +81,7 @@ assert hashlib.sha256(json.dumps(reg, sort_keys=True, separators=(",", ":"), ens
 
 Las anclas **coincidieron en las 4 instancias donde ambas corren** (cero conflictos). Versiones exactas de la generación: pandapower 3.3.3 · networkx 3.6.1 · ortools 9.15.6755 · numpy 2.5.0 · Python del workspace (`uv run python`).
 
-### 1.8 PENDIENTE — la red CR estilizada (8 nodos) NO está en el corpus
+### 1.8 La red CR (cr8 + cr6) — ESPECIFICADA en S-E (P0-7); datos en curso, dueño Sebas
 
 La definición completa (lista de aristas + pesos) **no existe en el repo** — solo referencias agregadas, y con eso no se congela un vector (inventarla violaría todo el punto del corpus). Lo que se sabe, con fuente:
 
@@ -306,8 +311,8 @@ if __name__ == "__main__":
 | Dos convenciones de peso (`uniforme` + `flujo`) por instancia          | **portar** (de `docs/arquitectura-reconciliada.md`: "pandapower … power flow → w_ij") | La uniforme es exacta y auditable a mano; la de flujo es la que conecta con el dominio                      |
 | Escala entera S = 100 para `flujo` (0.01 MW)                           | decidido acá — **a ratificar por Sebas**                                              | Coherente con trust/10 §1.5; el redondeo queda dentro de la definición de la instancia                      |
 | Corpus como **datos versionados con digest** en `knowledge/islanding/` | **portar** (regla "λ es dato, no código" de quantum/02 §1.3)                          | Sin digest, dos corridas no son comparables; el JSON congelado es la fuente de verdad                       |
-| Ancla única para ieee30 (solo CP-SAT `OPTIMAL`)                        | aceptado con marca explícita en `metodos`                                             | 2²⁹ fuera del presupuesto de enumeración en Python; segunda ancla queda PENDIENTE                           |
-| Red CR estilizada en el corpus                                         | **diferido** (PENDIENTE §1.8)                                                         | La definición aristas+pesos no está en el repo; no se inventa un vector de referencia                       |
+| Ancla única para ieee30 (solo CP-SAT `OPTIMAL`)                        | **resuelto S-E:** segunda ancla = enumeración vectorizada (§1.4, freeze §15.3)        | Independiente de CP-SAT, cero deps nuevas; ratificación final de Sebas = correr y comparar digests          |
+| Red CR en el corpus (cr8 + cr6)                                        | **decidido S-E (P0-7):** desde datos abiertos del ICE (§1.8) — dueño Sebas            | Procedencia pública oficial (resuelve PR3/soberanía del demo); IDs reservados en freeze §15.3               |
 
 ## 3 · Licencias
 
@@ -336,4 +341,4 @@ Verificadas con `importlib.metadata` sobre los paquetes instalados del workspace
 - **ADR-029 (manifests genéricos; el conocimiento de escenario vive en la KB):** REALIZADO — islanding/IEEE/flujos viven acá, en `knowledge/`, no en ninguna capability. Esta nota es exactamente el "benchmark corpus with known optima (pending)" que el README de `knowledge/` ya anunciaba.
 - **D20 (confianza = propiedad del proceso):** los parámetros deterministas (workers=1, seed=1, tiempo determinista) + el digest por instancia hacen el corpus **regenerable y comparable byte a byte**, no anecdótico.
 - **Fail-loud (espíritu de trust/10 §1.2):** el generador aborta ante conflicto entre anclas o ante inconsistencia objetivo↔asignación — un corpus publicado con anclas en desacuerdo sería el equivalente al `pass` mentiroso.
-- **Ninguna contradicción con `docs/invariants.md` encontrada en esta consolidación.** **Ratificación de Sebas: PENDIENTE** (correr el script §1.9, comparar digests, ratificar S=100 y la carencia de segunda ancla en ieee30; aportar la red CR §1.8).
+- **Ninguna contradicción con `docs/invariants.md` encontrada en esta consolidación.** **Todo decidido (S-E 2026-07-18) — ratificación final de Sebas, ajustable bajo su criterio:** correr el script §1.9 (con la segunda ancla vectorizada de ieee30 integrada) y comparar digests; S=100 confirmado como definición de instancia; aportar cr8/cr6 desde los datos del ICE (§1.8, IDs y regla de digest ya congelados en freeze §15.3).

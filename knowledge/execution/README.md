@@ -9,8 +9,8 @@ marca explícitamente sus supuestos y preguntas abiertas, y cierra con su reconc
 test de invariante falla, se arregla el código, no el test").
 
 **Ninguna de estas notas declara un contrato congelado.** Son insumo para `docs/contract-freeze.md`
-(hoy DRAFT, explícitamente pendiente de las correcciones de Steven — plano de ejecución — antes de
-congelar), no un reemplazo de ese documento. Ninguna referencia externa citada en estas notas fue
+(**CONGELADO en el cierre S-E, 2026-07-18** — las correcciones del plano de ejecución quedaron
+incorporadas como ítems `[ejecución]`; ver "Cómo esto alimenta…" abajo), no un reemplazo de ese documento. Ninguna referencia externa citada en estas notas fue
 verificada en vivo esta sesión (sin `WebFetch`/`WebSearch`/`gh search`) — se tratan como **patrones de
 referencia**, no como verdad del proyecto; cada nota lo marca explícitamente donde aplica.
 
@@ -48,21 +48,21 @@ no importa `protocols`, `gateway`, `runtime`, `authz`, ni clientes de red). Corr
 
 ## Índice
 
-| Nota                                             | Tema                                                                                                                                                                                                                                                        | Contratos que toca                                                                                                       |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| [01](01-gateway-chokepoint-pipeline.md)          | El gateway como chokepoint único; 7 etapas concretas (identidad→authz→guardrails→policy→despacho→verificación→egreso)                                                                                                                                       | Pipeline de `blite.gateway`; frontera con Inv-E/INV-6                                                                    |
-| [02](02-runtime-agent-loop.md)                   | El agent loop: 4 formas comparadas (pipeline fijo/ReAct/plan-execute/jerárquico); vocabulario `run.step.*`                                                                                                                                                  | `blite.runtime`; frontera con vocabulario de eventos (trust/06)                                                          |
-| [03](03-durable-execution.md)                    | Durabilidad: event replay vs LangGraph checkpointing vs Temporal vs DBOS vs colas                                                                                                                                                                           | Consume `EventStore` (trust/01); proyección `RunState`                                                                   |
-| [04](04-capability-registry-adapters.md)         | Capability vs Tool vs Adapter; descubrimiento tolerante a fallos (caso real pyscf/VQE)                                                                                                                                                                      | `blite.runtime` registry; frontera con `CapabilityManifest` v2 (trust/06)                                                |
-| [05](05-model-router-serving-boundary.md)        | AX3 y el router de modelos; 4 diseños de egress comparados, ninguno decidido                                                                                                                                                                                | `blite.serving`; punto de coordinación obligatorio con Dylan                                                             |
-| [06](06-serving-execution-profile.md)            | `execution_profile` como estrategia de despacho; 4 perfiles comparados                                                                                                                                                                                      | `blite.serving`/`blite.runtime`; consume `CapabilityManifest` v2 (trust/06)                                              |
-| [07](07-run-lifecycle-events.md)                 | Máquina de estados textual de `Run`/`RunStep`; ejemplo de orden de eventos con IDs sintéticos                                                                                                                                                               | Consume `EventStore`/`Event` (trust/01); frontera con Studio (trust/18)                                                  |
-| [08](08-validacion-externa-pipeline-registry.md) | Validación externa EN VIVO de las notas 01/04: MS AGT (8 intervention points, confirma fail-closed y decisión-antes-de-despacho), middleware FastAPI/ASGI (las 7 etapas van como `Pipeline` explícito, NO como middleware), Composio/Cerebrum como registry | refina el pipeline de la nota 01 y el registry de la nota 04; semántica de versionado de manifests                       |
-| [09](09-model-server-egress.md)                  | Egress del model router — cierra el "sin decidir" de la nota 05: `ModelPort` (Protocol) en `blite.serving` + adapter `ModelServer` en `blite.protocols` con LiteLLM Router (cloud + Ollama, mismo router, demo dual)                                        | `ModelPort`/`ModelServer` — la corrección que el freeze esperaba; **propuesta pendiente de ratificación Steven + Dylan** |
+| Nota                                             | Tema                                                                                                                                                                                                                                                        | Contratos que toca                                                                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| [01](01-gateway-chokepoint-pipeline.md)          | El gateway como chokepoint único; 7 etapas concretas (identidad→authz→guardrails→policy→despacho→verificación→egreso)                                                                                                                                       | Pipeline de `blite.gateway`; frontera con Inv-E/INV-6                                                                                       |
+| [02](02-runtime-agent-loop.md)                   | El agent loop: 4 formas comparadas (pipeline fijo/ReAct/plan-execute/jerárquico); vocabulario `run.step.*`                                                                                                                                                  | `blite.runtime`; frontera con vocabulario de eventos (trust/06)                                                                             |
+| [03](03-durable-execution.md)                    | Durabilidad: event replay vs LangGraph checkpointing vs Temporal vs DBOS vs colas                                                                                                                                                                           | Consume `EventStore` (trust/01); proyección `RunState`                                                                                      |
+| [04](04-capability-registry-adapters.md)         | Capability vs Tool vs Adapter; descubrimiento tolerante a fallos (caso real pyscf/VQE)                                                                                                                                                                      | `blite.runtime` registry; frontera con `CapabilityManifest` v2 (trust/06)                                                                   |
+| [05](05-model-router-serving-boundary.md)        | AX3 y el router de modelos; 4 diseños de egress comparados, ninguno decidido                                                                                                                                                                                | `blite.serving`; punto de coordinación obligatorio con Dylan                                                                                |
+| [06](06-serving-execution-profile.md)            | `execution_profile` como estrategia de despacho; 4 perfiles comparados                                                                                                                                                                                      | `blite.serving`/`blite.runtime`; consume `CapabilityManifest` v2 (trust/06)                                                                 |
+| [07](07-run-lifecycle-events.md)                 | Máquina de estados textual de `Run`/`RunStep`; ejemplo de orden de eventos con IDs sintéticos                                                                                                                                                               | Consume `EventStore`/`Event` (trust/01); frontera con Studio (trust/18)                                                                     |
+| [08](08-validacion-externa-pipeline-registry.md) | Validación externa EN VIVO de las notas 01/04: MS AGT (8 intervention points, confirma fail-closed y decisión-antes-de-despacho), middleware FastAPI/ASGI (las 7 etapas van como `Pipeline` explícito, NO como middleware), Composio/Cerebrum como registry | refina el pipeline de la nota 01 y el registry de la nota 04; semántica de versionado de manifests                                          |
+| [09](09-model-server-egress.md)                  | Egress del model router — cierra el "sin decidir" de la nota 05: `ModelPort` (Protocol) en `blite.serving` + adapter `ModelServer` en `blite.protocols` con LiteLLM Router (cloud + Ollama, mismo router, demo dual)                                        | `ModelPort`/`ModelServer` — la corrección que el freeze esperaba; **DECIDIDA en el freeze §15.7 (S-E) — ratificación final Steven + Dylan** |
 
 > Las notas 08–09 son investigación de consolidación (Dylan, 2026-07-14): cierran los huecos del plan
 > (§4) que las notas 01–07 dejaron — referencias externas verificadas en vivo y la decisión de egress.
-> **Pendientes de validación y ratificación de Steven**, igual que el resto del flujo de abajo.
+> **Decididas en el cierre S-E (2026-07-18) — ratificación final de Steven**, igual que el resto del flujo de abajo.
 
 ## Orden de lectura sugerido
 
@@ -103,21 +103,22 @@ espera que Dylan lea las 7 notas completas antes de la sesión.
 
 ## Qué queda intencionalmente sin resolver
 
-Esta carpeta es una investigación inicial, no un diseño completo. Lo siguiente es una brecha conocida y
-reconocida, no un olvido:
+Esta carpeta es una investigación inicial, no un diseño completo. Estado de las brechas tras el
+cierre S-E (2026-07-18):
 
-- **El punto de egress de red para modelos (nota 05)** — sin resolver por diseño; requiere una decisión
-  conjunta que esta sesión de investigación no tenía mandato para tomar unilateralmente.
-- **Mecanismo exacto de idempotencia para reintentos de pasos irreversibles (nota 03)** — se identificó el
-  problema y su enganche con `side_effects`, no se diseñó el mecanismo.
-- **Forma exacta del objeto de contexto (`ctx`) que viaja por el pipeline del gateway (nota 01)** — se
-  fijó qué información necesita cargar, no su tipo/esquema exacto.
-- **Órdenes de magnitud reales** (cuántos eventos por run, cuántos backends de modelo, con qué frecuencia
-  se necesitaría `execution_profile: remote-job`) — ninguna nota tiene datos de producción; los supuestos
-  de Fase 1 son razonamiento desde los invariantes, no medición.
-- **Todo lo que depende de `CapabilityManifest` v2 y `DistributionManifest`** — estas notas consumen esos
-  contratos como si ya estuvieran congelados del lado de Dylan; `docs/contract-freeze.md` los marca DRAFT,
-  así que cualquier cambio ahí puede requerir revisar varias de estas notas.
+- **El punto de egress de red para modelos (nota 05)** — **RESUELTO**: nota 09 + freeze §15.7
+  (`ModelPort` en `serving`, `ModelServer` en `protocols` con LiteLLM Router + backend `replay`).
+- **Mecanismo exacto de idempotencia para reintentos de pasos irreversibles (nota 03)** — la regla
+  SEGURA quedó congelada (freeze §13: sin idempotencia garantizada no hay reintento automático —
+  escala a humano con override registrado); el mecanismo fino es diseño de S-G (dueño Steven,
+  freeze §15.8).
+- **Forma exacta del objeto de contexto (`ctx`) del pipeline (nota 01)** — qué carga quedó fijado
+  (freeze §8); el tipo/esquema exacto es parte de los seeds de S-G.
+- **Órdenes de magnitud reales** (eventos por run, backends de modelo, frecuencia de
+  `execution_profile: remote-job`) — sigue siendo hueco declarado sin datos de producción; los
+  supuestos de Fase 1 son razonamiento desde los invariantes, no medición.
+- **`CapabilityManifest` v2 y `DistributionManifest`** — CONGELADOS (freeze §1); estas notas ya
+  los consumen en su forma final.
 
 ## Cómo esto alimenta `docs/contract-freeze.md` (más adelante, sin tocarlo ahora)
 
@@ -135,3 +136,9 @@ de Steven (plano de ejecución) antes de congelar"_. El flujo previsto (mismo pa
    intencionalmente sin resolver" arriba) se resuelven en sesión conjunta antes de tocar el freeze.
 
 Ninguna nota de esta carpeta edita `docs/contract-freeze.md` ni `docs/invariants.md` directamente.
+
+**Cerrado (S-E 2026-07-18):** el flujo previsto arriba ocurrió — los puntos de las 9 notas entraron
+al freeze como ítems `[ejecución]` (§1, §2, §3, §5, §8, §13, §15.7) o quedaron declarados con dueño
+(§15.8); las preguntas de frontera de "Cómo revisar esto con Dylan" están todas decididas (stream por
+run, egress de modelo, `registry.loaded`, idempotencia-regla, 8 etapas). Queda la ratificación final
+de Steven sobre el conjunto.

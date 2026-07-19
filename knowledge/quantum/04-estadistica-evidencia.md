@@ -63,6 +63,14 @@ detail    = {n_runs, seeds[], modal_value, acuerdo, masa_top, entropia_bits, p_u
 
 Lectura: entropía alta + acuerdo bajo = el optimizador no convergió a estructura (señal para revisar p/iteraciones); acuerdo alto NO prueba optimalidad (dos heurísticas pueden coincidir en lo sub-óptimo) — por eso es rung 5 e informa, y el ancla sigue siendo CP-SAT (exactamente la aclaración de nombre de la nota 10 §1.1).
 
+> **AJUSTE S-E (2026-07-18, convergencia §2.1 — decidido, ratificación final de Sebas):** bajo la
+> spec v3.2 este consenso se parte en dos con suerte distinta. (a) La **réplica de MUESTREO con
+> seeds pinned** (mismas corridas de arriba, procesos no-modelo) SÍ es decisoria: constituye una
+> pata `consensus_replication` con techo **AL2** (S7 — patas = clases de independencia). (b) La
+> **concordancia entre modelos** (self-consistency de un modelo consigo mismo o entre familias)
+> sigue siendo `Signal` no-decisoria, exactamente como esta sección la diseñó. Las fórmulas de
+> `detail` sirven para ambas: en (a) alimentan la evidencia de la pata; en (b) el anexo de señales.
+
 ## 5 · Catálogo formalizado de propiedades y metamórficas (rung 4, listo para Hypothesis)
 
 Complementa las relaciones ya enunciadas en la nota 03 §1.2 con su enunciado exacto y varias nuevas:
@@ -159,5 +167,5 @@ Registrar la historia de energía (callback) y declarar plateau si |E_t − E_{t
 - **Patrón / mecanismo:** las fórmulas para llenar `evidence` sin mentir — approximation ratio, estadística de shots, baselines de enriquecimiento, consenso rung 5, catálogo de propiedades rung 4, McNemar, unidades Hartree, checklist de semillas/replay.
 - **Decisión:** N/A en el sentido del template (no evalúa repos externos); la decisión de fondo que fija: el consenso rung 5 es **señal, jamás attestation** (coherente con trust/04).
 - **Licencias:** N/A — fórmulas; menciona Hypothesis/sklearn sin introducir dependencia nueva.
-- **Impacto en contrato:** propone campos **aditivos** a `evidence` (`approximation_ratio`, `se_estimado`, `exact`, `seeds.*`) y detalle de `GuardrailSignal` para self-consistency. **PENDIENTE: registrarlos como ítems en `docs/contract-freeze.md`** — hoy son contratos fantasma sin dueño en el freeze.
-- **Reconciliación contra la base lógica:** revisada en la consolidación — respeta el verdict tri-estado (trust/03), la separación guardrail ≠ attestation (trust/04) y las tolerancias de trust/10. Es la nota kb2 más alineada con el plano de confianza. **Ratificación de Sebas: PENDIENTE.**
+- **Impacto en contrato:** propone campos **aditivos** a `evidence` (`approximation_ratio`, `se_estimado`, `exact`, `seeds.*`) y detalle de `GuardrailSignal` para self-consistency. **REGISTRADO (S-E 2026-07-18): `docs/contract-freeze.md` §11** — dejaron de ser contratos fantasma; dueño [confianza/ciencia].
+- **Reconciliación contra la base lógica:** revisada en la consolidación — respeta el verdict tri-estado (trust/03), la separación guardrail ≠ attestation (trust/04) y las tolerancias de trust/10. Es la nota kb2 más alineada con el plano de confianza. **Decidido (S-E 2026-07-18) — ratificación final de Sebas, ajustable bajo su criterio.**

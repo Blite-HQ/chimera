@@ -1,7 +1,7 @@
 # Nota 03 — La escalera de verificación formalizada + el puerto `Verifier`
 
 **Ítem del plan (§4 Dylan):** Métodos de la escalera → puerto `Verifier` + forma de `evidence` + registro de escalón
-**Fecha:** 2026-07-02 · **Estado:** insumo para el contract freeze del viernes
+**Fecha:** 2026-07-02 · **Estado:** **SUPERSEDIDA (2026-07-18, cierre S-E)** — la escalera 1–7 quedó reemplazada por los tres ejes de la spec v3.2 (`docs/spec-confianza-v3-2.md`): **clase decisoria** (el método) + **AL0–AL4** (la fuerza, con techos) + **criticidad C0–C3** (la exigencia). El mapa de traducción escalón→clase/techo vive en `docs/convergencia-diseno-v32.md` §2.1 y el contrato vigente en `docs/contract-freeze.md` §4. Los MÉTODOS aquí descritos siguen siendo el diseño de los adapters — solo cambia la etiqueta (los escalones 5–6 "no producen attestation" hoy se dice: son `Detector`/`Signal`, S1).
 **Fuentes:** base lógica (D18/PR2/ADR-027, congelada) · CHIMERA-Studio-Frontend §2 · CHIMERA-Arquitectura-Python §6 (correcciones #2/#3/#5) · compass deep-dive de verificación (PRM/ORM, verdictos AWS AR) · verificación en vivo de licencias (2026-07-02)
 
 ---

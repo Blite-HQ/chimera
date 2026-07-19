@@ -5,9 +5,10 @@ vive físicamente la llamada de red a un proveedor de modelo, verificando en viv
 la nota 05 solo citó conceptualmente (LiteLLM proxy y SDK, OpenRouter, vLLM server, Ollama local) y
 produciendo UNA recomendación compatible con AX3, con el demo dual (cloud = modelo por API, local =
 Ollama, MISMO router) y con el freeze.
-**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y
-ratificación de Steven; la decisión estructural es **propuesta de consolidación — pendiente ratificación
-de Steven + Dylan (frontera)**, no un contrato cerrado.
+**Fecha:** 2026-07-14 · **Estado:** **DECIDIDA en el freeze (S-E 2026-07-18, `docs/contract-freeze.md`
+§15.7)** — `ModelPort` (Protocol, en `serving`) + `ModelServer` (adapter en `protocols`, LiteLLM
+`Router` + backend `replay`) + eventos `model.call.*` (freeze §3). Ratificación final de Steven +
+Dylan (frontera), ajustable bajo su criterio.
 **Fuentes:** `pyproject.toml`, contrato import-linter `AX3` (leído en esta sesión: `source_modules =
 ["blite.serving"]`, `forbidden_modules = ["blite.protocols", "blite.gateway", "blite.runtime",
 "blite.authz", "httpx", "requests", "aiohttp", "urllib3", "socket"]`) y contratos `INV-2`
@@ -93,13 +94,13 @@ por eso el estado de esta nota es propuesta pendiente de ratificación conjunta,
 
 ## 3 · Licencias
 
-| Pieza                       | Licencia                                                                                                                                                                                 | Verificado                                                                                                                                 |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| LiteLLM (`BerriAI/litellm`) | **MIT**, con carve-out explícito: todo lo bajo `enterprise/` queda bajo `enterprise/LICENSE` (comercial) — el SPDX del repo reporta `NOASSERTION` por esa dualidad; el texto raíz es MIT | ✅ en vivo 2026-07-14 (`LICENSE` raíz leído completo) — al integrar: no importar nada de `enterprise/`                                     |
-| Ollama                      | **MIT**                                                                                                                                                                                  | ✅ en vivo 2026-07-14 (SPDX del repo)                                                                                                      |
-| vLLM                        | **Apache-2.0**                                                                                                                                                                           | ✅ en vivo 2026-07-14 (SPDX del repo)                                                                                                      |
-| OpenRouter                  | servicio hosteado comercial — sin licencia OSS aplicable (no hay software que integrar)                                                                                                  | ✅ en vivo 2026-07-14 (docs del endpoint)                                                                                                  |
-| LiteLLM Proxy (mismo repo)  | mismo MIT + carve-out; features de gateway "enterprise" caen bajo la licencia comercial                                                                                                  | ✅ en vivo 2026-07-14 — **PENDIENTE** delimitar qué features exactas del proxy son enterprise si Fase 2 lo retoma (no se integra este mes) |
+| Pieza                       | Licencia                                                                                                                                                                                 | Verificado                                                                                                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LiteLLM (`BerriAI/litellm`) | **MIT**, con carve-out explícito: todo lo bajo `enterprise/` queda bajo `enterprise/LICENSE` (comercial) — el SPDX del repo reporta `NOASSERTION` por esa dualidad; el texto raíz es MIT | ✅ en vivo 2026-07-14 (`LICENSE` raíz leído completo) — al integrar: no importar nada de `enterprise/`                                                                |
+| Ollama                      | **MIT**                                                                                                                                                                                  | ✅ en vivo 2026-07-14 (SPDX del repo)                                                                                                                                 |
+| vLLM                        | **Apache-2.0**                                                                                                                                                                           | ✅ en vivo 2026-07-14 (SPDX del repo)                                                                                                                                 |
+| OpenRouter                  | servicio hosteado comercial — sin licencia OSS aplicable (no hay software que integrar)                                                                                                  | ✅ en vivo 2026-07-14 (docs del endpoint)                                                                                                                             |
+| LiteLLM Proxy (mismo repo)  | mismo MIT + carve-out; features de gateway "enterprise" caen bajo la licencia comercial                                                                                                  | ✅ en vivo 2026-07-14 — chequeo declarado Fase 2 (freeze §15.8): delimitar qué features exactas del proxy son enterprise SI Fase 2 lo retoma (no se integra este mes) |
 
 ## 4 · Impacto en contrato
 

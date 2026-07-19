@@ -125,7 +125,7 @@ interface TrustCertificateStatement {
   readonly predicate: {
     readonly runId: string;
     readonly actor: { readonly id: string; readonly kind: string; readonly domainId: string };
-    readonly aggregateRung: number;
+    readonly aggregateRung: number; // AJUSTE S-E (2026-07-18): → titular_level (AL0–AL4) + conclusions[{statement, scope, verdict, AL}] + assumptions — freeze §7
     readonly unanchoredSteps: number;
     readonly attestations: readonly Attestation[];
     readonly policyId: string;
@@ -139,7 +139,7 @@ interface CertificateViewProps {
 }
 ```
 
-UX en tres niveles (patrón GitHub §1.3): (1) línea de veredicto — "Certificado · escalón agregado {aggregateRung} · política {policyId}"; (2) tabla compacta — run_id, actor, unanchored_steps, issued_at; (3) envelope crudo colapsado (payload + firma) + botón de descarga. Copy explícito: "verificado contra la llave local `{keyid}`" — nunca lenguaje de log público/OIDC que no aplica (§1.3).
+UX en tres niveles (patrón GitHub §1.3) — **copy corregido S-E (2026-07-18, P0-2 + vocabulario v3.2): la línea 1 abre con el ALCANCE, no con el número**: (1) línea de veredicto — "{conclusión canónica} · alcance: {scope}" con badge "{clase} · AL{n}" (jamás "escalón agregado" como titular — un nivel sin alcance se lee como "seguro para la red real" y es pasivo legal); (2) tabla compacta — run_id, actor, política, assumptions (digest del modelo/corpus, SC3), unanchored_steps, valid_as_of + "sin mecanismo de revocación en Fase 1"; (3) envelope crudo colapsado (payload + firma) + botón de descarga. Copy explícito: "verificado contra la llave local `{keyid}`" — nunca lenguaje de log público/OIDC que no aplica (§1.3). Los badges de toda la UI migran de escalón 1–7 a **clase + AL** (freeze §4).
 
 ### 2.4 `ProvenanceExplorer`
 

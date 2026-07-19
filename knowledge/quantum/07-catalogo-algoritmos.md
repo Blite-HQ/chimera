@@ -148,8 +148,9 @@ verificado en la nota 03 (Qiskit/PennyLane/dimod/neal/PySCF — Apache-2.0, veri
 2026-07-14) más OR-Tools/NetworkX/sklearn que ya son parte del plano vigente (trust/10, nota 03 §6).
 Dos candidatos catalogados introducirían dependencia nueva SI se activaran:
 
-- **XGBoost** (baseline Reto 2) — licencia esperada Apache-2.0, **PENDIENTE verificación en vivo**
-  contra el LICENSE del repo oficial antes de adoptar.
+- **XGBoost** (baseline Reto 2) — licencia esperada Apache-2.0; chequeo declarado: verificación en
+  vivo contra el LICENSE oficial SOLO si el C2/QSVM se reabriera (descartado como segundo reto en
+  S-E — el condicional es C3/TFIM, que no lo usa).
 - **Solver SDP para Goemans–Williamson** (p. ej. cvxpy + SCS) — licencias esperadas Apache-2.0/MIT,
   **verificación en vivo AHORA BLOQUEANTE (2026-07-18): GW dejó de ser catalogado — es baseline
   obligatorio del enunciado (CVXPY es herramienta oficial del C1)**; cerrar esta fila de licencia
@@ -178,5 +179,6 @@ vocabulario ya adoptado en `docs/convergencia-diseno-v32.md` §2.1 sin extenderl
   capabilities plugin; elegir del catálogo no acopla el engine a ningún algoritmo.
 - **Regla fail-loud** (espejo de trust/10 §1.2, transversal en §1.1): superar el óptimo probado
   por FORMAL_EXACT ⇒ bug del proceso, para todo proponente sin excepción.
-- Sin contradicciones detectadas con los invariantes congelados. **Ratificación de Sebas:
-  PENDIENTE** (incluye confirmar el corte implementar/catalogar de §2 y los dos caveats de §1.5).
+- Sin contradicciones detectadas con los invariantes congelados. **Decidido (S-E 2026-07-18) —
+  ratificación final de Sebas, ajustable bajo su criterio** (incluye el corte implementar/catalogar
+  de §2 y los dos caveats de §1.5).

@@ -3,6 +3,7 @@
 _La espina de invariantes + el build pragmático del equipo, reconciliados_
 
 > **Estado: VIGENTE.** Arquitectura activa de Chimera — core Python-dominante (FastAPI) + Studio en TypeScript. Ver [`README.md`](README.md) para el índice de autoridad documental y [`invariants.md`](invariants.md) para la constitución que enforza.
+> **Corrección S-E (2026-07-18, contra el enunciado oficial):** el pipeline del gateway se cita ahora con las **8 etapas congeladas** (freeze §8); la capability del reto condicional es el **simulador de dinámica/Trotter (Challenge 3 oficial = TFIM)**, no `vqe_simulator`/química; `cvxpy` sube a dependencia obligatoria (Goemans-Williamson es baseline oficial); el segundo reto condicional es **C3**, no el Reto 2.
 >
 > **Qué es este documento.** La reconciliación de dos entradas: nuestra **arquitectura** (la espina de invariantes, rigurosa) y el **documento de proyecto de Sebas/Steven** (el build pragmático en Python, concreto). No compiten — operan en capas distintas. Esto los une en **una sola arquitectura, en Python**, con el enforcement traducido. Es lo que se le pasa al equipo.
 >
@@ -24,7 +25,7 @@ _La espina de invariantes + el build pragmático del equipo, reconciliados_
 
 ## 2 · La arquitectura (en Python)
 
-Monolito modular en FastAPI. **El gateway es el chokepoint único:** toda acción pasa por **identidad → autorización → guardrails → verificación → procedencia.** Nada lo evade.
+Monolito modular en FastAPI. **El gateway es el chokepoint único:** toda acción pasa por las 8 etapas congeladas — **identity → authorization → guardrails → provenance:pre → mediation → verification → provenance:post → egress** (freeze §8; el egreso lo gobierna SOLO la autorización, Inv-E). Nada lo evade.
 
 Dos planos, como antes:
 
@@ -44,14 +45,14 @@ Vista de componentes (en Python):
 Studio (React/TS) ──HTTP+SSE──► API (FastAPI)
                                   │
                     ┌─────────────┴─────────────┐
-                    │   Gateway (chokepoint)     │  identidad→authz→guardrails→
-                    │                            │  verificación→procedencia
+                    │   Gateway (chokepoint)     │  identity→authz→guardrails→prov:pre→
+                    │                            │  mediation→verification→prov:post→egress
                     └─────────────┬─────────────┘
           ┌───────────────────────┼───────────────────────┐
    Capabilities (genéricas)   Event Store          Verificación (escalera)
    ├ qubo_solver (Qiskit)     (append-only,         ├ óptimo exacto (OR-Tools)
    ├ qml_classifier (PennyLane)  fuente de verdad)  ├ factibilidad (pandapower)
-   ├ vqe_simulator (Qiskit Nature)                  ├ propiedades (Hypothesis)
+   ├ dynamics_simulator (Trotter/TFIM — Qiskit)     ├ propiedades (Hypothesis)
    ├ classical_baseline (NetworkX)                  └ → Certificado de confianza
    └ constraint_checker (genérico)
 ```
@@ -133,9 +134,9 @@ class TrustCertificate(BaseModel):
 
 Esto es lo que nosotros obviamos y vale oro — el **cómo** implementable:
 
-- **Los servicios concretos:** `qubo_solver.py`, `qml_classifier.py`, `vqe_simulator.py`, `classical_baseline.py`, `constraint_checker.py` — código de punto de partida.
+- **Los servicios concretos:** `qubo_solver.py`, `qml_classifier.py`, `vqe_simulator.py`, `classical_baseline.py`, `constraint_checker.py` — código de punto de partida. _(Nota S-E: el `vqe_simulator.py` de su doc quedó superseded — el condicional C3 usa `dynamics_simulator` (TFIM/Trotter), ver la corrección del encabezado.)_
 - **El argumento de Python** para el hot-path (las librerías viven ahí).
-- **El Reto 2 (QML, potabilidad del agua)** como prueba de versatilidad — no solo optimización.
+- ~~**El Reto 2 (QML, potabilidad del agua)** como prueba de versatilidad~~ — **corregido S-E (2026-07-18, Δ9): el segundo reto condicional es el Challenge 3 (TFIM/Trotter)**, con gate duro (solo tras entrega COMPLETA del C1). El C2/QSVM queda descartado como segundo reto (sin ancla exacta — modo amortizado); la versatilidad la prueban el catálogo (`knowledge/quantum/07`) y el kit C3 sobre el mismo builder.
 - **El dataset de Costa Rica** (subestaciones San José, Cartago, Heredia) y la narrativa de presentación.
 - **El roadmap de 8 días** (adaptado en §9).
 - **El streaming de eventos por SSE** para el Studio en tiempo real.
@@ -199,7 +200,7 @@ La distinción que ordena todo: el mapa de ~150 repos era para **aprender de**. 
 ### Construís CON (las dependencias — el stack que instalás)
 
 No se "investigan" a fondo; se conoce su API. Son las dependencias del `pyproject.toml`:
-`fastapi`, `uvicorn`, `sqlalchemy`, `asyncpg`, `pydantic` · `qiskit`, `qiskit-aer`, `qiskit-optimization`, `qiskit-algorithms`, `qiskit-nature` · `pennylane`, `pennylane-lightning` · `networkx`, `ortools`, `scikit-learn`, `numpy`, `scipy`, `pyscf` · y para los tests de propiedad, `hypothesis`.
+`fastapi`, `uvicorn`, `sqlalchemy`, `asyncpg`, `pydantic` · `qiskit`, `qiskit-aer`, `qiskit-optimization`, `qiskit-algorithms` · `pennylane`, `pennylane-lightning` · `networkx`, `ortools`, **`cvxpy`** (obligatoria desde S-E: Goemans-Williamson es baseline oficial del C1), `scikit-learn`, `numpy`, `scipy`, `pyscf` (ED — ancla del C3 condicional) · y para los tests de propiedad, `hypothesis`. _(Corrección S-E: `qiskit-nature` sale — era del Reto 3 = VQE/química; el C3 oficial es TFIM/Trotter y usa `PauliEvolutionGate` de qiskit core + ED de SciPy/PySCF.)_
 
 ### Aprendés DE (las referencias para la espina — pocas, por rol)
 
@@ -226,7 +227,7 @@ Se respeta su cronograma de 8 días, **insertando la espina** donde corresponde:
 - **Día 4 — Verificación con la escalera:** el checker **genérico** + las restricciones del grid como datos; el **óptimo exacto (OR-Tools)** como ancla, el heurístico como baseline de ablación, **separados**; el **certificado firmado**. _(Correcciones #2, #3, #4, #7.)_
 - **Día 5 — Gateway + agentes:** el **gateway como chokepoint** (identidad→authz→guardrails→verificación→procedencia); los agentes (planner, quantum, verification).
 - **Día 6 — Studio:** el run en vivo con SSE, el inspector de paso **con el badge de verificación** (el escalón de cada paso), el certificado, la ablación.
-- **Día 7 — Reto 2 (QML):** la prueba de versatilidad.
+- **Día 7 — kit del reto condicional C3 (TFIM/Trotter):** solo si el C1 está entregado completo (gate duro Δ9); si no, pulido adelantado.
 - **Día 8 — Pulido + demo:** datos pre-cargados, la narrativa, todo reproducible.
 
 ---

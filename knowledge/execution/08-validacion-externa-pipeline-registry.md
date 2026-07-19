@@ -102,7 +102,7 @@ Verificado en vivo contra docs oficiales:
   docs recomiendan middleware **ASGI puro** (_"greater control over behavior and enhanced
   interoperability"_) para superar sus limitaciones. El gotcha histórico de streaming/SSE bufferizado bajo
   `BaseHTTPMiddleware` **ya no aparece como limitación en los docs actuales** (las versiones recientes de
-  Starlette lo mitigaron); se marca **PENDIENTE** confirmar el comportamiento exacto en la versión de
+  Starlette lo mitigaron); queda como chequeo declarado confirmar el comportamiento exacto en la versión de
   Starlette que el repo termine pineando — la recomendación de abajo no depende de ese detalle porque
   evita `BaseHTTPMiddleware` por completo.
 - **`Depends` por router.** FastAPI, textual: las dependencias de `APIRouter(dependencies=[...])` _"will

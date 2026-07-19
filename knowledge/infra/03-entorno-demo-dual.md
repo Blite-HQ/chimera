@@ -173,11 +173,11 @@ Arquitectura x86_64 para el mes (ARM64/Graviton es ~20% más barato pero exige b
 | api (.5 vCPU / 1 GB)               | ~$0.025                                           | ~$8                  |
 | worker (1 vCPU / 2 GB)             | ~$0.049                                           | ~$17                 |
 | studio (.25 vCPU / 512 MiB)        | ~$0.012                                           | ~$4                  |
-| ALB                                | ~$0.02–0.03 + LCU — **PENDIENTE verificar**       | ~$10–15              |
-| RDS pequeño (t4g.micro single-AZ)  | ~$0.016 — **PENDIENTE verificar**                 | ~$6                  |
+| ALB                                | ~$0.02–0.03 + LCU — verificar al provisionar      | ~$10–15              |
+| RDS pequeño (t4g.micro single-AZ)  | ~$0.016 — verificar al provisionar                | ~$6                  |
 | ECR + CloudWatch + NAT (si aplica) | marginal a esta escala; NAT es el rubro a vigilar | <$10                 |
 
-Orden de magnitud total: **decenas de dólares para la ventana del demo** — no es una variable de decisión. Los rubros PENDIENTES se confirman con la calculadora oficial al provisionar.
+Orden de magnitud total: **decenas de dólares para la ventana del demo** — no es una variable de decisión. Los rubros marcados se confirman con la calculadora oficial al provisionar (chequeo declarado).
 
 ### 1.5 Calendario de dry-runs — **PROPUESTA a ratificar por Geovanni y el equipo**
 
@@ -222,14 +222,14 @@ Regla propuesta: si el dry-run 1 falla, el 28 se usa para arreglar y el video se
 
 ## 3 · Licencias
 
-| Pieza                              | Licencia                                | Verificado 2026-07-14                                                  |
-| ---------------------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
-| uv                                 | **MIT / Apache-2.0 (dual, a elección)** | ✅ en vivo (repo)                                                      |
-| Ollama                             | **MIT**                                 | ✅ en vivo (repo)                                                      |
-| PostgreSQL (imagen)                | PostgreSQL License (permisiva)          | conocida                                                               |
-| nginx                              | BSD-2 ⚠️                                | conocida — **PENDIENTE verificar en vivo** al crear el Dockerfile real |
-| Vite / Node                        | MIT                                     | conocidas (ya en el stack del studio)                                  |
-| Imágenes AWS (ECR/Fargate/ALB/RDS) | servicios, no dependencias de código    | n/a                                                                    |
+| Pieza                              | Licencia                                | Verificado 2026-07-14                                                       |
+| ---------------------------------- | --------------------------------------- | --------------------------------------------------------------------------- |
+| uv                                 | **MIT / Apache-2.0 (dual, a elección)** | ✅ en vivo (repo)                                                           |
+| Ollama                             | **MIT**                                 | ✅ en vivo (repo)                                                           |
+| PostgreSQL (imagen)                | PostgreSQL License (permisiva)          | conocida                                                                    |
+| nginx                              | BSD-2 ⚠️                                | conocida — chequeo declarado: verificar en vivo al crear el Dockerfile real |
+| Vite / Node                        | MIT                                     | conocidas (ya en el stack del studio)                                       |
+| Imágenes AWS (ECR/Fargate/ALB/RDS) | servicios, no dependencias de código    | n/a                                                                         |
 
 Ninguna licencia copyleft entra al artefacto: todo lo que se **redistribuye** (imágenes propias) compone piezas MIT/BSD/permisivas.
 
@@ -249,4 +249,4 @@ Ninguna licencia copyleft entra al artefacto: todo lo que se **redistribuye** (i
 4. **INV-1:** un solo punto de entrada por entorno (nginx local / ALB cloud) que enruta al api — ningún servicio queda expuesto por fuera del chokepoint.
 5. **Aislamiento (nota 01, escalera):** el demo cloud corre en el escalón 3 (tasks Fargate, cada una su micro-VM, sin host compartido) — consistente con lo que la nota 01 ya fijó como "nuestro modelo".
 6. **Calendario:** marcado explícitamente como **propuesta** (§1.5) — las fechas encajan con feature freeze ~23 jul y evento ~1 ago, pero las ratifica Geovanni con el equipo; la regla de degradación (local manda, cloud degrada) también es propuesta.
-7. **PENDIENTES:** (a) precios de ALB/RDS contra la calculadora oficial al provisionar; (b) licencia de nginx en vivo al crear el Dockerfile; (c) elección del modelo concreto de Ollama (tamaño vs. RAM del equipo del demo — coordinar con el dueño del model router); (d) decidir subnet pública+IP vs. VPC endpoints de ECR para el pull de imágenes; (e) medición real del worker (1 vCPU/2 GB es hipótesis) en el dry-run 1.
+7. **Cierre S-E (2026-07-18) — decisiones tomadas y chequeos declarados:** (c) **decidido:** modelo de Ollama = uno chico (~3B cuantizado, default `llama3.2:3b`) que quepa junto al statevector de ieee14 en la RAM del equipo del demo — el LLM está fuera del camino crítico (freeze §15.4: `replay` es la config de demo) y se mide en el dry-run 1; ratificación final Steven+Geovanni. (d) **decidido:** si Fargate se activa (es stretch — P1-10), subnet pública + IP para el pull de ECR (lo simple; costo trivial en la ventana del demo) — VPC endpoints quedan como forma de producción. Chequeos declarados (al provisionar/construir): (a) precios de ALB/RDS contra la calculadora oficial; (b) licencia de nginx en vivo al crear el Dockerfile; (e) medición real del worker (1 vCPU/2 GB es hipótesis) en el dry-run 1.

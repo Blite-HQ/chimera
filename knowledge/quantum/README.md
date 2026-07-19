@@ -6,9 +6,11 @@ estratificada: la nota 00 ("KB-fuentes") es la capa de links/versiones/gotchas q
 01–04 referencian y no repiten.
 
 Las notas 01–04 cierran con su sección **"Template de nota"** (decisión · licencias · impacto
-en contrato · reconciliación); los huecos que quedaron de la investigación original están
-marcados **PENDIENTE** ahí y resumidos abajo — no se rellenaron en la consolidación para no
-inventar validaciones que no ocurrieron.
+en contrato · reconciliación); los huecos que quedaron de la investigación original se marcaron
+ahí y se resumen abajo — no se rellenaron en la consolidación para no inventar validaciones que
+no ocurrieron, y **quedaron cerrados en el barrido S-E (2026-07-18)**: cada uno dice hoy su
+resolución (decidido — ratificación final del dueño, registrado en el freeze, o chequeo
+declarado con disparador).
 
 ## Índice
 
@@ -35,9 +37,10 @@ inventar validaciones que no ocurrieron.
 1. **Corpus de benchmarks — RESUELTO en la consolidación (2026-07-14):** vive en
    `knowledge/islanding/` (nota 01 + `corpus/*.json`): IEEE 9/14/30 × {uniforme, flujo}, óptimos
    exactos con doble ancla (CP-SAT + fuerza bruta donde n≤14; cero conflictos), canonicalización
-   x₀=0, digests SHA-256, script de regeneración inline. **PENDIENTE de Sebas:** ratificar,
-   aportar la definición completa de la red CR estilizada (no existía en ningún doc — no se
-   inventó) y una segunda ancla para ieee30 (hoy solo CP-SAT `OPTIMAL`).
+   x₀=0, digests SHA-256, script de regeneración inline. **Decidido (S-E 2026-07-18) —
+   ratificación final de Sebas:** correr el script (la segunda ancla de ieee30 quedó decidida:
+   enumeración vectorizada, freeze §15.3), comparar digests, y aportar cr8/cr6 desde los datos
+   abiertos del ICE (islanding/01 §1.8 — P0-7).
 2. **Licencias — RESUELTO:** verificadas en vivo 2026-07-14 (nota 03 §5 y su sección de template):
    Qiskit/PennyLane/dimod/neal/PySCF/OpenQASM 3, todas Apache-2.0.
 3. **Campos aditivos de `evidence` — RESUELTO:** registrados en `docs/contract-freeze.md` **§11**;

@@ -2,10 +2,11 @@
 
 Notas de la investigación de infraestructura. La nota 01 fue importada al repo en la
 consolidación del knowledge base (2026-07-14) desde el documento de trabajo externo; las notas
-02–03 se investigaron en la consolidación para cerrar los huecos del plan (§4) y **esperan
-validación y ratificación de Geovanni**. El template (decisión · licencias · impacto en
-contrato · reconciliación) se aplica en cada nota; los huecos restantes están marcados
-**PENDIENTE**.
+02–03 se investigaron en la consolidación para cerrar los huecos del plan (§4). **Desde el
+cierre S-E (2026-07-18) sus decisiones están tomadas — queda la ratificación final de Geovanni
+(ajustable bajo su criterio).** El template (decisión · licencias · impacto en contrato ·
+reconciliación) se aplica en cada nota; los chequeos operativos restantes están declarados con
+dueño y disparador (precios al provisionar, licencias al crear el Dockerfile, spikes al construir).
 
 ## Índice
 

@@ -12,9 +12,10 @@ con su reconciliación contra `docs/invariants.md` (la base lógica no está baj
 > **Aclaración de procedencia:** el corpus y la nota 01 fueron generados en la
 > consolidación del 2026-07-14 (Dylan) para cerrar el pendiente №1 de
 > `../quantum/README.md` — el entregable central que faltó de la investigación del
-> plano cuántico. **Esperan validación y ratificación de Sebas** (dueño de este
-> directorio): regenerar con el script inline de la nota 01 §1.9, comparar digests,
-> y resolver los PENDIENTE (segunda ancla de ieee30, red CR estilizada).
+> plano cuántico. **Decidido (S-E 2026-07-18) — ratificación final de Sebas** (dueño de
+> este directorio): regenerar con el script inline de la nota 01 §1.9 (ya con la segunda
+> ancla de ieee30 decidida: enumeración vectorizada — freeze §15.3), comparar digests, y
+> aportar cr8/cr6 desde los datos abiertos del ICE (nota 01 §1.8).
 >
 > **Actualización (2026-07-18, enunciado oficial):** el C1 se modela oficialmente como
 > **Max-Cut** — el corpus queda ALINEADO tal como está (no se regenera). La red CR (~8 nodos) se
@@ -24,9 +25,9 @@ con su reconciliación contra `docs/invariants.md` (la base lógica no está baj
 
 ## Índice
 
-| Nota                          | Tema                                                                                                                                                                                                                                         | Contratos que toca                                                                                                                                                   |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [01](01-corpus-benchmarks.md) | Corpus de benchmarks con óptimos conocidos (IEEE 9/14/30 × convenciones `uniforme`/`flujo`): doble ancla CP-SAT + fuerza bruta, escalado entero S=100, canonicalización x₀=0, digest por instancia; PENDIENTE la red CR estilizada (8 nodos) | ninguno cambia; alimenta el corpus rung 3 (trust/17) y el `ExactSolverVerifier` (trust/10); el campo `escala` de cada JSON es el `scale` del `evidence.differential` |
+| Nota                          | Tema                                                                                                                                                                                                                                                                        | Contratos que toca                                                                                                                                                                     |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [01](01-corpus-benchmarks.md) | Corpus de benchmarks con óptimos conocidos (IEEE 9/14/30 × convenciones `uniforme`/`flujo`): doble ancla CP-SAT + fuerza bruta, escalado entero S=100, canonicalización x₀=0, digest por instancia; cr8/cr6 desde datos del ICE en curso (dueño Sebas — P0-7, freeze §15.3) | ninguno cambia; alimenta el ancla `ground_truth` del corpus (trust/17) y el `ExactSolverVerifier` (trust/10); el campo `escala` de cada JSON es el `scale` del `evidence.differential` |
 
 ## Datos versionados
 

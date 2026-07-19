@@ -1,6 +1,6 @@
 # Anexo del Contract Freeze — Canonicalización del `provenance_hash` (y de todo digest de contenido)
 
-> **Estado: DRAFT junto con el freeze** — spec de la ficha G2. Complementa `contract-freeze.md` §7 (el freeze define QUÉ es el `provenance_hash`; este anexo define los BYTES exactos). Insumo: nota 09 (estudio de primera mano del MS Agent Governance Toolkit).
+> **Estado: CONGELADO junto con el freeze (2026-07-18, cierre S-E)** — spec de la ficha G2. Complementa `contract-freeze.md` §7 (el freeze define QUÉ es el `provenance_hash`; este anexo define los BYTES exactos). Insumo: nota 09 (estudio de primera mano del MS Agent Governance Toolkit). Los vectores §6 son el gate de toda implementación.
 > **Por qué existe:** sin spec exacta de bytes, dos implementaciones honestas producen hashes distintos y la verificación offline muere. No es hipótesis: el AGT lo demuestra — su spec de audit dice "no extra whitespace" pero su implementación de referencia serializa con espacios (hashes distintos, reproducido en vivo), y sus SDKs Python/TypeScript/Rust usan tres canonicalizaciones incompatibles entre sí (nota 09 §1.1).
 
 ---

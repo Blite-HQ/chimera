@@ -2,7 +2,7 @@
 
 _PostgreSQL · Fase 1_
 
-> **Estado: SEMILLA.** Esquema PostgreSQL de la investigación inicial (Fase 1). [`contract-freeze.md`](contract-freeze.md) §2 confirma 3 ajustes sobre esta base (`global_seq`, REVOKE+trigger en vez de reglas silenciosas `DO INSTEAD NOTHING`, semántica de concurrencia optimista `expected_seq`) — no implementar directo de este documento. Ver [`README.md`](README.md).
+> **Estado: SUPERSEDIDO (2026-07-18, barrido S-E) por [`esquema-datos-v2.md`](esquema-datos-v2.md)** (que ya incorpora los 3 ajustes que este documento tenía anotados: `global_seq`, REVOKE+trigger, `expected_seq`). Se conserva como registro histórico. La fuente de verdad de la traducción es [`contract-freeze.md`](contract-freeze.md) — no implementar de este documento. Ver [`README.md`](README.md).
 >
 > **Propósito.** Realiza en PostgreSQL las entidades definidas en _Especificación de Contratos_. El principio rector es Event Sourcing: la tabla `events` es la **única fuente de verdad** (append-only); todo lo demás son proyecciones derivables por replay.
 >

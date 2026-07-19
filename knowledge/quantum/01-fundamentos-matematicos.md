@@ -164,4 +164,4 @@ Mismo principio variacional, pero: (a) H es **arbitrario** (no diagonal — el m
 - **Decisión:** N/A — documento de fundamentos; no evalúa herramientas ni repos externos.
 - **Licencias:** N/A — cita papers (arXiv/JACM), no librerías.
 - **Impacto en contrato:** ninguno directo. Sostiene la regla fail-loud "candidato mejor que el óptimo probado ⇒ error" (§5, espejo de trust/10 §1.2 llevado a química) y alimenta las fórmulas de `evidence` de la nota 04.
-- **Reconciliación contra la base lógica:** revisada en la consolidación — sin contradicciones con `docs/invariants.md` (todo lo verificante propuesto es determinista no-modelo; INV-2 intacto). **Ratificación de Sebas: PENDIENTE.**
+- **Reconciliación contra la base lógica:** revisada en la consolidación — sin contradicciones con `docs/invariants.md` (todo lo verificante propuesto es determinista no-modelo; INV-2 intacto). **Decidido (S-E 2026-07-18) — ratificación final de Sebas, ajustable bajo su criterio.**
