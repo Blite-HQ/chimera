@@ -1,5 +1,8 @@
 # Knowledge — Quantum (plano cuántico / ciencia · Sebas)
 
+**¿Buscás algo rápido?** Empezá por [`INDEX.md`](INDEX.md) — tabla de ruteo reto → algoritmo →
+nota, pensada para consulta veloz humana o de agente. Lo de abajo es el índice completo de notas.
+
 Notas de la investigación del plano cuántico (serie "KB2", 2026-07-08/14), normalizadas a la
 estructura del knowledge base en la consolidación (2026-07-14). La serie es deliberadamente
 estratificada: la nota 00 ("KB-fuentes") es la capa de links/versiones/gotchas que las notas
@@ -31,6 +34,17 @@ declarado con disparador).
 > huecos del plan y los del bootcamp; **pendientes de ratificación final de Sebas**, igual que
 > el corpus de `knowledge/islanding/`. Las notas 07–09 ya usan el vocabulario de la spec v3.2
 > (clases decisorias + AL — ver `docs/convergencia-diseno-v32.md`).
+
+## Triage de fuentes externas (bootcamp / clases)
+
+[`_triage-map.md`](_triage-map.md) — mapa de reconocimiento (no una nota numerada; no sigue el
+template de decisión/licencias/reconciliación) sobre las clases del bootcamp pre-hackathon
+(QWorld OQI 2026) usadas para preparar al equipo. Cruza el contenido de cada sesión contra las
+notas 00/02/06/07 de este directorio para detectar gaps. **Resultado (2026-07-21):** cobertura
+existente fuerte, sin gaps críticos — la única nuance detectada ya se incorporó a la nota 02 §1.3.
+Cobertura parcial: 11/16 fuentes de la serie QWorld; la carpeta compartida "Quantathon Bootcamp
+classes & materials" (el grueso restante de las clases) queda pendiente de triage — ver el archivo
+para el detalle de qué falta y por qué.
 
 ## Estado de los pendientes originales
 
