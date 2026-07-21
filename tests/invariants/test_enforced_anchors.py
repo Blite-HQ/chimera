@@ -26,7 +26,7 @@ def _parse_anchors() -> list[str]:
     """Extract all enforced anchors from docs/invariants.md."""
     if not INVARIANTS_DOC.exists():
         return []
-    return ANCHOR_PATTERN.findall(INVARIANTS_DOC.read_text())
+    return ANCHOR_PATTERN.findall(INVARIANTS_DOC.read_text(encoding="utf-8"))
 
 
 def _resolve_anchor(anchor: str) -> tuple[bool, str]:
@@ -43,7 +43,7 @@ def _resolve_anchor(anchor: str) -> tuple[bool, str]:
         return False, f"File not found: {file_part}"
 
     if symbol:
-        content = full_path.read_text()
+        content = full_path.read_text(encoding="utf-8")
         if symbol not in content:
             return False, f"Symbol {symbol!r} not found in {file_part}"
 
