@@ -11,7 +11,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-    full = ['numpy>=2.5.1', 'scipy>=1.18.0', 'pandas>=3.0.2']
+    # pandas>=2.3 [S-F 2026-07-20]: el floor >=3.0.2 era arbitrario (este paquete no
+    # importa pandas) y hacía irresoluble el workspace junto a pandapower>=3.3
+    # (que exige pandas>=2.3,<3) — y pandapower es el ancla EXECUTION del demo.
+    full = ['numpy>=2.5.1', 'scipy>=1.18.0', 'pandas>=2.3']
 
 [project.entry-points."blite.capabilities"]
 "blite.numeric.matrix_ops" = "blite_cap_numeric:MatrixOps"

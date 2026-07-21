@@ -66,3 +66,6 @@ pnpm-debug.log*
 
 # Playwright MCP artifacts (screenshots, snapshots)
 .playwright-mcp/
+
+# Compose secrets (S-F 2026-07-20 — flip publico ~1-ago: el compose de diseño monta ./secrets/)
+secrets/

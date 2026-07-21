@@ -11,7 +11,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-    pandapower = ['pandapower>=2.13']
+    # Floor >=3.3 [S-F 2026-07-20]: el lock resolvía pandapower 3.1.2, que crashea en
+    # pp.runpp con numpy 2.5.1 ("assignment destination is read-only") — pandapower es
+    # el ancla EXECUTION del demo (contract-freeze §4) y el generador del corpus
+    # (islanding/01 §1.9). 3.3.x + numpy 2.5.x reproduce los 6 digests del corpus.
+    pandapower = ['pandapower>=3.3']
 
 [project.entry-points."blite.capabilities"]
 "blite.sim.power_flow" = "blite_cap_sim:PowerFlowSim"
