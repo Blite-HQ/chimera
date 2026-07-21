@@ -38,18 +38,21 @@ def test_example_yaml_loads_as_a_valid_verification_policy() -> None:
     policy = VerificationPolicy.model_validate(raw)
 
     assert policy.policy_id == "chimera-default"
-    assert policy.version == "0.1.0"
+    # [S-F] 0.2.0: the 0.1.0 spoke `min_rung`, vocabulary removed by the freeze SS4.
+    assert policy.version == "0.2.0"
     assert len(policy.rules) == 3
 
 
-def test_example_yaml_pure_solution_rule_requires_rung_one_and_two_anchors() -> None:
+def test_example_yaml_pure_solution_rule_is_c3_with_two_independent_legs() -> None:
     raw = yaml.safe_load(EXAMPLE_YAML.read_text())
     policy = VerificationPolicy.model_validate(raw)
 
     solution_rule = policy.rules[0]
     assert solution_rule.match.side_effects == "pure"
     assert solution_rule.match.claim_type == "solution"
-    assert solution_rule.min_rung == 1
+    assert solution_rule.criticality == "C3"
+    assert solution_rule.min_level == "AL3"
+    assert solution_rule.required_legs == 2
     assert solution_rule.required_anchors == ("solver", "execution")
     assert solution_rule.on_inconclusive == "mark"
 
@@ -75,8 +78,28 @@ def test_on_inconclusive_rejects_a_value_outside_the_closed_set() -> None:
         VerificationPolicy.model_validate(
             {
                 "policy_id": "test",
-                "version": "0.1.0",
-                "rules": [{"match": {}, "min_rung": 1, "on_inconclusive": "ignore"}],
+                "version": "0.2.0",
+                "rules": [
+                    {
+                        "match": {},
+                        "criticality": "C1",
+                        "min_level": "AL1",
+                        "on_inconclusive": "ignore",
+                    }
+                ],
+            }
+        )
+
+
+def test_min_rung_vocabulary_is_dead() -> None:
+    """[S-F · T1] The 1-7 ladder was superseded by the freeze SS4 — a rule speaking
+    `min_rung` must be rejected, never silently accepted alongside the new fields."""
+    with pytest.raises(ValidationError):
+        VerificationPolicy.model_validate(
+            {
+                "policy_id": "test",
+                "version": "0.2.0",
+                "rules": [{"match": {}, "min_rung": 1, "on_inconclusive": "mark"}],
             }
         )
 
