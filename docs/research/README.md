@@ -14,7 +14,16 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   describing how claims in this project are validated (e.g. the verification-ladder rungs
   and what "confiable ≠ plausible" means formally).
 
-Nothing here yet beyond this placeholder — content lands once the group's investigation
+## Current contents
+
+- [`arquitectura-ingesta-kg-fase2.md`](arquitectura-ingesta-kg-fase2.md) — **design proposal,
+  not implemented.** Multi-modal ingestion (video/image/paper/repo) + knowledge base/graph with
+  verifiable provenance, tying into the DSSE/certificate layer. Explicitly out of hackathon scope;
+  written to preserve the design after a personal exercise concluded the cheap version (a triage
+  index over `knowledge/quantum/`, see `knowledge/quantum/_triage-map.md` and `INDEX.md` on
+  `main`) covers the near-term need instead.
+
+Nothing else here yet beyond this — further content lands once the group's investigation
 (timeboxed research week, see project plan) produces a draft worth structuring.
 
 ## Suggested structure (create as content arrives)
