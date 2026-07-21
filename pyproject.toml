@@ -187,6 +187,13 @@ forbidden_modules = [
     "aiohttp",
     "urllib3",
     "socket",
+    # Explicit, not just transitive-via-httpx (execution/09 §4, ratificación S-F):
+    # a model-client SDK in `serving` would be caught by the chain below anyway,
+    # but naming it directly keeps the gate legible and doesn't depend on these
+    # SDKs continuing to route through httpx internally.
+    "litellm",
+    "openai",
+    "anthropic",
 ]
 
 [[tool.importlinter.contracts]]
