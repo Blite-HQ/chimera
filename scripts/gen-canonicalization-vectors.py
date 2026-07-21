@@ -10,53 +10,13 @@ Implementa el subset RFC 8785 (JCS) que el anexo especifica:
 
 import hashlib
 import json
-from typing import Any
 
-
-def _format_number(value):
-    if isinstance(value, int):
-        return str(value)
-    if value != value or value in (float("inf"), float("-inf")):
-        raise ValueError("JCS cannot serialize NaN or Infinity")
-    if value.is_integer():
-        return str(int(value))
-    return repr(value)
-
-
-def _emit(value: Any, out: list) -> None:
-    if value is None:
-        out.append("null")
-    elif isinstance(value, bool):
-        out.append("true" if value else "false")
-    elif isinstance(value, (int, float)):
-        out.append(_format_number(value))
-    elif isinstance(value, str):
-        out.append(json.dumps(value, ensure_ascii=False))
-    elif isinstance(value, (list, tuple)):
-        out.append("[")
-        for i, item in enumerate(value):
-            if i:
-                out.append(",")
-            _emit(item, out)
-        out.append("]")
-    elif isinstance(value, dict):
-        out.append("{")
-        keys = sorted(value, key=lambda k: k.encode("utf-16-be"))
-        for i, key in enumerate(keys):
-            if i:
-                out.append(",")
-            out.append(json.dumps(key, ensure_ascii=False))
-            out.append(":")
-            _emit(value[key], out)
-        out.append("}")
-    else:
-        raise TypeError(f"not JCS-serializable: {type(value).__name__}")
-
-
-def canonicalize(value: Any) -> bytes:
-    parts: list = []
-    _emit(value, parts)
-    return "".join(parts).encode("utf-8")
+# [S-F stress · SF-P1-1] Single source of truth: import the engine's C(x) instead
+# of keeping a second copy here. The earlier standalone reimplementation used a
+# bare repr() and diverged from engine/certificate/canonical.py on small floats
+# ([1e-6, 1e-4)) — exactly the "two honest implementations, different hashes"
+# drift this annex exists to prevent. canonical.py is now ECMAScript-conformant.
+from blite.certificate.canonical import canonicalize
 
 
 def sha256_hex(data: bytes) -> str:
@@ -128,15 +88,11 @@ print("=== V4 provenance_hash con verdict mutado pass->fail ===")
 print("provenance_hash:", sha256_hex(PREFIX + c1 + b"\n" + c2_mut + b"\n"))
 print()
 
-# --- Casos de borde del formateo numerico ---
+# --- Casos de borde del formateo numerico (incl. banda ECMAScript [1e-6,1e-4)) ---
 print("=== bordes numericos ===")
-print("2.0  ->", canonicalize(2.0))
-print("0.1  ->", canonicalize(0.1))
-print("-0.0 ->", canonicalize(-0.0))
-print("1e21 ->", canonicalize(1e21))
-print(
-    "1e-7 (repr Python):", repr(1e-7), "→ divergencia documentada vs ECMAScript '1e-7'"
-)
+for v in (2.0, 0.1, -0.0, 1e21, 1e-4, 1e-5, 1e-6, 1.5e-5, 1e-7, 5e-8):
+    print(f"{v!r:>10} -> {canonicalize(v).decode()}")
+print("(banda [1e-6,1e-4): fija como ECMAScript — SF-P1-1; <=1e-7: exponencial)")
 try:
     canonicalize(float("nan"))
 except ValueError as exc:

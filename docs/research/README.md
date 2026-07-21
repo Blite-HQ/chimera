@@ -26,6 +26,12 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   plane, which no checklist covered). Its §4 consolidated action list was **applied on
   2026-07-20** as dated `[S-F]` supersessions across the freeze, the v2 seeds, the knowledge
   base and the lockfile — see `contract-freeze.md` → "Registro de cierre (S-F)".
+- [`stress-test-sf-pre-sg.md`](stress-test-sf-pre-sg.md) — the **pre-S-G brutal stress test**: a
+  5-attacker adversarial panel (destruction posture) + per-finding refutation, run twice, that tried
+  to break the post-S-F design. Verdict **GO** to S-G; 1 P0 + 4 P1 + 4 P2, each with a fix. Its §8
+  records the fixes **applied on 2026-07-21** (canonicalization ECMAScript conformance in code;
+  verify-bundle 7-point checklist, titular↔verdict coupling and Policy carriers in the frozen spec) —
+  marked `[S-F stress]` supersessions.
 
 ## Suggested structure (create as content arrives)
 
