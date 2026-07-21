@@ -132,17 +132,17 @@ prestada de Composio (pin por despliegue, default determinista) para cerrar mi p
 
 Para que quede trazado (no solo "ratifico", sino "verifiqué que se cerró bien"):
 
-| Pregunta abierta en mi nota original                                             | Dónde se cerró                | Conforme |
-| ---------------------------------------------------------------------------------- | ------------------------------ | -------- |
-| `execution/07` §10 — ¿un único `stream_id` por run?                              | freeze §2/§13                  | ✅       |
-| `execution/07` §6 — `RunStep` colgado en `RUNNING` al cancelar el `Run`          | freeze §3                      | ✅       |
-| `execution/02` §10 — ¿`RunStep` puede disparar >1 `capability.job`?              | freeze §3 (1:1 en Fase 1)      | ✅       |
-| `execution/02` §6 — loop infinito sin límite                                     | freeze §3 (`max_steps` obligatorio) | ✅  |
-| `execution/03` §10 — mecanismo de idempotencia para pasos external               | freeze §13 (regla segura; mecanismo fino = mi diseño en S-G) | ✅ (parcial, a propósito) |
-| `execution/04` §10 — ¿evento `registry.loaded`? ¿distingue deshabilitada/fallida? | freeze §1                       | ✅       |
-| `execution/04` §10/§6 — versión duplicada de un `id`                             | freeze §1 (pin por `DistributionManifest`) | ✅ |
-| `execution/09` §4.5 — ¿la llamada a modelo emite evento propio?                  | freeze §3 (`model.call.*` propio) | ✅     |
-| `execution/01` §8.4 — reautorización a mitad de pipeline                         | freeze §8 (fail-closed)         | ✅       |
+| Pregunta abierta en mi nota original                                              | Dónde se cerró                                               | Conforme                  |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------- |
+| `execution/07` §10 — ¿un único `stream_id` por run?                               | freeze §2/§13                                                | ✅                        |
+| `execution/07` §6 — `RunStep` colgado en `RUNNING` al cancelar el `Run`           | freeze §3                                                    | ✅                        |
+| `execution/02` §10 — ¿`RunStep` puede disparar >1 `capability.job`?               | freeze §3 (1:1 en Fase 1)                                    | ✅                        |
+| `execution/02` §6 — loop infinito sin límite                                      | freeze §3 (`max_steps` obligatorio)                          | ✅                        |
+| `execution/03` §10 — mecanismo de idempotencia para pasos external                | freeze §13 (regla segura; mecanismo fino = mi diseño en S-G) | ✅ (parcial, a propósito) |
+| `execution/04` §10 — ¿evento `registry.loaded`? ¿distingue deshabilitada/fallida? | freeze §1                                                    | ✅                        |
+| `execution/04` §10/§6 — versión duplicada de un `id`                              | freeze §1 (pin por `DistributionManifest`)                   | ✅                        |
+| `execution/09` §4.5 — ¿la llamada a modelo emite evento propio?                   | freeze §3 (`model.call.*` propio)                            | ✅                        |
+| `execution/01` §8.4 — reautorización a mitad de pipeline                          | freeze §8 (fail-closed)                                      | ✅                        |
 
 Ninguna pregunta abierta de mis 9 notas quedó sin resolver o sin dueño declarado tras el freeze.
 
