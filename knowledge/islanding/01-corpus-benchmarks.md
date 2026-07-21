@@ -38,7 +38,19 @@
 
 **Ancla 2 — fuerza bruta (n ≤ 14):** enumeración completa de las 2^(n−1) asignaciones con `x_0 = 0` fijo (2⁸ = 256 para ieee9, 2¹³ = 8 192 para ieee14) y recómputo directo del corte. Sin solver, auditable por inspección.
 
-**IEEE 30 (n = 30):** solo CP-SAT — 2²⁹ ≈ 5.4×10⁸ asignaciones quedan fuera del presupuesto de enumeración en Python puro. CP-SAT probó `OPTIMAL` (no hizo falta registrar cota+incumbente), así que el valor es exacto, pero hoy tiene **una sola ancla**; `metodos: ["cpsat"]` lo dice explícitamente. **Segunda ancla — DECIDIDA en S-E (2026-07-18, freeze §15.3; ratificación final de Sebas = correrla y comparar digests):** **enumeración exhaustiva vectorizada** (numpy por bloques, x₀=0, las 2²⁹ asignaciones — cero dependencias nuevas, cero código compartido con CP-SAT), integrada a este script §1.9 con presupuesto explícito; al ratificar, `metodos` pasa a `["cpsat","bruteforce_vectorized"]` y el digest se re-estampa. La cota superior del SDP de Goemans-Williamson (cvxpy, ya dep obligatoria) se registra como **chequeo de cordura** (UB ≥ óptimo), no como ancla.
+**IEEE 30 (n = 30):** solo CP-SAT en la generación — 2²⁹ ≈ 5.4×10⁸ asignaciones quedan fuera del presupuesto de enumeración en Python puro. CP-SAT probó `OPTIMAL`, así que el valor es exacto. **Segunda ancla — DECIDIDA en S-E; forma superseded [S-F 2026-07-20]:** enumeración exhaustiva vectorizada (numpy por bloques, x₀=0, las 2²⁹ asignaciones — cero dependencias nuevas, cero código compartido con CP-SAT). **La corrida se registra como attestation externa sobre el MISMO digest congelado — los JSON no se mutan** (la letra S-E "`metodos` pasa a `[cpsat, bruteforce_vectorized]` y el digest se re-estampa" colisionaba con la regla de identidad de §1.3/§1.6: `metodos` describe los métodos del GENERADOR; la historia de verificación vive en attestations). Alternativa `@v2` disponible si Sebas prefiere versionar — decide él.
+
+> **CORRIDA EJECUTADA (2026-07-20, auditoría S-F — evidencia de la attestation):** enumeración
+> completa de las 2²⁹ asignaciones por convención, testigo reconstruido y recomputado en Python
+> puro sin numpy: **ieee30-uniforme → óptimo 35 · ieee30-flujo → óptimo 32 170 — ambos
+> COINCIDEN con los valores congelados de CP-SAT** (cero conflictos: la doble ancla de ieee30
+> quedó cerrada). Presupuesto medido CON spec de máquina: 11.5 s por bloque de 2²⁴ ⇒ ~6.1
+> min/convención, ~12.3 min ieee30 completo (Intel i7-10510U @ 1.80 GHz, numpy 2.5.1 mono-hilo,
+> ~0.3 GiB pico; otras máquinas midieron 11.4–13.5 s/bloque — citar el número siempre con la
+> máquina). La integración del código a este script §1.9 es S-G; el registro formal como
+> `●AnchorRegistered`/attestation es maquinaria de S-G.
+
+La cota superior del SDP de Goemans-Williamson (cvxpy, ya dep obligatoria) se registra como **chequeo de cordura** (UB ≥ óptimo), no como ancla.
 
 ### 1.5 Canonicalización de la asignación (documentada)
 
@@ -65,6 +77,13 @@ assert hashlib.sha256(json.dumps(reg, sort_keys=True, separators=(",", ":"), ens
 fijado en `docs/contract-freeze.md` §15.3 — `dataset_id = "islanding-corpus/<instancia>-<convencion>@v1"`,
 digest = el embebido de cada JSON (esta regla §1.6). IDs reservados para cr8/cr6 (§1.8); sus
 digests se estampan en el freeze al congelar los JSON.
+
+**[S-F 2026-07-20] Los artefactos generados se comparan por DIGEST canónico, jamás por bytes
+de archivo:** lint-staged corre Prettier sobre `*.json` en cada commit (los arrays quedan en
+una línea; `json.dumps(indent=2)` los emite uno por línea) — correr el script §1.9 dentro del
+repo ensucia `git diff` aunque los 6 digests reproduzcan exactos. La única comparación válida
+es el digest embebido (receta de arriba); la regla aplica igual a cr8/cr6 y a cualquier
+fixture generado de S-G. No se persigue el formateo del writer.
 
 ### 1.7 Resultados (tabla resumen)
 
@@ -100,9 +119,36 @@ valores nuevos). Congelar con el mismo formato + doble ancla + digest (`cr8-unif
 CR): el criterio oficial de suficiencia (p=1 con r ≥ 0.6) se define sobre una instancia de 6
 nodos y hoy el corpus no tiene ninguna.
 
+**[S-F 2026-07-20] Gate de fecha y fallback (E1 — el cumplimiento del "6–12 nodos, red real"
+del enunciado pende SOLO de cr8/cr6):** fecha límite **~25-jul** con fallback declarado. Los
+datos ArcGIS del ICE casi seguro dan **topología** sin caso de flujo corrible (faltan
+impedancias/cargas/despacho) ⇒ `cr8-uniforme`/`cr6-uniforme` son **construibles solo-topología**
+(la convención `uniforme` no exige `runpp`); si el caso de flujo no se modela a tiempo, cr8/cr6
+nacen solo `uniforme` con los supuestos de modelado declarados como assumptions del corpus, y el
+opener del demo cae a ieee9. **Checklist obligatorio al congelar cr8/cr6 (E5):** repetir el
+análisis de degradación de los n flips sobre la partición óptima (el que salvó al fixture de la
+mina del bus 7 en ieee14 — freeze §15.5): si el clímax del demo migra a cr8, la mina puede
+reaparecer; ningún vector de falla sembrada se elige sin ese cómputo.
+
 ### 1.9 Script de generación completo (para regenerar y ratificar)
 
-Correr **desde la raíz del repo** con el Python del workspace. Regenera los 6 JSON; la ratificación consiste en correrlo y comparar los digests contra los archivos congelados (§1.6).
+Correr **desde la raíz del repo** con el Python del workspace. Regenera los 6 JSON; la ratificación consiste en correrlo y comparar los digests contra los archivos congelados (§1.6 — **por digest, jamás por bytes**).
+
+> **[S-F 2026-07-20] Receta EXACTA del entorno (la que faltaba — `uv sync` default NO instala
+> los extras y el lock viejo crasheaba `runpp`):**
+>
+> ```bash
+> uv sync --all-packages --extra pandapower --extra ortools --extra networkx
+> uv run python <ruta a este script>
+> ```
+>
+> Re-lock aplicado en S-F: floor del extra `pandapower>=3.3` (el lock resolvía 3.1.2, que
+> crashea en `pp.runpp` con numpy 2.5.1: `ValueError: assignment destination is read-only`).
+> **Verificado 2026-07-20 con el lock del repo** — pandapower 3.3.0 · numpy 2.5.1 · pandas
+> 2.3.3 · scipy 1.18.0 · ortools 9.15.6755 · networkx 3.6.1: **los 6 digests canónicos
+> reproducen EXACTOS** (incl. márgenes al umbral x.5: 0.0298 / 0.0322 / 0.0090). La generación
+> original (2026-07-14) fue con pandapower 3.3.3 + numpy 2.5.0 — ambas combinaciones
+> reproducen; las versiones del lock son parte de la evidencia del corpus.
 
 ```python
 #!/usr/bin/env python3
@@ -304,15 +350,15 @@ if __name__ == "__main__":
 
 ## 2 · Decisión
 
-| Referencia                                                             | Decisión                                                                              | Racional                                                                                                    |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `pandapower.networks` (case9/14/30) como fuente de topologías          | **integrar** (ya en el workspace)                                                     | Mismo benchmark que REGRID-QAOA (quantum/00 §1.5): "validamos en el mismo benchmark que el estado del arte" |
-| Doble ancla CP-SAT + fuerza bruta para el corpus                       | **portar** (patrón de trust/10 §1.1)                                                  | Diversidad de anclas aplicada al propio corpus; fail-loud ante conflicto                                    |
-| Dos convenciones de peso (`uniforme` + `flujo`) por instancia          | **portar** (de `docs/arquitectura-reconciliada.md`: "pandapower … power flow → w_ij") | La uniforme es exacta y auditable a mano; la de flujo es la que conecta con el dominio                      |
-| Escala entera S = 100 para `flujo` (0.01 MW)                           | decidido acá — **a ratificar por Sebas**                                              | Coherente con trust/10 §1.5; el redondeo queda dentro de la definición de la instancia                      |
-| Corpus como **datos versionados con digest** en `knowledge/islanding/` | **portar** (regla "λ es dato, no código" de quantum/02 §1.3)                          | Sin digest, dos corridas no son comparables; el JSON congelado es la fuente de verdad                       |
-| Ancla única para ieee30 (solo CP-SAT `OPTIMAL`)                        | **resuelto S-E:** segunda ancla = enumeración vectorizada (§1.4, freeze §15.3)        | Independiente de CP-SAT, cero deps nuevas; ratificación final de Sebas = correr y comparar digests          |
-| Red CR en el corpus (cr8 + cr6)                                        | **decidido S-E (P0-7):** desde datos abiertos del ICE (§1.8) — dueño Sebas            | Procedencia pública oficial (resuelve PR3/soberanía del demo); IDs reservados en freeze §15.3               |
+| Referencia                                                             | Decisión                                                                                        | Racional                                                                                                    |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `pandapower.networks` (case9/14/30) como fuente de topologías          | **integrar** (ya en el workspace)                                                               | Mismo benchmark que REGRID-QAOA (quantum/00 §1.5): "validamos en el mismo benchmark que el estado del arte" |
+| Doble ancla CP-SAT + fuerza bruta para el corpus                       | **portar** (patrón de trust/10 §1.1)                                                            | Diversidad de anclas aplicada al propio corpus; fail-loud ante conflicto                                    |
+| Dos convenciones de peso (`uniforme` + `flujo`) por instancia          | **portar** (de `docs/arquitectura-reconciliada.md`: "pandapower … power flow → w_ij")           | La uniforme es exacta y auditable a mano; la de flujo es la que conecta con el dominio                      |
+| Escala entera S = 100 para `flujo` (0.01 MW)                           | decidido acá — **a ratificar por Sebas**                                                        | Coherente con trust/10 §1.5; el redondeo queda dentro de la definición de la instancia                      |
+| Corpus como **datos versionados con digest** en `knowledge/islanding/` | **portar** (regla "λ es dato, no código" de quantum/02 §1.3)                                    | Sin digest, dos corridas no son comparables; el JSON congelado es la fuente de verdad                       |
+| Ancla única para ieee30 (solo CP-SAT `OPTIMAL`)                        | **resuelto S-E; corrida EJECUTADA en S-F:** enumeración vectorizada confirmó 35 / 32 170 (§1.4) | Attestation externa sobre el mismo digest; ratificación de Sebas = confirmar la forma (vs `@v2`)            |
+| Red CR en el corpus (cr8 + cr6)                                        | **decidido S-E (P0-7):** desde datos abiertos del ICE (§1.8) — dueño Sebas                      | Procedencia pública oficial (resuelve PR3/soberanía del demo); IDs reservados en freeze §15.3               |
 
 ## 3 · Licencias
 
@@ -341,4 +387,4 @@ Verificadas con `importlib.metadata` sobre los paquetes instalados del workspace
 - **ADR-029 (manifests genéricos; el conocimiento de escenario vive en la KB):** REALIZADO — islanding/IEEE/flujos viven acá, en `knowledge/`, no en ninguna capability. Esta nota es exactamente el "benchmark corpus with known optima (pending)" que el README de `knowledge/` ya anunciaba.
 - **D20 (confianza = propiedad del proceso):** los parámetros deterministas (workers=1, seed=1, tiempo determinista) + el digest por instancia hacen el corpus **regenerable y comparable byte a byte**, no anecdótico.
 - **Fail-loud (espíritu de trust/10 §1.2):** el generador aborta ante conflicto entre anclas o ante inconsistencia objetivo↔asignación — un corpus publicado con anclas en desacuerdo sería el equivalente al `pass` mentiroso.
-- **Ninguna contradicción con `docs/invariants.md` encontrada en esta consolidación.** **Todo decidido (S-E 2026-07-18) — ratificación final de Sebas, ajustable bajo su criterio:** correr el script §1.9 (con la segunda ancla vectorizada de ieee30 integrada) y comparar digests; S=100 confirmado como definición de instancia; aportar cr8/cr6 desde los datos del ICE (§1.8, IDs y regla de digest ya congelados en freeze §15.3).
+- **Ninguna contradicción con `docs/invariants.md` encontrada en esta consolidación.** **Todo decidido (S-E 2026-07-18; verificado en S-F 2026-07-20) — ratificación final de Sebas, ajustable bajo su criterio:** la receta §1.9 ya corre con el lock del repo y reproduce 6/6 digests, y la enumeración vectorizada de ieee30 ya confirmó ambos óptimos (§1.4) — a Sebas le queda: confirmar la forma attestation-externa (vs `@v2`), S=100 como definición de instancia, el criterio narrativo del bus 1 del fixture (freeze §15.5), y aportar cr8/cr6 desde los datos del ICE (§1.8 — gate ~25-jul, fallback `uniforme`).

@@ -13,6 +13,12 @@ _Firmas TypeScript de puertos y entidades · Fase 1 · SEMILLA_
 > graduada) y la unificación `ModelPort`/`ModelServer` (execution/09). Cada corrección está
 > marcada `// [S-E]` en su sitio.
 >
+> **Correcciones S-F (2026-07-20, auditoría de ratificación — marcadas `// [S-F]`):** la
+> importación S-E dejó semillas incompletas contra la máquina de estados congelada
+> (`cancelled`, `max_steps`), con drift de renominación (`Guardrail`→`Detector`/`Signal`) y
+> con el certificado prometiendo campos que la semilla no podía probar (`unanchored_steps`,
+> `independence_group`, `proof` AL4). Causas: freeze → Registro de cierre (S-F).
+>
 > **Propósito.** Define los contratos (interfaces, tipos) que el código debe satisfacer. Cada contrato está anotado con el invariante que materializa.
 >
 > **Alcance.** Fase 1. Los campos marcados `// Fase 2` se declaran en el tipo pero su implementación puede diferirse. La regla rectora: _el contrato tiene la forma de la arquitectura objetivo; la implementación detrás puede ser la mínima._
@@ -115,8 +121,15 @@ export interface Run {
   // (formular, QAOA, baseline, verificar) aportan claims al raíz.
   readonly initiatorId: string; // actor que lo inició; la identidad se hereda (restricción 1, Sección 10 arquitectura)
   readonly domainId: string;
-  readonly status: 'created' | 'running' | 'awaiting-verification' | 'completed' | 'failed';
+  // [S-F] 'cancelled' faltaba: el freeze §3 congela CREATED→RUNNING→{COMPLETED|FAILED|CANCELLED}
+  // y un run.cancelled era improyectable. 'awaiting-verification' es sub-estado de PROYECCIÓN
+  // (derivado de ●VerificationStarted sin su Completed — misma doctrina que 'interrupted').
+  readonly status:
+    'created' | 'running' | 'awaiting-verification' | 'completed' | 'failed' | 'cancelled';
   readonly createdAt: string; // ISO 8601
+  // [S-F] "el guard del loop es contrato, no cortesía" (freeze §3/§13) — la semilla no lo cargaba.
+  // Viaja también en el payload de run.created.
+  readonly maxSteps: number;
 
   // SO6 (stress organizacional O7) — pinning: un Run FIJA por digest todo lo que lo definió
   // al iniciar. Editar una definición crea versión nueva y no afecta runs en vuelo (mismo
@@ -242,9 +255,13 @@ export interface Verifier {
 // El resultado de verificar: una constancia, no una opinión.
 // Veredicto TRI-ESTADO (D4): "no pude" es un resultado de primera clase, jamás se disfraza.
 export interface Attestation {
+  readonly runId: string; // [S-F · N7] la columna SQL era NOT NULL y el tipo no lo tenía
   readonly verifierId: string;
   readonly verifierClass: VerifierClass;
   readonly verdict: 'pass' | 'fail' | 'inconclusive';
+  // [S-F · T5] el conteo de patas de C3 es POR GRUPO DE INDEPENDENCIA (spec v3.2) —
+  // sin este campo, "C3 exige 2 patas" era incomputable ante un auditor.
+  readonly independenceGroup: string;
   readonly inconclusiveReason?:
     | 'timeout'
     | 'undecidable'
@@ -258,23 +275,40 @@ export interface Attestation {
   readonly claimDigest: string; // binding a 4 digests (L3): qué se verificó,
   readonly verifierBinaryDigest: string; //   con qué binario,
   readonly verifierParamsDigest: string; //   con qué parámetros,
+  // [S-F · T3] nullable SOLO para verdict='inconclusive' — un 'pass' sin ancla es
+  // irrepresentable (D10; el CHECK vive en la semilla SQL §5).
   readonly anchorDigest?: string; //   contra qué ancla exacta
   readonly evidenceDigests: ReadonlyArray<string>; // Artifacts del content-store (§3.b); con reproducer si aporta AL3
+  // [S-F · T4] predicates por clase (freeze §4): formal_exact a AL4 DEBE portar proof∅
+  // (la re-validación del checker viaja dentro del bundle); coverage/reruns donde la clase
+  // los exige. Sin esto, el titular AL4 del demo no se puede demostrar offline.
+  readonly predicate?: {
+    readonly proof?: {
+      readonly certificateRef: string;
+      readonly checkerId: string;
+      readonly checkerVerdict: 'pass' | 'fail';
+    };
+    readonly coverage?: unknown;
+    readonly reruns?: number;
+  };
   readonly issuedAt: string; // semántica VALID_AS_OF
 }
 
-// Guardrails (detección probabilística) — DISTINTO de Verifier.
-// Puede usar modelos o heurísticas. Es un pre-filtro que informa, no verifica.
-export interface Guardrail {
-  readonly name: string; // "prompt-injection" | "sensitive-data"
-  detect(input: unknown, ctx: InvocationContext): Promise<GuardrailSignal>;
+// [S-F] Renominación del freeze §5 aplicada a la semilla (drift cazado en la auditoría S-F):
+// Guardrail→Detector, GuardrailSignal→Signal. Detección probabilística — DISTINTO de Verifier.
+// Puede usar modelos o heurísticas. Es un pre-filtro que INFORMA, jamás verifica.
+export interface Detector {
+  readonly name: string; // kind = "{etapa}.{mecanismo}" (trust/16) — catálogo abierto
+  detect(input: unknown, ctx: InvocationContext): Promise<Signal>;
 }
 
-export interface GuardrailSignal {
-  readonly name: string;
-  readonly flagged: boolean;
-  readonly confidence: number; // 0..1 — explícitamente probabilístico
-  // S1: tipo DISJUNTO de Attestation — jamás entra al cálculo de veredictos ni niveles.
+export interface Signal {
+  readonly detector: string;
+  readonly target: string; // sobre qué se pronuncia (input | output | step…)
+  readonly score?: number; // 0..1 — explícitamente probabilístico
+  readonly label?: string; // alternativa categórica al score
+  readonly nonDecisional: true; // S1: tipo DISJUNTO de Attestation — jamás entra al cálculo
+  // de veredictos/niveles ni al egreso (D18/D21/Inv-E hechos tipo).
 }
 ```
 
@@ -289,8 +323,11 @@ export interface GuardrailSignal {
 // y su alcance, y el certificado carga sus supuestos — un nivel sin alcance es pasivo, no activo.
 export interface TrustCertificate {
   readonly runId: string; // case por run raíz (D5)
-  readonly actor: Identity; // identidad (AX1)
-  readonly provenanceHash: string; // hash del stream de eventos (D14)
+  // [S-F · T17] antes `actor: Identity` — un certificado compartible portaba los PERMISOS
+  // del actor. El SQL ya lo hacía bien (actor_id); la identidad se resuelve por referencia.
+  readonly actorId: string; // URN del actor (AX1)
+  readonly provenanceHash: string; // hash del stream del run RAÍZ (D14) — cubre sub-runs
+  // vía ●ClaimEmitted {sub_run_provenance_hash} (freeze §13 [S-F])
   readonly conclusions: ReadonlyArray<{
     readonly claimDigest: string;
     readonly canonicalStatement: string; // [S-E · P0-2] el enunciado, sin deixis
@@ -298,13 +335,20 @@ export interface TrustCertificate {
     readonly verdict: 'verified' | 'refuted' | 'inconclusive' | 'not_required_declared';
     readonly level: AssuranceLevel;
   }>;
+  // [S-F · T2] computable en Fase 1: titularLevel := mín(conclusions[].level); el camino
+  // crítico DEBE listarse completo en conclusions[]; conclusions=[] ⇒ AL0 (jamás AL vacuo).
   readonly titularLevel: AssuranceLevel; // MÍNIMO sobre el camino crítico, incluidas derivaciones — jamás promedio
+  // [S-F · N1] el predicate mínimo del mes (freeze §7, P0-2) los exigía y la semilla no los tenía:
+  readonly unanchoredSteps: number; // pasos del run sin ancla decisoria (honestidad de cobertura)
+  readonly coverageStats: unknown; // stats de cobertura por conclusión (gap declarado, T13)
   readonly assumptions: ReadonlyArray<{
     // [S-E · P0-2] los supuestos del case, visibles:
     readonly statement: string; //   p.ej. SC3 verbatim, limitaciones por soberanía (Inv-E)
     readonly ref?: { readonly name: string; readonly digest: string }; // p.ej. modelo del simulador, corpus
   }>;
   readonly deliverables: ReadonlyArray<{ artifactRef: string; digest: string }>; // binding anti-TOCTOU
+  // [S-F · T6] Fase 1: las attestations van EMBEBIDAS en el payload DSSE del certificado —
+  // una sola firma ampara todo; DSSE por attestation = Fase 2 (S2 declarado en assumptions).
   readonly attestations: ReadonlyArray<Attestation>; // anclas de verificación (D18/S7)
   readonly policyDigest: string; // Policy fijada por digest al crear el case
   readonly calculusVersion: string; // p. ej. "cal-2.4" (I13)
@@ -324,11 +368,14 @@ export interface TrustCertificate {
 //   - `ModelPort` = el PUERTO (Protocol) — vive en `serving` (router puro, cero red; AX3 por
 //     construcción). Su forma es la de abajo (la de esta semilla).
 //   - `ModelServer` = el ADAPTER que lo implementa — vive en `protocols`, envuelve LiteLLM
-//     Router (un solo model_list: cloud + Ollama local), y queda bajo INV-6 (egreso exige authz).
-// El modelo es intercambiable. Local-first por autonomía (D19): si se usa una
-// API externa, la autonomía se rompe — por eso el puerto trata local como default.
+//     Router (un solo model_list) y queda bajo INV-6 (egreso exige authz).
+// [S-F] Backends del mes (ratificación verbal de Geovanni, 19-jul): modelos por API con keys
+// (Anthropic + abiertos servidos por API) + `replay` como config de primera clase del día D
+// (miss ⇒ model.call.failed{replay_miss}, JAMÁS passthrough — contrato de 5 puntos en
+// freeze §15.7); `ollama` queda como perfil opcional archivado. `local` dice la verdad de
+// D19: false en backends API — el certificado no lo esconde; `replay` es local:true.
 export interface ModelPort {
-  readonly id: string; // "ollama:llama3" | "openai:gpt-4"
+  readonly id: string; // "anthropic:claude-…" | "api:<modelo-abierto>" | "replay" | "ollama:llama3.2"
   readonly local: boolean; // true preserva autonomía (D19)
   complete(prompt: ModelRequest, ctx: InvocationContext): Promise<ModelResponse>;
 }
@@ -370,6 +417,15 @@ export interface GatewayResponse {
   readonly certificate?: TrustCertificate; // al completar el run (D20)
 }
 
+// [S-F] Refuerzo estructural del egreso (freeze §5, execution/01 — faltaba en la semilla):
+// la etapa 8 (egress) acepta una AuthzDecision y NO PUEDE recibir un Signal — un
+// {score: 0.1} no equivale a un pass ni por descuido de tipos (S1/Inv-E hechos firma).
+export interface AuthzDecision {
+  readonly allowed: boolean;
+  readonly reason: string;
+  readonly decidedBy: string; // la etapa authorization — jamás un Detector ni un Verifier
+}
+
 // Orden de etapas en Fase 1 (cada una es un GatewayStage) — orden CONGELADO por el freeze §8
 // (resolución C2 de la convergencia: 8 etapas; la etapa "policy" no existe — la Policy se fija
 // por digest al crear el case, R-Pol1, y la etapa de verificación la lee):
@@ -380,7 +436,8 @@ export interface GatewayResponse {
 //   5. mediation      — invoca la Capability (AX3)
 //   6. verification   — contrasta contra anchor no-modelo antes de comprometer (PR2/PR4)
 //   7. provenance:post— escribe verification.completed + attestation (PR1)
-//   8. egress         — gobernado SOLO por authorization; nunca por verificación (Inv-E)
+//   8. egress         — gobernado SOLO por authorization (recibe AuthzDecision, jamás
+//                       Signal — [S-F]); nunca por verificación (Inv-E)
 ```
 
 ---

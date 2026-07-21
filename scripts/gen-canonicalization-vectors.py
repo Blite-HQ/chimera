@@ -146,3 +146,22 @@ except ValueError as exc:
 tricky = {"é": 1, "z": 2, "a": 3, "😀": 4}
 print("=== orden UTF-16 ===")
 print(canonicalize(tricky).decode("utf-8"))
+print()
+
+# --- V6 [S-F · T7]: claim_digest sobre view(claim) = {canonical_statement, scope} ---
+CLAIM_PREFIX = b"blite/claim/v1\n"
+claim = {
+    "canonical_statement": (
+        "La particion propuesta para islanding-corpus/ieee14-flujo@v1 alcanza "
+        "corte 57070, igual al optimo del corpus (r = 1.0)."
+    ),
+    "scope": {
+        "dataset": "islanding-corpus/ieee14-flujo@v1",
+        "corpus_digest": "c7880bb0d254d2d5f91c21cfd7cf0a5ac1cb9c88261c15b94cb7b22d6fd896ad",
+    },
+}
+c6 = canonicalize(claim)
+print("=== V6 claim_digest [S-F] ===")
+print(c6.decode("utf-8"))
+print("len:", len(c6))
+print("claim_digest:", sha256_hex(CLAIM_PREFIX + c6))

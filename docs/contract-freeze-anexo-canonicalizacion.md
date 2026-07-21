@@ -54,7 +54,7 @@ Entrada: un valor del **modelo de datos JSON** (post-parseo; lo que devuelve lee
 
 ## 4 · `provenance_hash` — cómputo exacto (Fase 1)
 
-Sobre el stream completo del run (`read_stream(run_stream)`, orden `seq` estricto 1..n, sin huecos):
+Sobre el stream completo del run (`read_stream(run_stream)`, orden `seq` estricto 1..n, sin huecos). **[S-F] Alcance:** el `provenance_hash` se computa **solo sobre streams de run** — los streams de sistema (`system:*`, freeze §2 [S-F]) jamás entran. El trabajo de sub-runs queda amparado **transitivamente**: el evento `●ClaimEmitted {claim_digest, sub_run_id, sub_run_provenance_hash}` en el stream del raíz encadena el hash del stream del sub-run (estilo Merkle — freeze §13 [S-F]); el verificador offline recomputa el hash del sub-run y lo compara contra el payload del `●ClaimEmitted` que el hash del raíz ya ampara:
 
 ```
 linea_i          = C(view(e_i)) ‖ 0x0A                      # JSONL: C() jamás emite \n crudo
@@ -70,7 +70,7 @@ provenance_hash  = SHA-256( "blite/provenance/v1\n" ‖ linea_1 ‖ … ‖ line
 
 ## 5 · Los otros dos digests
 
-- **`claim_digest`** (`Attestation.subject`, freeze §4): `SHA-256("blite/claim/v1\n" ‖ C(claim))`, hex lowercase. Regla 2: el claim es dato estructurado sin artefacto canónico.
+- **`claim_digest`** (`Attestation.subject`, freeze §4): `SHA-256("blite/claim/v1\n" ‖ C(claim))`, hex lowercase. Regla 2: el claim es dato estructurado sin artefacto canónico. **[S-F · T7] `view(claim)` — la vista canónica que faltaba** (sin ella, dos implementaciones honestas producían digests distintos — exactamente la falla que este anexo existe para matar): `view(claim) = {canonical_statement, scope}` — exactamente esos 2 campos, en la forma en que viajan en `conclusions[]` del certificado (`canonical_statement`: string sin deixis; `scope`: el ScopeExpr canónico). Campos nuevos ⇒ bump del prefijo (`blite/claim/v2`), regla §3. Vector V6 en §6.
 - **`policy_digest`** (freeze §6): `SHA-256` sobre los **bytes exactos del archivo YAML** de la política tal como se distribuye (`distributions/chimera/`). Regla 1, no Regla 2: la política ES un artefacto versionado — comentarios y formato son parte de lo distribuido; re-parsearla para canonicalizar reintroduciría exactamente la fragilidad que este anexo elimina.
 
 ## 6 · Vectores de prueba
@@ -136,6 +136,28 @@ SHA-256( b"blite/provenance/v1\n" + C(view(e_1)) + b"\n" + C(view(e_2)) + b"\n" 
 | `1e-7`                       | `1e-7`                       | ⚠️ normativo ECMAScript; `repr()` Python da `1e-07` — la impl DEBE corregirlo (gate) |
 | `NaN` / `Infinity`           | **error**                    | jamás un digest inestable                                                            |
 | `{"é":1,"z":2,"a":3,"😀":4}` | `{"a":3,"z":2,"é":1,"😀":4}` | orden por code units UTF-16 (no por bytes UTF-8)                                     |
+
+**V6 — `claim_digest` sobre `view(claim)` [S-F · T7].** Entrada:
+
+```json
+{
+  "canonical_statement": "La particion propuesta para islanding-corpus/ieee14-flujo@v1 alcanza corte 57070, igual al optimo del corpus (r = 1.0).",
+  "scope": {
+    "dataset": "islanding-corpus/ieee14-flujo@v1",
+    "corpus_digest": "c7880bb0d254d2d5f91c21cfd7cf0a5ac1cb9c88261c15b94cb7b22d6fd896ad"
+  }
+}
+```
+
+`C(view(claim))` (283 bytes — `corpus_digest` ordenada ANTES de `dataset`):
+
+```
+{"canonical_statement":"La particion propuesta para islanding-corpus/ieee14-flujo@v1 alcanza corte 57070, igual al optimo del corpus (r = 1.0).","scope":{"corpus_digest":"c7880bb0d254d2d5f91c21cfd7cf0a5ac1cb9c88261c15b94cb7b22d6fd896ad","dataset":"islanding-corpus/ieee14-flujo@v1"}}
+```
+
+`claim_digest = SHA-256(b"blite/claim/v1\n" ‖ C(view(claim)))` = `75c92854291ee855a99fea910ce0b98522524b082f2a07f810fbae416509a34a`
+
+**Notas [S-F] sobre los vectores existentes (los vectores NO se regeneran — romperían hashes):** el `stream_id: "run:8f2c1a9b"` de V1 y el `"rung": 1` del payload de V2 son **datos arbitrarios del gate de hashing, no forma normativa** — el `run_id` real no lleva prefijo (freeze §7 [S-F]) y `rung` es vocabulario eliminado (freeze §4). Un payload es un JSON opaco para `C()`: los vectores prueban los bytes, no el vocabulario.
 
 ## 7 · Reconciliación
 
