@@ -14,7 +14,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-SQL_PATH = Path(__file__).resolve().parents[2] / "engine" / "sql" / "events_v2.sql"
+# [S-G Etapa 0] events_v2.sql superseded por init_v2.sql (único SQL ejecutable;
+# el viejo conservaba el índice duplicado que [S-F · N6] eliminó). Los asserts
+# de este archivo se sostienen sin cambio: son sobre la letra, no sobre nombres.
+SQL_PATH = Path(__file__).resolve().parents[2] / "engine" / "sql" / "init_v2.sql"
 
 
 def test_events_sql_file_exists() -> None:
@@ -33,7 +36,10 @@ def test_events_table_keeps_the_seed_stream_ordering_constraint() -> None:
 
 def test_append_only_fails_loud_via_revoke_and_trigger_not_silent_rules() -> None:
     sql = SQL_PATH.read_text(encoding="utf-8")
-    assert "DO INSTEAD NOTHING" not in sql, (
+    # [S-G] el chequeo es sobre SQL ejecutable: la letra v2 menciona la regla
+    # vieja en un COMENTARIO ("las reglas silenciosas ... se reemplazan").
+    executable = re.sub(r"--[^\n]*", "", sql)
+    assert "DO INSTEAD NOTHING" not in executable, (
         "silent rules are exactly what note 01 SS1.2 replaces"
     )
     assert re.search(r"REVOKE\s+UPDATE\s*,\s*DELETE\s+ON\s+events", sql)
