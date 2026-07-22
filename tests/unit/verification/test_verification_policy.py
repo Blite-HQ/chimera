@@ -34,7 +34,7 @@ SCHEMA_JSON = (
 
 
 def test_example_yaml_loads_as_a_valid_verification_policy() -> None:
-    raw = yaml.safe_load(EXAMPLE_YAML.read_text())
+    raw = yaml.safe_load(EXAMPLE_YAML.read_text(encoding="utf-8"))
     policy = VerificationPolicy.model_validate(raw)
 
     assert policy.policy_id == "chimera-default"
@@ -43,7 +43,7 @@ def test_example_yaml_loads_as_a_valid_verification_policy() -> None:
 
 
 def test_example_yaml_pure_solution_rule_requires_rung_one_and_two_anchors() -> None:
-    raw = yaml.safe_load(EXAMPLE_YAML.read_text())
+    raw = yaml.safe_load(EXAMPLE_YAML.read_text(encoding="utf-8"))
     policy = VerificationPolicy.model_validate(raw)
 
     solution_rule = policy.rules[0]
@@ -55,7 +55,7 @@ def test_example_yaml_pure_solution_rule_requires_rung_one_and_two_anchors() -> 
 
 
 def test_example_yaml_irreversible_rule_escalates_to_human_and_holds_run() -> None:
-    raw = yaml.safe_load(EXAMPLE_YAML.read_text())
+    raw = yaml.safe_load(EXAMPLE_YAML.read_text(encoding="utf-8"))
     policy = VerificationPolicy.model_validate(raw)
 
     irreversible_rule = policy.rules[2]
@@ -66,7 +66,7 @@ def test_example_yaml_irreversible_rule_escalates_to_human_and_holds_run() -> No
 
 def test_committed_schema_matches_the_model_json_schema() -> None:
     """Fails loud on drift: regenerate the file, don't hand-edit it."""
-    on_disk = json.loads(SCHEMA_JSON.read_text())
+    on_disk = json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
     assert on_disk == VerificationPolicy.model_json_schema()
 
 
@@ -82,7 +82,7 @@ def test_on_inconclusive_rejects_a_value_outside_the_closed_set() -> None:
 
 
 def test_verification_policy_is_frozen() -> None:
-    raw = yaml.safe_load(EXAMPLE_YAML.read_text())
+    raw = yaml.safe_load(EXAMPLE_YAML.read_text(encoding="utf-8"))
     policy = VerificationPolicy.model_validate(raw)
     with pytest.raises(ValidationError):
         policy.policy_id = "tampered"
