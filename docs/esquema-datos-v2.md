@@ -12,6 +12,12 @@ _PostgreSQL · Fase 1 · SEMILLA_
 > `execution_profile`), más la letra chica del certificado (**P0-2/P1-2**). Cada corrección
 > está marcada `-- [S-E]` en su sitio.
 >
+> **Correcciones S-F (2026-07-20, auditoría de ratificación — marcadas `-- [S-F]`):**
+> `cancelled` en el CHECK de `runs_projection` (un `run.cancelled` era improyectable),
+> `max_steps NOT NULL`, CHECK `pass ⇒ anchor_digest`, `independence_group` + `predicate` en
+> `attestations`, `unanchored_steps`/`coverage_stats` en `trust_certificates`, streams de
+> sistema en `events`, índice duplicado eliminado. Causas: freeze → Registro de cierre (S-F).
+>
 > **Propósito.** El principio rector es Event Sourcing: la tabla `events` es la **única fuente de verdad** (append-only); todo lo demás son proyecciones derivables por replay.
 >
 > **Forma a prueba de manipulación desde el inicio.** En Fase 1 `events` es una tabla append-only con `seq` monótono. En Fase 2 se añaden `prev_hash`/`hash` para el hash-chain (AX2/D14). La forma de la tabla no cambia entre fases; solo se llenan columnas que ya existen.
@@ -29,7 +35,10 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Es el log inmutable del que se reconstruye todo el estado.
 CREATE TABLE events (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    stream_id     TEXT NOT NULL,                 -- = run_id (un stream por run, freeze §2/§13)
+    stream_id     TEXT NOT NULL,                 -- = run_id (un stream por run, freeze §2/§13);
+                                                 -- [S-F · N2] eventos sin run: "system:<componente>"
+                                                 -- (registry/policy/trust-registry) — jamás entran
+                                                 -- al provenance_hash de un certificado
     seq           BIGINT NOT NULL,               -- posición dentro del stream
     global_seq    BIGINT GENERATED ALWAYS AS IDENTITY,  -- [S-E · C3] cursor global (SSE/proyecciones)
     type          TEXT NOT NULL,                 -- vocabulario del freeze §3/§14
@@ -44,7 +53,7 @@ CREATE TABLE events (
     UNIQUE (stream_id, seq)                      -- orden estricto e idempotencia por stream
 );
 
-CREATE INDEX idx_events_stream   ON events (stream_id, seq);
+-- [S-F · N6] sin índice (stream_id, seq) aparte: el UNIQUE de arriba ya lo materializa.
 CREATE INDEX idx_events_type     ON events (type);
 CREATE INDEX idx_events_actor    ON events (actor_id);
 CREATE INDEX idx_events_domain   ON events (domain_id);
@@ -166,8 +175,12 @@ CREATE TABLE runs_projection (
     parent_run_id TEXT REFERENCES runs_projection (id),  -- NULL = run raíz; el case/certificado cuelga del raíz (D5)
     initiator_id  TEXT NOT NULL,                 -- la identidad se hereda del iniciador
     domain_id     TEXT NOT NULL,
+    -- [S-F] 'cancelled' faltaba (freeze §3 lo congela terminal — un run.cancelled era
+    -- improyectable); 'awaiting-verification' e 'interrupted' (steps) son sub-estados de
+    -- PROYECCIÓN derivados de eventos, no estados de la máquina de eventos.
     status        TEXT NOT NULL CHECK (status IN
-                    ('created','running','awaiting-verification','completed','failed')),
+                    ('created','running','awaiting-verification','completed','failed','cancelled')),
+    max_steps     INTEGER NOT NULL,               -- [S-F] "contrato, no cortesía" (freeze §3/§13)
 
     -- SO6: pinning por digest de todo lo que definió el run (reproducibilidad, D16/AX2).
     -- Editar una definición crea versión nueva; los runs en vuelo no cambian.
@@ -189,15 +202,26 @@ CREATE TABLE attestations (
     verifier_class         TEXT NOT NULL CHECK (verifier_class IN
                              ('formal_exact','execution','ground_truth',
                               'property_rule','consensus_replication','human_expert')),
+    anchor_kind            TEXT CHECK (anchor_kind IN      -- [S-F stress · SF-P1-2] KIND del ancla:
+                             ('solver','execution','dataset','rule','human')),  -- Policy required_anchors
     verdict                TEXT NOT NULL CHECK (verdict IN ('pass','fail','inconclusive')),
     inconclusive_reason    TEXT,                  -- tri-estado (D4): timeout | undecidable | conflict | undermined_premise | ...
     scope                  JSONB NOT NULL,        -- ScopeExpr canónico (decidible)
+    independence_group     TEXT NOT NULL,         -- [S-F · T5] el conteo de patas C3 es POR GRUPO
     claim_digest           TEXT NOT NULL,         -- binding a 4 digests (L3):
     verifier_binary_digest TEXT NOT NULL,         --   binario del verificador,
     verifier_params_digest TEXT NOT NULL,         --   parámetros de invocación,
     anchor_digest          TEXT,                  --   ancla exacta usada
+    predicate              JSONB NOT NULL DEFAULT '{}',  -- [S-F · T4] por clase: proof∅ (AL4), coverage, reruns
     evidence_digests       TEXT[] NOT NULL,       -- refs a artifacts(digest); audit-ready, reproducer si aporta AL3
-    issued_at              TIMESTAMPTZ NOT NULL DEFAULT now()  -- semántica VALID_AS_OF
+    issued_at              TIMESTAMPTZ NOT NULL DEFAULT now(),  -- semántica VALID_AS_OF
+
+    -- [S-F · T3] un 'pass' sin ancla es irrepresentable (D10); el nullable de anchor_digest
+    -- es legítimo SOLO para 'inconclusive' (p.ej. no_applicable_anchor).
+    -- [stress-final · 2026-07-22] el CHECK se alinea a la letra: nullable SOLO inconclusive
+    -- (antes solo cubría 'pass' — un 'fail' sin ancla era representable contra el comentario).
+    CONSTRAINT attestations_pass_requiere_ancla
+        CHECK (verdict = 'inconclusive' OR anchor_digest IS NOT NULL)
 );
 CREATE INDEX idx_attestations_run ON attestations (run_id);
 
@@ -206,12 +230,19 @@ CREATE INDEX idx_attestations_run ON attestations (run_id);
 -- supuestos visibles, VALID_AS_OF y revocación autodeclarada. El sobre DSSE completo se
 -- persiste (verificación offline = bytes exactos, Regla 1 del anexo de canonicalización).
 CREATE TABLE trust_certificates (
-    run_id           TEXT PRIMARY KEY,            -- case por run raíz (D5)
+    run_id           TEXT PRIMARY KEY,            -- case por run raíz (D5);
+                                                  -- [S-F · T14] Fase 1 = UNA emisión por run
+                                                  -- (●CertificateReissued/Revoked = Fase 2)
     actor_id         TEXT NOT NULL,
     provenance_hash  TEXT NOT NULL,               -- hash del stream del run (D14)
     titular_level    TEXT NOT NULL CHECK (titular_level IN ('AL0','AL1','AL2','AL3','AL4')),
+                                                  -- [S-F · T2] := mín(conclusions[].level_efectivo); vacío ⇒ AL0
+                                                  -- [stress-final] level_efectivo := AL0 si verdict ∈
+                                                  --   {refuted, inconclusive, not_required_declared} (SF-P2-4)
     conclusions      JSONB NOT NULL,              -- [{claim_digest, canonical_statement, scope, verdict, level}]
                                                   --   mínimo del camino crítico, jamás promedio
+    unanchored_steps INTEGER NOT NULL DEFAULT 0,  -- [S-F · N1] predicate mínimo del mes (freeze §7)
+    coverage_stats   JSONB NOT NULL DEFAULT '{}', -- [S-F · N1/T13] cobertura/gap por conclusión
     assumptions      JSONB NOT NULL,              -- [S-E · P0-2] [{statement, ref?: {name, digest}}]
     deliverables     JSONB NOT NULL,              -- [{artifact_ref, digest}] — binding anti-TOCTOU
     policy_digest    TEXT NOT NULL,               -- Policy fijada por digest al crear el case

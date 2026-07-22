@@ -19,7 +19,7 @@ def _load_denylist() -> list[str]:
     """Return non-empty, non-comment lines from scenario_denylist.txt."""
     return [
         line.strip().lower()
-        for line in DENYLIST_PATH.read_text().splitlines()
+        for line in DENYLIST_PATH.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#")
     ]
 

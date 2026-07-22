@@ -34,6 +34,9 @@ no importa `protocols`, `gateway`, `runtime`, `authz`, ni clientes de red). Corr
 - **Serving** — cómo se despacha `execution_profile` (in-process | service | remote-job).
 - **Run lifecycle** — el vocabulario de eventos que agrega runs, steps y jobs de capability en un mismo
   stream.
+- **Ingesta de conocimiento (RAG/CAG) para el agente** — mecanismo de recuperación como `RunStep` (nota
+  10, posterior al cierre S-E); qué constituye evidencia/asunción declarada a partir de contenido
+  recuperado es frontera con Dylan.
 
 ## Qué NO entra en el alcance de Steven
 
@@ -63,6 +66,13 @@ no importa `protocols`, `gateway`, `runtime`, `authz`, ni clientes de red). Corr
 > Las notas 08–09 son investigación de consolidación (Dylan, 2026-07-14): cierran los huecos del plan
 > (§4) que las notas 01–07 dejaron — referencias externas verificadas en vivo y la decisión de egress.
 > **Decididas en el cierre S-E (2026-07-18) — ratificación final de Steven**, igual que el resto del flujo de abajo.
+
+| [10](10-rag-cag-knowledge-ingestion.md) | Ingesta de conocimiento (video→texto de los cursos de la Quantathon): RAG vs CAG vs fine-tuning, dónde vive el knowledge graph que consulta el agente | Reutiliza `Artifact`/`ContentStore` (freeze §12) y `RunStep` (nota 02); frontera con qué constituye evidencia/asunción declarada (plano de confianza) |
+
+> **Nota 10 es posterior al cierre S-E (2026-07-21) — fuera del alcance de `contract-freeze.md`.** No
+> reabre ninguna decisión ya congelada; es insumo para un ítem nuevo `[ejecución]`/`[frontera]` si Dylan no
+> ve objeciones, siguiendo la misma regla de supersesión-con-causa que el propio freeze exige para
+> cualquier cambio post-cierre (`contract-freeze.md`, regla 3).
 
 ## Orden de lectura sugerido
 
@@ -96,6 +106,11 @@ en orden de bloqueo:
    que tocan `VerificationPolicy` (trust/05) y potencialmente escalamiento a rung 7 (trust/03) — su plano.
 5. **Notas 01, 02, 06** — mayormente autocontenidas del lado de ejecución; revisar por completitud, no por
    bloqueo.
+6. **Nota 10 (nueva, 2026-07-21, post-cierre S-E)** — ingesta de conocimiento (RAG/CAG) para el agente.
+   Es la única pregunta de esta lista que sigue ABIERTA hoy (las 1-4 ya se cerraron en S-E, ver "Qué queda
+   intencionalmente sin resolver" abajo). Punto de bloqueo real: §10 de la nota — si esto es frontera
+   (mecanismo = Steven, qué constituye evidencia/asunción declarada a partir de contenido recuperado =
+   Dylan), y si entra al alcance del mes o es solo soporte de investigación del equipo.
 
 **Formato sugerido de la sesión:** repasar la tabla "Decisión" de cada nota primero (son las filas más
 rápidas de aprobar/objetar), y dejar las secciones de "preguntas abiertas" para discusión en vivo — no se
@@ -119,6 +134,12 @@ cierre S-E (2026-07-18):
   supuestos de Fase 1 son razonamiento desde los invariantes, no medición.
 - **`CapabilityManifest` v2 y `DistributionManifest`** — CONGELADOS (freeze §1); estas notas ya
   los consumen en su forma final.
+- **Ingesta de conocimiento RAG/CAG para el agente (nota 10)** — agregada 2026-07-21, posterior al
+  cierre S-E. **Frontera resuelta 2026-07-22** (`docs/contract-freeze.md` §7): contenido recuperado ⇒
+  `assumptions[{statement, ref{name, digest}}]`, jamás `Attestation` ni `conclusions`; alcance del mes =
+  fuera del camino dorado (POC S-G paralelo). Queda abierto el delta día-D — embeddings bajo `replay`
+  necesita fixtures propios o retrieval precomputado/pinneado — escalado a Steven, más las preguntas de
+  herramienta de §10 de la nota (volumen del corpus, ASR, vector store).
 
 ## Cómo esto alimenta `docs/contract-freeze.md` (más adelante, sin tocarlo ahora)
 

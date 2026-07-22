@@ -5,8 +5,9 @@ ejecución y que las notas 01–07 no verificaron en vivo (su investigación der
 (a) el pipeline/chokepoint real del MS Agent Governance Toolkit contrastado contra las 7 etapas de la
 nota 01, (b) cómo se implementa un pipeline de etapas sobre FastAPI/ASGI y qué NO debe ser middleware,
 (c) Composio y Cerebrum como patrón de registry de tools (no su auth — eso ya lo cubrió trust/14).
-**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y
-ratificación de Steven
+**Fecha:** 2026-07-14 · **Estado:** decidida e incorporada al contract freeze (S-E 2026-07-18 —
+el README del plano la lista en "Cerrado (S-E)"; encabezado alineado en S-F) — revisión final
+de Steven en la ratificación, como el resto del plano
 **Fuentes:** `microsoft/agent-governance-toolkit` — árbol del repo, `policy-engine/spec/SPECIFICATION.md`
 (Agent Control Specification, ACS), `policy-engine/docs/integrations/litellm-proxy.md`, `LICENSE` raíz y
 `policy-engine/LICENSE.acs` (**verificado en vivo 2026-07-14** vía `gh api`; el repo fue reestructurado

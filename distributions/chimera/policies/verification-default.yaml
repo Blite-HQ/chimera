@@ -2,18 +2,28 @@
 # docs/contract-freeze.md SS6 / knowledge/trust/05-verificacion-adaptativa-politica-tradeoffs.md SS1.2.
 # Valida contra engine/src/blite/verification/policy.py::VerificationPolicy
 # (tests/unit/verification/test_verification_policy.py lo carga byte a byte).
+#
+# [S-F 2026-07-20] v0.2.0 supersede a v0.1.0 — causa: auditoría de ratificación S-F (T1).
+# La 0.1.0 hablaba `min_rung`: vocabulario que el freeze SS4 eliminó (la escalera 1-7 quedó
+# supersedida por clases decisorias + AL0-AL4 + criticidad C0-C3). Un `policy_digest`
+# estampado con la 0.1.0 habría pinneado política de vocabulario muerto en cada run.
 policy_id: chimera-default
-version: 0.1.0
+version: 0.2.0
 rules:
   - match: { side_effects: pure, claim_type: solution }
-    min_rung: 1 # el resultado final del demo se ancla al optimo exacto
+    criticality: C3 # el resultado final del demo: AL3 minimo + 2 patas independientes
+    min_level: AL3 # CP-SAT formal_exact (techo AL4 con checker) + pandapower execution (AL3)
+    required_legs: 2
     required_anchors: [solver, execution]
     on_inconclusive: mark
   - match: { side_effects: pure, claim_type: intermediate }
-    min_rung: 4
+    criticality: C1
+    min_level: AL1
     on_inconclusive: mark
   - match: { side_effects: irreversible-external }
-    min_rung: 1
+    criticality: C3 # piso por flags (freeze SS6): irreversible => C3 con gate BLOQUEANTE
+    min_level: AL3
+    required_legs: 2
     required_anchors: [solver, execution]
-    escalation: human # rung 7 en el borde irreversible
+    escalation: human # la esquina se satisface por no-accion (PR4)
     on_inconclusive: hold_run

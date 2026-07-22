@@ -42,7 +42,7 @@ p_uniforme = g / 2ⁿ            P(hallarlo en K muestras) = 1 − (1 − p)^K
 K para 99% de éxito ≈ 4.6 / p   (p chico)
 ```
 
-Ejemplos con los vectores de la nota 10: **G6** (n=3, g=2): p = 0.25 ⇒ ~16 muestras _aleatorias_ bastan al 99%. **G2/C4** (n=4, g=2): p = 0.125 ⇒ ~35. Grid CR (n=8, g=2): p ≈ 0.008 ⇒ ~590 — todavía trivial con 4 096 shots.
+Ejemplos con los vectores de la nota 10: **G6** (n=3, g=2): p = 0.25 ⇒ ~16 muestras _aleatorias_ bastan al 99%. **G2/C4** (n=4, g=2): p = 0.125 ⇒ ~35. Grid CR (n=8, g=2): p ≈ 0.008 ⇒ ~590 — todavía trivial con 4 096 shots. _(⚠️ SUPERSEDIDO [S-F 2026-07-20]: g = 2 y el ~590 son del grafo SINTÉTICO — cr8 nace de los datos del ICE y este cálculo de shots se rehace con su degeneración real, que se mide con el análisis de flips obligatorio de islanding/01 §1.8; el MÉTODO sigue vigente.)_
 
 **Consecuencia de reporte (anti quantum-washing, la matemática detrás del riesgo 19.2 del doc CHIMERA):** "QAOA encontró el óptimo" no informa nada en n=8 si el uniforme también lo encuentra. La métrica honesta es el **enriquecimiento**: `p_QAOA(óptimo) / p_uniforme` — cuántas veces más probable es el óptimo bajo la distribución de QAOA que bajo azar. Ese cociente sí mide que el circuito aprendió estructura, y va perfecto en la evidencia/ablación.
 

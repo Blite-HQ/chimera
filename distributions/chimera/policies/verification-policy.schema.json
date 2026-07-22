@@ -1,6 +1,7 @@
 {
   "$defs": {
     "MatchCondition": {
+      "additionalProperties": false,
       "description": "What a rule applies to. Unset fields match any value.",
       "properties": {
         "side_effects": {
@@ -33,13 +34,26 @@
       "type": "object"
     },
     "VerificationRule": {
+      "additionalProperties": false,
       "description": "One row of the policy: for claims matching `match`, require this much.",
       "properties": {
         "match": {
           "$ref": "#/$defs/MatchCondition"
         },
-        "min_rung": {
-          "title": "Min Rung",
+        "criticality": {
+          "enum": ["C0", "C1", "C2", "C3"],
+          "title": "Criticality",
+          "type": "string"
+        },
+        "min_level": {
+          "enum": ["AL0", "AL1", "AL2", "AL3", "AL4"],
+          "title": "Min Level",
+          "type": "string"
+        },
+        "required_legs": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Required Legs",
           "type": "integer"
         },
         "required_anchors": {
@@ -70,11 +84,12 @@
           "type": "string"
         }
       },
-      "required": ["match", "min_rung", "on_inconclusive"],
+      "required": ["match", "criticality", "min_level", "on_inconclusive"],
       "title": "VerificationRule",
       "type": "object"
     }
   },
+  "additionalProperties": false,
   "description": "A versioned, auditable set of verification rules.",
   "properties": {
     "policy_id": {

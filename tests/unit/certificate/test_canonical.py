@@ -129,6 +129,33 @@ def test_numeric_edge_cases_match_annex_vector(value: float, expected: bytes) ->
     assert canonicalize(value) == expected
 
 
+# ── ECMAScript fixed-notation band [1e-6, 1e-4)  [S-F stress · SF-P1-1] ──────
+# RFC 8785 (annex SS2 pt5) mandates ECMAScript Number::toString, which uses
+# FIXED notation down to exponent -6 (values >= 1e-6). Python's repr() switches
+# to exponential at < 1e-4, so a small `se_estimado`/`gap` (~1e-5) would make an
+# independent verifier in another language compute a different digest, breaking
+# the cross-language parity the annex promises (SS7 / D20). Values below the band
+# (<= 1e-7) stay exponential in both — those must NOT change. Ground truth:
+# Node.js String(v). Integer-valued floats (1e21) keep the annex's integer form.
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (1e-5, b"0.00001"),
+        (1e-6, b"0.000001"),
+        (1.5e-5, b"0.000015"),
+        (2.5e-6, b"0.0000025"),
+        (9.999e-6, b"0.000009999"),
+        (1.234e-5, b"0.00001234"),
+        (-1e-5, b"-0.00001"),
+        (1e-4, b"0.0001"),  # boundary above the band: Python already fixed
+        (5e-8, b"5e-8"),  # below the band: exponential in ECMAScript too
+        (1e-7, b"1e-7"),  # below the band (frozen V5): must stay exponential
+    ],
+)
+def test_ecmascript_fixed_notation_band(value: float, expected: bytes) -> None:
+    assert canonicalize(value) == expected
+
+
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
 def test_nan_and_infinity_are_rejected(value: float) -> None:
     with pytest.raises(ValueError, match="NaN or Infinity"):

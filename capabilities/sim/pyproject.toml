@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-    pandapower = ['pandapower>=2.13']
+    pandapower = ['pandapower>=3.5.4']
 
 [project.entry-points."blite.capabilities"]
 "blite.sim.power_flow" = "blite_cap_sim:PowerFlowSim"

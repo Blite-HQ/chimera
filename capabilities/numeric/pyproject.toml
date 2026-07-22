@@ -11,7 +11,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-    full = ['numpy>=2.5.1', 'scipy>=1.18.0', 'pandas>=3.0.2']
+    # numpy/pandas floors match pandapower's own constraints (numpy>=1.26,<2.5;
+    # pandas>=2.3,<3.dev0 as of pandapower 3.5.4) so the workspace can resolve
+    # both the `execution` verification anchor and this extra in one lock.
+    # MatrixOps does not use numpy>=2.5/pandas yet — nothing here needed the
+    # newer floors.
+    full = ['numpy>=1.26', 'scipy>=1.18.0', 'pandas>=2.3']
 
 [project.entry-points."blite.capabilities"]
 "blite.numeric.matrix_ops" = "blite_cap_numeric:MatrixOps"

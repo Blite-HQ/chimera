@@ -2,7 +2,7 @@
 
 **Ítem del plan:** plano de ejecución (Steven) — cómo un run sobrevive un reinicio del proceso o un job de
 larga duración, apoyándose en lo que el plano de confianza ya congeló para el event log.
-**Fecha:** 2026-07-10 · **Estado:** insumo para contract freeze
+**Fecha:** 2026-07-10 · **Estado:** incorporada al contract freeze (S-E, con el endurecimiento del reintento — addendum S-F en §1.4)
 **Fuentes:** `knowledge/trust/01-event-sourcing-postgres.md` (especialmente §1.4, proyecciones
 regenerables por replay) · `knowledge/trust/06-protocolos-capability-mcp-a2a.md` §4 (campo
 `side_effects` del `CapabilityManifest` v2) · `docs/invariants.md` (INV-5, INV-4) ·
@@ -53,6 +53,17 @@ automáticamente sin daño; un paso `irreversible-external` (ej. algo que ya env
 real) NO puede reintentarse a ciegas — necesita una estrategia explícita (idempotency key, verificación de
 si el efecto ya ocurrió, o escalar a rung 7 / intervención humana). Esta nota señala el problema y su
 enganche con `side_effects`; no propone todavía el mecanismo exacto de idempotencia.
+
+> **ADDENDUM (2026-07-20, S-F — el porqué del cambio que el freeze §13 hizo sobre esta
+> sección, estampado acá por la regla de oro de la guía):** el freeze movió
+> `reversible-external` del bucket "reintenta libre" al bucket "**sin idempotencia garantizada
+> NO hay reintento automático**". Razón: **reversible ≠ idempotente** — re-aplicar una acción
+> compensable duele hasta que alguien la compensa (dos cargos reversibles siguen siendo dos
+> cargos hasta el refund); el reintento automático solo es gratis cuando re-ejecutar es un
+> no-op (`pure`, o external con idempotency key verificada). `pure` se reintenta libre;
+> `reversible/irreversible-external` escalan a humano en Fase 1 (override registrado antes,
+> INV-4). El mecanismo fino (keys por `step_id`, verificación activa del efecto) es diseño de
+> S-G con dueño Steven — la regla del mes es segura sin él. Ratificación final: Steven.
 
 ## 2 · Alternativas consideradas
 

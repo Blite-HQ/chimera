@@ -31,12 +31,32 @@ def _format_number(value: int | float) -> str:
     if value != value or value in (float("inf"), float("-inf")):
         raise ValueError("JCS cannot serialize NaN or Infinity")
     if value.is_integer():
+        # Integer-valued floats collapse to integers, INCLUDING large ones like
+        # 1e21 -> "1000000000000000000000" (annex V5). ECMAScript would emit
+        # "1e+21" there, but the annex fixes the integer form and the data-model
+        # rule sends integers beyond +/-2^53 as strings, so this path never
+        # diverges in practice. Only the non-integer branch below is ECMAScript.
         return str(int(value))
-    # Python's repr() gives the same shortest-round-trip digits as the
-    # ECMAScript algorithm RFC 8785 requires, but pads the exponent with a
-    # leading zero and always 2+ digits (e.g. "1e-07"); ECMAScript does not
-    # (annex SS2 point 5 — this correction is a required gate, not cosmetic).
-    return _EXPONENT_LEADING_ZEROS.sub(r"e\1\2", repr(value))
+    # Python's repr() yields the shortest-round-trip digits ECMAScript requires,
+    # but its fixed-vs-exponential threshold differs: repr() switches to
+    # exponential below 1e-4, whereas ECMAScript Number::toString (RFC 8785,
+    # annex SS2 pt5) keeps FIXED notation down to exponent -6. Reconcile so an
+    # independent verifier in another language reaches the same digest (SS7 / D20).
+    r = repr(value)
+    if "e" not in r:
+        return r  # Python already fixed: |x| in [1e-4, 1e16); non-integers only
+    # Exponential repr => a small non-integer float (negative exponent only, since
+    # every float >= 2^53 is integer-valued and handled above).
+    sign = "-" if r[0] == "-" else ""
+    mantissa, exponent = r.lstrip("-").split("e")
+    exp = int(exponent)
+    if -6 <= exp <= -5:
+        # Inside the band ECMAScript renders fixed: "0." + leading zeros + digits.
+        digits = mantissa.replace(".", "")
+        return f"{sign}0.{'0' * (-exp - 1)}{digits}"
+    # exponent <= -7: ECMAScript also uses exponential — only strip the leading
+    # zero(s) Python pads the exponent with ("1e-07" -> "1e-7").
+    return _EXPONENT_LEADING_ZEROS.sub(r"e\1\2", r)
 
 
 def _emit(value: JSONValue, out: list[str]) -> None:

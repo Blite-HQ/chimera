@@ -66,3 +66,6 @@ pnpm-debug.log*
 
 # Playwright MCP artifacts (screenshots, snapshots)
 .playwright-mcp/
+
+# Key custody (escalon 1 env/file) — never commit real secrets
+secrets/
