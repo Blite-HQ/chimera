@@ -26,11 +26,12 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   plane, which no checklist covered). Its §4 consolidated action list was **applied on
   2026-07-20** as dated `[S-F]` supersessions across the freeze, the v2 seeds, the knowledge
   base and the lockfile — see `contract-freeze.md` → "Registro de cierre (S-F)".
-- [`protocolo-auditoria-ratificaciones.md`](protocolo-auditoria-ratificaciones.md) — the
-  **replicable protocol** for subjecting the REAL ratifications (Sebas/Steven/Geovanni) to the same
-  process as the simulation: intake/normalize → two-pass audit+refutation → convergence matrix
-  (sim ↔ real) → dated `[S-F-real]` supersessions with tests → CONVERGE/DIVERGE verdict gating the
-  official S-G. Includes copy-paste prompts for the audit and convergence passes.
+- [`protocolo-auditoria-ratificaciones.md`](protocolo-auditoria-ratificaciones.md) — the short
+  **pre-S-G flow guide**: the faithful account of what the 2026-07-20 session did with the ratification
+  findings — audit each one against the _current frozen state_ (freeze/seeds/KB/code), decide per
+  finding whether the ratification or the already-defined design is **better and why**, and apply the
+  survivors as dated supersessions with tests and green gates ("S-E again, focused"). The
+  simulated↔real comparison, convergence and stress test are explicitly _later_ steps.
 - [`stress-test-sf-pre-sg.md`](stress-test-sf-pre-sg.md) — the **pre-S-G brutal stress test**: a
   5-attacker adversarial panel (destruction posture) + per-finding refutation, run twice, that tried
   to break the post-S-F design. Verdict **GO** to S-G; 1 P0 + 4 P1 + 4 P2, each with a fix. Its §8
