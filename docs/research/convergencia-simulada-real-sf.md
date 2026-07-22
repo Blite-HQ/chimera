@@ -23,7 +23,7 @@
 
 ---
 
-## 0 · VEREDICTO: **CONVERGEN** — condicionado al porte del cuadrante C antes del 23-jul
+## 0 · VEREDICTO: **CONVERGEN** — condicionado al porte del cuadrante C antes del 23-jul _(condición CUMPLIDA 2026-07-22 — ver §11)_
 
 Los cuatro criterios duros del protocolo §7, evaluados uno a uno:
 
@@ -367,9 +367,19 @@ sin resolver ⇒ criterio 1 del veredicto: PASS.**
 
 ## 11 · Fixes de la rama ejercicio a portar — disposición PROPUESTA
 
-> **Disposición = propuesta; la ejecución la decide Dylan.** Nada de esta tabla se aplicó en esta
-> sesión. Conflictos pre-verificados en read-only con
+> **Disposición = propuesta; la ejecución la decide Dylan.** Nada de esta tabla se aplicó en la
+> sesión de la matriz. Conflictos pre-verificados en read-only con
 > `git merge-tree --write-tree --merge-base=<sha>^ HEAD <sha>` (simula el cherry-pick real).
+>
+> **ACTUALIZACIÓN 2026-07-22 — PORTE EJECUTADO (autorizado por Dylan).** Las disposiciones
+> PORTAR/RE-DERIVAR de abajo quedaron aplicadas en 5 commits temáticos: `dbac2e1` Policy 0.2.0 ·
+> `8ac51f1` semillas v2 + 12 unidades limpias de `02fa06d` · `3bb8e2b` C(x) ECMAScript +
+> `anchor_kind` · `a574a9b` freeze re-derivado (merge 3-vías + Registro de convergencia) ·
+> `bcdb39e` islanding/01 + infra/03 re-derivados. Adaptaciones "el real manda" registradas en el
+> freeze (Registro de convergencia): identidad ieee30 ABIERTA (EC-3), Ollama Cloud supersede el
+> detalle del modelo, floor `>=3.5.4`. Gates post-porte: import-linter **10/10** · pytest
+> **112 passed + 1 xpassed** · ruff · `tsc` 0 · marca 0. Los NO-PORTAR quedaron como estaban;
+> los S-G siguen en §10.
 
 | Unidad de fix                                                                                                                                                                                                                                                         | Commit sim                 | Archivos                                                     | Equivalente real                                          | Disposición                                                                                                                                                                                                                                                                                                                                         | Conflicto previsto                                                                                        |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
