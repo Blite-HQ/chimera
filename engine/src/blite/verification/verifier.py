@@ -1,27 +1,34 @@
 """
-Verifier — the port every hard anchor adapter implements.
+Verifier — el puerto que implementa todo adapter de ancla dura. Vocabulario §4.
 
-docs/contract-freeze.md SS4 / knowledge/trust/03-escalera-verificacion-metodos.md
-SS1.2. `anchor_kind` is never "model" (AnchorKind excludes it by construction);
-`rung` records which step of the 1-7 ladder this verifier occupies.
+docs/contract-freeze.md §4: `Verifier(Protocol)` = `verifier_class` +
+`determinism` + `verify(claim, ctx) -> Attestation`. El campo `rung: int`
+DESAPARECE (la escalera quedó supersedida). En no-deterministas la
+rerun_policy aplica a AMBOS veredictos. La distinción dura: **error de
+proceso NO emite Attestation** — `verdict: "fail"` es un veredicto sobre el
+claim, jamás una falla del verificador.
 """
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from blite.verification.anchor import AnchorKind
-from blite.verification.attestation import Attestation, AttestationRung
+from blite.verification.attestation import Attestation, VerifierClass
 from blite.verification.context import InvocationContext
+
+Determinism = Literal["deterministic", "nondeterministic"]
 
 
 @runtime_checkable
 class Verifier(Protocol):
-    """A hard-anchor adapter: contrasts a claim against a non-model oracle."""
+    """Adapter de ancla dura: contrasta un claim contra un oráculo no-modelo."""
 
+    verifier_class: VerifierClass
     anchor_kind: AnchorKind
-    rung: AttestationRung
+    determinism: Determinism
 
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
-        """Verify `claim` and return a constancy — never raises to signal fail."""
+        """Verifica `claim` y devuelve una constancia — un error de proceso
+        levanta excepción; jamás se disfraza de `fail`."""
         ...

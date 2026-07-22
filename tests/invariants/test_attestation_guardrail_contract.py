@@ -1,260 +1,274 @@
 """
-Attestation + GuardrailSignal contract tests (ficha B2 piece 2).
+Attestation + Signal contract tests — vocabulario §4/§5.
 
-docs/contract-freeze.md SS4-SS5 /
-knowledge/trust/03-escalera-verificacion-metodos.md SS1.2-SS1.4 /
-knowledge/trust/04-anclas-duras-mapa-oraculos.md SS1.3.
-
-Attestation (rung in {1,2,3,4,7}, evidence discriminated by method, subject
-for process verification) and GuardrailSignal (rung in {5,6}) are disjoint
-types by construction: no rung value is shared, and neither type's required
-fields satisfy the other's validation.
-
-Run: uv run pyright tests/invariants/test_attestation_guardrail_contract.py
+Attestation (clase+AL con techos, binding 4 digests, predicate por clase) y
+Signal (detector, kind "{etapa}.{mecanismo}", non_decisional: true) son tipos
+DISJUNTOS por construcción: ninguno valida con los campos del otro
+(extra="forbid" en ambos), y no existe conversión — lo probabilístico informa,
+jamás verifica (S1/D18/D21/Inv-E hechos tipo).
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Literal, get_args
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
-from blite.guardrails.signal import GuardrailSignal
-from blite.verification.attestation import Attestation, AttestationSubject
+from blite.guardrails.signal import Signal
+from blite.verification.attestation import Attestation
 from blite.verification.evidence import (
-    DifferentialEvidence,
-    DifferentialReference,
+    ConsensusReplicationPredicate,
+    Differential,
     ExecutionCheck,
     ExecutionEnvironment,
-    ExecutionEvidence,
-    HumanEvidence,
-    KnownTruthEvidence,
-    MetamorphicEvidence,
+    ExecutionPredicate,
+    FormalExactPredicate,
+    GroundTruthPredicate,
+    HumanExpertPredicate,
     MetamorphicRelation,
+    Proof,
     PropertyCheck,
-    PropertyEvidence,
+    PropertyRulePredicate,
 )
 
-ISSUED_AT = datetime(2026, 7, 7, 12, 0, 0, tzinfo=UTC)
+ISSUED_AT = datetime(2026, 7, 22, 12, 0, 0, tzinfo=UTC)
 
 
-def _subject() -> AttestationSubject:
-    return AttestationSubject(run_id="run-1", claim_digest="sha256:abc")
-
-
-def _differential_evidence() -> DifferentialEvidence:
-    return DifferentialEvidence(
-        reference=DifferentialReference(
-            solver="ortools-cpsat", version="9.15", params_digest="sha256:def"
+def _formal_predicate(*, with_proof: bool = False) -> FormalExactPredicate:
+    return FormalExactPredicate(
+        differential=Differential(
+            status="OPTIMAL", objective=3.0, reference_objective=3.0
         ),
-        reference_value=3.0,
-        candidate_value=3.0,
-        gap=0.0,
-        tolerance=1e-6,
-        solver_status="OPTIMAL",
+        proof=Proof(
+            certificate_ref="cert:chk", checker_id="brute-force", checker_verdict="pass"
+        )
+        if with_proof
+        else None,
     )
 
 
-# ── rung disjunction (the core of this piece) ─────────────────────────────
-
-_ATTESTATION_RUNGS = {1, 2, 3, 4, 7}
-_GUARDRAIL_RUNGS = {5, 6}
-
-
-def test_attestation_rung_and_guardrail_rung_share_no_value() -> None:
-    """The escalera formalized as a type: rungs 5-6 are unrepresentable as an Attestation."""
-    assert (
-        set(get_args(Attestation.model_fields["rung"].annotation)) == _ATTESTATION_RUNGS
-    )
-    assert (
-        set(get_args(GuardrailSignal.model_fields["rung"].annotation))
-        == _GUARDRAIL_RUNGS
-    )
-    assert _ATTESTATION_RUNGS.isdisjoint(_GUARDRAIL_RUNGS)
-
-
-# Negative pyright test: rung=5 must NOT type-check as an AttestationRung.
-_rejected_attestation_rung: Literal[1, 2, 3, 4, 7] = 5  # type: ignore[assignment]
-
-
-# ── disjunction: neither type satisfies the other's construction ─────────
-
-
-def test_guardrail_signal_cannot_be_built_from_attestation_fields() -> None:
-    attestation_kwargs = {
+def _att(**overrides: Any) -> Attestation:
+    kwargs: dict[str, Any] = {
         "verifier_id": "ortools-cpsat",
+        "verifier_class": "formal_exact",
         "anchor_kind": "solver",
-        "rung": 1,
+        "level": "AL3",
         "verdict": "pass",
-        "evidence": _differential_evidence(),
-        "subject": _subject(),
+        "scope": {"instance": "ieee14"},
+        "independence_group": "leg-formal",
+        "run_id": "run-1",
+        "claim_digest": "sha256:abc",
+        "verifier_binary_digest": "sha256:bin",
+        "verifier_params_digest": "sha256:par",
+        "anchor_digest": "sha256:anc",
+        "predicate": _formal_predicate(),
         "issued_at": ISSUED_AT,
     }
+    kwargs.update(overrides)
+    return Attestation(**kwargs)
+
+
+# ── disyunción por construcción (el corazón de esta pieza) ────────────────
+
+
+def test_signal_cannot_be_built_from_attestation_fields() -> None:
     with pytest.raises(ValidationError):
-        GuardrailSignal(**attestation_kwargs)  # type: ignore[arg-type]
+        Signal(
+            verifier_id="ortools-cpsat",  # type: ignore[call-arg]
+            verifier_class="formal_exact",
+            verdict="pass",
+        )
 
 
-def test_attestation_cannot_be_built_from_guardrail_signal_fields() -> None:
-    guardrail_kwargs = {
-        "name": "self-consistency",
-        "flagged": True,
-        "confidence": 0.82,
-        "rung": 5,
-        "detail": {"samples": 8, "agreement": 0.625},
-    }
-    with pytest.raises(ValidationError):
-        Attestation(**guardrail_kwargs)  # type: ignore[arg-type,call-arg]
-
-
-# ── Attestation: evidence union, subject, tri-state verdict ──────────────
-
-
-def test_attestation_requires_subject_and_evidence() -> None:
+def test_attestation_cannot_be_built_from_signal_fields() -> None:
     with pytest.raises(ValidationError):
         Attestation(
-            verifier_id="ortools-cpsat",
-            anchor_kind="solver",
-            rung=1,
-            verdict="pass",
-            issued_at=ISSUED_AT,
-        )  # type: ignore[call-arg]
+            detector="self-consistency",  # type: ignore[call-arg]
+            kind="egress.self_consistency",
+            target="sha256:abc",
+            flagged=True,
+        )
 
 
-def test_attestation_accepts_inconclusive_verdict() -> None:
-    attestation = Attestation(
-        verifier_id="ortools-cpsat",
-        anchor_kind="solver",
-        rung=1,
+def test_signal_is_non_decisional_by_type() -> None:
+    """El valor False no existe — la señal jamás decide (S1/Inv-E)."""
+    with pytest.raises(ValidationError):
+        Signal(
+            detector="self-consistency",
+            kind="egress.self_consistency",
+            target="sha256:abc",
+            flagged=False,
+            non_decisional=False,  # type: ignore[arg-type]
+        )
+
+
+# ── endurecimientos [S-F] del binding ─────────────────────────────────────
+
+
+def test_pass_without_anchor_is_unrepresentable() -> None:
+    with pytest.raises(ValidationError, match="irrepresentable"):
+        _att(anchor_digest=None)
+
+
+def test_fail_without_anchor_is_unrepresentable_too() -> None:
+    # [stress-final] el CHECK cubre fail, no solo pass
+    with pytest.raises(ValidationError, match="irrepresentable"):
+        _att(verdict="fail", anchor_digest=None)
+
+
+def test_inconclusive_requires_a_typed_reason_and_allows_no_anchor() -> None:
+    with pytest.raises(ValidationError, match="reason"):
+        _att(verdict="inconclusive", anchor_digest=None)
+    attestation = _att(
         verdict="inconclusive",
-        evidence=_differential_evidence(),
-        subject=_subject(),
-        issued_at=ISSUED_AT,
+        anchor_digest=None,
+        inconclusive_reason="no_applicable_anchor",
     )
-    assert attestation.verdict == "inconclusive"
+    assert attestation.anchor_digest is None
 
 
-def test_evidence_discriminates_by_method() -> None:
-    execution = ExecutionEvidence(
-        harness="pandapower-powerflow",
-        input_digest="sha256:111",
-        checks=(ExecutionCheck(name="island_connectivity", passed=True),),
-        runtime_ms=42.0,
-        environment=ExecutionEnvironment(package="pandapower", version="2.14"),
-    )
-    known_truth = KnownTruthEvidence(
-        dataset_id="ieee14-partitions-v1",
-        case_id="case-1",
-        expected_digest="sha256:222",
-        observed_digest="sha256:222",
-        match=True,
-        tolerance=0.0,
-    )
-    property_ev = PropertyEvidence(
-        properties=(
-            PropertyCheck(name="cut_cost_nonnegative", passed=True, examples_run=100),
-        ),
-        seed=42,
-        generator_version="hypothesis-6.156",
-    )
-    metamorphic = MetamorphicEvidence(
-        relations=(
-            MetamorphicRelation(
-                name="rename-invariant",
-                transform_digest="sha256:333",
-                expected_relation="invariant",
-                held=True,
+def test_level_cannot_exceed_the_class_ceiling() -> None:
+    with pytest.raises(ValidationError, match="techo"):
+        _att(
+            verifier_class="property_rule",
+            anchor_kind="rule",
+            level="AL3",
+            predicate=PropertyRulePredicate(
+                properties=(PropertyCheck(name="p", passed=True, examples_run=10),)
             ),
         )
-    )
-    human = HumanEvidence(
-        reviewer="user:dylan",
-        decision="approve",
-        rationale="irreversible egress reviewed manually",
-        reviewed_digest="sha256:444",
-    )
-
-    attestations = (
-        Attestation(
-            verifier_id="verifier-differential",
-            anchor_kind="solver",
-            rung=1,
-            verdict="pass",
-            evidence=_differential_evidence(),
-            subject=_subject(),
-            issued_at=ISSUED_AT,
-        ),
-        Attestation(
-            verifier_id="verifier-execution",
-            anchor_kind="execution",
-            rung=2,
-            verdict="pass",
-            evidence=execution,
-            subject=_subject(),
-            issued_at=ISSUED_AT,
-        ),
-        Attestation(
-            verifier_id="verifier-known_truth",
-            anchor_kind="dataset",
-            rung=3,
-            verdict="pass",
-            evidence=known_truth,
-            subject=_subject(),
-            issued_at=ISSUED_AT,
-        ),
-        Attestation(
-            verifier_id="verifier-property",
-            anchor_kind="rule",
-            rung=4,
-            verdict="pass",
-            evidence=property_ev,
-            subject=_subject(),
-            issued_at=ISSUED_AT,
-        ),
-        Attestation(
-            verifier_id="verifier-metamorphic",
-            anchor_kind="rule",
-            rung=4,
-            verdict="pass",
-            evidence=metamorphic,
-            subject=_subject(),
-            issued_at=ISSUED_AT,
-        ),
-        Attestation(
-            verifier_id="verifier-human",
-            anchor_kind="human",
-            rung=7,
-            verdict="pass",
-            evidence=human,
-            subject=_subject(),
-            issued_at=ISSUED_AT,
-        ),
-    )
-    expected_methods = {
-        "differential",
-        "execution",
-        "known_truth",
-        "property",
-        "metamorphic",
-        "human",
-    }
-    assert {a.evidence.method for a in attestations} == expected_methods
 
 
-# ── GuardrailSignal: confidence bounds ────────────────────────────────────
+def test_al4_requires_an_independent_checker_proof() -> None:
+    with pytest.raises(ValidationError, match="proof"):
+        _att(level="AL4", predicate=_formal_predicate(with_proof=False))
+    attestation = _att(level="AL4", predicate=_formal_predicate(with_proof=True))
+    assert attestation.level == "AL4"
 
 
-def test_guardrail_signal_confidence_must_be_within_zero_and_one() -> None:
-    with pytest.raises(ValidationError):
-        GuardrailSignal(
-            name="prompt-injection", flagged=True, confidence=1.5, rung=6, detail={}
+def test_process_error_statuses_cannot_become_a_predicate() -> None:
+    # freeze §4: error de proceso ≠ verdict fail — MODEL_INVALID/INFEASIBLE explotan
+    for status in ("MODEL_INVALID", "INFEASIBLE"):
+        with pytest.raises(ValidationError, match="error de proceso"):
+            Differential(status=status, objective=3.0, reference_objective=3.0)
+
+
+def test_predicate_must_match_the_verifier_class() -> None:
+    with pytest.raises(ValidationError, match="clase"):
+        _att(
+            verifier_class="execution",
+            level="AL3",
+            predicate=_formal_predicate(),
         )
 
 
-def test_guardrail_signal_is_frozen() -> None:
-    signal = GuardrailSignal(
-        name="prompt-injection", flagged=False, confidence=0.1, rung=6
+# ── predicate discriminado: las 6 clases construyen ───────────────────────
+
+
+def test_all_six_classes_have_a_constructible_predicate() -> None:
+    cases = (
+        ("formal_exact", "solver", "AL3", _formal_predicate()),
+        (
+            "execution",
+            "execution",
+            "AL3",
+            ExecutionPredicate(
+                harness="pandapower-powerflow",
+                input_digest="sha256:111",
+                checks=(ExecutionCheck(name="island_connectivity", passed=True),),
+                runtime_ms=42.0,
+                environment=ExecutionEnvironment(package="pandapower", version="3.5.4"),
+            ),
+        ),
+        (
+            "ground_truth",
+            "dataset",
+            "AL3",
+            GroundTruthPredicate(
+                dataset_id="ieee14-partitions-v1",
+                case_id="case-1",
+                expected_digest="sha256:222",
+                observed_digest="sha256:222",
+                match=True,
+                tolerance=0.0,
+            ),
+        ),
+        (
+            "property_rule",
+            "rule",
+            "AL2",
+            PropertyRulePredicate(
+                relations=(
+                    MetamorphicRelation(
+                        name="rename-invariant",
+                        transform_digest="sha256:333",
+                        expected_relation="invariant",
+                        held=True,
+                    ),
+                )
+            ),
+        ),
+        (
+            "consensus_replication",
+            "rule",
+            "AL2",
+            ConsensusReplicationPredicate(replicas=3, seeds=(1, 2, 3), agreement=True),
+        ),
+        (
+            "human_expert",
+            "human",
+            "AL3",
+            HumanExpertPredicate(
+                reviewer="user:dylan",
+                decision="approve",
+                rationale="irreversible egress reviewed manually",
+                reviewed_digest="sha256:444",
+            ),
+        ),
+    )
+    methods = set()
+    for verifier_class, anchor_kind, level, predicate in cases:
+        attestation = _att(
+            verifier_class=verifier_class,
+            anchor_kind=anchor_kind,
+            level=level,
+            predicate=predicate,
+        )
+        methods.add(attestation.predicate.method)
+    assert methods == {
+        "formal_exact",
+        "execution",
+        "ground_truth",
+        "property_rule",
+        "consensus_replication",
+        "human_expert",
+    }
+
+
+# ── Signal: convención de kind, score acotado, frozen ─────────────────────
+
+
+def test_signal_kind_follows_the_etapa_mecanismo_convention() -> None:
+    with pytest.raises(ValidationError, match="convención"):
+        Signal(detector="d", kind="sin-punto", target="sha256:abc", flagged=True)
+
+
+def test_signal_score_must_be_within_zero_and_one() -> None:
+    with pytest.raises(ValidationError):
+        Signal(
+            detector="d",
+            kind="egress.prompt_injection",
+            target="sha256:abc",
+            flagged=True,
+            score=1.5,
+        )
+
+
+def test_signal_is_frozen() -> None:
+    signal = Signal(
+        detector="d", kind="egress.prompt_injection", target="sha256:abc", flagged=False
     )
     with pytest.raises(ValidationError):
         signal.flagged = True

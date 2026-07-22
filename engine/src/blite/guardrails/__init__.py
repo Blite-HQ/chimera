@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from blite.guardrails.signal import GuardrailRung, GuardrailSignal
+from blite.guardrails.signal import Signal
 
-__all__ = ["GuardrailRung", "GuardrailSignal"]
+__all__ = ["Signal"]

@@ -1,59 +1,82 @@
 """
-Evidence — the auditable form each verification method leaves behind.
+Predicates por clase — la forma auditable que cada método deja. Vocabulario §4.
 
-knowledge/trust/03-escalera-verificacion-metodos.md SS1.2: evidence is never
-an amorphous dict; each method (differential/execution/known_truth/property/
-metamorphic/human) has its own shape, discriminated by the `method` field.
+freeze §4: la evidence deja de ser unión embebida — son refs content-addressed
+(`Attestation.evidence_digests` → Artifacts §12) con **predicates por clase**.
+Refinamientos aditivos decididos (ratificación final de Dylan):
+- `formal_exact.differential.status` usa el enum REAL de CP-SAT; `MODEL_INVALID`
+  e `INFEASIBLE` son **error de proceso** (no emiten Attestation) — construir
+  un predicate con esos status EXPLOTA.
+- `execution` carga `timed_out`.
+- `property_rule` carga `backend`/`status`/`unsat_core` del backend formal.
+- `consensus_replication` SOLO procesos no-modelo (S7) — réplicas con seeds
+  pinneados; la concordancia entre modelos es Signal, jamás predicate.
 """
 
 from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# ── rung 1: differential verification against an independent exact solver ──
+CpSatStatus = Literal["OPTIMAL", "FEASIBLE", "INFEASIBLE", "MODEL_INVALID", "UNKNOWN"]
 
-
-class DifferentialReference(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    solver: str
-    version: str
-    params_digest: str
+_PROCESS_ERROR_STATUSES = frozenset({"INFEASIBLE", "MODEL_INVALID"})
 
 
-class DifferentialEvidence(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class Proof(BaseModel):
+    """Re-validación del checker independiente — vive DENTRO del bundle (§4-iii)."""
 
-    method: Literal["differential"] = "differential"
-    reference: DifferentialReference
-    reference_value: float
-    candidate_value: float
-    gap: float
-    tolerance: float
-    solver_status: Literal["OPTIMAL", "FEASIBLE", "TIMEOUT"]
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    certificate_ref: str
+    checker_id: str
+    checker_verdict: str
 
 
-# ── rung 2: execution / feasibility (run it for real, observe) ────────────
+class Differential(BaseModel):
+    """Comparación contra solver exacto independiente (CP-SAT)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    status: CpSatStatus
+    objective: float
+    reference_objective: float
+
+    @field_validator("status")
+    @classmethod
+    def _status_es_veredicto_no_error(cls, v: str) -> str:
+        if v in _PROCESS_ERROR_STATUSES:
+            msg = f"{v}: error de proceso — NO emite Attestation (freeze §4, error ≠ fail)"
+            raise ValueError(msg)
+        return v
+
+
+class FormalExactPredicate(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    method: Literal["formal_exact"] = "formal_exact"
+    differential: Differential
+    proof: Proof | None = None
+    """Con proof el techo sube a AL4; sin él, AL3 (freeze §4)."""
 
 
 class ExecutionCheck(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     name: str
     passed: bool
 
 
 class ExecutionEnvironment(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     package: str
     version: str
 
 
-class ExecutionEvidence(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class ExecutionPredicate(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     method: Literal["execution"] = "execution"
     harness: str
@@ -61,15 +84,13 @@ class ExecutionEvidence(BaseModel):
     checks: tuple[ExecutionCheck, ...]
     runtime_ms: float
     environment: ExecutionEnvironment
+    timed_out: bool = False
 
 
-# ── rung 3: known truth (comparison against a versioned corpus) ───────────
+class GroundTruthPredicate(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
-
-class KnownTruthEvidence(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    method: Literal["known_truth"] = "known_truth"
+    method: Literal["ground_truth"] = "ground_truth"
     dataset_id: str
     case_id: str
     expected_digest: str
@@ -78,11 +99,8 @@ class KnownTruthEvidence(BaseModel):
     tolerance: float
 
 
-# ── rung 4: property-based (Hypothesis) ────────────────────────────────────
-
-
 class PropertyCheck(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     name: str
     passed: bool
@@ -90,20 +108,8 @@ class PropertyCheck(BaseModel):
     counterexample: str | None = None
 
 
-class PropertyEvidence(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    method: Literal["property"] = "property"
-    properties: tuple[PropertyCheck, ...]
-    seed: int
-    generator_version: str
-
-
-# ── rung 4: metamorphic relations ──────────────────────────────────────────
-
-
 class MetamorphicRelation(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     name: str
     transform_digest: str
@@ -111,32 +117,48 @@ class MetamorphicRelation(BaseModel):
     held: bool
 
 
-class MetamorphicEvidence(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class PropertyRulePredicate(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
-    method: Literal["metamorphic"] = "metamorphic"
-    relations: tuple[MetamorphicRelation, ...]
+    method: Literal["property_rule"] = "property_rule"
+    properties: tuple[PropertyCheck, ...] = ()
+    relations: tuple[MetamorphicRelation, ...] = ()
+    seed: int | None = None
+    generator_version: str | None = None
+    backend: str | None = None
+    status: str | None = None
+    unsat_core: str | None = None
 
 
-# ── rung 7: human judgment (always attributable — AX1) ─────────────────────
+class ConsensusReplicationPredicate(BaseModel):
+    """Réplicas con seeds pinneados — SOLO procesos no-modelo (S7)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    method: Literal["consensus_replication"] = "consensus_replication"
+    replicas: int = Field(ge=2)
+    seeds: tuple[int, ...]
+    agreement: bool
 
 
-class HumanEvidence(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class HumanExpertPredicate(BaseModel):
+    """Juicio humano — siempre atribuible (AX1)."""
 
-    method: Literal["human"] = "human"
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    method: Literal["human_expert"] = "human_expert"
     reviewer: str
     decision: str
     rationale: str
     reviewed_digest: str
 
 
-Evidence = Annotated[
-    DifferentialEvidence
-    | ExecutionEvidence
-    | KnownTruthEvidence
-    | PropertyEvidence
-    | MetamorphicEvidence
-    | HumanEvidence,
+ClassPredicate = Annotated[
+    FormalExactPredicate
+    | ExecutionPredicate
+    | GroundTruthPredicate
+    | PropertyRulePredicate
+    | ConsensusReplicationPredicate
+    | HumanExpertPredicate,
     Field(discriminator="method"),
 ]

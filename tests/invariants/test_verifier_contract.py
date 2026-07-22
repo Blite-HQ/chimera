@@ -1,9 +1,9 @@
 """
-Verifier contract tests (ficha B2 piece 1 — docs/contract-freeze.md SS4).
+Verifier contract tests — vocabulario §4 (clase + AL, la escalera murió).
 
-AnchorKind excludes "model" by construction (PR2/ADR-027: the verifier is
-never a model — knowledge/trust/03-escalera-verificacion-metodos.md SS1.1).
-Verifier is a runtime_checkable Protocol; any conforming object satisfies it.
+INV-2/PR2 como gate de tipos: ni `AnchorKind` ni `VerifierClass` tienen el
+valor "model" — no existe, no type-checkea, no valida. El Protocol exige
+`verifier_class` + `determinism` + `verify()`.
 
 Run: uv run pyright tests/invariants/test_verifier_contract.py
 """
@@ -11,16 +11,16 @@ Run: uv run pyright tests/invariants/test_verifier_contract.py
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal, get_args
+from typing import Any, get_args
 
 import pytest
 from pydantic import ValidationError
 
 from blite.verification.anchor import AnchorKind
-from blite.verification.attestation import Attestation, AttestationSubject
+from blite.verification.attestation import Attestation, VerifierClass
 from blite.verification.context import InvocationContext
-from blite.verification.evidence import DifferentialEvidence, DifferentialReference
-from blite.verification.verifier import Verifier
+from blite.verification.evidence import Differential, FormalExactPredicate
+from blite.verification.verifier import Determinism, Verifier
 
 # ── AnchorKind ─────────────────────────────────────────────────────────────
 
@@ -32,11 +32,29 @@ def test_anchor_kind_has_exactly_the_five_non_model_values() -> None:
     assert set(get_args(AnchorKind)) == _ALLOWED_ANCHOR_KINDS
 
 
-# Negative pyright test: "model" must NOT type-check as an AnchorKind.
-# pyproject.toml sets reportUnnecessaryTypeIgnoreComment=error, so this fails
-# loud if AnchorKind is ever widened to include "model": the ignore below
-# would become unnecessary and pyright would flag it as an error.
+# ── VerifierClass (freeze §4) ─────────────────────────────────────────────
+
+_ALLOWED_CLASSES = {
+    "formal_exact",
+    "execution",
+    "ground_truth",
+    "property_rule",
+    "consensus_replication",
+    "human_expert",
+}
+
+
+def test_verifier_class_has_exactly_the_six_non_model_values() -> None:
+    """INV-2 como gate de tipos: "model" no existe como VerifierClass."""
+    assert set(get_args(VerifierClass)) == _ALLOWED_CLASSES
+    assert "model" not in get_args(VerifierClass)
+
+
+# Negative pyright tests: "model" must NOT type-check in either vocabulary.
+# pyproject.toml sets reportUnnecessaryTypeIgnoreComment=error, so these fail
+# loud if the types are ever widened to include "model".
 _rejected_by_pyright: AnchorKind = "model"  # type: ignore[assignment]
+_rejected_class_by_pyright: VerifierClass = "model"  # type: ignore[assignment]
 
 
 # ── InvocationContext ─────────────────────────────────────────────────────
@@ -56,33 +74,37 @@ def test_invocation_context_is_frozen() -> None:
 class _FakeSolverVerifier:
     """A minimal conforming Verifier — proves the Protocol shape is usable."""
 
+    verifier_class: VerifierClass = "formal_exact"
     anchor_kind: AnchorKind = "solver"
-    rung: Literal[1, 2, 3, 4, 7] = 1
+    determinism: Determinism = "deterministic"
 
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         return Attestation(
             verifier_id="fake-solver",
+            verifier_class=self.verifier_class,
             anchor_kind=self.anchor_kind,
-            rung=self.rung,
+            level="AL3",
             verdict="pass",
-            evidence=DifferentialEvidence(
-                reference=DifferentialReference(
-                    solver="ortools-cpsat", version="9.15", params_digest="sha256:def"
-                ),
-                reference_value=3.0,
-                candidate_value=3.0,
-                gap=0.0,
-                tolerance=1e-6,
-                solver_status="OPTIMAL",
+            scope={"instance": "ieee14"},
+            independence_group="leg-formal",
+            run_id=ctx.run_id,
+            claim_digest="sha256:abc",
+            verifier_binary_digest="sha256:bin",
+            verifier_params_digest="sha256:par",
+            anchor_digest="sha256:anc",
+            predicate=FormalExactPredicate(
+                differential=Differential(
+                    status="OPTIMAL", objective=3.0, reference_objective=3.0
+                )
             ),
-            subject=AttestationSubject(run_id=ctx.run_id, claim_digest="sha256:abc"),
             issued_at=datetime.now(tz=UTC),
         )
 
 
 class _NotAVerifier:
-    """Missing rung and verify() — must NOT satisfy the Protocol."""
+    """Missing determinism and verify() — must NOT satisfy the Protocol."""
 
+    verifier_class: VerifierClass = "formal_exact"
     anchor_kind: AnchorKind = "solver"
 
 
@@ -96,6 +118,7 @@ def test_verifier_protocol_accepts_a_conforming_implementation() -> None:
         ),
     )
     assert attestation.verdict == "pass"
+    assert attestation.level == "AL3"
 
 
 def test_verifier_protocol_rejects_a_non_conforming_object() -> None:
