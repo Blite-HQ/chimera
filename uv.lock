@@ -380,7 +380,7 @@ pandapower = [
 [package.metadata]
 requires-dist = [
     { name = "blite-capability", editable = "sdk" },
-    { name = "pandapower", marker = "extra == 'pandapower'", specifier = ">=2.13" },
+    { name = "pandapower", marker = "extra == 'pandapower'", specifier = ">=3.5.4" },
 ]
 provides-extras = ["pandapower"]
 
