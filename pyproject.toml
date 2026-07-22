@@ -75,6 +75,9 @@ include = [
 testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+  "seed: test semilla S-G — xfail(strict=False) hasta que su dueño lo ponga en verde (docs/specs/README.md)",
+]
 addopts = "--cov --cov-report=term-missing --cov-fail-under=30"
 
 [tool.coverage.run]

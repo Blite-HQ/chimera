@@ -52,6 +52,15 @@ Reglas:
 
 ## Índice de specs
 
-| Spec                                                                                                                                      | Plano | Estado |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------ |
-| _(se llenan en la Etapa 0 — la primera es el esquema: `engine/sql/init_v2.sql` + `tests/invariants/test_esquema_migration.py`, ya VERDE)_ | —     | —      |
+| Base / seed (Etapa 0)                                                                                                         | Plano              | Estado                      |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------------------------- |
+| Esquema: `engine/sql/init_v2.sql` + `tests/invariants/test_esquema_migration.py` (anti-drift bidireccional)                   | todos              | **VERDE**                   |
+| Reglas del log S-F: `blite/events/rules.py` (system:, post-terminal, corte del hash) + `test_event_rules.py`                  | confianza          | **VERDE**                   |
+| Predicate mínimo §7: `blite/certificate/predicate.py` + `test_predicate.py` (titular fail-closed)                             | confianza          | **VERDE**                   |
+| Matriz interaction×profile: `blite/runtime/dispatch.py` + `test_dispatch_matrix.py`                                           | ejecución          | **VERDE**                   |
+| Puertos: `ModelPort`+replay (`serving/model_port.py`) · `KeyProvider` (`certificate/keys.py`) · `ContentStore` (`content.py`) | frontera           | **SPEC** (Protocols listos) |
+| `scripts/verify-bundle.py` — 7 puntos fail-closed + `tests/seeds/test_seed_confianza_verify_bundle.py`                        | confianza (Dylan)  | **SEED** (xfail)            |
+| `tests/seeds/test_seed_ejecucion_runs_projection.py` — proyección regenerable por replay                                      | ejecución (Steven) | **SEED** (xfail)            |
+| `tests/seeds/test_seed_ejecucion_palanca_ex5.py` — ○PolicyChanged endurecida ⇒ ●EscalationOpened                              | frontera (D+S)     | **SEED** (xfail)            |
+| `tests/seeds/test_seed_ciencia_falla_sembrada.py` — bus 1, r=0.5712, 32 597/57 070                                            | ciencia (Sebas)    | **SEED** (xfail)            |
+| `tests/seeds/test_seed_infra_compose.py` — compose canónico + `*_FILE` + `compose.record.yml`                                 | infra (Geovanni)   | **SEED** (xfail)            |
