@@ -106,6 +106,38 @@
       },
       "title": "Rules",
       "type": "array"
+    },
+    "max_attestation_age": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Max Attestation Age",
+      "type": "object"
+    },
+    "trusted_signer_roots": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Trusted Signer Roots",
+      "type": "array"
+    },
+    "audience_profiles": {
+      "additionalProperties": true,
+      "title": "Audience Profiles",
+      "type": "object"
+    },
+    "retention": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention"
     }
   },
   "required": ["policy_id", "version", "rules"],

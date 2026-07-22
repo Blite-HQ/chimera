@@ -15,7 +15,7 @@ floors, v3.2 fields) is S-G.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,6 +24,73 @@ from blite.verification.anchor import AnchorKind
 SideEffects = Literal["pure", "reversible-external", "irreversible-external"]
 AssuranceLevel = Literal["AL0", "AL1", "AL2", "AL3", "AL4"]
 Criticality = Literal["C0", "C1", "C2", "C3"]
+
+_CRITICALITY_ORDER: dict[str, int] = {"C0": 0, "C1": 1, "C2": 2, "C3": 3}
+
+
+class KernelRequirement(BaseModel):
+    """Una fila de la matriz por criticidad del kernel (freeze §6)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    min_level: AssuranceLevel
+    required_legs: int = Field(ge=0)
+    """Patas por independence_group; C0 = declarado, 0 patas (única fila con 0)."""
+    anchor_authority_min: str | None = None
+    """C3: el ancla debe ser ≥ `curated_internal` (taxonomía del registro, §4)."""
+    requires_non_self_generated_leg: bool = False
+    """C3: ≥1 pata no-self_generated."""
+    formalization: Literal["nativa", "revisada"] | None = None
+    """C3: formalización nativa o revisada."""
+
+
+# Matriz por criticidad — el default del kernel que toda Policy hereda
+# (freeze §6): C0 declarado/0 · C1 AL1/1 · C2 AL2/1 · C3 AL3/2 patas +
+# ancla ≥ curated_internal + ≥1 pata no-self_generated + formalización.
+KERNEL_MATRIX: dict[Criticality, KernelRequirement] = {
+    "C0": KernelRequirement(min_level="AL0", required_legs=0),
+    "C1": KernelRequirement(min_level="AL1", required_legs=1),
+    "C2": KernelRequirement(min_level="AL2", required_legs=1),
+    "C3": KernelRequirement(
+        min_level="AL3",
+        required_legs=2,
+        anchor_authority_min="curated_internal",
+        requires_non_self_generated_leg=True,
+        formalization="nativa",
+    ),
+}
+
+
+def criticality_floor(
+    *,
+    world: bool = False,
+    irreversible: bool = False,
+    affects_third_party: bool = False,
+) -> Criticality | None:
+    """Pisos por flags (freeze §6, PR2/PR4): `world` ⇒ C2;
+    `irreversible ∧ affects_third_party` ⇒ C3 con gate BLOQUEANTE (la esquina
+    se satisface por no-acción). Sin flag que aplique ⇒ None (manda la base)."""
+    if irreversible and affects_third_party:
+        return "C3"
+    if world:
+        return "C2"
+    return None
+
+
+def effective_criticality(
+    base: Criticality,
+    *,
+    world: bool = False,
+    irreversible: bool = False,
+    affects_third_party: bool = False,
+) -> Criticality:
+    """La criticidad efectiva = máx(base, piso por flags) — el piso solo sube."""
+    floor = criticality_floor(
+        world=world, irreversible=irreversible, affects_third_party=affects_third_party
+    )
+    if floor is None or _CRITICALITY_ORDER[base] >= _CRITICALITY_ORDER[floor]:
+        return base
+    return floor
 
 
 class MatchCondition(BaseModel):
@@ -63,3 +130,13 @@ class VerificationPolicy(BaseModel):
     policy_id: str
     version: str
     rules: tuple[VerificationRule, ...]
+
+    # ── Campos v3.2 adoptados (freeze §6) — opcionales: el YAML 0.2.0 valida ──
+    max_attestation_age: dict[str, str] = Field(default_factory=dict)
+    """Frescura por claim_type/criticidad — clave → duración ISO 8601 (v3.2)."""
+    trusted_signer_roots: tuple[str, ...] = ()
+    """Raíces de confianza para firmas de attestations externas (v3.2)."""
+    audience_profiles: dict[str, Any] = Field(default_factory=dict)
+    """Perfiles de audiencia del certificado (v3.2) — forma libre en Fase 1."""
+    retention: str | None = None
+    """Política de retención declarada (v3.2)."""
