@@ -56,7 +56,7 @@ nuevo.**
 
 - Cada video transcrito, y cada fragmento (`chunk`) derivado de esa transcripción, es un **`Artifact`**
   tal cual está congelado en `contract-freeze.md` §12: `{digest (sha256 de la forma canónica), domain_id,
-  media_type, size_bytes, storage_ref, created_at}`. `ContentStore.put()` ya existe como contrato — un
+media_type, size_bytes, storage_ref, created_at}`. `ContentStore.put()` ya existe como contrato — un
   fragmento de conocimiento indexado es, ni más ni menos, contenido con su propio digest recuperable byte
   a byte. Esto reutiliza SO2 (particionado por dominio) sin cambios: si el corpus de un video fuera
   sensible por dominio (no es el caso de contenido público del evento, pero el mecanismo debe sostenerlo),
@@ -126,26 +126,26 @@ cualquier otro `Artifact` de esta nota.
 
 ## 4 · Decisión
 
-| Referencia                                                  | Decisión                                     | Racional                                                                                                                                        |
-| ------------------------------------------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RAG (recuperación por similitud, `RunStep` de tipo retrieval) | **portar** (propuesta, pendiente de Dylan)    | Encaja sin fricción en `RunStep`/`Artifact`/`ContentStore` ya congelados; da trazabilidad por diseño (§1.3), que es exactamente lo que el proyecto exige en todo lo demás |
-| CAG (precarga de contexto, sin paso de búsqueda)              | **inspirar** (dirección futura condicionada)  | Válida si el corpus resulta chico (pregunta abierta, §10); no se compromete como mecanismo principal sin ese dato                                  |
-| Fine-tuning sobre el contenido de los videos                  | **descartar**                                 | Incompatible con la exigencia de trazabilidad del proyecto (§3); herramienta equivocada para inyección de hechos, no de comportamiento             |
-| Knowledge graph sobre el mismo corpus indexado                | **inspirar** (fase posterior, no bloqueante)  | Aporta sobre preguntas relacionales que la similitud vectorial sola no resuelve bien; depende de tener el corpus indexado con digest primero (§1.4) |
-| Reutilizar `Artifact`/`ContentStore` (freeze §12) para el corpus | **integrar**                                | Ya congelado; cero contrato nuevo de almacenamiento necesario                                                                                       |
-| Embeddings/retrieval como llamada mediada por AX3             | **portar**                                    | Ninguna llamada de modelo (generativo o de embeddings) sale del camino ya congelado (nota 09) — sin excepción para este caso                        |
+| Referencia                                                       | Decisión                                     | Racional                                                                                                                                                                  |
+| ---------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RAG (recuperación por similitud, `RunStep` de tipo retrieval)    | **portar** (propuesta, pendiente de Dylan)   | Encaja sin fricción en `RunStep`/`Artifact`/`ContentStore` ya congelados; da trazabilidad por diseño (§1.3), que es exactamente lo que el proyecto exige en todo lo demás |
+| CAG (precarga de contexto, sin paso de búsqueda)                 | **inspirar** (dirección futura condicionada) | Válida si el corpus resulta chico (pregunta abierta, §10); no se compromete como mecanismo principal sin ese dato                                                         |
+| Fine-tuning sobre el contenido de los videos                     | **descartar**                                | Incompatible con la exigencia de trazabilidad del proyecto (§3); herramienta equivocada para inyección de hechos, no de comportamiento                                    |
+| Knowledge graph sobre el mismo corpus indexado                   | **inspirar** (fase posterior, no bloqueante) | Aporta sobre preguntas relacionales que la similitud vectorial sola no resuelve bien; depende de tener el corpus indexado con digest primero (§1.4)                       |
+| Reutilizar `Artifact`/`ContentStore` (freeze §12) para el corpus | **integrar**                                 | Ya congelado; cero contrato nuevo de almacenamiento necesario                                                                                                             |
+| Embeddings/retrieval como llamada mediada por AX3                | **portar**                                   | Ninguna llamada de modelo (generativo o de embeddings) sale del camino ya congelado (nota 09) — sin excepción para este caso                                              |
 
 ## 5 · Tradeoffs
 
-| Eje                                             | RAG                                                        | CAG                                                                 | Fine-tuning                                                            |
-| ------------------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Trazabilidad/citabilidad de cada afirmación      | Alta — el fragmento recuperado es un `Artifact` con digest  | Alta — el contexto cacheado sigue siendo texto explícito en el prompt  | **Ninguna** — el conocimiento vive en pesos, sin referencia recuperable    |
-| Costo de actualizar el corpus                    | Bajo — se reindexa el `Artifact` nuevo/corregido             | Bajo — se recarga el contexto                                          | Alto — exige reentrenar/re-adaptar y reevaluar                            |
-| Escala con el tamaño del corpus                  | Buena — el índice crece, el prompt no                        | Mala si el corpus no cabe en la ventana de contexto                    | N/A — el "tamaño" ya no es un costo en tiempo de inferencia, pero sí en entrenamiento |
-| Latencia por consulta                            | Media (paso de búsqueda + llamada)                            | Baja en consultas repetidas sobre el mismo contexto cacheado           | Mínima (no hay paso extra) — pero esto es exactamente el problema: no hay forma de auditar qué usó |
-| Riesgo de alucinación citando mal la fuente      | Presente si el retrieval trae contexto irrelevante (§6)      | Presente, mismo riesgo si el contexto cacheado incluye ruido           | Alto — no hay fuente que citar correcta o incorrectamente, el modelo "improvisa" con más confianza aparente |
-| Encaje con AX3/mediación ya congelada            | Directo — el paso de retrieval es un `RunStep` más           | Directo — sigue siendo una llamada de modelo mediada                  | No aplica el mismo control — un modelo fine-tuneado sigue pasando por `ModelPort`, pero el conocimiento en sí nunca pasó por ningún gate de procedencia |
-| Esfuerzo de implementación en el tiempo del evento | Medio (vector store + paso de recuperación)                 | Bajo si el corpus es chico, alto si hay que trocear por límites de contexto | Alto (dataset curado + entrenamiento + evaluación de regresión)           |
+| Eje                                                | RAG                                                        | CAG                                                                         | Fine-tuning                                                                                                                                             |
+| -------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trazabilidad/citabilidad de cada afirmación        | Alta — el fragmento recuperado es un `Artifact` con digest | Alta — el contexto cacheado sigue siendo texto explícito en el prompt       | **Ninguna** — el conocimiento vive en pesos, sin referencia recuperable                                                                                 |
+| Costo de actualizar el corpus                      | Bajo — se reindexa el `Artifact` nuevo/corregido           | Bajo — se recarga el contexto                                               | Alto — exige reentrenar/re-adaptar y reevaluar                                                                                                          |
+| Escala con el tamaño del corpus                    | Buena — el índice crece, el prompt no                      | Mala si el corpus no cabe en la ventana de contexto                         | N/A — el "tamaño" ya no es un costo en tiempo de inferencia, pero sí en entrenamiento                                                                   |
+| Latencia por consulta                              | Media (paso de búsqueda + llamada)                         | Baja en consultas repetidas sobre el mismo contexto cacheado                | Mínima (no hay paso extra) — pero esto es exactamente el problema: no hay forma de auditar qué usó                                                      |
+| Riesgo de alucinación citando mal la fuente        | Presente si el retrieval trae contexto irrelevante (§6)    | Presente, mismo riesgo si el contexto cacheado incluye ruido                | Alto — no hay fuente que citar correcta o incorrectamente, el modelo "improvisa" con más confianza aparente                                             |
+| Encaje con AX3/mediación ya congelada              | Directo — el paso de retrieval es un `RunStep` más         | Directo — sigue siendo una llamada de modelo mediada                        | No aplica el mismo control — un modelo fine-tuneado sigue pasando por `ModelPort`, pero el conocimiento en sí nunca pasó por ningún gate de procedencia |
+| Esfuerzo de implementación en el tiempo del evento | Medio (vector store + paso de recuperación)                | Bajo si el corpus es chico, alto si hay que trocear por límites de contexto | Alto (dataset curado + entrenamiento + evaluación de regresión)                                                                                         |
 
 ## 6 · Modos de falla
 
@@ -181,11 +181,11 @@ cualquier otro `Artifact` de esta nota.
 
 ## 7 · Licencias
 
-| Pieza                                                        | Licencia                     | Verificado                                                   |
-| -------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------- |
-| Patrón RAG / CAG / fine-tuning (conceptos, no librería)        | N/A — patrón, no código      | conocimiento general, **no verificado en vivo esta sesión**   |
-| ASR para transcripción (ej. Whisper y derivados)                | Típicamente MIT/Apache-2.0    | **no verificado en vivo esta sesión** — nombre de referencia, sin confirmar versión/licencia exacta |
-| Vector store                                                    | Depende de la elección        | **PENDIENTE** — ver §10; candidato obvio es `pgvector` sobre el mismo Postgres ya presente en el walking skeleton (evita infraestructura nueva), pero no se verificó en vivo |
+| Pieza                                                   | Licencia                   | Verificado                                                                                                                                                                   |
+| ------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Patrón RAG / CAG / fine-tuning (conceptos, no librería) | N/A — patrón, no código    | conocimiento general, **no verificado en vivo esta sesión**                                                                                                                  |
+| ASR para transcripción (ej. Whisper y derivados)        | Típicamente MIT/Apache-2.0 | **no verificado en vivo esta sesión** — nombre de referencia, sin confirmar versión/licencia exacta                                                                          |
+| Vector store                                            | Depende de la elección     | **PENDIENTE** — ver §10; candidato obvio es `pgvector` sobre el mismo Postgres ya presente en el walking skeleton (evita infraestructura nueva), pero no se verificó en vivo |
 
 No se propone ninguna dependencia nueva como decisión firme en esta nota — la elección de herramienta
 concreta de transcripción/embeddings/vector store queda como pregunta abierta (§10), no como parte
