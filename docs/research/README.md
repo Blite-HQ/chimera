@@ -14,6 +14,15 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   describing how claims in this project are validated (e.g. the verification-ladder rungs
   and what "confiable ≠ plausible" means formally).
 
+## Process records — S-F ratification (2026-07-21/22)
+
+- [`ratificacion-real-sf.md`](ratificacion-real-sf.md) — audit of the REAL S-F ratifications
+  (Fase A + pre-B stress test + Fase B application + re-stress, verdict GO).
+- [`convergencia-simulada-real-sf.md`](convergencia-simulada-real-sf.md) — the
+  simulated↔real convergence matrix (protocol §5), verdict **CONVERGEN**, unified set +
+  prioritized S-G list + port table. The simulated-track sources live in the read-only
+  exercise branch `ejercicio/sf-ratificacion-simulada`.
+
 Nothing here yet beyond this placeholder — content lands once the group's investigation
 (timeboxed research week, see project plan) produces a draft worth structuring.
 
