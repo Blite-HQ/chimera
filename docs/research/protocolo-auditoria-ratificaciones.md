@@ -1,33 +1,35 @@
-# Guía — el flujo pre-S-G: auditar una ratificación contra el estado congelado y aplicar lo que mejora
+# Guía — el flujo pre-S-G de ratificación (arco completo: simular → auditar/decidir → aplicar)
 
-> **Estado: VIGENTE (proceso).** Es el relato fiel de lo que se hizo en la sesión del 2026-07-20
-> con los resultados de la ratificación **simulada** (S-F), convertido en una guía corta para
-> hacer lo mismo con las ratificaciones **reales** cuando lleguen. **No** es la comparación
-> simulada↔real, ni la convergencia, ni el stress test: eso viene DESPUÉS (§5). Este documento
-> cubre solo el flujo de **auditar-y-aplicar** una ratificación contra el diseño congelado —
-> "hacer S-E otra vez, pero focalizado en los resultados de la ratificación".
+> **Estado: VIGENTE (proceso).** Es el relato fiel del **arco S-F completo**, que abarcó **dos
+> sesiones**: el **2026-07-19** se simularon las ratificaciones y se auditaron contra el estado
+> congelado decidiendo cuál era mejor; el **2026-07-20** se aplicó lo que sobrevivió. Convertido en
+> guía corta para replicar el mismo flujo con las ratificaciones **reales**. **No** incluye el
+> stress test ni la comparación simulada↔real ni la convergencia: eso viene DESPUÉS (§5).
 
 ---
 
 ## 0 · El flujo en una línea
 
-Tomar los resultados de una ratificación (ya formateados), auditarlos uno por uno contra el estado
-**actual** del proyecto, decidir para cada hallazgo **si gana la ratificación o lo que ya está
-definido — y por qué**, y aplicar lo que mejora como supersesión fechada.
+**Producir la ratificación en formato** → **auditarla contra el estado congelado actual y decidir,
+por hallazgo, si gana la ratificación o lo ya definido — y por qué** → **aplicar lo que mejora como
+supersesión fechada, verificando por corrida**. Es "hacer S-E otra vez, pero focalizado en los
+resultados de la ratificación".
 
-## 1 · El insumo y la vara
+## 1 · Paso 1 — Producir la ratificación en formato · sesión del 19-jul (acta)
 
-- **Insumo:** los resultados de la ratificación ya en formato — el acta (veredictos + lista
-  priorizada P0/P1/P2 + anexo por dueño) y, si existe, su validación adversarial.
-- **La vara:** el estado congelado **actual** — `contract-freeze.md` (+ su Registro de cierre), las
-  semillas v2 (`especificacion-contratos-v2.md`, `esquema-datos-v2.md`), el anexo de
-  canonicalización, `knowledge/`, y el **código real** (`engine/`, `distributions/`, `uv.lock`,
-  `tests/`). Un hallazgo no se juzga en abstracto: se juzga contra lo que el repo dice HOY.
+Cuatro revisores independientes de contexto fresco (uno por dueño + uno de equipo/completitud)
+siguen `guia-ratificacion.md` **exacto**. Salida: `ratificacion-simulada-sf.md` — veredictos
+globales + lista priorizada P0/P1/P2 + anexo por dueño. Reglas: **cero escrituras al repo**;
+**ejecutar lo ejecutable** en scratchpad (el ítem ejecutable de Sebas se corrió de verdad).
 
-## 2 · El paso central — por cada hallazgo, ¿quién es mejor: la ratificación o lo ya definido?
+_Para las ratificaciones reales:_ este paso es **normalizar** las respuestas de los dueños (ack,
+mensaje, PR) a esta misma forma, para que sean comparables 1:1 con el anexo simulado.
 
-Se lee el hallazgo **y** lo que el repo dice hoy, lado a lado, con **evidencia primaria**
-(`archivo:línea` o una **corrida real** — nunca de memoria). Y se clasifica la relación:
+## 2 · Paso 2 — Auditar contra el estado actual y decidir cuál es mejor · sesión del 19-jul (validación)
+
+Segunda pasada con postura de **refutación**: asumir cada hallazgo **mal** hasta que la **evidencia
+primaria** (`archivo:línea` o una **corrida real**) lo confirme. Por cada hallazgo se lee lo que dice
+el hallazgo **y** lo que el repo dice **hoy**, lado a lado, y se decide **quién gana**:
 
 | Relación con lo congelado    | Qué significa                                             | Quién gana                                                                          |
 | ---------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -37,32 +39,37 @@ Se lee el hallazgo **y** lo que el repo dice hoy, lado a lado, con **evidencia p
 | **Contradice una decisión**  | el hallazgo choca con una decisión de diseño congelada    | lo congelado, **salvo** que el hallazgo PRUEBE que es mejor (evidencia, no opinión) |
 | **Redundante / ya resuelto** | ya está en el repo                                        | ninguno — se descarta (no es hallazgo)                                              |
 
-Dos reglas duras que hacen esto reproducible y no opinión:
+Se barre **más allá del checklist** (así salieron los P1 del plano de confianza que ningún checklist
+de la guía cubría). Salida: `ratificacion-simulada-sf-validacion.md` — cada hallazgo
+`CONFIRMADO/MATIZADO/REFUTADO` con su evidencia, + la **lista consolidada §4** y los ajustes a los
+fixes. **Aquí es donde vive el juicio "cuál es mejor y por qué"** — no en la aplicación.
 
-- **Ejecutar lo ejecutable.** Los cierres más fuertes salieron de CORRER: el re-lock que reprodujo
-  6/6 digests del corpus, la enumeración de ieee30 que confirmó los óptimos, los flips que fijaron
-  el bus del fixture, la Policy contra su schema. La corrida ES la prueba de que la ratificación
-  mejora — no la afirmación de que mejora.
-- **No se re-litiga lo congelado ni la base lógica** (`invariants.md` / `base-logica-formal.md`): una
-  contradicción con ellos es dato contra el hallazgo. **El dueño manda EN SU plano** — si el hallazgo
-  toca una decisión que es del dueño y no verificable contra el repo (una identidad de ancla, un
-  criterio narrativo, una firma), **no se cierra por cuenta propia**: se aplica lo verificable y se
-  **marca lo demás para la ratificación del dueño**.
+## 3 · Paso 3 — Aplicar lo que sobrevive · sesión del 20-jul (el "S-E focalizado")
 
-## 3 · Aplicar lo que sobrevive (el "S-E focalizado")
+Los hallazgos que ganaron se aplican como **supersesión `[S-F]` fechada con causa** —
+**jamás** edición silenciosa, **jamás** marca retroactiva — en lo que corresponda: freeze, semillas,
+anexo, KB, `uv.lock`, código, Policy. En este paso también:
 
-Lo que gana se aplica como **supersesión fechada con causa** — marca propia (en esta sesión, `[S-F]`),
-**jamás** edición silenciosa, **jamás** marca retroactiva. Se toca lo que corresponda: freeze,
-semillas, anexo, KB, `uv.lock`, código, Policy. Se agrega un bloque **"Registro de cierre"** con la
-causa por cada cambio, y se lista qué queda para el dueño real.
+- se **decide en firme** lo que la validación dejó como opción (p. ej. ieee30 = _attestation externa
+  sobre el mismo digest_, no `@v2`);
+- se **marca lo que solo el dueño real puede cerrar** (identidad de ancla, criterio narrativo, firma);
+- se **integra lo que llegó por fuera** de la simulación (la ratificación verbal de Geovanni:
+  local-first, modelos por API keys);
+- se añade un bloque **"Registro de cierre"** con la causa por cada cambio.
 
-Prioridad al aplicar: **P0** = rompe seeds o el demo, o invalida algo congelado (cerrar antes de S-G)
-· **P1** = cerrar en la ventana de ratificación · **P2** = registrar.
+Prioridad: **P0** rompe seeds/demo o invalida algo congelado (antes de S-G) · **P1** cerrar en la
+ventana · **P2** registrar.
 
-## 4 · Verificar y cerrar
+## 4 · Verificar y cerrar · sesión del 20-jul
 
-- **Verificación por ejecución** de cada fix ejecutable, con la evidencia guardada.
-- **Tests nuevos que prueban el valor del fix** — un fix sin test que lo ancle es una promesa.
+- **Verificación por corrida** de cada fix ejecutable, con la evidencia guardada — es lo que probó
+  que la ratificación mejora: el re-lock que reprodujo 6/6 digests del corpus, la enumeración de
+  ieee30 que confirmó los óptimos (35 / 32 170), los flips que fijaron el bus del fixture, la Policy
+  contra su schema.
+- **Tests:** se actualizan/agregan **donde el fix toca código testeable** — en esta corrida, solo la
+  Policy (`test_verification_policy.py`, +28/−5). El resto de la verificación fue **por corrida
+  reproducible en scratchpad**; la **batería completa de tests de valor** (que un `run.cancelled` es
+  proyectable, la matriz `interaction×profile`, los flips como test) **queda para S-G**.
 - **Gates verdes** antes de cada commit:
   ```
   uv sync --all-packages --extra pandapower --extra ortools --extra networkx
@@ -72,17 +79,15 @@ Prioridad al aplicar: **P0** = rompe seeds o el demo, o invalida algo congelado 
   pnpm -s exec tsc --noEmit -p apps/studio
   # + hook de la marca: "Blite"+"Engine" juntas = 0 hits repo-wide
   ```
-- **Commits temáticos** con causa (deps / semillas / freeze / infra…).
+- **Commits temáticos** con causa (deps / Policy / freeze…). En esta corrida: `3f49ab7` re-lock,
+  `7dbb57e` Policy 0.2.0, `02fa06d` supersesiones de docs.
 
 ## 5 · Lo que viene DESPUÉS (no es parte de este flujo)
 
-Una vez este flujo cerrado sobre una ratificación, en este orden:
+En este orden, una vez cerrado el flujo sobre una ratificación:
 
-1. **Stress test brutal** del diseño resultante — panel de destrucción que intenta botarlo; si
-   sobrevive, sigue (se hizo en otra sesión: `stress-test-sf-pre-sg.md`, veredicto GO).
-2. **Comparación y convergencia** — cuando existan AMBAS ratificaciones (la **simulada** como
-   contrapeso y la **real**), se aplica este mismo flujo a la real y luego se **comparan las dos**
-   para medir convergencia; si convergen, se unifica y se pasa a **S-G oficial** con el set validado.
-
-Este documento cubre solo el paso 0: auditar una ratificación contra el estado congelado y aplicar
-lo que mejora. Los pasos 1 y 2 son posteriores.
+1. **Stress test brutal** del diseño resultante — panel de destrucción que intenta botarlo (se hizo
+   en otra sesión: `stress-test-sf-pre-sg.md`, veredicto GO).
+2. **Comparación y convergencia** — cuando exista la ratificación **real**, se le corren los Pasos
+   1–4 y luego se **comparan** simulada↔real para medir convergencia; si convergen, se unifica y se
+   pasa a **S-G oficial** con el set validado.

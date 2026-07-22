@@ -27,11 +27,13 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   2026-07-20** as dated `[S-F]` supersessions across the freeze, the v2 seeds, the knowledge
   base and the lockfile — see `contract-freeze.md` → "Registro de cierre (S-F)".
 - [`protocolo-auditoria-ratificaciones.md`](protocolo-auditoria-ratificaciones.md) — the short
-  **pre-S-G flow guide**: the faithful account of what the 2026-07-20 session did with the ratification
-  findings — audit each one against the _current frozen state_ (freeze/seeds/KB/code), decide per
-  finding whether the ratification or the already-defined design is **better and why**, and apply the
-  survivors as dated supersessions with tests and green gates ("S-E again, focused"). The
-  simulated↔real comparison, convergence and stress test are explicitly _later_ steps.
+  **pre-S-G flow guide** covering the full S-F arc across **both sessions**: (1) produce the
+  ratification in format (19-jul, act), (2) audit it against the _current frozen state_ and decide
+  per finding whether the ratification or the already-defined design is **better and why** (19-jul,
+  validation — where that judgment actually lives), (3) apply the survivors as dated `[S-F]`
+  supersessions, verifying **by execution** with green gates (20-jul). Faithful about scope: only the
+  Policy test changed in code; the rest was verified by reproducible scratchpad runs, and the full
+  value-test battery is S-G. The simulated↔real comparison, convergence and stress test are _later_.
 - [`stress-test-sf-pre-sg.md`](stress-test-sf-pre-sg.md) — the **pre-S-G brutal stress test**: a
   5-attacker adversarial panel (destruction posture) + per-finding refutation, run twice, that tried
   to break the post-S-F design. Verdict **GO** to S-G; 1 P0 + 4 P1 + 4 P2, each with a fix. Its §8
