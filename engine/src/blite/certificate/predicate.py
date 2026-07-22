@@ -60,6 +60,10 @@ class Conclusion(BaseModel):
     scope: dict[str, Any]
     verdict: ConclusionVerdict
     level: AssuranceLevel
+    # freeze §6 [SF-P1-2]: el claim carga `claim_type` (registro) también en
+    # `conclusions[]` — es la dimensión de match contra la Policy pinneada
+    # (punto 7 del checklist). Opcional en Fase 1 mientras el registro madura.
+    claim_type: str | None = None
 
     @property
     def level_efectivo(self) -> AssuranceLevel:

@@ -1,0 +1,261 @@
+#!/usr/bin/env python3
+"""Genera `scripts/example-bundle.json` — el Bundle de ejemplo del checklist.
+
+Vocabulario NUEVO (clase + AL + criticidad — freeze §4): a diferencia del
+fixture del Studio (`gen-example-trust-certificate.py`, aún en `rung`, migra
+en la reobra ET-9), este bundle habla la letra vigente. Es auto-validante:
+corre los 7 puntos de `blite.certificate.bundle_check` y solo escribe si dan
+7/7 — el generador no puede producir un fixture que su propio verificador
+rechace.
+
+La llave Ed25519 es efímera y solo-demo (jamás se persiste); la pública viaja
+en el bundle SOLO como comodidad del fixture — en producción llega por el
+canal de distribución de la organización, no dentro del bundle.
+"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
+from blite.certificate.bundle_check import (
+    CLAIM_PREFIX,
+    PROVENANCE_PREFIX,
+    check_bundle,
+)
+from blite.certificate.canonical import canonicalize
+
+REPO = Path(__file__).resolve().parent.parent
+POLICY_PATH = (
+    REPO / "distributions" / "chimera" / "policies" / "verification-default.yaml"
+)
+OUTPUT_PATH = REPO / "scripts" / "example-bundle.json"
+
+PAYLOAD_TYPE = "application/vnd.blite.trust-certificate+json"
+RUN_ID = "8f2c1a9b"
+DOMAIN = "d-default"
+
+
+def _event(i: int, type_: str, actor: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """view(e) exacto del anexo §3 — 8 campos, occurred_at RFC3339 con 6 fraccionales."""
+    return {
+        "id": f"0198c0de-0000-7000-8000-00000000000{i}",
+        "stream_id": RUN_ID,
+        "seq": i,
+        "type": type_,
+        "actor_id": actor,
+        "domain_id": DOMAIN,
+        "payload": payload,
+        "occurred_at": f"2026-07-22T12:00:0{i}.000000Z",
+    }
+
+
+def main() -> int:
+    policy_bytes = POLICY_PATH.read_bytes()
+    policy_digest = hashlib.sha256(policy_bytes).hexdigest()
+
+    # --- Stream del run (freeze §3: run.created carga TODO lo de la proyección) ---
+    stream = [
+        _event(
+            1,
+            "run.created",
+            "user:dylan",
+            {
+                "run_id": RUN_ID,
+                "actor_id": "user:dylan",
+                "domain_id": DOMAIN,
+                "max_steps": 8,
+                "policy_digest": policy_digest,
+                "parent_run_id": None,
+            },
+        ),
+        _event(
+            2,
+            "capability.job.submitted",
+            "service:runtime",
+            {"job_id": "j1", "step_id": "s1"},
+        ),
+        _event(3, "capability.job.completed", "service:runtime", {"job_id": "j1"}),
+        _event(
+            4,
+            "verification.completed",
+            "service:runtime",
+            {"verdict": "pass", "policy_id": "chimera-default@0.2.0"},
+        ),
+        _event(5, "run.completed", "service:runtime", {}),
+    ]
+    provenance_hash = hashlib.sha256(
+        PROVENANCE_PREFIX + b"".join(canonicalize(e) + b"\n" for e in stream)
+    ).hexdigest()
+
+    # --- Conclusión + claim_digest por la fórmula del anexo §5 ---
+    canonical_statement = "La partición propuesta de ieee14 es el óptimo exacto del corte bajo las restricciones declaradas"
+    scope = {
+        "instance": "ieee14",
+        "problem": "islanding-partition",
+        "constraints": "declared-v1",
+    }
+    claim_digest = hashlib.sha256(
+        CLAIM_PREFIX
+        + canonicalize({"canonical_statement": canonical_statement, "scope": scope})
+    ).hexdigest()
+
+    anchor_solver = hashlib.sha256(b"anchor:cpsat-reference-v1").hexdigest()
+    anchor_exec = hashlib.sha256(b"anchor:pandapower-case14-v1").hexdigest()
+
+    attestations = [
+        {
+            "verifier_id": "ortools-cpsat",
+            "verifier_class": "formal_exact",
+            "anchor_kind": "solver",
+            "verdict": "pass",
+            "level": "AL3",
+            "independence_group": "leg-formal",
+            "claim_digest": claim_digest,
+            "verifier_binary_digest": hashlib.sha256(b"ortools-9.14").hexdigest(),
+            "verifier_params_digest": hashlib.sha256(b"cpsat-params-v1").hexdigest(),
+            "anchor_digest": anchor_solver,
+            "predicate": {"differential": {"status": "OPTIMAL", "objective": 3}},
+            "evidence_digests": [],
+            "issued_at": "2026-07-22T12:00:04.000000Z",
+        },
+        {
+            "verifier_id": "pandapower-powerflow",
+            "verifier_class": "execution",
+            "anchor_kind": "execution",
+            "verdict": "pass",
+            "level": "AL3",
+            "independence_group": "leg-execution",
+            "claim_digest": claim_digest,
+            "verifier_binary_digest": hashlib.sha256(b"pandapower-3.5.4").hexdigest(),
+            "verifier_params_digest": hashlib.sha256(
+                b"powerflow-params-v1"
+            ).hexdigest(),
+            "anchor_digest": anchor_exec,
+            "predicate": {"reruns": 1, "timed_out": False},
+            "evidence_digests": [],
+            "issued_at": "2026-07-22T12:00:04.000000Z",
+        },
+    ]
+
+    deliverable_bytes = b'{"islands":[[0,1,2,3,4,5,6],[7,8,9,10,11,12,13]]}\n'
+    deliverable_digest = hashlib.sha256(deliverable_bytes).hexdigest()
+
+    predicate = {
+        "run_id": RUN_ID,
+        "actor": "user:dylan",
+        "provenance_hash": provenance_hash,
+        "conclusions": [
+            {
+                "claim_digest": claim_digest,
+                "canonical_statement": canonical_statement,
+                "scope": scope,
+                "verdict": "verified",
+                "level": "AL3",
+                "claim_type": "solution",
+            }
+        ],
+        "titular_level": "AL3",
+        "assumptions": [
+            {
+                "statement": "Se verifica contra anclas declaradas, no contra la realidad última (SC3)",
+                "ref": {"name": "verification-default.yaml", "digest": policy_digest},
+            }
+        ],
+        "deliverables": [
+            {"artifact_ref": "partition.json", "digest": deliverable_digest}
+        ],
+        "unanchored_steps": 0,
+        "coverage_stats": {},
+        "policy_digest": policy_digest,
+        "calculus_version": "cal-2.4",
+        "valid_as_of": "2026-07-22T12:00:06.000000Z",
+        "revocation": "none",
+        "attestations": attestations,
+    }
+    statement = {
+        "_type": "https://blite.dev/Statement/v1",
+        "subject": [{"name": f"run:{RUN_ID}", "digest": {"sha256": provenance_hash}}],
+        "predicateType": "https://blite.dev/TrustCertificate/v1",
+        "predicate": predicate,
+    }
+
+    payload_bytes = canonicalize(statement)
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    signature = private_key.sign(
+        b"DSSEv1 "
+        + str(len(PAYLOAD_TYPE.encode())).encode()
+        + b" "
+        + PAYLOAD_TYPE.encode()
+        + b" "
+        + str(len(payload_bytes)).encode()
+        + b" "
+        + payload_bytes
+    )
+    public_b64 = base64.b64encode(
+        private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+        )
+    ).decode("ascii")
+
+    bundle = {
+        "envelope": {
+            "payloadType": PAYLOAD_TYPE,
+            "payload": base64.b64encode(payload_bytes).decode("ascii"),
+            "signatures": [
+                {
+                    "keyid": "certificate:v1-example",
+                    "sig": base64.b64encode(signature).decode("ascii"),
+                }
+            ],
+        },
+        "public_key": public_b64,
+        "stream": stream,
+        "anchor_descriptors": [
+            {
+                "anchor_digest": anchor_solver,
+                "kind": "solver",
+                "provenance": "cpsat-reference-v1",
+            },
+            {
+                "anchor_digest": anchor_exec,
+                "kind": "execution",
+                "provenance": "pandapower-case14-v1",
+            },
+        ],
+        "verifier_descriptors": [
+            {
+                "verifier_id": a["verifier_id"],
+                "binary_digest": a["verifier_binary_digest"],
+            }
+            for a in attestations
+        ],
+        "policy_yaml_b64": base64.b64encode(policy_bytes).decode("ascii"),
+        "deliverable_contents": {
+            deliverable_digest: base64.b64encode(deliverable_bytes).decode("ascii")
+        },
+    }
+
+    # --- Auto-validación: el generador jamás escribe un bundle que no dé 7/7 ---
+    results = check_bundle(bundle)
+    for r in results:
+        status = "OK" if r.ok else f"FALLA {r.failures}"
+        print(f"[{r.number}/7] {status} — {r.name}")
+    if not all(r.ok for r in results):
+        print("ABORT: el bundle generado no pasa su propio checklist")
+        return 1
+
+    OUTPUT_PATH.write_text(json.dumps(bundle, indent=2) + "\n", encoding="utf-8")
+    print(f"\nBundle escrito en {OUTPUT_PATH} (7/7)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

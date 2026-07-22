@@ -17,13 +17,10 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "verify-bundle.py"
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason="SEED S-G (Dylan): los 7 puntos del checklist aún no están implementados",
-    ),
-]
+# VERDE 2026-07-22: los 7 puntos implementados en blite.certificate.bundle_check
+# (tests adversariales en tests/unit/certificate/test_bundle_check.py); el
+# fixture lo produce scripts/gen-example-bundle.py (auto-validante).
+pytestmark = [pytest.mark.seed]
 
 
 def test_the_seven_point_checklist_verifies_a_real_bundle_offline() -> None:
