@@ -19,6 +19,11 @@ from typing import Any
 from uuid import uuid4
 
 from blite.events.event import Event
+from blite.events.rules import (
+    TERMINAL_RUN_EVENTS,
+    PostTerminalAppendError,
+    rejects_post_terminal,
+)
 from blite.events.store import ConcurrentAppendError
 
 
@@ -29,6 +34,7 @@ class InMemoryEventStore:
         self._lock = threading.Lock()
         self._events: list[Event] = []
         self._stream_seq: dict[str, int] = {}
+        self._terminal_streams: set[str] = set()
 
     def append(
         self,
@@ -46,6 +52,13 @@ class InMemoryEventStore:
                 raise ConcurrentAppendError(
                     f"expected_seq={expected_seq} but stream {stream_id!r} is at {current_seq}"
                 )
+            # [S-F] escritura post-terminal = RECHAZO (freeze §2): run.step.*/
+            # capability.job.* tras el terminal romperían el recompute del
+            # provenance_hash de un certificado ya emitido.
+            if stream_id in self._terminal_streams and rejects_post_terminal(type):
+                raise PostTerminalAppendError(
+                    f"stream {stream_id!r} ya tiene su evento terminal: {type!r} se rechaza"
+                )
             new_seq = current_seq + 1
             event = Event(
                 id=uuid4(),
@@ -60,6 +73,8 @@ class InMemoryEventStore:
             )
             self._events.append(event)
             self._stream_seq[stream_id] = new_seq
+            if type in TERMINAL_RUN_EVENTS:
+                self._terminal_streams.add(stream_id)
             return event
 
     def read_stream(self, stream_id: str, from_seq: int = 0) -> tuple[Event, ...]:
