@@ -1,6 +1,7 @@
 # CHIMERA — Auditoría de las ratificaciones REALES (S-F) · Fase A · 2026-07-21
 
-> **Qué es esto.** Los Pasos 1→2 del flujo pre-S-G (`protocolo-auditoria-ratificaciones.md`)
+> **Qué es esto.** Los Pasos 1→2 del flujo pre-S-G (`protocolo-auditoria-ratificaciones.md` — vive
+> solo en la rama ejercicio; pin: `git show 68af0c1:docs/research/protocolo-auditoria-ratificaciones.md`)
 > aplicados a las ratificaciones **reales** de Sebas/Steven/Geovanni y a los cambios de código que
 > los dueños **ya aplicaron** en la rama `ratificacion/consolidacion-sf`. **Paso 1** = normalizar las
 > 3 respuestas a la forma del anexo simulado (comparables 1:1). **Paso 2** = auditar cada

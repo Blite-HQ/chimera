@@ -11,8 +11,8 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   shape fits Postgres for this project"). Fast-moving, problem-scoped, may cite papers inline.
 - **`docs/research/`** — the academic framing that sits above those notes: the paper draft
   (if/when one exists), the consolidated bibliography, and the methodology section
-  describing how claims in this project are validated (e.g. the verification-ladder rungs
-  and what "confiable ≠ plausible" means formally).
+  describing how claims in this project are validated (e.g. the assurance calculus —
+  classes + AL0–AL4 + criticality — and what "confiable ≠ plausible" means formally).
 
 ## Process records — S-F ratification (2026-07-21/22)
 
@@ -23,9 +23,6 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   prioritized S-G list + port table. The simulated-track sources live in the read-only
   exercise branch `ejercicio/sf-ratificacion-simulada`.
 
-Nothing here yet beyond this placeholder — content lands once the group's investigation
-(timeboxed research week, see project plan) produces a draft worth structuring.
-
 ## Suggested structure (create as content arrives)
 
 ```
@@ -34,6 +31,6 @@ docs/research/
 ├─ paper-draft.md      (or a proper LaTeX/Typst source tree, if the venue requires it)
 ├─ bibliography.md     consolidated references (dedupe citations already scattered
 │                      across knowledge/trust/*.md — Chen et al., AVA, arXiv refs, etc.)
-└─ methodology.md      how the verification ladder (knowledge/trust/03) and the
+└─ methodology.md      how the assurance calculus (classes + AL0–AL4 + criticality) and the
                        adaptive-policy trade-offs (knowledge/trust/05) are evaluated
 ```
