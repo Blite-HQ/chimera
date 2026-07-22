@@ -218,6 +218,8 @@ forbidden_modules = [
     "litellm",
     "openai",
     "anthropic",
+    "cohere",
+    "transformers",
 ]
 
 [[tool.importlinter.contracts]]
