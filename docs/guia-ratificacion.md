@@ -1,11 +1,12 @@
 # Guía de ratificación del diseño congelado — Sebas · Steven · Geovanni
 
-> **Estado: VIGENTE (proceso — caduca al cierre de la ratificación).** El diseño del mes quedó
-> **congelado el 2026-07-18** (`contract-freeze.md`). Esta guía existe para que cada dueño pueda
-> ratificar SU parte sin leerse todo el repo: da el contexto general, dice exactamente qué
-> validar por área, dónde está el porqué de cada decisión, y cómo responder.
-> **Plazo propuesto: 23-jul (feature freeze).** Sin objeción a esa fecha, la parte queda
-> ratificada y se arranca la construcción encima (seeds de specs/tests → features).
+> **Estado: CERRADA (2026-07-21 — proceso completado; conservada como registro).** Los tres dueños
+> respondieron dentro de la ventana y sus ratificaciones están auditadas
+> (`docs/research/ratificacion-real-sf.md`) y convergidas contra el contrapeso simulado
+> (`docs/research/convergencia-simulada-real-sf.md`, veredicto CONVERGEN). **La autoridad vigente es
+> el freeze con sus 5 registros de cierre** — donde esta guía difiera (p. ej. modelo del demo:
+> hoy Ollama Cloud [S-F-real]; identidad de ieee30: ABIERTA con 3 formas, decide Sebas), **el freeze
+> manda**. Los pendientes de dueño viven en los registros del freeze, no acá.
 >
 > **⚠️ Actualización S-F (2026-07-20) — leer antes de ratificar.** Una auditoría adversarial
 > pre-ratificación aplicó supersesiones al freeze (todas marcadas **[S-F]**, causas en su
@@ -122,12 +123,14 @@ ratificación final de Sebas" y dice qué) · (5) vistazo a `docs/perfil-stem-v1
       error del solver) — islanding/01 §1.3.
 - [ ] **Segunda ancla de ieee30 = enumeración exhaustiva vectorizada [S-F: YA CORRIÓ]** —
       la auditoría ejecutó las 2²⁹ asignaciones por convención y **ambos óptimos coinciden con
-      CP-SAT** (35 / 32 170; evidencia con spec de máquina en islanding/01 §1.4). La corrida se
-      registra como **attestation externa sobre el MISMO digest** (los JSON no se mutan); si
-      preferís versionar a `@v2`, es TU llamada — decilo en el ack. GW-SDP solo cota de cordura.
+      CP-SAT** (35 / 32 170; evidencia con spec de máquina en islanding/01 §1.4). **[convergencia
+      EC-3] La FORMA de registro de la identidad es TU llamada, con TRES opciones** (freeze §15.3):
+      (a) re-estampar `@v1` con los digests nuevos, (b) versionar a `@v2`, (c) attestation externa
+      sobre el MISMO digest (los JSON no se mutan). Ninguna se aplica hasta tu palabra — decila en
+      el ack. GW-SDP solo cota de cordura.
 - [ ] **Ejecutable (confirmación, ya no estreno):** regenerá el corpus con la receta exacta de
       islanding/01 §1.9 ([S-F]: `uv sync --all-packages --extra pandapower --extra ortools
-  --extra networkx`) y compará los 6 digests (§1.6 — por digest, jamás por bytes: Prettier
+--extra networkx`) y compará los 6 digests (§1.6 — por digest, jamás por bytes: Prettier
       reformatea los JSON). La auditoría ya reprodujo 6/6 con el lock reparado del repo.
 - [ ] **Identidad del corpus:** `dataset_id = islanding-corpus/<instancia>-<convencion>@v1` ↔
       digest embebido (tabla completa en freeze §15.3).
@@ -193,7 +196,7 @@ run_id`, un stream por run) Y se agregó `parent_run_id` — sub-runs con stream
       passthrough a red** — exigí ese fail-closed por escrito, es TU frontera del día D.
 - [ ] **[S-F] Las 3 reglas del run jerárquico (§13) — tu runtime produce los huérfanos si
       faltan:** cascada de cancelación (`parent_cancelled` + rechazo de appends post-terminales + barrido con `cancel(ref)`), `●ClaimEmitted {claim_digest, sub_run_id,
-  sub_run_provenance_hash}` al raíz, herencia de `policy_digest` fail-closed.
+sub_run_provenance_hash}` al raíz, herencia de `policy_digest` fail-closed.
 - [ ] **[S-F] Matriz `interaction × execution_profile` (§1):** se valida al CARGAR el
       DistributionManifest — override a `remote-job` solo si `interaction: job`; `stream` ⇒
       `NotImplementedError`. Es tu `Dispatcher` el que quedaba en contradicción.

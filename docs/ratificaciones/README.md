@@ -28,6 +28,7 @@ resuelve nada.
 - Reconciliación real de `infra/01 §R` contra `invariants.md` (Geovanni la dejó sin ejecutar).
 - Los 4 ítems `[COMPLETÁ VOS]` restantes de Geovanni (custodia de llaves, demo dual, calendario
   de dry-runs, huecos Fase 2).
-- Re-estampar en `contract-freeze.md` §15.3 los 2 digests de ieee30 tras la segunda ancla.
+- La FORMA de identidad de ieee30 (re-estampar `@v1` vs `@v2` vs attestation externa) — la decide
+  Sebas; ninguna se aplica hasta su palabra (freeze §15.3, convergencia EC-3).
 - Decidir el corredor de `cr8`/`cr6` (trabajo pendiente de Sebas, CORE del demo en vivo).
 - Integrar `kb2-05` a `knowledge/quantum/08-ruta-quantinuum-guppy.md`.

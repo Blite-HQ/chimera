@@ -339,7 +339,9 @@ export interface TrustCertificate {
     readonly verdict: 'verified' | 'refuted' | 'inconclusive' | 'not_required_declared';
     readonly level: AssuranceLevel;
   }>;
-  // [S-F · T2] computable en Fase 1: titularLevel := mín(conclusions[].level); el camino
+  // [S-F · T2] computable en Fase 1: titularLevel := mín(conclusions[].level_efectivo), con
+  // level_efectivo := AL0 si verdict ∈ {refuted, inconclusive, not_required_declared}
+  // ([stress-final] — SF-P2-4: la fórmula sin el socavamiento inflaba el titular); el camino
   // crítico DEBE listarse completo en conclusions[]; conclusions=[] ⇒ AL0 (jamás AL vacuo).
   readonly titularLevel: AssuranceLevel; // MÍNIMO sobre el camino crítico, incluidas derivaciones — jamás promedio
   // [S-F · N1] el predicate mínimo del mes (freeze §7, P0-2) los exigía y la semilla no los tenía:

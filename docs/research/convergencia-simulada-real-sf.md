@@ -394,6 +394,44 @@ sin resolver ⇒ criterio 1 del veredicto: PASS.**
 
 ---
 
+## 12 · Stress test FINAL sobre la versión consolidada (2026-07-22, post-porte)
+
+> Panel de **4 atacantes de contexto fresco en postura de destrucción** (coherencia-de-capas ·
+> plano de confianza · ejecución/semillas · ciencia/operativa), con refutación previa a cada
+> reporte. **Veredicto: GO — CERO P0.** La ciencia reproduce entera por corrida (6/6 digests con
+> el lock vigente; falla sembrada exacta: bus 1 → 32 597/57 070, r=0.5712; bus 7 mina confirmada);
+> C(x) aguantó 8 034 valores contra oráculo `node` con 0 mismatches; Policy 0.2.0 conforma
+> schema↔YAML; máquinas de estado↔semillas consistentes; licencias limpias (ECOS ausente).
+
+**P1 cazados y CERRADOS en el mismo barrido (commits `stress-final`):**
+
+| #   | Hallazgo                                                                                                                                                 | Fix aplicado                                                                                                         |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | Checklist de 7 puntos no contaba patas por `independence_group` (un C3 con 1 pata pasaba) ni exigía `proof` para AL4 ni eximía `not_required_declared`   | Punto 7 ampliado + la Policy pinneada entra al Bundle mínimo (freeze §7)                                             |
+| 2   | `fail` sin ancla representable (CHECK solo cubría `pass`, contradiciendo su propio comentario)                                                           | `CHECK (verdict = 'inconclusive' OR anchor_digest IS NOT NULL)` (esquema §5)                                         |
+| 3   | Fórmula del titular en semillas sin `level_efectivo` (verdict→AL0) — inflaba                                                                             | Ambas semillas corregidas al freeze §7                                                                               |
+| 4   | Payload de `run.created` no podía regenerar `runs_projection` (`policy_digest`/`parent_run_id` sin portador — doctrina de replay falsa)                  | Payload completo declarado (freeze §3)                                                                               |
+| 5   | Corte del `provenance_hash` ambiguo ante appends post-terminales legítimos (métricas, ● de cierre) + namespace `system:` sin reservar                    | Corte declarado (hasta el terminal, inclusive; familias de cierre FUERA del hash) + reserva de `system:` (freeze §2) |
+| 6   | Guía de ratificación e índice de autoridad quedaron en la capa simulada (dictaban attestation-externa a Sebas; "VIGENTE, 23-jul"; filas desactualizadas) | Guía CERRADA con nota de autoridad + ieee30 a 3 opciones; `docs/README.md` re-derivado                               |
+| 7   | Floor `>=3.3` en la tabla de deps del freeze vs `>=3.5.4` adoptado                                                                                       | Tabla corregida `[S-F-real]`                                                                                         |
+| 8   | `arquitectura-python.md` (VIGENTE) con `aggregate_rung`/escalera sin marca                                                                               | Nota de supersesión en encabezado + línea                                                                            |
+| 9   | Modo grabación (`record`) estructuralmente imposible en el compose (api/worker en `internal: true`, sin ruta a las APIs — moría el 24-25)                | Override `compose.record.yml` declarado + nomenclatura `record` unificada (infra/03)                                 |
+| 10  | Segunda copia de C(x) con el bug de banda viva en `gen-example-trust-certificate.py`                                                                     | Importa `canonicalize` del engine (fuente única)                                                                     |
+| 11  | `required_legs` aceptaba 0/−5/`True`                                                                                                                     | `Field(ge=1, strict=True)` + test parametrizado (RED→GREEN)                                                          |
+
+**P2 registrados con disposición S-G** (no bloquean; dueños en el freeze): portadores de flags de
+piso en `●ClaimEmitted` (declarados §6/§14, seed S-G) · `anchor_kind`/`inconclusive_reason` sin
+acople fino de CHECK (seeds S-G) · duck-typing de `canonicalize` ante Mappings no-JSON (S-G) ·
+`verifier.py`/`evidence.py` sumados al barrido de vocabulario S-G · gates de import ciegos a
+`chimera_api`/`blite_cap_*` futuros (regla S-G) · citas históricas `rung` en fuentes de notas ·
+matriz interaction×profile: celdas `job×in-process`/`request_response×service` implícitas ·
+fusión `kb2-05`→`quantum/08` (Dylan, pre-27) · spec del equipo del demo **antes del 24** (Geovanni).
+
+**Qué queda genuinamente abierto tras este cierre (todo con dueño y marca, nada implícito):**
+identidad de ieee30 (Sebas — 3 formas, freeze §15.3) · cr8/cr6 gate ~25-jul + fallback (Sebas) ·
+4 `[COMPLETÁ VOS]` (Geovanni/equipo) · spec RAM antes del 24 (Geovanni) · Fargate solo-si-stretch ·
+xfail AX1 (decisión tomada: queda hasta el gateway) · el trabajo S-G de §10.
+
 ## Apéndice · Cobertura de IDs (prueba de cero doble conteo)
 
 Cada ID fuente de la simulación → su eje único. Los ajustes de la validación (aj.1–11) refinan fixes,

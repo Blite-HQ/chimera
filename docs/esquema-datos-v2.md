@@ -218,8 +218,10 @@ CREATE TABLE attestations (
 
     -- [S-F · T3] un 'pass' sin ancla es irrepresentable (D10); el nullable de anchor_digest
     -- es legítimo SOLO para 'inconclusive' (p.ej. no_applicable_anchor).
+    -- [stress-final · 2026-07-22] el CHECK se alinea a la letra: nullable SOLO inconclusive
+    -- (antes solo cubría 'pass' — un 'fail' sin ancla era representable contra el comentario).
     CONSTRAINT attestations_pass_requiere_ancla
-        CHECK (verdict <> 'pass' OR anchor_digest IS NOT NULL)
+        CHECK (verdict = 'inconclusive' OR anchor_digest IS NOT NULL)
 );
 CREATE INDEX idx_attestations_run ON attestations (run_id);
 
@@ -234,7 +236,9 @@ CREATE TABLE trust_certificates (
     actor_id         TEXT NOT NULL,
     provenance_hash  TEXT NOT NULL,               -- hash del stream del run (D14)
     titular_level    TEXT NOT NULL CHECK (titular_level IN ('AL0','AL1','AL2','AL3','AL4')),
-                                                  -- [S-F · T2] := mín(conclusions[].level); vacío ⇒ AL0
+                                                  -- [S-F · T2] := mín(conclusions[].level_efectivo); vacío ⇒ AL0
+                                                  -- [stress-final] level_efectivo := AL0 si verdict ∈
+                                                  --   {refuted, inconclusive, not_required_declared} (SF-P2-4)
     conclusions      JSONB NOT NULL,              -- [{claim_digest, canonical_statement, scope, verdict, level}]
                                                   --   mínimo del camino crítico, jamás promedio
     unanchored_steps INTEGER NOT NULL DEFAULT 0,  -- [S-F · N1] predicate mínimo del mes (freeze §7)

@@ -10,7 +10,7 @@
 
 ### 1.1 El principio: un artefacto, dos entornos
 
-`docs/deployment.md` ya lo fija: el demo del hackathon ES el Modo A (data plane completo en docker compose), y lo único que el código del mes debe garantizar es "una imagen Docker por deployable, toda config por variables". El entorno dual sale gratis de ese principio: **las mismas imágenes** corren en compose local (air-gapped, modelo por Ollama) y en Fargate (modelo por API externa) — lo único que cambia es configuración del model router. Igual prioridad para ambos entornos; ninguno es el "de respaldo" del otro.
+`docs/deployment.md` ya lo fija: el demo del hackathon ES el Modo A (data plane completo en docker compose), y lo único que el código del mes debe garantizar es "una imagen Docker por deployable, toda config por variables". El entorno dual sale gratis de ese principio: **las mismas imágenes** corren en compose local (air-gapped, modelo por Ollama _(⚠ supersedido [S-F-real]: hoy Ollama Cloud / `replay` — ver addendum)_) y en Fargate (modelo por API externa) — lo único que cambia es configuración del model router. Igual prioridad para ambos entornos; ninguno es el "de respaldo" del otro.
 
 Deployables del mes: **api** (FastAPI), **studio** (Vite → estático), **worker** (mismo código que api, proceso `procrastinate worker` — nota 02 §4). Postgres y Ollama son imágenes de terceros, no deployables nuestros.
 
@@ -101,10 +101,14 @@ services:
       DATABASE_URL_FILE_TEMPLATE: postgresql://chimera:{pg_password}@postgres:5432/chimera
       CHIMERA_TRUST_CERT_KEY_FILE: /run/secrets/trust_cert_key
       CHIMERA_JWT_KEY_FILE: /run/secrets/jwt_key
-      # [S-F] día D: `replay` fail-closed en miss (freeze §15.7); dev/ensayos: `api` con keys
-      # (ratificación verbal de Geovanni 19-jul — modelos por API, nadie corre modelo local;
-      # la key va como secret file SOLO en la config `api`, jamás horneada en la imagen).
-      MODEL_ROUTER_BACKEND: replay # config del día D; `api` en ensayos de grabación
+      # [S-F] día D: `replay` fail-closed en miss (freeze §15.7); ensayos de grabación: modo
+      # `record` (nombre del contrato, freeze §15.7 punto 5; la key del backend va como secret
+      # file SOLO en la config record, jamás horneada en la imagen).
+      # [stress-final · 2026-07-22] El modo `record` NECESITA un override — api/worker viven en
+      # la red `internal: true` y NO tienen ruta a las APIs para grabar: `compose.record.yml`
+      # con red no-interna solo para ese paso (mismo patrón que la precarga O1 de abajo). Sin
+      # ese override, los fixtures del día D no se pueden grabar el 24-25.
+      MODEL_ROUTER_BACKEND: replay # config del día D; `record` en ensayos de grabación
       REPLAY_FIXTURES_DIR: /fixtures/replay # [S-F · I1] el replay no tenía forma en compose
     volumes: [replay_fixtures:/fixtures/replay:ro] # manifest pinneado por digest (freeze §15.7)
     healthcheck: # python-slim no trae curl: healthcheck en stdlib

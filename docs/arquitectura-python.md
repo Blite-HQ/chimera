@@ -3,6 +3,7 @@
 _La espina de invariantes + el build pragmático del equipo, reconciliados_
 
 > **Estado: VIGENTE.** Arquitectura activa de Chimera — core Python-dominante (FastAPI) + Studio en TypeScript. Ver [`README.md`](README.md) para el índice de autoridad documental y [`invariants.md`](invariants.md) para la constitución que enforza.
+> **⚠️ [S-F/convergencia · 2026-07-22] Vocabulario de verificación supersedido en este doc:** los pasajes con `rung`/`aggregate_rung`/"escalera de verificación" son **pre-freeze** — el freeze §4 eliminó la escalera 1–7 (badges = clase de verificador + AL; §7: `titular_level`). Los ejemplos de código de abajo se leen con esa traducción; los contratos vigentes son las semillas v2 + el freeze.
 > **Corrección S-E (2026-07-18, contra el enunciado oficial):** el pipeline del gateway se cita ahora con las **8 etapas congeladas** (freeze §8); la capability del reto condicional es el **simulador de dinámica/Trotter (Challenge 3 oficial = TFIM)**, no `vqe_simulator`/química; `cvxpy` sube a dependencia obligatoria (Goemans-Williamson es baseline oficial); el segundo reto condicional es **C3**, no el Reto 2.
 >
 > **Qué es este documento.** La reconciliación de dos entradas: nuestra **arquitectura** (la espina de invariantes, rigurosa) y el **documento de proyecto de Sebas/Steven** (el build pragmático en Python, concreto). No compiten — operan en capas distintas. Esto los une en **una sola arquitectura, en Python**, con el enforcement traducido. Es lo que se le pasa al equipo.
@@ -123,7 +124,7 @@ class TrustCertificate(BaseModel):
     actor_identity: str
     provenance_hash: str
     attestations: list["Attestation"]
-    aggregate_rung: int   # el escalon MAS DEBIL del camino critico
+    aggregate_rung: int   # el escalon MAS DEBIL del camino critico [SUPERSEDIDO: hoy titular_level, freeze SS7]
 ```
 
 > No perdés el enforcement automático que montamos; lo **traducís**. El setup del repo se rehace en clave Python (uv, Ruff, import-linter, mypy en vez de pnpm, dependency-cruiser, tsc), lo cual ajusta un poco los carriles de Steven y Dylan.
