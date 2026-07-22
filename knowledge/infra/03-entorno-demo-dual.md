@@ -91,10 +91,22 @@ services:
     image: chimera/api:local # el Dockerfile de §1.2
     depends_on:
       postgres: { condition: service_healthy }
+    restart: unless-stopped # [S-F] un crash a mitad de demo no se auto-recuperaba
+    secrets: [pg_password, trust_cert_key, jwt_key] # [S-F · O3] las 2 llaves Ed25519 no
+    #   tenían ruta de custodia (solo existía pg_password); file-based, montadas SOLO donde
+    #   vive el Signer — convención *_FILE del KeyProvider (trust/15 [S-F])
     environment:
-      DATABASE_URL: postgresql://chimera@postgres:5432/chimera
-      MODEL_ROUTER_BACKEND: ollama # en cloud: api-externa — misma imagen, otra config
-      OLLAMA_BASE_URL: http://ollama:11434
+      # [S-F · O4] la URL sin credencial moría en auth failure al primer `up` (la imagen
+      # oficial exige scram remoto): el entrypoint compone la URL desde el secret.
+      DATABASE_URL_FILE_TEMPLATE: postgresql://chimera:{pg_password}@postgres:5432/chimera
+      CHIMERA_TRUST_CERT_KEY_FILE: /run/secrets/trust_cert_key
+      CHIMERA_JWT_KEY_FILE: /run/secrets/jwt_key
+      # [S-F] día D: `replay` fail-closed en miss (freeze §15.7); dev/ensayos: `api` con keys
+      # (ratificación verbal de Geovanni 19-jul — modelos por API, nadie corre modelo local;
+      # la key va como secret file SOLO en la config `api`, jamás horneada en la imagen).
+      MODEL_ROUTER_BACKEND: replay # config del día D; `api` en ensayos de grabación
+      REPLAY_FIXTURES_DIR: /fixtures/replay # [S-F · I1] el replay no tenía forma en compose
+    volumes: [replay_fixtures:/fixtures/replay:ro] # manifest pinneado por digest (freeze §15.7)
     healthcheck: # python-slim no trae curl: healthcheck en stdlib
       test:
         [
@@ -112,8 +124,13 @@ services:
     command: ['procrastinate', 'worker'] # forma exacta al construir apps/api
     depends_on:
       postgres: { condition: service_healthy }
-    environment:
-      DATABASE_URL: postgresql://chimera@postgres:5432/chimera
+    restart: unless-stopped # [S-F]
+    secrets: [pg_password] # [S-F · I4] mismas vars de router que api: los jobs pasan por el
+    environment: #   router como cualquier llamador (infra/02 §5.3) — misma config de api
+      DATABASE_URL_FILE_TEMPLATE: postgresql://chimera:{pg_password}@postgres:5432/chimera
+      MODEL_ROUTER_BACKEND: replay
+      REPLAY_FIXTURES_DIR: /fixtures/replay
+    volumes: [replay_fixtures:/fixtures/replay:ro]
     networks: [backend]
 
   studio:
@@ -124,8 +141,12 @@ services:
     networks: [edge, backend]
 
   ollama:
-    image: ollama/ollama # puerto 11434, modelos en /root/.ollama (Docker Hub oficial)
-    profiles: [local-llm] # solo perfil local; en cloud no se levanta
+    # [S-F] PERFIL OPCIONAL ARCHIVADO (ratificación verbal de Geovanni 19-jul: los modelos
+    # del mes van por API con keys — freeze §15.7; este servicio ya NO está en el camino por
+    # defecto). Si se reactiva: pinnear tag exacto (I2 — `latest` implícito viola la doctrina
+    # "pin determinista jamás latest" del freeze §1) y precargar con override (ver §1.3 abajo).
+    image: ollama/ollama # ⚠️ pinnear tag al reactivar; puerto 11434, modelos en /root/.ollama
+    profiles: [local-llm] # solo si se reactiva explícitamente
     volumes: [ollama:/root/.ollama]
     healthcheck:
       test: ['CMD', 'ollama', 'list'] # la imagen no trae curl; el CLI sirve de probe
@@ -141,14 +162,32 @@ networks:
 volumes:
   pgdata: {}
   ollama: {}
+  replay_fixtures: {} # [S-F · I1] fixtures del backend replay (set pinneado por manifest)
 
 secrets:
-  pg_password: { file: ./secrets/pg_password.txt } # fuera de git
+  pg_password: { file: ./secrets/pg_password.txt } # fuera de git (secrets/ en .gitignore [S-F])
+  trust_cert_key: { file: ./secrets/trust_cert_key } # [S-F · O3] Ed25519 del certificado
+  jwt_key: { file: ./secrets/jwt_key } # [S-F · O3] Ed25519 del JWT
+  # [S-F] + api keys de modelos (p.ej. anthropic_api_key) SOLO en la config de grabación
 ```
 
 > ⚠ **[S-F-real · 2026-07-21]** Con Ollama Cloud (addendum al final) `ollama` **ya no es cero-egress**; el air-gap estructural sigue valiendo para api/worker/postgres y el día D corre `replay` (sin red).
 
-**Air-gap en dos capas.** (1) Estructural: la red `backend` es `internal: true` — api, worker, postgres y ollama no tienen ruta a internet; solo studio toca la red `edge`, y nginx solo sirve estático y proxya hacia adentro. (2) Operativa: el dry-run 1 corre con el host sin red. Prerrequisito de ambas: **todo se precarga antes del corte** — imágenes (`docker compose pull/build`) y el modelo de Ollama (`docker compose exec ollama ollama pull <modelo>`; queda en el volumen `ollama`, sobrevive reinicios). El healthcheck de api usa stdlib de Python porque `python:3.12-slim` no trae curl — cero paquetes extra solo para el probe.
+**Air-gap en dos capas.** (1) Estructural: la red `backend` es `internal: true` — api, worker, postgres y ollama no tienen ruta a internet; solo studio toca la red `edge`, y nginx solo sirve estático y proxya hacia adentro. (2) Operativa: el dry-run 1 corre con el host sin red. Prerrequisito de ambas: **todo se precarga antes del corte** — imágenes (`docker compose pull/build`) y los fixtures de replay (grabados en los ensayos contra las APIs, manifest pinneado por digest). El healthcheck de api usa stdlib de Python porque `python:3.12-slim` no trae curl — cero paquetes extra solo para el probe.
+
+> **[S-F · O1] Corrección a la letra anterior de la precarga (solo aplica si el perfil ollama
+> se reactiva):** `docker compose exec ollama ollama pull <modelo>` era **estructuralmente
+> imposible** — el servicio vive SOLO en la red `internal: true`, ese contenedor no tiene ruta
+> a internet NUNCA, ni antes del corte; el prerequisito se auto-bloqueaba. Precarga correcta:
+> en el host con el volumen montado — `docker run --rm -v <vol>:/root/.ollama ollama/ollama
+pull <modelo>` — o un `compose.preload.yml` con red no-interna solo para ese paso.
+>
+> **[S-F · I6] Migraciones:** nadie aplicaba el schema (ni DDL del event store ni
+> `procrastinate schema --apply`) — lo primero que chocará el walking skeleton. El compose real
+> lleva un paso/servicio de migración one-shot antes de api/worker.
+>
+> **[S-F · I7] `.dockerignore` obligatorio al crear los Dockerfiles reales:** `COPY . /app`
+> sin él arrastra `.git`, `node_modules` y `./secrets/` a la imagen.
 
 ### 1.4 Ruta AWS: ECR + Fargate + ALB (diseño)
 
@@ -185,15 +224,30 @@ Orden de magnitud total: **decenas de dólares para la ventana del demo** — no
 
 Alineada al roadmap (feature freeze ~23 jul, semana 4; evento ~1 ago). Las fechas son propuesta de Dylan en esta consolidación, **no compromiso acordado**:
 
-| Fecha (2026)        | Hito                                                                                             | Criterio de salida                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| ~jue 23 jul         | feature freeze (dado por el roadmap)                                                             | solo fixes de ahí en adelante                                            |
-| vie 24 – sáb 25 jul | imágenes construidas; push a ECR; stack AWS arriba; modelo Ollama precargado en el volumen local | `docker compose up` verde local; tasks RUNNING en Fargate                |
-| **lun 27 jul**      | **Dry-run 1 — local air-gapped**: guion completo del demo en compose, host sin red               | demo de punta a punta con cero egress; sin tocar teclado fuera del guion |
-| mar 28 jul          | **Video de respaldo** grabado sobre el entorno local ya validado                                 | video completo del guion, listo para proyectar si todo falla             |
-| **mié 29 jul**      | **Dry-run 2 — sobre la URL de Fargate (ALB)**: mismo guion, modelo por API externa               | mismo resultado que el dry-run 1, misma narrativa                        |
-| jue 30 – vie 31 jul | buffer: solo fixes de lo que los dry-runs revelen; congelar TODO el viernes                      | ambos entornos verdes + video en mano                                    |
-| ~sáb 1 ago          | evento                                                                                           | —                                                                        |
+> **[S-F 2026-07-20] CALENDARIO RECONCILIADO con el freeze del 18-jul y la ratificación verbal
+> de Geovanni (19-jul)** — las filas de abajo eran del 14-jul y contradecían P1-10 (cloud
+> stretch) y P1-8 (`replay` = config del día D). Correcciones vigentes:
+> **(a)** las filas 24–25 pierden "push a ECR; stack AWS arriba" incondicional — el stack cloud
+> (Fargate **o EKS**) se levanta **el 28, SOLO si el dry-run 1 local quedó verde el 27**;
+> "modelo Ollama precargado" se reemplaza por "**fixtures de replay grabados y pinneados por
+> manifest**" (+ preparar la **segunda máquina del verify offline**: Python + `cryptography` +
+> bundle, sin red — estaba exigida 2 veces por el freeze y en ninguna fila);
+> **(b)** el dry-run 2 (29-jul) ensaya **el mismo guion con `MODEL_ROUTER_BACKEND=replay`**;
+> "modelo por API externa" queda como extra no-bloqueante del ensayo cloud;
+> **(c)** predecesor real del 24–25: el **PR único de deps de S-G ya mergeado** (y la
+> cuarentena npm de 14 días sin morder — P2-4);
+> **(d)** higiene entre ensayos: **reset de `pgdata`** (`down -v` + seed) como parte del guion
+> — los runs de prueba no pueden aparecer en el Studio el día D.
+
+| Fecha (2026)        | Hito                                                                                                          | Criterio de salida                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| ~jue 23 jul         | feature freeze (dado por el roadmap)                                                                          | solo fixes de ahí en adelante                                            |
+| vie 24 – sáb 25 jul | imágenes construidas; fixtures de replay grabados+pinneados; segunda máquina de verify lista [S-F]            | `docker compose up` verde local; verify offline ensayado                 |
+| **lun 27 jul**      | **Dry-run 1 — local air-gapped**: guion completo del demo en compose, host sin red                            | demo de punta a punta con cero egress; sin tocar teclado fuera del guion |
+| mar 28 jul          | **Video de respaldo** grabado sobre el entorno local ya validado; stack cloud SOLO si el 27 quedó verde [S-F] | video completo del guion, listo para proyectar si todo falla             |
+| **mié 29 jul**      | **Dry-run 2 — entorno cloud (stretch)**: mismo guion, `MODEL_ROUTER_BACKEND=replay` [S-F]                     | mismo resultado que el dry-run 1, misma narrativa                        |
+| jue 30 – vie 31 jul | buffer: solo fixes de lo que los dry-runs revelen; congelar TODO el viernes                                   | local verde (+cloud si se activó) + video en mano                        |
+| ~sáb 1 ago          | evento                                                                                                        | —                                                                        |
 
 Regla propuesta: si el dry-run 1 falla, el 28 se usa para arreglar y el video se corre al 29 junto al dry-run 2; si el dry-run 2 falla, el demo cloud se degrada a "URL de respaldo" y el local es el principal — **nunca al revés**, porque el local air-gapped es el que prueba la tesis de soberanía.
 
@@ -251,7 +305,13 @@ Ninguna licencia copyleft entra al artefacto: todo lo que se **redistribuye** (i
 4. **INV-1:** un solo punto de entrada por entorno (nginx local / ALB cloud) que enruta al api — ningún servicio queda expuesto por fuera del chokepoint.
 5. **Aislamiento (nota 01, escalera):** el demo cloud corre en el escalón 3 (tasks Fargate, cada una su micro-VM, sin host compartido) — consistente con lo que la nota 01 ya fijó como "nuestro modelo".
 6. **Calendario:** marcado explícitamente como **propuesta** (§1.5) — las fechas encajan con feature freeze ~23 jul y evento ~1 ago, pero las ratifica Geovanni con el equipo; la regla de degradación (local manda, cloud degrada) también es propuesta.
-7. **Cierre S-E (2026-07-18) — decisiones tomadas y chequeos declarados:** (c) **decidido:** modelo de Ollama = uno chico (~3B cuantizado, default `llama3.2:3b`) que quepa junto al statevector de ieee14 en la RAM del equipo del demo — el LLM está fuera del camino crítico (freeze §15.4: `replay` es la config de demo) y se mide en el dry-run 1; ratificación final Steven+Geovanni. (d) **decidido:** si Fargate se activa (es stretch — P1-10), subnet pública + IP para el pull de ECR (lo simple; costo trivial en la ventana del demo) — VPC endpoints quedan como forma de producción. Chequeos declarados (al provisionar/construir): (a) precios de ALB/RDS contra la calculadora oficial; (b) licencia de nginx en vivo al crear el Dockerfile; (e) medición real del worker (1 vCPU/2 GB es hipótesis) en el dry-run 1.
+7. **Cierre S-E (2026-07-18) — decisiones tomadas y chequeos declarados:** (c) **decidido; SUPERSEDIDO en S-F (ver 8):** modelo de Ollama = uno chico (~3B cuantizado, default `llama3.2:3b`) que quepa junto al statevector de ieee14 en la RAM del equipo del demo — el LLM está fuera del camino crítico (freeze §15.4: `replay` es la config de demo) y se mide en el dry-run 1; ratificación final Steven+Geovanni. (d) **decidido:** si el stretch cloud se activa (P1-10), subnet pública + IP para el pull de ECR (lo simple; costo trivial en la ventana del demo) — VPC endpoints quedan como forma de producción. Chequeos declarados (al provisionar/construir): (a) precios de ALB/RDS contra la calculadora oficial; (b) licencia de nginx en vivo al crear el Dockerfile; (e) medición real del worker (1 vCPU/2 GB es hipótesis) en el dry-run 1.
+8. **Actualización S-F (2026-07-20) — ratificación verbal de Geovanni (19-jul) + auditoría de ratificación:**
+   - **Local-first CONFIRMADO por el dueño:** todo el mes se trabaja local; el stretch cloud es **Fargate o EKS**, solo si sobra tiempo y el 27 quedó verde. Las contradicciones del calendario §1.5 con el freeze quedaron reconciliadas (bloque [S-F] arriba).
+   - **Modelos por API keys (supersede el punto 7.c):** nadie del equipo corre un modelo local con potencia útil ⇒ el `model_list` del mes son modelos por API, keys como secret files del despliegue; `ollama` local queda como perfil opcional archivado. _(Detalle supersedido a su vez por la ratificación real ESCRITA de Geovanni — **Ollama Cloud passthrough**, ver addendum [S-F-real] abajo.)_ `replay` sigue siendo la config del día D — el air-gap se prueba igual (los fixtures se graban en los ensayos). Contrato completo: freeze §15.7 [S-F].
+   - **Presupuesto de RAM (O5) — recalculado sin Ollama:** el statevector de ieee14 es trivial (2¹⁴ × 16 B ≈ 0.25 MiB); los consumidores reales son navegador/Studio (~1–1.5 GiB) + api/worker con ortools/pandapower (~1–1.5 GiB) + Postgres (~0.3 GiB) ≈ **3–4 GiB pico** (antes 6–8 con Ollama). Sigue pendiente de Geovanni: **registrar QUÉ laptop es el equipo del demo y su RAM antes del 24** — "se mide en el dry-run 1" no sustituye la spec; en WSL2/Docker Desktop verificar el memory cap (`.wslconfig`) del equipo real.
+   - **Día D — riesgos que ningún checklist preguntaba (van al guion del 27):** `proxy_buffering off` + `X-Accel-Buffering: no` en el `nginx.conf` del studio (sin eso el SSE — el clímax visual — se congela; si el stretch cloud se activa, el idle timeout del ALB default 60 s mata SSE: heartbeat + timeout arriba) · reset de `pgdata` entre ensayos · `restart: unless-stopped` (ya en el compose de diseño) · checklist física (sleep/lid/batería/proyector, salida al proyector con el Studio dark-first) · si la máquina de build ≠ equipo del demo, traslado de imágenes sin registry (`docker save/load`) y bundle del Studio sin referencias a CDNs (I10).
+   - **Pendiente de diseño solo-si-stretch (O7):** SG outbound (no pueden ser "cerrados" a secas: ECR + API del modelo), custodia de password RDS y API keys en cloud — tres líneas en §1.4 al activarlo.
 
 ---
 
@@ -268,6 +328,7 @@ sin borrarlos):
   la demo **no** hace llamadas al cloud en vivo (LLM en vivo = NO-va, freeze §15.4).
 - `OLLAMA_API_KEY` entra por la escalera de custodia (escalón 1 env/archivo), **nunca** hardcodeado en
   el compose; documentado en `.env.example`.
-- **Pendiente del dueño (no cerrado acá):** los bugs del compose de diseño que el stress test pre-B
-  marcó — `DATABASE_URL` sin credencial vs `POSTGRES_PASSWORD_FILE`, y SSE sin `proxy_buffering off`
-  en nginx (congela los badges en vivo) — quedan para el trabajo de demo-dual/calendario de Geovanni.
+- **Actualización [convergencia · 2026-07-22]:** los fixes de DISEÑO del compose que el stress pre-B
+  marcó quedaron **portados** del track simulado (EG-4: `DATABASE_URL` vía secret + entrypoint,
+  `restart:`, llaves `*_FILE`, forma del replay, migraciones I6, `proxy_buffering off` en la lista del
+  día D). La ratificación fina del plano (demo dual §3, calendario §5) sigue siendo de Geovanni.
