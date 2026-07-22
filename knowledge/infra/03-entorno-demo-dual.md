@@ -146,6 +146,8 @@ secrets:
   pg_password: { file: ./secrets/pg_password.txt } # fuera de git
 ```
 
+> ⚠ **[S-F-real · 2026-07-21]** Con Ollama Cloud (addendum al final) `ollama` **ya no es cero-egress**; el air-gap estructural sigue valiendo para api/worker/postgres y el día D corre `replay` (sin red).
+
 **Air-gap en dos capas.** (1) Estructural: la red `backend` es `internal: true` — api, worker, postgres y ollama no tienen ruta a internet; solo studio toca la red `edge`, y nginx solo sirve estático y proxya hacia adentro. (2) Operativa: el dry-run 1 corre con el host sin red. Prerrequisito de ambas: **todo se precarga antes del corte** — imágenes (`docker compose pull/build`) y el modelo de Ollama (`docker compose exec ollama ollama pull <modelo>`; queda en el volumen `ollama`, sobrevive reinicios). El healthcheck de api usa stdlib de Python porque `python:3.12-slim` no trae curl — cero paquetes extra solo para el probe.
 
 ### 1.4 Ruta AWS: ECR + Fargate + ALB (diseño)

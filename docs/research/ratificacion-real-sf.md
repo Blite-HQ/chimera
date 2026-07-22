@@ -281,6 +281,8 @@ congelada quedó invalidada.**
 - **Decisión abierta para Dylan:** flip del `xfail` de AX1 — `actor_id` ya es obligatorio (xpassa),
   pero `invariants.md:143` condiciona el flip a que el gateway estampe identidad, que aún no existe.
 
+**Re-test sobre la versión final (HEAD aplicado, 2026-07-21):** panel completo re-corrido → **GO, cero regresión**; los 5 ejes AGUANTARON y el plano de confianza quedó byte-idéntico. Mejoras aplicadas por el re-stress: AX3-b y AX3 alineados a INV-2 (`cohere`/`transformers`); pointers de supersesión en las líneas obsoletas de `freeze:200` / `islanding/01` / `infra/03`. `xfail` de AX1 dejado como está (recomendación).
+
 ---
 
 > **Siguiente (NO es parte de este flujo):** comparación simulada↔real y convergencia (§5 del
