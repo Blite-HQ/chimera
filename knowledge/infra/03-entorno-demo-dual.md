@@ -250,3 +250,22 @@ Ninguna licencia copyleft entra al artefacto: todo lo que se **redistribuye** (i
 5. **Aislamiento (nota 01, escalera):** el demo cloud corre en el escalón 3 (tasks Fargate, cada una su micro-VM, sin host compartido) — consistente con lo que la nota 01 ya fijó como "nuestro modelo".
 6. **Calendario:** marcado explícitamente como **propuesta** (§1.5) — las fechas encajan con feature freeze ~23 jul y evento ~1 ago, pero las ratifica Geovanni con el equipo; la regla de degradación (local manda, cloud degrada) también es propuesta.
 7. **Cierre S-E (2026-07-18) — decisiones tomadas y chequeos declarados:** (c) **decidido:** modelo de Ollama = uno chico (~3B cuantizado, default `llama3.2:3b`) que quepa junto al statevector de ieee14 en la RAM del equipo del demo — el LLM está fuera del camino crítico (freeze §15.4: `replay` es la config de demo) y se mide en el dry-run 1; ratificación final Steven+Geovanni. (d) **decidido:** si Fargate se activa (es stretch — P1-10), subnet pública + IP para el pull de ECR (lo simple; costo trivial en la ventana del demo) — VPC endpoints quedan como forma de producción. Chequeos declarados (al provisionar/construir): (a) precios de ALB/RDS contra la calculadora oficial; (b) licencia de nginx en vivo al crear el Dockerfile; (e) medición real del worker (1 vCPU/2 GB es hipótesis) en el dry-run 1.
+
+---
+
+## Addendum [S-F-real · 2026-07-21] — reconciliación air-gap ↔ Ollama Cloud (ratificación Geovanni ítem-4)
+
+La ratificación cambia el LLM local por **Ollama Cloud passthrough** (`OLLAMA_API_KEY` + salida a
+internet). Eso **contradice** los pasajes de este doc que declaran la red `backend` como _cero egress
+estructural_ y a `ollama` como _sin salida a internet nunca_. Reconciliación (supersede esos pasajes,
+sin borrarlos):
+
+- El **perfil `local-llm` con Ollama local pasa a ser dev-only / no-air-gapped** (correr un modelo de
+  verdad offline es Fase 2 — el recinto air-gapped es Fase 2, freeze §15.8).
+- El **camino air-gapped del día D es `MODEL_ROUTER_BACKEND=replay`** (respuesta cacheada, sin red) —
+  la demo **no** hace llamadas al cloud en vivo (LLM en vivo = NO-va, freeze §15.4).
+- `OLLAMA_API_KEY` entra por la escalera de custodia (escalón 1 env/archivo), **nunca** hardcodeado en
+  el compose; documentado en `.env.example`.
+- **Pendiente del dueño (no cerrado acá):** los bugs del compose de diseño que el stress test pre-B
+  marcó — `DATABASE_URL` sin credencial vs `POSTGRES_PASSWORD_FILE`, y SSE sin `proxy_buffering off`
+  en nginx (congela los badges en vivo) — quedan para el trabajo de demo-dual/calendario de Geovanni.

@@ -199,6 +199,8 @@ IDs **reservados** para las instancias de P0-7 (dueño Sebas — datos abiertos 
 
 **Segunda ancla de ieee30 (decidida):** **enumeración exhaustiva vectorizada** (numpy por bloques, x₀=0, 2²⁹ asignaciones — cero dependencias nuevas, independiente de CP-SAT), integrada al script de islanding/01 §1.9 con presupuesto explícito; se corre en la ratificación y `metodos` pasa a `["cpsat","bruteforce_vectorized"]`. La cota superior del SDP de Goemans-Williamson (cvxpy, ya obligatoria por Δ6) se registra como **chequeo de cordura adicional** (UB ≥ óptimo), no como ancla. Ratificación final de Sebas = correr y comparar digests.
 
+> **[S-F-real · 2026-07-21] Segunda ancla de ieee30 — corrida registrada; re-estampado PENDIENTE (ratificación Sebas §1.3).** La enumeración exhaustiva vectorizada se corrió y se confirmó por auditoría independiente (2²⁹, x₀=0): **uniforme=35, flujo=32170** (== óptimos congelados). Integrarla al script §1.9 muta `metodos`→`["cpsat","bruteforce_vectorized"]` ⇒ cambian los 2 digests de ieee30 y **dejan de coincidir con la tabla `@v1` de arriba**. **NO se re-estampa aquí:** (a) la identidad —@v1 re-estampado vs `@v2` vs attestation externa sobre el mismo digest— es decisión de Sebas; (b) el enumerador aún **no** está integrado a §1.9 (`FUERZA_BRUTA_MAX_N=14` salta n=30). Falla sembrada (§15.5) confirmada por recompute: ieee14-flujo **bus 1** (0-based; Bus 2 en IEEE 1-based) → corte 32597, gap 24473; buses prohibidos por degeneración [7] (flujo) / [0,1,11] (uniforme).
+
 **Estratificación de claims del Reto 1 (Δ1 — el corpus NO se regenera):** el core = optimalidad **Max-Cut** (formulación oficial) con ancla `formal_exact` contra el corpus tal como está; los chequeos físicos (`island_connectivity`, `power_balance`) se re-scopean como **análisis de limitaciones + extensión oficial "constraint mixers"** — sus claims son de la extensión, no del camino crítico del core. Escalera de instancias del demo: **cr8 (core, en vivo) → ieee9 (verificación QUBO) → ieee14 (escalado, instancia viva pinneada) → ieee30 (SOLO clásico / extrapolación honesta — el H2 topa en 26 qubits)**.
 
 ### 15.4 Camino dorado P0 del demo + lista NO-va **[equipo]** (P0-3)
@@ -223,6 +225,8 @@ La 3ª condición ("existe ancla decisoria dentro de presupuesto; si no ⇒ gap 
 - **`ModelServer`** = el adapter que lo implementa, vive en `blite.protocols` — hereda el contrato de layers **INV-6 (protocols exige authz)** sin gate nuevo; envuelve **LiteLLM SDK (`Router`)** con un solo `model_list` (cloud + `ollama_chat/` local) seleccionado por el `DistributionManifest` — mismo router, los dos lados del demo dual, **más el backend `replay`** (P1-8: prompt fijo + respuesta cacheada) como tercera config de primera clase.
 - El gateway cablea: la etapa `mediation` ejecuta la decisión de `serving.route()` a través del puerto inyectado. Eventos: `model.call.*` (§3). Endurecimiento opcional del gate AX3 (agregar `litellm`/`openai`/`anthropic` a forbidden) = tarea de S-G.
 - Descartados: LiteLLM Proxy este mes (proceso extra fuera del import-linter; candidato Fase 2 — la delimitación de sus features enterprise queda como chequeo previo si Fase 2 lo retoma), vLLM (producción self-hosted), OpenRouter (cede la mediación soberana), modelos dentro del Registry de capabilities (PR2).
+
+> **[S-F-real · 2026-07-21] Supersesión del modelo del demo — ratificación Geovanni ítem-4 + decisión cruzada Steven+Dylan (resuelta).** El LLM local `llama3.2:3b` se reemplaza por **Ollama Cloud passthrough** (tag cloud, p. ej. `gpt-oss:20b-cloud`) por límite de hardware: el binario `ollama` proxea a la nube; se suma `OLLAMA_API_KEY` (custodia escalón 1, §7) + salida a internet. Esto **rompe el air-gap** ⇒ el **recinto air-gapped/offline queda como Fase 2** (§15.8); la **soberanía-lógica sigue activa** — el cloud solo ve instancias sintéticas/públicas (§15.1), no dato de red real. El día D corre `MODEL_ROUTER_BACKEND=replay` (§15.4: LLM en vivo = NO-va). **LiteLLM se MANTIENE** (aval de Steven + requisito de Dylan: router multi-proveedor Anthropic+Ollama, delegación por tarea); "Ollama Cloud" es **una entrada del `model_list`**, no una razón para dropear el router. `ModelPort`/`ModelServer` + `replay` intactos. Endurecimiento aplicado: contrato import-linter **AX3-b** (SDK de modelo importable solo por `blite.protocols`). Licencias del árbol multi-proveedor verificadas limpias (openai/anthropic Apache-2.0/MIT; cero copyleft).
 
 ### 15.8 Huecos declarados (no son decisiones abiertas — son trabajo futuro con dueño)
 
@@ -265,3 +269,34 @@ La 3ª condición ("existe ancla decisoria dentro de presupuesto; si no ⇒ gap 
 1. **Merge [ejecución] completado** — las 9 notas del plano de ejecución incorporadas arriba (§1, §2, §3, §5, §8, §13, §15.7); las preguntas que dejaban abiertas quedan decididas o declaradas con dueño (§15.8). El encabezado histórico "pendiente merge con las correcciones de Steven" queda satisfecho.
 2. **Ratificaciones finales por dueño** (marcas de revisión, no decisiones abiertas — modelo de operación del roadmap): Steven → §1/§3/§8/§13/§15.7 · Sebas → §11/§15.3/§15.5 (correr script del corpus + digests) · Geovanni → escalón HSM §7 (frontera infra/secretos) + §15.8 · equipo → §15.2/§15.4.
 3. **Traducción a Pydantic/SQL real = S-G** (seeds de specs/tests por plano; `challenge1/reproduce.py` + fixture de la falla sembrada + `scripts/verify-bundle.py` + PR único de deps), TDD, gates verdes.
+
+## Registro de cierre (S-F-real, 2026-07-21)
+
+> Supersesión con causa de las ratificaciones **reales** (auditoría en
+> `docs/research/ratificacion-real-sf.md`; stress test pre-B: **GO condicional**). Aplicada en la rama
+> `ratificacion/consolidacion-sf`. **No re-litiga lo congelado**; `docs/invariants.md` y
+> `docs/base-logica-formal.md` quedan intactos. La comparación simulada↔real y la convergencia son el
+> paso POSTERIOR.
+
+1. **Ratificado — código ya aplicado por los dueños (verificado por corrida):** deps del walking
+   skeleton + endurecimiento de AX3 (`0f74343`); fix utf-8 de tests (`a1cd49e`). Gates:
+   import-linter **10/10**, pytest **101 passed**, ruff, `tsc` 0. Corpus **6/6 digests** reproducen con
+   la receta oficial; ieee30 **35/32170** por enumeración independiente.
+2. **Modelo del demo (§15.7):** Ollama Cloud passthrough + `OLLAMA_API_KEY`; **LiteLLM se mantiene**
+   (multi-proveedor). Causa: ratificación Geovanni ítem-4 + cruzada Steven+Dylan resuelta.
+3. **Segunda ancla ieee30 (§15.3):** corrida registrada (35/32170); **re-estampado pendiente de Sebas**
+   (identidad @v1/@v2), **no automático**.
+4. **Endurecimientos del stress test pre-B (aplicados):** contrato import-linter **AX3-b** (SDK de
+   modelo solo vía `blite.protocols`); `encoding="utf-8"` completo en tests; `secrets/` +
+   `.dockerignore` + `OLLAMA_API_KEY` pre-flip; floor `capabilities/sim` `pandapower>=3.5.4`.
+5. **MARCADO (no cerrado por el auditor):** 4 `[COMPLETÁ VOS]` de Geovanni (custodia §7, demo dual §3,
+   calendario §5, huecos Fase 2 §15.8); identidad @v1/@v2 de ieee30 (Sebas); cr8/cr6 (trabajo, CORE del
+   demo en vivo); fusión `kb2-05`→`quantum/08`; **flip del `xfail` de AX1** (cuando el gateway estampe
+   identidad — `invariants.md` lo condiciona así); bugs operativos del compose de diseño
+   (`DATABASE_URL` sin credencial, SSE sin `proxy_buffering off`) → parte del demo-dual de Geovanni.
+6. **Riesgo dominante → S-G (lo gritó el stress test):** el **plano de confianza vive pre-freeze en
+   código** — vocabulario `rung` muerto (engine/Studio/`policy.py`/`verification-default.yaml`), forja
+   de `pass` sin ancla (`anchor_digest` nullable, sin CHECK), `scripts/verify-bundle.py`/`api`/compose
+   inexistentes. **Es el diferenciador indefenso en código; prioridad #1 de S-G.** Ninguna decisión
+   congelada quedó invalidada; lo profundo (anti-inyección, canonicalización, INV-2, falla sembrada)
+   aguantó el ataque.
