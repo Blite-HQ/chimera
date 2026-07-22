@@ -33,8 +33,8 @@ def test_a_hardened_policy_opens_escalations_over_in_flight_cases() -> None:
     )
 
     # Act — API a fijar; el seed fija la CONDUCTA (freeze §6 EX-5)
-    from blite.runtime.policy_watch import (
-        on_policy_changed,  # type: ignore[import-not-found]
+    from blite.runtime.policy_watch import (  # pyright: ignore[reportMissingImports]
+        on_policy_changed,  # pyright: ignore[reportUnknownVariableType]
     )
 
     on_policy_changed(

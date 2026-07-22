@@ -8,6 +8,8 @@ Verde cuando la capability exponga el recomputo del flip.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 pytestmark = [
@@ -21,11 +23,11 @@ pytestmark = [
 
 def test_bus_1_flip_reproduces_the_seeded_failure_numbers() -> None:
     # Arrange / Act — la API concreta la fija Sebas; este seed fija los NÚMEROS
-    from capabilities_sim_api import (
-        recompute_seeded_failure,  # type: ignore[import-not-found]
+    from capabilities_sim_api import (  # pyright: ignore[reportMissingImports]
+        recompute_seeded_failure,  # pyright: ignore[reportUnknownVariableType]
     )
 
-    result = recompute_seeded_failure(instance="ieee14-flujo", bus=1)
+    result = cast(Any, recompute_seeded_failure(instance="ieee14-flujo", bus=1))
 
     # Assert — los valores validados por ambos tracks (convergencia EC-2)
     assert result.cut_value == 32_597

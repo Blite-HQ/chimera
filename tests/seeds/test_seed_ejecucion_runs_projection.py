@@ -8,6 +8,8 @@ ser verdad ejecutable, no doctrina. Verde cuando exista el proyector.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from blite.events import create_event_store
@@ -47,9 +49,11 @@ def test_replay_of_the_log_regenerates_the_full_run_row() -> None:
     )
 
     # Act — API a fijar por Steven; el seed fija la CONDUCTA
-    from blite.runtime.projection import project_runs  # type: ignore[import-not-found]
+    from blite.runtime.projection import (  # pyright: ignore[reportMissingImports]
+        project_runs,  # pyright: ignore[reportUnknownVariableType]
+    )
 
-    rows = project_runs(store.read_all())
+    rows = cast(Any, project_runs(store.read_all()))
 
     # Assert — la fila completa sale SOLO del log
     row = rows["r1"]
