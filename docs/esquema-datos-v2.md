@@ -202,6 +202,8 @@ CREATE TABLE attestations (
     verifier_class         TEXT NOT NULL CHECK (verifier_class IN
                              ('formal_exact','execution','ground_truth',
                               'property_rule','consensus_replication','human_expert')),
+    anchor_kind            TEXT CHECK (anchor_kind IN      -- [S-F stress · SF-P1-2] KIND del ancla:
+                             ('solver','execution','dataset','rule','human')),  -- Policy required_anchors
     verdict                TEXT NOT NULL CHECK (verdict IN ('pass','fail','inconclusive')),
     inconclusive_reason    TEXT,                  -- tri-estado (D4): timeout | undecidable | conflict | undermined_premise | ...
     scope                  JSONB NOT NULL,        -- ScopeExpr canónico (decidible)

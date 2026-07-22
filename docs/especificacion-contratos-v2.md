@@ -258,6 +258,10 @@ export interface Attestation {
   readonly runId: string; // [S-F · N7] la columna SQL era NOT NULL y el tipo no lo tenía
   readonly verifierId: string;
   readonly verifierClass: VerifierClass;
+  // [S-F stress · SF-P1-2] el KIND del ancla — la Policy comprueba `required_anchors` contra este
+  // campo; la semilla no lo cargaba (el código real engine/verification/attestation.py sí).
+  // Distinto de anchorDigest (la instancia exacta usada).
+  readonly anchorKind: 'solver' | 'execution' | 'dataset' | 'rule' | 'human';
   readonly verdict: 'pass' | 'fail' | 'inconclusive';
   // [S-F · T5] el conteo de patas de C3 es POR GRUPO DE INDEPENDENCIA (spec v3.2) —
   // sin este campo, "C3 exige 2 patas" era incomputable ante un auditor.

@@ -33,7 +33,7 @@ Entrada: un valor del **modelo de datos JSON** (post-parseo; lo que devuelve lee
 
 **Implementación (decisión):** intentar el paquete PyPI **`rfc8785`** (Trail of Bits, sin dependencias — licencia ⚠️ confirmar al agregar, regla search-first); si no convence, **portar el subset del AGT** (`approval_protocol/digest.py`, MIT, ~100 líneas, ya auditado en nota 09) con su misma restricción documentada de floats. En ambos casos: los vectores de §6 son el gate — la impl que no los reproduce byte a byte no entra.
 
-**Hazard de floats (documentado, acotado):** `repr()` de Python y ECMAScript divergen en exponentes (`1e-07` vs `1e-7`). Normativo: **ECMAScript** (lo que dice RFC 8785). Mitigación de contrato: los payloads que entran a digests evitan floats donde un entero o string sirva; enteros fuera de ±2^53 van como string (el modelo de datos es double). El corpus de vectores incluye los bordes.
+**Hazard de floats (documentado, acotado) — [S-F stress · SF-P1-1]:** `repr()` de Python y ECMAScript divergen en DOS ejes, no uno: (a) el padding del exponente (`1e-07` vs `1e-7`), y (b) **el umbral fija-vs-exponencial** — ECMAScript mantiene notación FIJA hasta el exponente −6 (`1e-5 → "0.00001"`), mientras `repr()` pasa a exponencial ya bajo `1e-4`. Normativo: **ECMAScript** en ambos ejes (RFC 8785 §3.2.2.3 → `Number::toString`). La 1ª pasada del stress test vio solo el eje (a); la 2ª probó que el `engine` también fallaba en (b). La implementación de referencia (`engine/src/blite/certificate/canonical.py`) ahora conforma con ambos, y el generador de vectores importa esa misma función (fuente única — sin segunda copia que derive). Mitigación de contrato: los payloads que entran a digests evitan floats donde un entero o string sirva; enteros fuera de ±2^53 van como string (por eso `1e21` conserva la forma entera fija de V5 aunque ECMAScript daría `1e+21`). El corpus de vectores incluye la banda.
 
 ## 3 · Vista canónica del evento (v1)
 
@@ -127,15 +127,18 @@ SHA-256( b"blite/provenance/v1\n" + C(view(e_1)) + b"\n" + C(view(e_2)) + b"\n" 
 
 **V5 — bordes numéricos y de orden (unitarios de `C`):**
 
-| Entrada                      | `C()` esperado               | Nota                                                                                 |
-| ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------ |
-| `2.0`                        | `2`                          | float entero → entero                                                                |
-| `0.1`                        | `0.1`                        | shortest round-trip                                                                  |
-| `-0.0`                       | `0`                          | regla ECMAScript                                                                     |
-| `1e21`                       | `1000000000000000000000`     | sin notación exponencial en este rango                                               |
-| `1e-7`                       | `1e-7`                       | ⚠️ normativo ECMAScript; `repr()` Python da `1e-07` — la impl DEBE corregirlo (gate) |
-| `NaN` / `Infinity`           | **error**                    | jamás un digest inestable                                                            |
-| `{"é":1,"z":2,"a":3,"😀":4}` | `{"a":3,"z":2,"é":1,"😀":4}` | orden por code units UTF-16 (no por bytes UTF-8)                                     |
+| Entrada                      | `C()` esperado               | Nota                                                                                                                                |
+| ---------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `2.0`                        | `2`                          | float entero → entero                                                                                                               |
+| `0.1`                        | `0.1`                        | shortest round-trip                                                                                                                 |
+| `-0.0`                       | `0`                          | regla ECMAScript                                                                                                                    |
+| `1e21`                       | `1000000000000000000000`     | sin notación exponencial en este rango                                                                                              |
+| `1e-7`                       | `1e-7`                       | ⚠️ ECMAScript; `repr()` da `1e-07`. Bajo la banda fija (exp −7): exponencial en ambos, solo se quita el cero del exponente          |
+| `1e-5`                       | `0.00001`                    | **[S-F stress · SF-P1-1]** banda `[1e-6,1e-4)`: ECMAScript usa notación FIJA; `repr()` da `1e-05` (bug corregido en `canonical.py`) |
+| `1e-6`                       | `0.000001`                   | **[S-F stress · SF-P1-1]** límite inferior de la banda fija (exp −6)                                                                |
+| `1.5e-5`                     | `0.000015`                   | **[S-F stress · SF-P1-1]** mantisa no trivial dentro de la banda                                                                    |
+| `NaN` / `Infinity`           | **error**                    | jamás un digest inestable                                                                                                           |
+| `{"é":1,"z":2,"a":3,"😀":4}` | `{"a":3,"z":2,"é":1,"😀":4}` | orden por code units UTF-16 (no por bytes UTF-8)                                                                                    |
 
 **V6 — `claim_digest` sobre `view(claim)` [S-F · T7].** Entrada:
 
