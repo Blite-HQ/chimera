@@ -30,9 +30,9 @@
 
 **Modo C — managed total (Chimera provee control plane y data plane):**
 
-- **Aislamiento por tenant = stack dedicado** (estilo Supabase): por tenant, servicios ECS Fargate (engine-api; capabilities pesadas como servicios o AWS Batch jobs), RDS Postgres, SQS/Redis, Secrets Manager, ALB + WAF; Studio estático en S3 + CloudFront. **Evitar multi-tenancy compartida dentro del engine al inicio**: multiplica complejidad y contradice el pitch de soberanía.
+- **Aislamiento por tenant = stack dedicado** (estilo Supabase): por tenant, servicios ECS Fargate (engine-api; capabilities pesadas como servicios o AWS Batch jobs), RDS Postgres, **cola sobre el mismo Postgres (Procrastinate — doctrina sin-Redis, infra/02; corregido S-F: antes decía "SQS/Redis")**, Secrets Manager, ALB + WAF; Studio estático en S3 + CloudFront. **Evitar multi-tenancy compartida dentro del engine al inicio**: multiplica complejidad y contradice el pitch de soberanía.
 - **AWS Organizations**: cuenta de control plane, cuenta(s) de data planes, cuenta de build/ECR compartida. Landing zone (Control Tower) cuando crezca.
-- El control plane en sí es una app normal (ECS + RDS + IdP) + un **provisioning worker** (Terraform/CDK automatizado) que crea/destruye stacks por tenant + metering para billing (p.ej. OpenMeter, del mapa de repos).
+- El control plane en sí es una app normal (ECS + RDS + IdP) + un **provisioning worker** (**Pulumi Automation API** — la decisión de infra/01 §D; corregido S-F: antes decía "Terraform/CDK automatizado") que crea/destruye stacks por tenant + metering para billing (p.ej. OpenMeter, del mapa de repos).
 - GPU: Fargate no soporta GPU → serving local de modelos en cloud requiere EC2/EKS con nodos GPU, o modelo por API. QPU/emulador cuántico siempre es API externa (backend confirmado del evento, corregido S-E 2026-07-18: **emulador H2 de Quantinuum**, exacto hasta 26 qubits; modo 100% local = Selene + Aer) = "ejecución externa autorizada" **bajo la doctrina de soberanía del freeze §15** (clase de dato → egreso permitido; default deny para datos de red reales — el cloud solo ve instancias sintéticas/públicas), igual en todos los modos.
 
 ## El orden de construcción (importa)

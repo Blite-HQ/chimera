@@ -6,6 +6,19 @@
 > validar por área, dónde está el porqué de cada decisión, y cómo responder.
 > **Plazo propuesto: 23-jul (feature freeze).** Sin objeción a esa fecha, la parte queda
 > ratificada y se arranca la construcción encima (seeds de specs/tests → features).
+>
+> **⚠️ Actualización S-F (2026-07-20) — leer antes de ratificar.** Una auditoría adversarial
+> pre-ratificación aplicó supersesiones al freeze (todas marcadas **[S-F]**, causas en su
+> "Registro de cierre (S-F)"): ratifican sobre la versión YA corregida. Lo que cambia para
+> ustedes: **(1)** la respuesta mínima es un **ack** ("OK mi plano" — 30 segundos); sin ack al
+> **22-jul**, Dylan escala directo — el silencio ya no ratifica solo; **(2)** los ítems
+> **ejecutables** de Sebas no son ratificables por silencio (el silencio no ejecuta scripts),
+> pero la auditoría ya corrió la receta del corpus (6/6 digests, lock reparado) y la
+> enumeración de ieee30 (óptimos confirmados) — su corrida **confirma, no estrena**; **(3)**
+> por ratificación verbal de Geovanni (19-jul): todo el mes LOCAL, stretch = Fargate **o EKS**,
+> y los modelos van **por API con keys** — Ollama queda como perfil opcional archivado
+> (freeze §15.7 [S-F]); **(4)** el fixture de la falla sembrada quedó congelado:
+> ieee14-flujo, **bus 1** (freeze §15.5 [S-F] — a Sebas le queda el criterio narrativo).
 
 ---
 
@@ -72,7 +85,11 @@ informan, nunca deciden.
   se cambia — sos el dueño.
 - **Cómo responder (una de dos):** (a) "OK mi plano" — un mensaje a Dylan basta; o (b) objeción
   puntual: qué ítem, qué cambiarías y por qué. Los ajustes se incorporan como supersesión con
-  causa — rápido, sin drama.
+  causa — rápido, sin drama. **[S-F] El ack (a) es OBLIGATORIO, no opcional:** sin ack al
+  **22-jul**, Dylan escala directo (llamada/mensaje); al 23 sin respuesta, las objeciones
+  P0/P1 del contrapeso de tu plano se incorporan igual (son verificables contra el repo) y tus
+  ítems "solo humanos" pasan a decisión de Dylan. El silencio derrota además el 20% de
+  Explicación: un dueño que no leyó es un dueño que no explica en Q&A.
 - **Regla de oro antes de objetar:** si algo de TU plano quedó distinto de como lo dejaste en
   tus notas, **el porqué está escrito** (hay un addendum fechado en tu propia nota, o la
   resolución en `convergencia-diseno-v32.md` §3). Leé el porqué primero; si no te convence,
@@ -103,11 +120,15 @@ ratificación final de Sebas" y dice qué) · (5) vistazo a `docs/perfil-stem-v1
       "constraint mixers"**, no en el camino core del claim de optimalidad. ¿De acuerdo?
 - [ ] **S = 100** como parte de la definición de instancia (el redondeo es de la instancia, no
       error del solver) — islanding/01 §1.3.
-- [ ] **Segunda ancla de ieee30 = enumeración exhaustiva vectorizada** (numpy por bloques,
-      x₀=0, 2²⁹ asignaciones; GW-SDP solo como cota de cordura). Hoy ratificás la DECISIÓN; el
-      código se integra al script §1.9 en la fase de seeds y ahí la corrés.
-- [ ] **Ejecutable ya:** regenerá el corpus con el script actual de islanding/01 §1.9 y
-      compará los 6 digests contra los archivos congelados (receta §1.6).
+- [ ] **Segunda ancla de ieee30 = enumeración exhaustiva vectorizada [S-F: YA CORRIÓ]** —
+      la auditoría ejecutó las 2²⁹ asignaciones por convención y **ambos óptimos coinciden con
+      CP-SAT** (35 / 32 170; evidencia con spec de máquina en islanding/01 §1.4). La corrida se
+      registra como **attestation externa sobre el MISMO digest** (los JSON no se mutan); si
+      preferís versionar a `@v2`, es TU llamada — decilo en el ack. GW-SDP solo cota de cordura.
+- [ ] **Ejecutable (confirmación, ya no estreno):** regenerá el corpus con la receta exacta de
+      islanding/01 §1.9 ([S-F]: `uv sync --all-packages --extra pandapower --extra ortools
+  --extra networkx`) y compará los 6 digests (§1.6 — por digest, jamás por bytes: Prettier
+      reformatea los JSON). La auditoría ya reprodujo 6/6 con el lock reparado del repo.
 - [ ] **Identidad del corpus:** `dataset_id = islanding-corpus/<instancia>-<convencion>@v1` ↔
       digest embebido (tabla completa en freeze §15.3).
 - [ ] **Campos de evidencia (§11):** `circuit_digest`; `approximation_ratio` reportado como
@@ -117,9 +138,12 @@ ratificación final de Sebas" y dice qué) · (5) vistazo a `docs/perfil-stem-v1
 - [ ] **Consenso (ajuste a tu quantum/04 §4):** la réplica de MUESTREO con seeds pinned ahora
       SÍ es decisoria (pata CONSENSUS_REPLICATION, techo AL2); la concordancia entre modelos sigue
       siendo Signal. El addendum en tu nota explica el porqué.
-- [ ] **Falla sembrada (§15.5):** el vector es tuyo — mover 1 bus de la partición verificada
-      debe dar `fail` inequívoco en milisegundos, jamás `inconclusive`. ¿Ves un bus candidato en
-      ieee14?
+- [ ] **Falla sembrada (§15.5) [S-F: vector CONGELADO — validá el criterio narrativo]:**
+      ieee14-flujo, **bus 1** (0-indexed, bus de generación): degradación máxima 57 070 → 32 597
+      (ratio 0.5712). El cómputo de los 14 flips probó que el bus NO podía elegirse a ojo: el
+      flip del bus 7 degrada CERO (óptimo degenerado), y en uniforme los buses 0/1/11 también.
+      Lo matemático está verificado 2× — lo tuyo es el guion físico (¿preferís otra historia de
+      isla? decilo en el ack).
 - [ ] **Tu entregable pendiente (el único dato que falta del plano):** `cr8` (~8 nodos desde
       los datos abiertos del ICE — datos-ice-se.opendata.arcgis.com, sugerencia textual del
       enunciado) + una instancia de **6 nodos** (`cr6`); mismo formato, doble ancla, digest.
@@ -161,10 +185,21 @@ run_id`, un stream por run) Y se agregó `parent_run_id` — sub-runs con stream
 - [ ] **Idempotencia (regla segura del mes):** `side_effects` manda — sin idempotencia
       garantizada NO hay reintento automático de pasos external (escala a humano con override
       registrado). El mecanismo fino es TU diseño en la fase de seeds (freeze §15.8).
-- [ ] **Model router (tu frontera con Dylan, §15.7):** `ModelPort` (Protocol) en `serving`
-      (cero red — AX3 por construcción) + `ModelServer` (adapter) en `protocols` bajo INV-6,
-      envolviendo LiteLLM `Router` (un solo `model_list`: cloud + Ollama) + backend **`replay`**
-      como tercera config de primera clase; eventos `model.call.requested/completed` con digests.
+- [ ] **Model router (tu frontera con Dylan, §15.7) [S-F]:** `ModelPort` (Protocol) en
+      `serving` (cero red — AX3 por construcción) + `ModelServer` (adapter) en `protocols` bajo
+      INV-6, envolviendo LiteLLM `Router` con un solo `model_list` — ahora **modelos por API
+      con keys** (ratificación verbal de Geovanni; Ollama = perfil archivado) + backend
+      **`replay`** con contrato de 5 puntos: **miss ⇒ `model.call.failed {replay_miss}`, JAMÁS
+      passthrough a red** — exigí ese fail-closed por escrito, es TU frontera del día D.
+- [ ] **[S-F] Las 3 reglas del run jerárquico (§13) — tu runtime produce los huérfanos si
+      faltan:** cascada de cancelación (`parent_cancelled` + rechazo de appends post-terminales + barrido con `cancel(ref)`), `●ClaimEmitted {claim_digest, sub_run_id,
+  sub_run_provenance_hash}` al raíz, herencia de `policy_digest` fail-closed.
+- [ ] **[S-F] Matriz `interaction × execution_profile` (§1):** se valida al CARGAR el
+      DistributionManifest — override a `remote-job` solo si `interaction: job`; `stream` ⇒
+      `NotImplementedError`. Es tu `Dispatcher` el que quedaba en contradicción.
+- [ ] **[S-F] Timing:** el walking skeleton vence ~20-jul, ANTES del cierre del 23 — ratificá
+      **§2/§3 PRIMERO** (es lo que el skeleton toca; incluye los streams de sistema
+      `system:<componente>` que tu primer `registry.loaded` necesita).
 - [ ] **Registry:** descubrimiento tolerante a fallos (excepción POR entry point), eventos
       `registry.loaded` / `registry.capability_load_failed` con `service:runtime`; versiones
       duplicadas se resuelven por pin del DistributionManifest (default determinista).
@@ -188,16 +223,21 @@ cierres de `infra/02` (cola) e `infra/03` (demo dual).
       no implementación de este mes — tu frontera con Dylan está marcada en trust/15 §4). Y la
       doctrina: "el keypair del certificado pertenece a la organización operadora, no al software".
 - [ ] **Cola de jobs:** Procrastinate sobre el MISMO Postgres del event store, **sin Redis**
-      (tu nota 02) — el compose del mes queda `postgres + api + worker + studio [+ ollama]`.
-- [ ] **Demo dual:** el local manda; **Fargate degradado a stretch** — solo se provisiona si el
-      local quedó verde el 27 (P1-10); si se activa, subnet pública+IP para el pull de ECR (lo
-      simple; VPC endpoints = forma de producción).
-- [ ] **Modelo de Ollama (decisión tuya con Steven):** chico ~3B cuantizado (default
-      `llama3.2:3b`), que quepa junto al statevector de ieee14 en la RAM del equipo del demo; se
-      mide en el dry-run 1. (El LLM está FUERA del camino crítico del demo — el modo `replay` es
-      la config del día D.)
-- [ ] **Calendario de dry-runs (27/29-jul)** — está como propuesta en tu nota 03; lo ratificás
-      vos con el equipo.
+      (tu nota 02 §1.4; la cadena exacta con worker está en tu nota 03 §1.3 y quedó congelada
+      en freeze §15.4 [S-F]) — el compose canónico del mes: `postgres + api + worker + studio`.
+- [ ] **Demo dual [S-F — tu ratificación verbal del 19-jul, confirmala]:** el local manda;
+      cloud degradado a stretch (**Fargate o EKS**) — solo se provisiona si el local quedó
+      verde el 27 (P1-10); si se activa, subnet pública+IP para el pull de ECR (lo simple;
+      VPC endpoints = forma de producción).
+- [ ] **Modelos [S-F — supersede la decisión "Ollama ~3B"]:** por tu ratificación verbal, los
+      modelos del mes van **por API con keys** (Anthropic + abiertos servidos por API; keys
+      como secret files — jamás en imagen ni repo); `ollama` queda como perfil opcional
+      archivado. El modo `replay` sigue siendo la config del día D (freeze §15.7 [S-F]) —
+      el air-gap se prueba igual.
+- [ ] **Calendario de dry-runs (27/29-jul)** — reconciliado con el freeze en tu nota 03 §1.5
+      (bloque [S-F]: cloud condicionado al verde del 27; dry-run 2 con `replay`; segunda
+      máquina del verify; reset de `pgdata`); lo ratificás vos con el equipo. **Además: decidí
+      YA qué laptop es el equipo del demo y registrá su RAM** (nota 03 §5.8).
 - [ ] **Tu reconciliación pendiente:** `infra/01` §R contra `invariants.md` (asignada a vos;
       los puntos detectados están listados ahí — ninguno toca contratos del engine este mes).
 - [ ] **Huecos Fase 2 con tu nombre (§15.8):** ciclo de vida del recinto air-gapped (cómo
@@ -209,9 +249,10 @@ el calendario.
 
 ## 6 · Los tres juntos (15 min — decisiones de EQUIPO)
 
-- [ ] **Posición operativa (§15.2, van a repetirla en todo Q&A):** "Chimera es análisis y
-      verificación fuera de línea; no se conecta a SCADA/EMS ni actúa sobre la red; su salida es
-      un expediente certificado que alimenta el procedimiento de aprobación vigente".
+- [ ] **Posición operativa (§15.2, van a repetirla en todo Q&A — memorizarla VERBATIM,
+      incluido "del cliente"):** "Chimera es análisis y verificación fuera de línea; no se
+      conecta a SCADA/EMS ni actúa sobre la red; su salida es un expediente certificado que
+      alimenta el procedimiento de aprobación vigente **del cliente**".
 - [ ] **Camino dorado + lista NO-va (§15.4):** qué se construye este mes y qué explícitamente
       NO (Fase 2 entera, MCP, LLM en vivo, emulador en vivo, IEEE-30 cuántico, corrector en vivo…).
       Es la decisión de scope del equipo — mejor objetarla hoy que descubrirla el 25.
