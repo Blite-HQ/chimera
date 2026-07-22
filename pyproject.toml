@@ -197,6 +197,30 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "AX3-b: model client SDKs are imported only by the protocols adapter (ModelServer)"
+type = "forbidden"
+# Ratificacion S-F + stress test pre-B: litellm/openai/anthropic are now real
+# engine deps (multi-provider router, kept per Steven+Dylan). AX3 guards
+# `serving` and INV-2 guards `verification`; this closes the gap so NO other
+# engine module can import a model SDK and bypass mediation. Only
+# `blite.protocols` (ModelServer, contract-freeze.md §15.7) may wrap the SDK.
+source_modules = [
+    "blite.gateway",
+    "blite.runtime",
+    "blite.authz",
+    "blite.guardrails",
+    "blite.verification",
+    "blite.certificate",
+    "blite.identity",
+    "blite.events",
+]
+forbidden_modules = [
+    "litellm",
+    "openai",
+    "anthropic",
+]
+
+[[tool.importlinter.contracts]]
 name = "Inv-E: egress is governed only by authorization, never by verification"
 type = "forbidden"
 # Base lógica Inv-E: "el egreso lo gobierna SOLO la autorización... ninguna
