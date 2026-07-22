@@ -109,3 +109,13 @@ def test_verification_policy_is_frozen() -> None:
     policy = VerificationPolicy.model_validate(raw)
     with pytest.raises(ValidationError):
         policy.policy_id = "tampered"
+
+
+@pytest.mark.parametrize("bad_legs", [0, -5, True])
+def test_required_legs_rejects_non_positive_and_bool(bad_legs: object) -> None:
+    # Stress final 2026-07-22: legs <= 0 son basura sin semantica y bool->int
+    # es coercion silenciosa — la matriz C3 => 2 patas exige enteros >= 1.
+    raw = yaml.safe_load(EXAMPLE_YAML.read_text(encoding="utf-8"))
+    raw["rules"][0]["required_legs"] = bad_legs
+    with pytest.raises(ValidationError):
+        VerificationPolicy.model_validate(raw)

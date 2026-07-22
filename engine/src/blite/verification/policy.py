@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from blite.verification.anchor import AnchorKind
 
@@ -43,8 +43,12 @@ class VerificationRule(BaseModel):
     match: MatchCondition
     criticality: Criticality
     min_level: AssuranceLevel
-    required_legs: int = 1
-    """Independent verification legs; counted per independence_group (C3 => 2)."""
+    required_legs: int = Field(default=1, ge=1, strict=True)
+    """Independent verification legs; counted per independence_group (C3 => 2).
+
+    ge=1: cero/negativos son basura sin semantica (stress final 2026-07-22);
+    strict evita la coercion bool->int de Python.
+    """
     required_anchors: tuple[AnchorKind, ...] = ()
     escalation: Literal["human"] | None = None
     on_inconclusive: Literal["mark", "escalate_human", "hold_run"]

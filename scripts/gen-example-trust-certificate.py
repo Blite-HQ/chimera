@@ -5,7 +5,7 @@ Fixture para el Studio (ficha B3): construye el Statement in-toto-style
 `apps/studio/src/spike/ieee14.ts::RUN_VERIFICATION`), lo canonicaliza con el
 mismo C(x) del anexo de canonicalizacion
 (docs/contract-freeze-anexo-canonicalizacion.md SS2 — subset RFC 8785/JCS,
-portado literal de scripts/gen-canonicalization-vectors.py), firma el PAE de
+importado del engine: blite.certificate.canonical — fuente unica), firma el PAE de
 DSSE con una llave Ed25519 efimera, y valida el roundtrip de la firma antes
 de escribir el envelope a apps/studio/src/fixtures/certificate.example.json.
 
@@ -25,57 +25,11 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-# --- C(x): canonicalizacion JCS-subset, portada de gen-canonicalization-vectors.py ---
-# (anexo SS2: keys ordenadas por code units UTF-16, separadores compactos,
-# escape minimo de strings, enteros sin punto decimal, floats formato
-# ECMAScript de valor mas corto, NaN/Infinity rechazados)
-
-
-def _format_number(value: int | float) -> str:
-    if isinstance(value, int):
-        return str(value)
-    if value != value or value in (float("inf"), float("-inf")):
-        raise ValueError("JCS cannot serialize NaN or Infinity")
-    if value.is_integer():
-        return str(int(value))
-    return repr(value)
-
-
-def _emit(value: Any, out: list[str]) -> None:
-    if value is None:
-        out.append("null")
-    elif isinstance(value, bool):
-        out.append("true" if value else "false")
-    elif isinstance(value, (int, float)):
-        out.append(_format_number(value))
-    elif isinstance(value, str):
-        out.append(json.dumps(value, ensure_ascii=False))
-    elif isinstance(value, (list, tuple)):
-        out.append("[")
-        for i, item in enumerate(value):
-            if i:
-                out.append(",")
-            _emit(item, out)
-        out.append("]")
-    elif isinstance(value, dict):
-        out.append("{")
-        keys = sorted(value, key=lambda k: k.encode("utf-16-be"))
-        for i, key in enumerate(keys):
-            if i:
-                out.append(",")
-            out.append(json.dumps(key, ensure_ascii=False))
-            out.append(":")
-            _emit(value[key], out)
-        out.append("}")
-    else:
-        raise TypeError(f"not JCS-serializable: {type(value).__name__}")
-
-
-def canonicalize(value: Any) -> bytes:
-    parts: list[str] = []
-    _emit(value, parts)
-    return "".join(parts).encode("utf-8")
-
+# --- C(x): fuente unica — el engine (stress final post-convergencia, 2026-07-22) ---
+# La copia embebida anterior usaba repr() crudo y divergia de
+# engine/certificate/canonical.py en la banda [1e-6, 1e-4) — exactamente el
+# drift "dos implementaciones honestas, hashes distintos" que el anexo prohibe.
+from blite.certificate.canonical import canonicalize
 
 # --- DSSE PAE (Pre-Authentication Encoding) — spec real, no el atajo de la nota 02 ---
 
