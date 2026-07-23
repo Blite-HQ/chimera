@@ -7,9 +7,12 @@
 
 - Paquete **`chimera_api`** (miembro `api/` del workspace). Consume el puerto
   `EventStore` (`blite.events`) — jamás la tabla cruda ni internals de
-  `gateway/runtime/serving`. La implementación Fase 1 del store es in-memory;
-  el swap a Postgres ocurre detrás del MISMO puerto (nota 01 §1.5) sin tocar
-  este paquete.
+  `gateway/runtime/serving`. El factory `create_event_store(dsn=None)` decide
+  la implementación: con DSN (argumento o **`CHIMERA_DATABASE_URL`**) entrega
+  el **`PostgresEventStore`** durable (`blite/events/postgres.py`, sobre la
+  tabla `events` de init_v2.sql — concurrencia optimista en el UNIQUE, mismas
+  reglas post-terminal de `rules.py`); sin DSN, el in-memory de Fase 1. Los
+  callers no cambian con el swap (nota 01 §1.5).
 - **`GET /health`** → `{"status": "ok"}` (healthcheck del compose).
 - **`GET /runs/{run_id}/events`** (SSE): cada mensaje lleva `id:` =
   `global_seq` · `event:` = `type` del evento · `data:` = JSON del evento
@@ -42,3 +45,7 @@ actor_id, occurred_at, step_id?, resumen, payload}`). Reanudación con
   SSE. **VERDE**.
 - `tests/unit/api/test_app_sse.py` — health, catch-up por `Last-Event-ID`,
   aislamiento por stream, cabeceras. **VERDE**.
+- `tests/integration/test_postgres_event_store.py` — contrato del puerto
+  contra Postgres real (schema efímero + init_v2.sql, gated por
+  `CHIMERA_TEST_DATABASE_URL`, mismo patrón del probe del esquema). **VERDE**
+  (corrida real 2026-07-22: 8/8 passed).

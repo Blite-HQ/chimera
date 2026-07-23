@@ -49,6 +49,10 @@ ignore = ["E501"]
 # assert is the normal pytest idiom — not a security concern in tests.
 "tests/**" = ["S101"]
 "*/tests/**" = ["S101"]
+# Las queries interpolan SOLO _COLUMNS (constante del módulo); todo parámetro
+# viaja por psycopg — no hay vector de inyección (noqa inline no aplica: el
+# diagnóstico cae en la línea que abre el f-string triple-quoted).
+"engine/src/blite/events/postgres.py" = ["S608"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -274,7 +278,7 @@ source_modules = [
     "blite.certificate",
     "blite.identity",
 ]
-forbidden_modules = ["blite.events.writer"]
+forbidden_modules = ["blite.events.writer", "blite.events.postgres"]
 
 [[tool.importlinter.contracts]]
 name = "INV-6: egress protocols sit above authz in the dependency hierarchy"
