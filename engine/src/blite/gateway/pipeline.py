@@ -17,10 +17,10 @@ orden posible), fail-closed en dos sentidos:
   el egreso jamás se alcanza si `authorization` rechazó, y la etapa de
   egreso ni siquiera SABE leer verdicts de verificación como entrada.
 
-El contrato del `ctx` NO está congelado (nota 01 §10): se usa un mapping
-genérico hasta que existan los tipos reales de la capa de confianza
-(Identity/AuthzDecision — carril de Dylan). Cada etapa retorna un ctx NUEVO
-(inmutabilidad por copia), nunca muta el recibido. INV-4: la etapa que
+El contrato del `ctx` quedó CONGELADO el 2026-07-22 (acuerdo con Dylan al
+publicar `AuthzDecision`): es el `GatewayContext` de `gateway/context.py` —
+modelo frozen sobre los tipos reales Identity/AuthzDecision. Cada etapa
+retorna un ctx NUEVO (`model_copy`), nunca muta el recibido. INV-4: la etapa que
 aplique un override emite su evento ELLA MISMA vía EventStore antes de
 aplicarlo (freeze §10) — el Pipeline no decide eso por su cuenta.
 
@@ -31,9 +31,11 @@ contrato fail-closed; el run falla y se re-invoca completo.
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
+
+from blite.gateway.context import GatewayContext
 
 STAGE_ORDER: tuple[str, ...] = (
     "identity",
@@ -46,9 +48,9 @@ STAGE_ORDER: tuple[str, ...] = (
     "egress",
 )
 
-# Forma NO congelada (nota 01 §10/§11): dict genérico hasta que los tipos
-# reales de confianza (Identity, AuthzDecision, policy pinneada) existan.
-Context = dict[str, Any]
+# Congelado 2026-07-22 con Dylan (Identity + AuthzDecision reales): el alias
+# se conserva para las firmas existentes; la forma vive en gateway/context.py.
+Context = GatewayContext
 
 
 class Rejection(BaseModel):
