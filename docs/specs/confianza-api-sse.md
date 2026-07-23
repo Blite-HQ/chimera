@@ -1,0 +1,44 @@
+# Spec — `chimera_api`: el API del walking skeleton + SSE (plano confianza)
+
+**Gobernada por:** freeze **§9** (contrato SSE Studio↔Engine) + trust/07 §1.2–1.3 ·
+**Dueño:** Dylan · **Estado:** VERDE (2026-07-22)
+
+## Contrato
+
+- Paquete **`chimera_api`** (miembro `api/` del workspace). Consume el puerto
+  `EventStore` (`blite.events`) — jamás la tabla cruda ni internals de
+  `gateway/runtime/serving`. La implementación Fase 1 del store es in-memory;
+  el swap a Postgres ocurre detrás del MISMO puerto (nota 01 §1.5) sin tocar
+  este paquete.
+- **`GET /health`** → `{"status": "ok"}` (healthcheck del compose).
+- **`GET /runs/{run_id}/events`** (SSE): cada mensaje lleva `id:` =
+  `global_seq` · `event:` = `type` del evento · `data:` = JSON del evento
+  **proyectado para UI** (subset del Event: sin hashes; `{global_seq, type,
+actor_id, occurred_at, step_id?, resumen, payload}`). Reanudación con
+  `Last-Event-ID: <global_seq>` → catch-up desde el cursor y luego tail por
+  polling del puerto (notify-then-catchup llega con el store PG). El stream
+  filtra por `run_id`: el Studio nunca ve eventos de otros streams.
+- **Regla de forma (freeze §9):** ningún payload de resultado sin su bloque
+  `verification` — la proyección NO recorta el payload: el bloque viaja
+  intacto tal como el emisor lo estampó. `resumen` sale de
+  `payload["resumen"]` si el emisor lo trae; si no, degrada al `type`
+  (convención UI adaptable, nota 18 §5 — no es letra del wire).
+- Cabeceras anti-buffering: `Cache-Control: no-cache` +
+  `X-Accel-Buffering: no` (la pata `proxy_buffering off` del reverse proxy
+  vive en el compose — frontera Geovanni).
+
+## Fronteras (qué NO decide esta spec)
+
+- **Autenticación**: JWT en cookie ya está DECIDIDO (freeze §9 P1-9); su
+  implementación es la sesión de seguridad del API (carril Steven +
+  auditoría) — este paquete no inventa auth bajo presión.
+- **Compose/reverse proxy** (Geovanni): perfiles, healthchecks, proxy.
+- **Emisores de eventos** (Steven): qué estampa cada payload; esta spec solo
+  garantiza que el API no lo degrada.
+
+## Tests semilla
+
+- `tests/unit/api/test_projection.py` — proyección + forma exacta del frame
+  SSE. **VERDE**.
+- `tests/unit/api/test_app_sse.py` — health, catch-up por `Last-Event-ID`,
+  aislamiento por stream, cabeceras. **VERDE**.

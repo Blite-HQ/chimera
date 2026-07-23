@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 
 [tool.uv.workspace]
-members = ["sdk", "engine", "capabilities/*"]
+members = ["sdk", "engine", "api", "capabilities/*"]
 
 [tool.uv.sources]
 blite-capability = { workspace = true }
@@ -84,6 +84,7 @@ addopts = "--cov --cov-report=term-missing --cov-fail-under=30"
 source = [
     "blite_capability",
     "blite",
+    "chimera_api",
     "blite_cap_solvers",
     "blite_cap_graphs",
     "blite_cap_numeric",
@@ -112,6 +113,7 @@ fail_under = 30
 root_packages = [
     "blite",
     "blite_capability",
+    "chimera_api",
     "blite_cap_solvers",
     "blite_cap_graphs",
     "blite_cap_numeric",
@@ -149,6 +151,26 @@ source_modules = [
     "blite_cap_quantum",
 ]
 forbidden_modules = ["blite"]
+
+[[tool.importlinter.contracts]]
+name = "S-G: api consumes engine ports, never capability packages"
+type = "forbidden"
+source_modules = ["chimera_api"]
+forbidden_modules = [
+    "blite_cap_solvers",
+    "blite_cap_graphs",
+    "blite_cap_numeric",
+    "blite_cap_sim",
+    "blite_cap_ml",
+    "blite_cap_smt",
+    "blite_cap_quantum",
+]
+
+[[tool.importlinter.contracts]]
+name = "S-G: engine and capabilities never import the api"
+type = "forbidden"
+source_modules = ["blite", "blite_capability"]
+forbidden_modules = ["chimera_api"]
 
 [[tool.importlinter.contracts]]
 name = "INV-2: verification never touches model serving"
