@@ -22,11 +22,21 @@ Determinism = Literal["deterministic", "nondeterministic"]
 
 @runtime_checkable
 class Verifier(Protocol):
-    """Adapter de ancla dura: contrasta un claim contra un oráculo no-modelo."""
+    """Adapter de ancla dura: contrasta un claim contra un oráculo no-modelo.
 
-    verifier_class: VerifierClass
-    anchor_kind: AnchorKind
-    determinism: Determinism
+    Los miembros son properties READ-ONLY: un adapter congelado (frozen
+    dataclass) debe poder conformar — exigir atributos escribibles
+    contradiría la inmutabilidad que el resto del plano impone.
+    """
+
+    @property
+    def verifier_class(self) -> VerifierClass: ...
+
+    @property
+    def anchor_kind(self) -> AnchorKind: ...
+
+    @property
+    def determinism(self) -> Determinism: ...
 
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         """Verifica `claim` y devuelve una constancia — un error de proceso

@@ -27,7 +27,7 @@ import hashlib
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from importlib import metadata
-from typing import Any, ClassVar
+from typing import Any
 
 from ortools.sat.python import cp_model
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -35,6 +35,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from blite.certificate.canonical import JSONValue, canonicalize
 from blite.verification.anchor import AnchorKind
 from blite.verification.attestation import Attestation, Verdict, VerifierClass
+from blite.verification.claim import claim_view_digest
 from blite.verification.context import InvocationContext
 from blite.verification.evidence import (
     CpSatStatus,
@@ -42,8 +43,6 @@ from blite.verification.evidence import (
     FormalExactPredicate,
 )
 from blite.verification.verifier import Determinism
-
-CLAIM_PREFIX = b"blite/claim/v1\n"
 
 _RANDOM_SEED = 1
 _DEFAULT_MAX_DETERMINISTIC_TIME = 60.0
@@ -142,13 +141,8 @@ def _default_binary_digest() -> str:
 
 
 def claim_digest_of(claim: OptimalityClaim) -> str:
-    """`SHA-256("blite/claim/v1\\n" ‖ C({canonical_statement, scope}))` —
-    la misma vista que recomputa el punto 6 del bundle_check."""
-    view: dict[str, JSONValue] = {
-        "canonical_statement": claim.canonical_statement,
-        "scope": claim.scope,
-    }
-    return hashlib.sha256(CLAIM_PREFIX + canonicalize(view)).hexdigest()
+    """Delegación al helper común (§7) — un solo lugar computa la vista."""
+    return claim_view_digest(claim.canonical_statement, claim.scope)
 
 
 @dataclass(frozen=True)
@@ -161,9 +155,11 @@ class ExactSolverVerifier:
     verifier_binary_digest: str = field(default_factory=_default_binary_digest)
     max_deterministic_time: float = _DEFAULT_MAX_DETERMINISTIC_TIME
 
-    verifier_class: ClassVar[VerifierClass] = "formal_exact"
-    anchor_kind: ClassVar[AnchorKind] = "solver"
-    determinism: ClassVar[Determinism] = "deterministic"
+    # Campos de instancia (init=False) y no ClassVar: el Protocol `Verifier`
+    # los declara como atributos de instancia — pyright exige que coincidan.
+    verifier_class: VerifierClass = field(default="formal_exact", init=False)
+    anchor_kind: AnchorKind = field(default="solver", init=False)
+    determinism: Determinism = field(default="deterministic", init=False)
 
     @property
     def _params(self) -> dict[str, JSONValue]:

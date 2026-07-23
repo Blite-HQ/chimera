@@ -13,11 +13,28 @@ del YAML), y el piso por flags SOLO SUBE (PR2/PR4 — `world` ⇒ C2,
 
 from __future__ import annotations
 
+import hashlib
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
+from blite.certificate.canonical import JSONValue, canonicalize
 from blite.verification.policy import Criticality, effective_criticality
 
 _SHA256_HEX = r"^[0-9a-f]{64}$"
+
+CLAIM_PREFIX = b"blite/claim/v1\n"
+
+
+def claim_view_digest(canonical_statement: str, scope: dict[str, Any]) -> str:
+    """`SHA-256("blite/claim/v1\\n" ‖ C({canonical_statement, scope}))` — la
+    MISMA vista que recomputa el punto 6 del bundle_check (§7): el binding
+    claim↔conclusión↔attestation depende de que todos usen este helper."""
+    view: dict[str, JSONValue] = {
+        "canonical_statement": canonical_statement,
+        "scope": scope,
+    }
+    return hashlib.sha256(CLAIM_PREFIX + canonicalize(view)).hexdigest()
 
 
 class ClaimEmittedPayload(BaseModel):

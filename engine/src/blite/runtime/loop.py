@@ -28,6 +28,7 @@ ctx del pipeline se congele con Dylan.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -46,6 +47,31 @@ _JSON_MEDIA_TYPE = "application/json"
 _DEFAULT_PROFILE = "in-process"
 
 StepStatus = Literal["pending", "running", "completed", "failed"]
+
+
+AppendEvent = Callable[[str, dict[str, Any]], None]
+"""Firma con la que un delegate agrega eventos al rastro (type, payload)."""
+
+
+class PostInvokeContext(BaseModel):
+    """Lo que el loop le entrega al delegate post-invoke — datos, no poderes.
+
+    Decisión de carril (avisada, no congelada): el loop NO verifica (INV-2) —
+    ofrece esta costura ANTES del terminal para que un delegado (p.ej. el
+    orquestador de `blite.verification`) emita sus eventos DENTRO del corte
+    de procedencia. Si el delegate levanta, el run falla fail-loud con el
+    tipo de la excepción como `error_kind` (misma convención del registry).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    run_id: str
+    domain_id: str
+    step_id: str
+    output_digest: str
+
+
+PostInvokeDelegate = Callable[[PostInvokeContext, AppendEvent], None]
 
 
 class RunStep(BaseModel):
@@ -118,6 +144,7 @@ def execute_run(
     capability_id: str,
     inputs: dict[str, Any],
     parent_run_id: str | None = None,
+    post_invoke: PostInvokeDelegate | None = None,
 ) -> RunRow:
     """Ejecuta el pipeline fijo de Fase 1 y retorna la fila proyectada.
 
@@ -238,6 +265,23 @@ def execute_run(
             update={"status": "completed", "output_digest": output_digest}
         ),
     )
+
+    # Costura post-invoke, ANTES del terminal: lo que el delegate emita entra
+    # al corte de procedencia. El loop sigue sin verificar (INV-2) — delega.
+    if post_invoke is not None:
+        try:
+            post_invoke(
+                PostInvokeContext(
+                    run_id=run_id,
+                    domain_id=domain_id,
+                    step_id=invoke_step.step_id,
+                    output_digest=output_digest,
+                ),
+                recorder.append,
+            )
+        except Exception as exc:  # noqa: BLE001 — frontera delegada: el fallo se registra como eventos, jamás tumba el runtime
+            recorder.fail_run(type(exc).__name__)
+            return _projected_row()
 
     recorder.append("run.completed", {"output_digest": output_digest})
     return _projected_row()
