@@ -29,6 +29,15 @@ _MANIFEST = CapabilityManifest(
                 "enum": ["aer_simulator", "runtime"],
                 "default": "aer_simulator",
             },
+            "seed": {
+                "type": "integer",
+                "default": 1,
+                "description": "Sampler seed for reproducible runs",
+            },
+            "reference_optimum": {
+                "type": "number",
+                "description": "Known optimum used to report approximation_ratio",
+            },
         },
         "required": ["matrix"],
     },
@@ -67,6 +76,18 @@ class QaoaSolver:
             ) from exc
 
     def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        raise NotImplementedError(
-            "QaoaSolver: implementation not yet provided. Install blite-cap-quantum[qaoa]."
+        from blite_cap_quantum.qaoa import solve_qaoa
+
+        backend = inputs.get("backend", "aer_simulator")
+        if backend != "aer_simulator":
+            msg = (
+                f"QaoaSolver: backend {backend!r} no implementado este mes — "
+                "use 'aer_simulator' (freeze: en vivo solo Aer+seed)"
+            )
+            raise ValueError(msg)
+        return solve_qaoa(
+            inputs.get("matrix"),
+            layers=inputs.get("layers", 2),
+            seed=inputs.get("seed", 1),
+            reference_optimum=inputs.get("reference_optimum"),
         )
