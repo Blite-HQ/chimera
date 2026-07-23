@@ -3,9 +3,9 @@
  *
  * Side panel (coupled, not a modal — Langfuse §1.1) showing a single
  * step's capability_id + input/output digests, and one independently
- * collapsible Accordion block per Attestation. The verdict+rung badge is
- * always visible on the trigger (nota 07 §1.3 "nivel de confianza siempre
- * visible" — a result can never render without its badge); the raw
+ * collapsible Accordion block per Attestation. The verdict + clase·AL badge
+ * is always visible on the trigger (nota 07 §1.3 "nivel de confianza
+ * siempre visible" — a result can never render without its badge); the raw
  * `evidence` object is only shown once expanded.
  */
 
@@ -17,8 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
-import { RungBadge } from '@/components/verification/RungBadge';
-import { rungLabel } from '@/components/verification/rungs';
+import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
 
 import type { StepDetail } from './types';
 
@@ -69,10 +68,10 @@ export default function StepInspector({ step }: StepInspectorProps): React.React
           >
             <AccordionTrigger>
               <div className="flex flex-1 flex-wrap items-center gap-2 pr-2">
-                <RungBadge
-                  rung={attestation.rung}
+                <AssuranceBadge
+                  level={attestation.level}
                   verdict={attestation.verdict}
-                  detail={rungLabel(attestation.rung, attestation.anchorKind)}
+                  verifierClass={attestation.verifierClass}
                 />
                 <span className="font-mono text-xs text-muted-foreground">
                   {attestation.verifierId}

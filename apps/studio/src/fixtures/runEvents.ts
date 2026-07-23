@@ -2,10 +2,10 @@
  * Fixture — full projected event stream for one IEEE-14 partition run.
  *
  * Simulates the SSE payload nota 07 §1.3 ("Run en vivo") would deliver:
- * run.started → solver capability job → verification (rung 1, solver) →
- * per-island power-flow capability jobs → verification (rung 2, execution,
- * ×2 islands) → dataset-match capability job → verification (rung 3,
- * dataset) → run.completed. Verdicts/rungs/summaries mirror
+ * run.started → solver capability job → verification (formal_exact) →
+ * per-island power-flow capability jobs → verification (execution, ×2
+ * islands) → dataset-match capability job → verification (ground_truth)
+ * → run.completed. Verdicts/clases/AL/summaries mirror
  * spike/ieee14.ts (RUN_VERIFICATION, PARTITION) so this reads as the SAME
  * run, not unrelated demo data. Static fixture only — no network, no
  * backend (this ficha is 100% frontend on fixtures).
@@ -43,7 +43,7 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     actorId: 'service:verifier',
     occurredAt: '2026-07-07T17:59:51.500Z',
     stepId: 'step-solver',
-    resumen: 'Verificación escalón 1 (solver): corte óptimo confirmado',
+    resumen: 'Verificación formal exacta (AL3): corte óptimo confirmado',
     verdict: 'pass'
   },
   {
@@ -68,7 +68,7 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     actorId: 'service:verifier',
     occurredAt: '2026-07-07T17:59:53.400Z',
     stepId: 'step-execution-a',
-    resumen: 'Verificación escalón 2 (ejecución): Isla A factible',
+    resumen: 'Verificación por ejecución (AL3): Isla A factible',
     verdict: 'pass'
   },
   {
@@ -93,7 +93,7 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     actorId: 'service:verifier',
     occurredAt: '2026-07-07T17:59:55.600Z',
     stepId: 'step-execution-b',
-    resumen: 'Verificación escalón 2 (ejecución): Isla B factible',
+    resumen: 'Verificación por ejecución (AL3): Isla B factible',
     verdict: 'pass'
   },
   {
@@ -118,7 +118,7 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     actorId: 'service:verifier',
     occurredAt: '2026-07-07T17:59:58.100Z',
     stepId: 'step-dataset',
-    resumen: 'Verificación escalón 3 (dataset): coincide con verdad conocida',
+    resumen: 'Verificación contra verdad conocida (AL3): coincide con el corpus',
     verdict: 'pass'
   },
   {
@@ -126,6 +126,6 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     type: 'run.completed',
     actorId: 'service:runtime',
     occurredAt: '2026-07-07T17:59:59.900Z',
-    resumen: 'Run completado — certificado emitido, escalón agregado 3'
+    resumen: 'Run completado — certificado emitido, nivel titular AL3'
   }
 ];

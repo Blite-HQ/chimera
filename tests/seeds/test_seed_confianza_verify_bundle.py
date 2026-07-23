@@ -3,7 +3,8 @@
 freeze §7 [S-F/T11 + stress-final]: seed NO recortable — EL beat
 anti-ceremonia ("auditable sin confiar en nosotros"). El esqueleto del script
 existe con los 7 puntos fail-closed; verde cuando los 7 verifiquen un bundle
-real generado por `scripts/gen-example-trust-certificate.py`.
+real generado por `scripts/gen-example-bundle.py` (supersede al generador
+`gen-example-trust-certificate.py` — reobra ET-9).
 """
 
 from __future__ import annotations

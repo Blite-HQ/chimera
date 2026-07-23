@@ -6,8 +6,8 @@
  * event stream, since this is a static frontend fixture, not the engine).
  * Evidence shapes follow nota 18 §2.2 (method-dependent Record<string,
  * unknown>): differential for the solver, power-flow metrics for
- * execution, corpus match for dataset — same verifiers/rungs as
- * spike/ieee14.ts.
+ * execution, corpus match for dataset — same verifiers/clases+AL as
+ * spike/ieee14.ts (freeze §4).
  */
 
 import type { StepDetail } from '../views/types';
@@ -22,7 +22,8 @@ export const STEP_EVIDENCE: Readonly<Record<string, StepDetail>> = {
       {
         verifierId: 'ortools-cpsat',
         anchorKind: 'solver',
-        rung: 1,
+        verifierClass: 'formal_exact',
+        level: 'AL3',
         verdict: 'pass',
         method: 'cpsat-differential',
         summary: 'Corte = óptimo exacto (CP-SAT, status OPTIMAL)',
@@ -41,7 +42,8 @@ export const STEP_EVIDENCE: Readonly<Record<string, StepDetail>> = {
       {
         verifierId: 'pandapower-powerflow',
         anchorKind: 'execution',
-        rung: 2,
+        verifierClass: 'execution',
+        level: 'AL3',
         verdict: 'pass',
         method: 'pandapower-powerflow',
         summary: 'Flujo de potencia converge en Isla A · balance dentro de límites',
@@ -58,7 +60,8 @@ export const STEP_EVIDENCE: Readonly<Record<string, StepDetail>> = {
       {
         verifierId: 'pandapower-powerflow',
         anchorKind: 'execution',
-        rung: 2,
+        verifierClass: 'execution',
+        level: 'AL3',
         verdict: 'pass',
         method: 'pandapower-powerflow',
         summary: 'Flujo de potencia converge en Isla B · balance dentro de límites',
@@ -75,7 +78,8 @@ export const STEP_EVIDENCE: Readonly<Record<string, StepDetail>> = {
       {
         verifierId: 'ieee14-known-optimum',
         anchorKind: 'dataset',
-        rung: 3,
+        verifierClass: 'ground_truth',
+        level: 'AL3',
         verdict: 'pass',
         method: 'corpus-match',
         summary: 'Coincide con la partición óptima conocida del corpus IEEE-14',

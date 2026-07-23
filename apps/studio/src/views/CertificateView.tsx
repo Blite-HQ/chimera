@@ -1,9 +1,13 @@
 /**
- * CertificateView — nota 18 §2.3.
+ * CertificateView — nota 18 §2.3 + freeze §7 (reobra ET-9, clase+AL).
  *
  * Three-tier progressive disclosure, ported from `gh attestation verify`
- * (nota 18 §1.3): (1) one-line verdict, (2) compact identity table, (3)
- * collapsed raw envelope behind a toggle + a client-side-only download.
+ * (nota 18 §1.3): (1) verdict line que ABRE CON EL ALCANCE — la conclusión
+ * canónica + su scope, con clase+AL como badge, jamás "escalón agregado"
+ * como titular (P0-2: un nivel sin alcance es pasivo legal); (2) compact
+ * table (política, assumptions, unanchored_steps, valid_as_of + revocación
+ * honesta); (3) collapsed raw envelope behind a toggle + a client-side-only
+ * download.
  *
  * Explicitly does NOT use transparency-log/OIDC language (no "logged at
  * index N", no "signed by workflow X via Sigstore") — this certificate is
@@ -18,26 +22,43 @@ import React, { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { RungBadge } from '@/components/verification/RungBadge';
+import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
+import type { VerdictTone } from '@/components/verification/AssuranceScale';
 
-import type { DsseEnvelope } from './types';
+import type { ConclusionVerdict, DsseEnvelope } from './types';
 
 export interface CertificateViewProps {
   readonly envelope: DsseEnvelope;
   readonly onDownload: () => void; // ofrece el JSON crudo como archivo — sin egress nuevo (INV-1)
 }
 
+/** verified→pass, refuted→fail (freeze §7 punto 7 del checklist). */
+const CONCLUSION_TONES: Readonly<Record<ConclusionVerdict, VerdictTone>> = {
+  verified: 'pass',
+  refuted: 'fail',
+  inconclusive: 'inconclusive',
+  not_required_declared: 'neutral'
+};
+
+function shortDigest(digest: string): string {
+  return `${digest.slice(0, 12)}…`;
+}
+
 function IdentityRow({
   label,
-  value
+  value,
+  title
 }: {
   readonly label: string;
   readonly value: string;
+  readonly title?: string;
 }): React.ReactElement {
   return (
     <div className="flex items-center justify-between gap-4 py-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-mono text-foreground">{value}</span>
+      <span className="font-mono text-foreground" title={title}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -52,10 +73,47 @@ export default function CertificateView({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Nivel 1 — veredicto en una línea */}
+      {/* Nivel 1 — la conclusión ABRE con el alcance (trust/18 §2.3, P0-2) */}
+      {predicate.conclusions.map(conclusion => {
+        const bound = predicate.attestations.filter(
+          attestation => attestation.claimDigest === conclusion.claimDigest
+        );
+        return (
+          <div key={conclusion.claimDigest} className="rounded-lg border bg-card p-4">
+            <p className="font-display text-base font-medium tracking-tight text-foreground">
+              {conclusion.canonicalStatement}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              alcance:{' '}
+              {Object.entries(conclusion.scope)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(' · ')}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {bound.length > 0 ? (
+                bound.map(attestation => (
+                  <AssuranceBadge
+                    key={`${attestation.verifierId}-${attestation.independenceGroup}`}
+                    level={attestation.level}
+                    verdict={attestation.verdict}
+                    verifierClass={attestation.verifierClass}
+                  />
+                ))
+              ) : (
+                <AssuranceBadge
+                  level={conclusion.level}
+                  verdict={CONCLUSION_TONES[conclusion.verdict]}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })}
+
       <div className="rounded-lg border bg-card p-4">
-        <p className="font-display text-base font-medium tracking-tight text-foreground">
-          Certificado · escalón agregado {predicate.aggregateRung} · política {predicate.policyId}
+        <p className="text-sm text-foreground">
+          Nivel titular <span className="font-mono font-medium">{predicate.titularLevel}</span> — el
+          mínimo del camino crítico, jamás promedio · {predicate.unanchoredSteps} pasos sin anclar
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           Verificado contra la llave local <code className="font-mono">{keyid}</code> — sin log
@@ -63,18 +121,45 @@ export default function CertificateView({
         </p>
       </div>
 
-      {/* Nivel 2 — tabla compacta */}
+      {/* Nivel 2 — tabla compacta (§2.3) */}
       <div className="rounded-lg border bg-card p-4">
         <IdentityRow label="run_id" value={predicate.runId} />
         <Separator />
+        <IdentityRow label="actor" value={predicate.actor} />
+        <Separator />
         <IdentityRow
-          label="actor"
-          value={`${predicate.actor.id} · ${predicate.actor.kind} · ${predicate.actor.domainId}`}
+          label="política"
+          value={shortDigest(predicate.policyDigest)}
+          title={predicate.policyDigest}
         />
+        <Separator />
+        <div className="flex flex-col gap-1 py-2 text-sm">
+          <span className="text-muted-foreground">assumptions</span>
+          <ul className="flex flex-col gap-1">
+            {predicate.assumptions.map(assumption => (
+              <li key={assumption.statement} className="text-foreground">
+                {assumption.statement}
+                {assumption.ref && (
+                  <span
+                    className="ml-1 font-mono text-xs text-muted-foreground"
+                    title={assumption.ref.digest}
+                  >
+                    ({assumption.ref.name} · {shortDigest(assumption.ref.digest)})
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
         <Separator />
         <IdentityRow label="unanchored_steps" value={String(predicate.unanchoredSteps)} />
         <Separator />
-        <IdentityRow label="issued_at" value={predicate.issuedAt} />
+        <IdentityRow label="valid_as_of" value={predicate.validAsOf} />
+        <Separator />
+        <IdentityRow
+          label="revocación"
+          value={`${predicate.revocation} — sin mecanismo de revocación en Fase 1`}
+        />
       </div>
 
       {/* Nivel 3 — envelope crudo colapsado + descarga */}
@@ -96,7 +181,7 @@ export default function CertificateView({
                 Payload (Statement decodificado)
               </p>
               <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs text-foreground">
-                {JSON.stringify(envelope.payload, null, 2)}
+                {JSON.stringify(envelope.rawPayload, null, 2)}
               </pre>
             </div>
             <div>
@@ -109,17 +194,6 @@ export default function CertificateView({
             </div>
           </div>
         )}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {predicate.attestations.map((attestation, index) => (
-          <RungBadge
-            key={`${attestation.verifierId}-${index}`}
-            rung={attestation.rung}
-            verdict={attestation.verdict}
-            detail={attestation.verifierId}
-          />
-        ))}
       </div>
     </div>
   );

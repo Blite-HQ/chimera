@@ -73,7 +73,7 @@ regla air-gap §4.9 del plan):
 | ------------------------ | -------------------------------------------- | --------------------------------------------------------------------------------------- |
 | Display (`font-display`) | Plus Jakarta Sans Variable                   | h1/h2, wordmark; **peso máx 500** (`font-medium`) + `tracking-tight` — disciplina Blite |
 | UI/Cuerpo (`font-sans`)  | Inter Variable                               | todo lo demás                                                                           |
-| Datos (`font-mono`)      | stack mono por defecto de Tailwind (sistema) | digests, IDs, timestamps, números de escalón, JSON                                      |
+| Datos (`font-mono`)      | stack mono por defecto de Tailwind (sistema) | digests, IDs, timestamps, niveles AL, JSON                                              |
 
 Regla: **todo valor verificable va en mono** — los digests son material de primera
 clase, se muestran contenidos, con copy, nunca como pared.
@@ -137,31 +137,37 @@ canvas del grafo `h-128`.
 **Foco:** los componentes shadcn traen su propio ring; para interactivos custom se usa
 la utilidad `.focus-ring` (`ring-2 ring-ring offset-2`, definida en `index.css`).
 
-## 4 · La escalera de verificación (elemento de firma)
+## 4 · Clase + AL — la escala de verificación (elemento de firma)
 
-Los escalones (rungs) 1–7 son el concepto más propio del producto y su marca visual.
-Semántica (de `components/verification/rungs.ts`, módulo único):
+> **Reobra ET-9 (2026-07-22):** la escalera 1–7 quedó SUPERSEDIDA por los tres ejes
+> del freeze §4 — la **clase** dice el método, el **AL (AL0–AL4)** dice la fuerza,
+> la **criticidad (C0–C3, Policy)** dice cuánta fuerza se exige.
 
-| Rung | Etiqueta        | Fuerza del ancla                  |
-| ---- | --------------- | --------------------------------- |
-| 1    | óptimo exacto   | la más fuerte (prueba matemática) |
-| 2    | ejecución       | ↓                                 |
-| 3    | verdad conocida | ↓                                 |
-| 4    | propiedad       | ↓                                 |
-| 5    | consenso        | ↓                                 |
-| 6    | detección       | ↓                                 |
-| 7    | humano          | la más débil (juicio humano)      |
+Semántica (de `components/verification/assurance.ts`, módulo único):
 
-**Menor número = ancla más fuerte.** El nivel agregado de un run es el escalón **más
-débil** (número más alto) de su camino crítico.
+| Clase decisoria         | Etiqueta        | Techo de AL                               |
+| ----------------------- | --------------- | ----------------------------------------- |
+| `formal_exact`          | formal exacto   | AL4 con checker independiente; AL3 sin él |
+| `execution`             | ejecución       | AL3                                       |
+| `ground_truth`          | verdad conocida | AL3                                       |
+| `property_rule`         | propiedad       | AL2                                       |
+| `consensus_replication` | consenso        | AL2                                       |
+| `human_expert`          | humano          | AL3 condicionado                          |
 
-- **`<RungLadder>`**: siete barras alineadas por la base, altura descendente
-  izquierda→derecha (rung 1 la más alta). La barra alcanzada se pinta con el color del
-  veredicto (nivel status); las demás en tinta al 25%. `role="img"` +
-  `aria-label="escalón N de 7 — {etiqueta}"`. Tamaños `sm` (badges) y `md`.
-- **`<RungBadge>`**: composición canónica glifo + `escalón N · etiqueta` (número en
-  mono); `detail` reemplaza la etiqueta cuando el contexto aporta otra (p. ej.
-  `verifierId`). Es la única forma de decir "confianza" en toda la plataforma.
+Sin clase `"model"` **por construcción** (INV-2/PR2): lo probabilístico informa
+(Signal), jamás verifica. **Mayor AL = más fuerza.** El nivel **titular** de un run es
+el **mínimo** del camino crítico — jamás promedio (freeze §7).
+
+- **`<AssuranceScale>`**: cinco barras alineadas por la base, altura ascendente
+  izquierda→derecha (AL4 la más alta). La barra del nivel alcanzado se pinta con el
+  color del veredicto (nivel status); las demás en tinta al 25%. `role="img"` +
+  `aria-label="nivel AL{n} de AL4"`. Tamaños `sm` (badges) y `md`.
+- **`<AssuranceBadge>`**: composición canónica glifo + `{clase} · AL{n}` (nivel en
+  mono — trust/18 §2.3: clase+AL como badge, jamás como titular); `detail` reemplaza
+  la etiqueta de clase cuando el contexto aporta otra (p. ej. `verifierId`). Es la
+  única forma de decir "confianza" en toda la plataforma.
+- El logomark (§7) conserva su geometría F1 (tres barras): es marca, no dato — no
+  sigue la dirección semántica del glifo.
 
 ## 5 · Tokens semánticos (contrato anti-retrabajo)
 
@@ -199,9 +205,9 @@ Reglas de consumo:
 - **Topbar** (única navegación): logomark + wordmark "Chimera **STUDIO**" (display 500 +
   mono apagado), tabs variante línea con subrayado turquesa en la activa, toggle de tema
   a la derecha. El contenido ocupa todo el ancho bajo el topbar.
-- **Logomark:** la escalera reducida a tres barras descendentes en turquesa
+- **Logomark:** el motivo de barras de la escala reducido a tres, en turquesa
   (`--color-brand` en la UI; `#2DD4BF` sobre `#171717` en el favicon). La marca ES el
-  elemento de firma.
+  elemento de firma; su geometría es fija (F1) y no sigue la dirección del glifo (§4).
 
 ## 8 · Voz
 
@@ -219,6 +225,13 @@ completa en F2/F7).
 ---
 
 ## Registro de decisiones
+
+- **2026-07-22 (ET-9):** la escalera de rungs 1–7 (v1) queda supersedida por clase+AL
+  (freeze §4) — §4 reescrito: `AssuranceScale` (5 barras ascendentes, mayor = más
+  fuerza) + `AssuranceBadge` (`{clase} · AL{n}`), módulo único `assurance.ts`. El
+  logomark conserva la geometría F1. El fixture del certificado lo emite ahora
+  `scripts/gen-example-bundle.py` (bundle auto-validado 7/7; supersede a
+  `gen-example-trust-certificate.py`).
 
 - **2026-07-08 (v3):** investigación profunda del código de la landing → §3b (escalas,
   ritmo, controles, elevación). Se vendorea el Button de la landing (alturas 32/40/48)

@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Genera `scripts/example-bundle.json` — el Bundle de ejemplo del checklist.
+"""Genera el Bundle de ejemplo del checklist + el fixture del Studio.
 
-Vocabulario NUEVO (clase + AL + criticidad — freeze §4): a diferencia del
-fixture del Studio (`gen-example-trust-certificate.py`, aún en `rung`, migra
-en la reobra ET-9), este bundle habla la letra vigente. Es auto-validante:
+Vocabulario vigente (clase + AL + criticidad — freeze §4). Es auto-validante:
 corre los 7 puntos de `blite.certificate.bundle_check` y solo escribe si dan
 7/7 — el generador no puede producir un fixture que su propio verificador
-rechace.
+rechace. Escribe DOS salidas desde el MISMO bundle (una sola fuente):
+
+- `scripts/example-bundle.json` — el Bundle completo (checklist/verify-bundle).
+- `apps/studio/src/fixtures/certificate.example.json` — solo el envelope DSSE
+  (lo que `CertificateView` consume, nota 18 §2.3). Supersede a
+  `gen-example-trust-certificate.py` (reobra ET-9, 2026-07-22: el fixture
+  viejo hablaba `rung` + política muerta @0.1.0).
 
 La llave Ed25519 es efímera y solo-demo (jamás se persiste); la pública viaja
 en el bundle SOLO como comodidad del fixture — en producción llega por el
@@ -37,6 +41,9 @@ POLICY_PATH = (
     REPO / "distributions" / "chimera" / "policies" / "verification-default.yaml"
 )
 OUTPUT_PATH = REPO / "scripts" / "example-bundle.json"
+STUDIO_FIXTURE_PATH = (
+    REPO / "apps" / "studio" / "src" / "fixtures" / "certificate.example.json"
+)
 
 PAYLOAD_TYPE = "application/vnd.blite.trust-certificate+json"
 RUN_ID = "8f2c1a9b"
@@ -254,6 +261,13 @@ def main() -> int:
 
     OUTPUT_PATH.write_text(json.dumps(bundle, indent=2) + "\n", encoding="utf-8")
     print(f"\nBundle escrito en {OUTPUT_PATH} (7/7)")
+
+    # Fixture del Studio: SOLO el envelope (CertificateView consume DsseEnvelope,
+    # nota 18 §2.3) — mismo bundle ya validado 7/7, jamás una segunda fuente.
+    STUDIO_FIXTURE_PATH.write_text(
+        json.dumps(bundle["envelope"], indent=2) + "\n", encoding="utf-8"
+    )
+    print(f"Fixture del Studio escrito en {STUDIO_FIXTURE_PATH}")
     return 0
 
 

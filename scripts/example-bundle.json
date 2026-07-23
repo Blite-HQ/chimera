@@ -5,11 +5,11 @@
     "signatures": [
       {
         "keyid": "certificate:v1-example",
-        "sig": "LUFqnNs2838ZJNuzOw/+LWqBbn3M1zEGS4+ahDPTEeVjlFZzVD9u/k9qLIaUpiLeqaxbB++uTBonFC/gPHIJDQ=="
+        "sig": "RkZg3LcnOb6l43S/a83qF5BeL5RebcZ4M+jiwhPoGK9f/RNBH4lc8rD39dXQdI5kQpHjjFOEpWlQ4YCN/G9XCQ=="
       }
     ]
   },
-  "public_key": "OCH46UckB0GghFgiLD3aceJmHEyzpJGJKsWovgaAZaY=",
+  "public_key": "JGb+8T3xzHXPG/J4P2mmauHcat4G2WGEJZ5JUov/vp4=",
   "stream": [
     {
       "id": "0198c0de-0000-7000-8000-000000000001",

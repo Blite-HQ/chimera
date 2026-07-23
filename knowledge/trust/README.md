@@ -36,8 +36,9 @@ overlay de badges de verificación (Tailwind v4 + shadcn real, `shadcn init` com
 `apps/studio/src/views/` — las 4 vistas de la nota 18 (`RunTimeline`, `StepInspector`,
 `CertificateView`, `AblationPanel` con Recharts, `ProvenanceExplorer`) sobre fixtures estáticas
 (`apps/studio/src/fixtures/`) — cero backend. El `TrustCertificate` de ejemplo que renderiza
-`CertificateView` se genera con `scripts/gen-example-trust-certificate.py` (DSSE + Ed25519 vía
-`cryptography`, PAE real, round-trip de firma validado en el propio script).
+`CertificateView` se genera con `scripts/gen-example-bundle.py` (DSSE + Ed25519 vía
+`cryptography`, PAE real, bundle auto-validado con los 7 puntos del checklist; supersede a
+`gen-example-trust-certificate.py` — reobra ET-9, 2026-07-22, vocabulario clase+AL).
 
 Verificado: build + lint + typecheck + dependency-cruiser (INV-1) verdes; las 5 vistas
 recorridas en navegador (Playwright) con consola limpia. Correr: `pnpm -C apps/studio dev`.

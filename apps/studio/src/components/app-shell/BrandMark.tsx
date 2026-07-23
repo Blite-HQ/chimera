@@ -3,9 +3,10 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Logomark (DESIGN.md §7): la escalera de verificación reducida a tres
- * barras descendentes en Ámbar de sodio (token --color-brand, así se
- * adapta al tema). El favicon usa el mismo dibujo sobre tile fijo.
+ * Logomark (DESIGN.md §7): el motivo de barras de la escala de verificación
+ * reducido a tres, en el token --color-brand (así se adapta al tema). La
+ * geometría es la marca aprobada en F1 — no sigue la dirección semántica
+ * del glifo AssuranceScale. El favicon usa el mismo dibujo sobre tile fijo.
  */
 export function BrandMark({ className }: { readonly className?: string }): React.ReactElement {
   return (

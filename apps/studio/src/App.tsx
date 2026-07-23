@@ -7,7 +7,7 @@ import { TabsContent } from '@/components/ui/tabs';
 import { ThemeProvider } from '@/lib/theme';
 
 import { ABLATION_METRICS } from './fixtures/ablationMetrics';
-import { EXAMPLE_CERTIFICATE } from './fixtures/certificate';
+import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from './fixtures/certificate';
 import { RUN_EVENTS } from './fixtures/runEvents';
 import { STEP_EVIDENCE } from './fixtures/stepEvidence';
 import GridSpike from './spike/GridSpike';
@@ -125,7 +125,9 @@ export default function App(): React.ReactElement {
           <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
             <CertificateView
               envelope={EXAMPLE_CERTIFICATE}
-              onDownload={() => downloadJson('trust-certificate.example.json', EXAMPLE_CERTIFICATE)}
+              onDownload={() =>
+                downloadJson('trust-certificate.example.json', EXAMPLE_CERTIFICATE_WIRE)
+              }
             />
           </div>
         </TabsContent>

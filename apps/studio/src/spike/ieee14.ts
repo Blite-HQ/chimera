@@ -8,6 +8,8 @@
  * the spike — the real Studio reads projections via gatewayClient (INV-1).
  */
 
+import type { AssuranceLevel, VerifierClass } from '@/components/verification/assurance';
+
 export type Verdict = 'pass' | 'fail' | 'inconclusive';
 export type AnchorKind = 'solver' | 'execution' | 'dataset' | 'rule' | 'human';
 
@@ -27,7 +29,8 @@ export interface Branch {
 
 export interface VerificationBadge {
   readonly verdict: Verdict;
-  readonly rung: number;
+  readonly verifierClass: VerifierClass;
+  readonly level: AssuranceLevel;
   readonly anchorKind: AnchorKind;
   readonly method: string;
   readonly summary: string;
@@ -49,13 +52,15 @@ export interface PartitionView {
 export interface RunAttestation {
   readonly verifierId: string;
   readonly anchorKind: AnchorKind;
-  readonly rung: number;
+  readonly verifierClass: VerifierClass;
+  readonly level: AssuranceLevel;
   readonly verdict: Verdict;
   readonly summary: string;
 }
 
 export interface RunVerificationSummary {
-  readonly aggregateRung: number;
+  /** Mínimo del camino crítico (freeze §7) — jamás promedio. */
+  readonly titularLevel: AssuranceLevel;
   readonly unanchoredSteps: number;
   readonly attestations: readonly RunAttestation[];
 }
@@ -112,7 +117,8 @@ export const PARTITION: PartitionView = {
       busIds: ['1', '2', '3', '4', '5'],
       verification: {
         verdict: 'pass',
-        rung: 2,
+        verifierClass: 'execution',
+        level: 'AL3',
         anchorKind: 'execution',
         method: 'pandapower-powerflow',
         summary: 'Flujo de potencia converge · balance dentro de límites'
@@ -124,7 +130,8 @@ export const PARTITION: PartitionView = {
       busIds: ['6', '7', '8', '9', '10', '11', '12', '13', '14'],
       verification: {
         verdict: 'pass',
-        rung: 2,
+        verifierClass: 'execution',
+        level: 'AL3',
         anchorKind: 'execution',
         method: 'pandapower-powerflow',
         summary: 'Flujo de potencia converge · balance dentro de límites'
@@ -136,27 +143,33 @@ export const PARTITION: PartitionView = {
 };
 
 export const RUN_VERIFICATION: RunVerificationSummary = {
-  aggregateRung: 3,
+  // Adapters re-etiquetados (freeze §4): CP-SAT = formal_exact (AL3 sin
+  // checker independiente), pandapower = execution (AL3), corpus IEEE =
+  // ground_truth (AL3). Titular = mínimo del camino crítico.
+  titularLevel: 'AL3',
   unanchoredSteps: 0,
   attestations: [
     {
       verifierId: 'ortools-cpsat',
       anchorKind: 'solver',
-      rung: 1,
+      verifierClass: 'formal_exact',
+      level: 'AL3',
       verdict: 'pass',
       summary: 'Corte = óptimo exacto (CP-SAT, status OPTIMAL)'
     },
     {
       verifierId: 'pandapower-powerflow',
       anchorKind: 'execution',
-      rung: 2,
+      verifierClass: 'execution',
+      level: 'AL3',
       verdict: 'pass',
       summary: 'Ambas islas factibles por ejecución de flujo de potencia'
     },
     {
       verifierId: 'ieee14-known-optimum',
       anchorKind: 'dataset',
-      rung: 3,
+      verifierClass: 'ground_truth',
+      level: 'AL3',
       verdict: 'pass',
       summary: 'Coincide con la partición óptima conocida del corpus IEEE-14'
     }

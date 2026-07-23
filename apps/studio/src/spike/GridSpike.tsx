@@ -18,9 +18,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RungBadge } from '@/components/verification/RungBadge';
-import { RungLadder } from '@/components/verification/RungLadder';
-import { rungLabel } from '@/components/verification/rungs';
+import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
+import { AssuranceScale } from '@/components/verification/AssuranceScale';
 import { useTheme } from '@/lib/theme';
 import { readToken } from '@/lib/tokens';
 
@@ -263,7 +262,7 @@ export default function GridSpike(): React.ReactElement {
         </h1>
         <p className="mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground">
           Lo cuántico propone la partición; las anclas no-modelo la verifican. Cada isla lleva su
-          badge; el nivel agregado es el escalón más débil del camino crítico.
+          badge; el nivel titular es el mínimo del camino crítico.
         </p>
       </header>
 
@@ -293,9 +292,9 @@ export default function GridSpike(): React.ReactElement {
                     ? 'factible'
                     : island.verification.verdict}
                   <span className="flex items-center">
-                    <RungLadder rung={island.verification.rung} />
+                    <AssuranceScale level={island.verification.level} />
                   </span>
-                  <span className="font-mono font-medium">{island.verification.rung}</span>
+                  <span className="font-mono font-medium">{island.verification.level}</span>
                 </Badge>
               </div>
             ))}
@@ -330,9 +329,10 @@ export default function GridSpike(): React.ReactElement {
                       />
                       {island.name} · {island.busIds.length} buses
                     </span>
-                    <RungBadge
-                      rung={island.verification.rung}
+                    <AssuranceBadge
+                      level={island.verification.level}
                       verdict={island.verification.verdict}
+                      verifierClass={island.verification.verifierClass}
                     />
                   </li>
                 ))}
@@ -352,10 +352,10 @@ export default function GridSpike(): React.ReactElement {
                 {RUN_VERIFICATION.attestations.map(att => (
                   <li key={att.verifierId} className="text-sm">
                     <div className="mb-1 flex items-center gap-2">
-                      <RungBadge
-                        rung={att.rung}
+                      <AssuranceBadge
+                        level={att.level}
                         verdict={att.verdict}
-                        detail={rungLabel(att.rung, att.anchorKind)}
+                        verifierClass={att.verifierClass}
                       />
                       <span className="font-mono text-xs text-muted-foreground">
                         {att.verifierId}
@@ -366,16 +366,15 @@ export default function GridSpike(): React.ReactElement {
                 ))}
               </ul>
               <div className="mt-4 flex items-center gap-2 border-t pt-4">
-                <RungLadder
-                  rung={RUN_VERIFICATION.aggregateRung}
+                <AssuranceScale
+                  level={RUN_VERIFICATION.titularLevel}
                   size="md"
                   className="text-foreground"
                 />
                 <p className="text-sm font-medium text-foreground">
-                  Nivel agregado: escalón{' '}
-                  <span className="font-mono">{RUN_VERIFICATION.aggregateRung}</span> (
-                  {rungLabel(RUN_VERIFICATION.aggregateRung)}) — el más débil del camino crítico ·{' '}
-                  {RUN_VERIFICATION.unanchoredSteps} pasos sin anclar
+                  Nivel titular: <span className="font-mono">{RUN_VERIFICATION.titularLevel}</span>{' '}
+                  — el mínimo del camino crítico · {RUN_VERIFICATION.unanchoredSteps} pasos sin
+                  anclar
                 </p>
               </div>
             </CardContent>
