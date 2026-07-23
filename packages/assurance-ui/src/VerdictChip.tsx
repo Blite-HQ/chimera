@@ -1,8 +1,7 @@
 import React from 'react';
 
-import { cn } from '@/lib/utils';
-
 import { conclusionTone, verdictLabel } from './assurance';
+import { VerdictPill } from './VerdictPill';
 
 import type { ConclusionVerdict } from './assurance';
 
@@ -12,13 +11,6 @@ import type { ConclusionVerdict } from './assurance';
  * no peligro). Compartido por Runs / Artifacts / Knowledge.
  */
 
-const TONE_CLASSES = {
-  pass: 'border-verdict-pass/40 bg-verdict-pass/10 text-verdict-pass',
-  fail: 'border-verdict-fail/40 bg-verdict-fail/10 text-verdict-fail',
-  inconclusive: 'border-dashed text-muted-foreground',
-  neutral: 'text-muted-foreground'
-} as const;
-
 export interface VerdictChipProps {
   readonly verdict: ConclusionVerdict;
   readonly className?: string;
@@ -26,14 +18,8 @@ export interface VerdictChipProps {
 
 export function VerdictChip({ verdict, className }: VerdictChipProps): React.ReactElement {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-4xl border px-2 py-0.5 text-xs whitespace-nowrap',
-        TONE_CLASSES[conclusionTone(verdict)],
-        className
-      )}
-    >
+    <VerdictPill tone={conclusionTone(verdict)} className={className}>
       {verdictLabel(verdict)}
-    </span>
+    </VerdictPill>
   );
 }

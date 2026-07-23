@@ -22,8 +22,7 @@ import React, { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
-import { conclusionTone } from '@/components/verification/assurance';
+import { AssuranceBadge, conclusionTone } from '@chimera/assurance-ui';
 
 import { shortDigest } from './format';
 

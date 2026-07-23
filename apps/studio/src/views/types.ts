@@ -14,11 +14,7 @@
  * rather than redefined, so the whole Studio shares one definition.
  */
 
-import type {
-  AssuranceLevel,
-  ConclusionVerdict,
-  VerifierClass
-} from '@/components/verification/assurance';
+import type { AssuranceLevel, ConclusionVerdict, VerifierClass } from '@chimera/assurance-ui';
 
 import type { AnchorKind, Verdict } from '../spike/ieee14';
 

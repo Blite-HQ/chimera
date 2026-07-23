@@ -5,7 +5,7 @@
  * presentación; las vistas las reciben ya proyectadas vía queryOptions.
  */
 
-import { LEVEL_ORDER } from '@/components/verification/assurance';
+import { LEVEL_ORDER } from '@chimera/assurance-ui';
 
 import type {
   DsseEnvelope,

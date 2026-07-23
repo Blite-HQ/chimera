@@ -8,7 +8,7 @@
  * the spike — the real Studio reads projections via gatewayClient (INV-1).
  */
 
-import type { AssuranceLevel, VerifierClass } from '@/components/verification/assurance';
+import type { AssuranceLevel, VerifierClass } from '@chimera/assurance-ui';
 
 export type Verdict = 'pass' | 'fail' | 'inconclusive';
 export type AnchorKind = 'solver' | 'execution' | 'dataset' | 'rule' | 'human';

@@ -5,6 +5,8 @@
 @import '@fontsource-variable/plus-jakarta-sans';
 
 @import 'tailwindcss';
+/* La librería de confianza vive fuera de src/ — Tailwind debe escanearla. */
+@source '../../../packages/assurance-ui/src';
 @import 'tw-animate-css';
 
 /*

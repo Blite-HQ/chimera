@@ -1,11 +1,10 @@
 import { Download } from 'lucide-react';
 import React from 'react';
 
-import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
-import { conclusionTone } from '@/components/verification/assurance';
+import { RunStatusDot } from '@/components/runs/RunStatusDot';
+import { AssuranceBadge, conclusionTone } from '@chimera/assurance-ui';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
 
 import { shortDate } from './format';
 
@@ -50,13 +49,7 @@ export default function RunDetail({
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-4">
-        <span
-          aria-hidden
-          className={cn(
-            'size-2 rounded-full',
-            summary.status === 'completado' ? 'bg-verdict-pass' : 'bg-status-warning'
-          )}
-        />
+        <RunStatusDot status={summary.status} />
         <h1 className="font-mono text-2xl font-medium tracking-tight">{summary.runId}</h1>
         <span className="inline-flex items-center rounded-4xl border px-2 py-0.5 text-xs text-muted-foreground">
           {summary.status === 'completado' ? 'completado' : 'en curso'}

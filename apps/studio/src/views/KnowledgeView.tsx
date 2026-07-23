@@ -1,8 +1,8 @@
 import React from 'react';
 
 import { EmptyState } from '@/components/feedback/DataState';
-import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
-import { conclusionTone } from '@/components/verification/assurance';
+import { SectionHeader } from '@/components/layout/SectionHeader';
+import { AssuranceBadge, conclusionTone } from '@chimera/assurance-ui';
 
 import { shortDate } from './format';
 
@@ -26,12 +26,10 @@ export default function KnowledgeView({
 }: KnowledgeViewProps): React.ReactElement {
   return (
     <section className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-display text-2xl font-medium tracking-tight md:text-3xl">Knowledge</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Conclusiones verificadas acumuladas del proyecto.
-        </p>
-      </div>
+      <SectionHeader
+        title="Knowledge"
+        description="Conclusiones verificadas acumuladas del proyecto."
+      />
 
       {claims.length === 0 ? (
         <EmptyState

@@ -143,7 +143,7 @@ la utilidad `.focus-ring` (`ring-2 ring-ring offset-2`, definida en `index.css`)
 > del freeze §4 — la **clase** dice el método, el **AL (AL0–AL4)** dice la fuerza,
 > la **criticidad (C0–C3, Policy)** dice cuánta fuerza se exige.
 
-Semántica (de `components/verification/assurance.ts`, módulo único):
+Semántica (de `@chimera/assurance-ui` — `packages/assurance-ui`, módulo único):
 
 | Clase decisoria         | Etiqueta        | Techo de AL                               |
 | ----------------------- | --------------- | ----------------------------------------- |
@@ -238,6 +238,14 @@ completa en F2/F7).
 ---
 
 ## Registro de decisiones
+
+- **2026-07-23 (carril 2, F3):** nace `@chimera/assurance-ui` (`packages/assurance-ui`)
+  por EXTRACCIÓN real: la semántica clase+AL (`assurance.ts`) y los componentes
+  `AssuranceScale`/`AssuranceBadge`/`VerdictChip`/`VerdictPill` se repetían entre las
+  pantallas validadas de F2 (Runs, Artifacts, Knowledge, RunDetail, certificado,
+  inspector). Los tokens `--color-verdict-*` y las fuentes son el contrato: los define
+  el consumidor. Dentro del Studio se extrajeron además SectionHeader, RunStatusDot y
+  la Table shadcn (repetición Runs/Artifacts).
 
 - **2026-07-23 (carril 2, F1):** shell B (sidebar) elegido por Dylan + equipo sobre
   los pseudo-mockups de layout (`docs/design/mockups/studio-layout-v1.html`, commit

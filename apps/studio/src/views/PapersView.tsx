@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { SectionHeader } from '@/components/layout/SectionHeader';
+
 /**
  * Papers y archivos del proyecto (carril 2 F2, mockup S5 — pantalla nueva).
  * Todavía sin backend de archivos: la vista declara el estado real (vacío)
@@ -10,14 +12,10 @@ import React from 'react';
 export default function PapersView(): React.ReactElement {
   return (
     <section className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-display text-2xl font-medium tracking-tight md:text-3xl">
-          Papers y archivos
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Literatura y archivos del proyecto — lo que alimenta el contexto de los runs.
-        </p>
-      </div>
+      <SectionHeader
+        title="Papers y archivos"
+        description="Literatura y archivos del proyecto — lo que alimenta el contexto de los runs."
+      />
 
       <div
         aria-disabled="true"
