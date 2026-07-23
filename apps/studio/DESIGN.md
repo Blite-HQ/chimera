@@ -202,9 +202,22 @@ Reglas de consumo:
 
 ## 7 · Shell y marca
 
-- **Topbar** (única navegación): logomark + wordmark "Chimera **STUDIO**" (display 500 +
-  mono apagado), tabs variante línea con subrayado turquesa en la activa, toggle de tema
-  a la derecha. El contenido ocupa todo el ancho bajo el topbar.
+> **Reobra carril 2 (2026-07-23):** el topbar como única navegación (v3) quedó
+> SUPERSEDIDO — el Studio muestra el PROYECTO, no solo el reto, y la navegación
+> escaló a un shell con sidebar (mockups `docs/design/mockups/studio-layout-v1.html`,
+> shell B validado por Dylan + equipo).
+
+- **Sidebar** (navegación del proyecto, `w-64`): logomark + wordmark "Chimera
+  **STUDIO**" (display 500 + mono apagado) arriba, selector de proyecto debajo, y las
+  secciones del proyecto (Runs, Artifacts, Papers, Knowledge) como nav vertical — la
+  activa con tinte `foreground/5` y regla turquesa al borde izquierdo. El toggle de
+  tema vive al pie del sidebar.
+- **Barra superior delgada** (`h-12`): breadcrumb de contexto
+  (`proyecto / sección / …`) sobre el contenido; el contenido ocupa el resto del
+  ancho.
+- **Dentro de un run:** header persistente (id + estado + AL titular + acciones) y
+  sub-tabs variante línea (Timeline, Verificación, Red, Ablación, Procedencia) con
+  subrayado turquesa en la activa — las tabs línea del topbar v3 sobreviven acá.
 - **Logomark:** el motivo de barras de la escala reducido a tres, en turquesa
   (`--color-brand` en la UI; `#2DD4BF` sobre `#171717` en el favicon). La marca ES el
   elemento de firma; su geometría es fija (F1) y no sigue la dirección del glifo (§4).
@@ -225,6 +238,14 @@ completa en F2/F7).
 ---
 
 ## Registro de decisiones
+
+- **2026-07-23 (carril 2, F1):** shell B (sidebar) elegido por Dylan + equipo sobre
+  los pseudo-mockups de layout (`docs/design/mockups/studio-layout-v1.html`, commit
+  b638bec) — supersede el "topbar única navegación" de v3 (§7 reescrito). El Studio
+  pasa a IA de proyecto: secciones Runs / Artifacts / Papers / Knowledge y el run como
+  página con header persistente + sub-tabs. Referencias de layout: Vercel (lista de
+  runs), Claude/Langfuse (master–detail del timeline), `gh attestation verify`
+  (certificado como documento centrado).
 
 - **2026-07-22 (ET-9):** la escalera de rungs 1–7 (v1) queda supersedida por clase+AL
   (freeze §4) — §4 reescrito: `AssuranceScale` (5 barras ascendentes, mayor = más
