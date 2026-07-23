@@ -29,6 +29,15 @@ _MANIFEST = CapabilityManifest(
                 "enum": ["aer_simulator", "runtime"],
                 "default": "aer_simulator",
             },
+            "seed": {
+                "type": "integer",
+                "default": 1,
+                "description": "Sampler seed for reproducible runs",
+            },
+            "reference_optimum": {
+                "type": "number",
+                "description": "Known optimum used to report approximation_ratio",
+            },
         },
         "required": ["matrix"],
     },
@@ -67,6 +76,32 @@ class QaoaSolver:
             ) from exc
 
     def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        raise NotImplementedError(
-            "QaoaSolver: implementation not yet provided. Install blite-cap-quantum[qaoa]."
+        from blite_cap_quantum.qaoa import solve_qaoa
+
+        backend = inputs.get("backend", "aer_simulator")
+        if backend != "aer_simulator":
+            msg = (
+                f"QaoaSolver: backend {backend!r} no implementado este mes — "
+                "use 'aer_simulator' (freeze: en vivo solo Aer+seed)"
+            )
+            raise ValueError(msg)
+        layers = inputs.get("layers", 2)
+        if isinstance(layers, bool) or not isinstance(layers, int):
+            msg = f"QaoaSolver: layers debe ser entero, no {layers!r}"
+            raise ValueError(msg)
+        seed = inputs.get("seed", 1)
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            msg = f"QaoaSolver: seed debe ser entero, no {seed!r}"
+            raise ValueError(msg)
+        reference = inputs.get("reference_optimum")
+        if reference is not None and (
+            isinstance(reference, bool) or not isinstance(reference, int | float)
+        ):
+            msg = f"QaoaSolver: reference_optimum debe ser numérico, no {reference!r}"
+            raise ValueError(msg)
+        return solve_qaoa(
+            inputs.get("matrix"),
+            layers=layers,
+            seed=seed,
+            reference_optimum=reference,
         )

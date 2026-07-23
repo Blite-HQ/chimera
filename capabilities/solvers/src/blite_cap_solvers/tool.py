@@ -70,6 +70,10 @@ class QuboSolver:
             ) from exc
 
     def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        raise NotImplementedError(
-            "QuboSolver: implementation not yet provided. Install blite-cap-solvers[ortools]."
-        )
+        from blite_cap_solvers.qubo import solve_qubo
+
+        backend = inputs.get("backend", "auto")
+        if backend not in ("auto", "ortools"):
+            msg = f"QuboSolver: backend {backend!r} no implementado — use 'auto' u 'ortools'"
+            raise ValueError(msg)
+        return solve_qubo(inputs.get("matrix"))

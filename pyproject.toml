@@ -66,17 +66,20 @@ typeCheckingMode = "strict"
 # excluding "model" — tests/invariants/test_verifier_contract.py): an ignore
 # comment that silences nothing becomes a pyright error itself.
 reportUnnecessaryTypeIgnoreComment = "error"
+# NB: pyright no expande "capabilities/*/src" (un include con glob de un solo
+# nivel no matchea — verificado 2026-07-23: analizaba 103 archivos, todos de
+# engine/sdk/tests); se incluye el directorio completo.
 include = [
     "sdk/src",
     "engine/src",
-    "capabilities/*/src",
+    "capabilities",
     "tests",
 ]
 
 # ── Pytest + Coverage ─────────────────────────────────────────────────────────
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "capabilities/*/tests"]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
@@ -93,6 +96,7 @@ source = [
     "blite_cap_graphs",
     "blite_cap_numeric",
     "blite_cap_sim",
+    "capabilities_sim_api",
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
@@ -122,6 +126,7 @@ root_packages = [
     "blite_cap_graphs",
     "blite_cap_numeric",
     "blite_cap_sim",
+    "capabilities_sim_api",
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
@@ -137,6 +142,7 @@ forbidden_modules = [
     "blite_cap_graphs",
     "blite_cap_numeric",
     "blite_cap_sim",
+    "capabilities_sim_api",
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
@@ -150,6 +156,7 @@ source_modules = [
     "blite_cap_graphs",
     "blite_cap_numeric",
     "blite_cap_sim",
+    "capabilities_sim_api",
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
@@ -165,6 +172,7 @@ forbidden_modules = [
     "blite_cap_graphs",
     "blite_cap_numeric",
     "blite_cap_sim",
+    "capabilities_sim_api",
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
@@ -301,6 +309,7 @@ forbidden_modules = [
     "blite_cap_graphs",
     "blite_cap_numeric",
     "blite_cap_sim",
+    "capabilities_sim_api",
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",

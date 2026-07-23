@@ -357,7 +357,7 @@ requires-dist = [
     { name = "dwave-ocean-sdk", marker = "extra == 'dwave'", specifier = ">=7.0" },
     { name = "pennylane", marker = "extra == 'vqc'", specifier = ">=0.38" },
     { name = "pyscf", marker = "extra == 'vqe'", specifier = ">=2.4" },
-    { name = "qiskit", marker = "extra == 'qaoa'", specifier = ">=1.0" },
+    { name = "qiskit", marker = "extra == 'qaoa'", specifier = ">=2.0" },
     { name = "qiskit", marker = "extra == 'vqe'", specifier = ">=1.0" },
     { name = "qiskit-aer", marker = "extra == 'qaoa'", specifier = ">=0.14" },
     { name = "qiskit-nature", marker = "extra == 'vqe'", specifier = ">=0.7" },
