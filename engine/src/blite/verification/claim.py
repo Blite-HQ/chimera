@@ -1,0 +1,50 @@
+"""
+Portadores de `●ClaimEmitted` — freeze §6 [SF-P1-2 + stress-final]. [S-G]
+
+El claim carga `claim_type` (registro) + `is_conclusion` + los flags de piso
+(`world`, `irreversible`, `affects_third_party`) en el MISMO payload del
+evento (§14) — sin portadores, el evaluador de la Policy 0.2.0 no era
+construible. La matriz casa por criticidad COMPUTADA (spec v3.2 §1):
+conclusión ⇒ C3, intermedia ⇒ C1 (la re-expresión `solution`/`intermediate`
+del YAML), y el piso por flags SOLO SUBE (PR2/PR4 — `world` ⇒ C2,
+`irreversible ∧ affects_third_party` ⇒ C3 bloqueante). El manifest porta
+`side_effects` como proxy de `irreversible`; quien emite estampa los flags.
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from blite.verification.policy import Criticality, effective_criticality
+
+_SHA256_HEX = r"^[0-9a-f]{64}$"
+
+
+class ClaimEmittedPayload(BaseModel):
+    """El payload de `●ClaimEmitted` (§14) — los portadores como tipo."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    claim_digest: str = Field(pattern=_SHA256_HEX)
+    """SHA-256 de C(view(claim)) — el binding contra conclusions[] (§7)."""
+    claim_type: str
+    """Valor del registro de claim_types (`simulation_result`…) — str
+    mientras el registro madura (mismo criterio que `Conclusion.claim_type`)."""
+    is_conclusion: bool
+    """Dimensión de match de la Policy 0.2.0: conclusión vs intermedio."""
+    world: bool = False
+    irreversible: bool = False
+    affects_third_party: bool = False
+    sub_run_provenance_hash: str | None = Field(default=None, pattern=_SHA256_HEX)
+    """Run jerárquico (§13): el claim de un sub-run viaja con su hash."""
+
+
+def computed_criticality(payload: ClaimEmittedPayload) -> Criticality:
+    """`is_conclusion ∧ flags` → criticidad (freeze §6): base C3/C1 + piso."""
+    base: Criticality = "C3" if payload.is_conclusion else "C1"
+    return effective_criticality(
+        base,
+        world=payload.world,
+        irreversible=payload.irreversible,
+        affects_third_party=payload.affects_third_party,
+    )
