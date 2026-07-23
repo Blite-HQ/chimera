@@ -1,0 +1,61 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, test, vi } from 'vitest';
+
+import RunDetail from './RunDetail';
+
+import type { RunSummary } from './types';
+
+const RUN: RunSummary = {
+  runId: '8f2c1a9b',
+  status: 'completado',
+  conclusion: 'La partición propuesta de ieee14 es el óptimo exacto del corte',
+  verdict: 'verified',
+  titularLevel: 'AL3',
+  titularClass: 'formal_exact',
+  eventsCount: 5,
+  actor: 'user:dylan',
+  completedAt: '2026-07-22T12:00:05.000000Z'
+};
+
+function renderDetail() {
+  const onDownloadBundle = vi.fn();
+  render(
+    <RunDetail
+      summary={RUN}
+      onDownloadBundle={onDownloadBundle}
+      timeline={<p>vista timeline</p>}
+      verificacion={<p>vista verificación</p>}
+      red={<p>vista red</p>}
+      ablacion={<p>vista ablación</p>}
+      procedencia={<p>vista procedencia</p>}
+    />
+  );
+  return { onDownloadBundle };
+}
+
+describe('RunDetail', () => {
+  test('el header persistente muestra id, estado, AL titular y descarga', async () => {
+    const user = userEvent.setup();
+    const { onDownloadBundle } = renderDetail();
+
+    expect(screen.getByRole('heading', { name: '8f2c1a9b' })).toBeInTheDocument();
+    expect(screen.getByText('completado')).toBeInTheDocument();
+    expect(screen.getByText('AL3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /descargar bundle/i }));
+    expect(onDownloadBundle).toHaveBeenCalled();
+  });
+
+  test('abre en Timeline y cambia de vista con las sub-tabs', async () => {
+    const user = userEvent.setup();
+    renderDetail();
+
+    expect(screen.getByText('vista timeline')).toBeInTheDocument();
+    expect(screen.queryByText('vista verificación')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Verificación' }));
+    expect(screen.getByText('vista verificación')).toBeInTheDocument();
+    expect(screen.queryByText('vista timeline')).not.toBeInTheDocument();
+  });
+});

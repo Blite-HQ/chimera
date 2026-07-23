@@ -14,11 +14,15 @@
  * rather than redefined, so the whole Studio shares one definition.
  */
 
-import type { AssuranceLevel, VerifierClass } from '@/components/verification/assurance';
+import type {
+  AssuranceLevel,
+  ConclusionVerdict,
+  VerifierClass
+} from '@/components/verification/assurance';
 
 import type { AnchorKind, Verdict } from '../spike/ieee14';
 
-export type { AnchorKind, AssuranceLevel, Verdict, VerifierClass };
+export type { AnchorKind, AssuranceLevel, ConclusionVerdict, Verdict, VerifierClass };
 
 /** nota 18 §2.1 — consumed by RunTimeline and ProvenanceExplorer. */
 export interface ProjectedEvent {
@@ -79,9 +83,6 @@ export interface StepDetail {
   readonly outputDigest: string;
   readonly attestations: readonly Attestation[];
 }
-
-/** freeze §7 — veredicto de una conclusión del camino crítico. */
-export type ConclusionVerdict = 'verified' | 'refuted' | 'inconclusive' | 'not_required_declared';
 
 /** freeze §7 — una conclusión: el alcance visible antes que el número. */
 export interface CertificateConclusion {
@@ -153,6 +154,48 @@ export interface DsseEnvelope {
   /** Statement decodificado tal cual (nivel 3 — el crudo es crudo). */
   readonly rawPayload: unknown;
   readonly signatures: readonly { readonly keyid: string; readonly sig: string }[];
+}
+
+/** carril 2 F2 — estado de un run en la lista del proyecto. */
+export type RunStatus = 'en_curso' | 'completado';
+
+/**
+ * carril 2 F2 — fila de la lista de Runs (proyección del certificado + los
+ * eventos del run). La confianza (clase + AL) es columna de primera clase:
+ * un run jamás se lista sin su badge.
+ */
+export interface RunSummary {
+  readonly runId: string;
+  readonly status: RunStatus;
+  readonly conclusion: string;
+  readonly verdict: ConclusionVerdict;
+  readonly titularLevel: AssuranceLevel;
+  readonly titularClass: string; // wire crudo; se etiqueta con classLabel()
+  readonly eventsCount: number;
+  readonly actor: string;
+  readonly completedAt?: string;
+}
+
+/** carril 2 F2 — entregable a nivel de proyecto, siempre con su procedencia. */
+export interface ProjectArtifact {
+  readonly artifactRef: string;
+  readonly digest: string;
+  readonly runId: string;
+  readonly titularLevel: AssuranceLevel;
+  readonly titularClass: string;
+  readonly verdict: ConclusionVerdict;
+  readonly issuedAt: string;
+}
+
+/** carril 2 F2 — conclusión verificada acumulada en Knowledge. */
+export interface KnowledgeClaim {
+  readonly statement: string;
+  readonly scope: Readonly<Record<string, string>>;
+  readonly verdict: ConclusionVerdict;
+  readonly level: AssuranceLevel;
+  readonly titularClass: string;
+  readonly runId: string;
+  readonly validAsOf: string;
 }
 
 /** nota 18 §2.4 — consumed by ProvenanceExplorer. */

@@ -1,67 +1,109 @@
 import React from 'react';
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 import { BrandMark } from './BrandMark';
 import { ThemeToggle } from './ThemeToggle';
 
 /**
- * Shell del Studio (DESIGN.md §7): un topbar real — marca + navegación +
- * toggle de tema — y el contenido a todo el ancho debajo. La navegación
- * sigue siendo Tabs de Radix hasta F2 (TanStack Router); este componente
- * es la capa visual, App.tsx conserva el estado.
+ * Shell del Studio, variante B (DESIGN.md §7, reobra carril 2 — mockups F1):
+ * sidebar de proyecto (marca, selector de proyecto, secciones) + barra
+ * delgada de breadcrumb + contenido. Este componente es capa visual: el
+ * estado de navegación vive en App.
  */
 
-export interface AppShellTab {
+export interface AppShellSection {
   readonly id: string;
   readonly label: string;
 }
 
 export interface AppShellProps {
-  readonly tabs: readonly AppShellTab[];
-  readonly activeTab: string;
-  readonly onTabChange: (tabId: string) => void;
-  /** Los <TabsContent> de cada vista. */
+  readonly projectName: string;
+  readonly sections: readonly AppShellSection[];
+  readonly activeSection: string;
+  readonly onSectionChange: (sectionId: string) => void;
+  /** Ruta actual bajo el proyecto, en orden (p. ej. ['runs', '8f2c1a9b']). */
+  readonly breadcrumb: readonly string[];
   readonly children: React.ReactNode;
 }
 
 export function AppShell({
-  tabs,
-  activeTab,
-  onTabChange,
+  projectName,
+  sections,
+  activeSection,
+  onSectionChange,
+  breadcrumb,
   children
 }: AppShellProps): React.ReactElement {
   return (
-    <Tabs value={activeTab} onValueChange={onTabChange} className="min-h-screen gap-0">
-      {/* Header calcado de la landing: h-16, contenedor px-4 md:px-8, gap-8,
-          wordmark en display text-lg md:text-xl (DESIGN.md §10). */}
-      <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 md:px-8">
-          <div className="flex items-baseline gap-2">
-            <BrandMark className="h-6 self-center" />
-            <span className="font-display text-lg leading-none font-medium tracking-tight md:text-xl">
-              Chimera
-            </span>
-            <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-              Studio
-            </span>
-          </div>
+    <div className="flex min-h-screen">
+      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-8 border-r border-border px-2 py-4">
+        <div className="flex items-baseline gap-2 px-2">
+          <BrandMark className="h-6 self-center" />
+          <span className="font-display text-lg leading-none font-medium tracking-tight">
+            Chimera
+          </span>
+          <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
+            Studio
+          </span>
+        </div>
 
-          <nav aria-label="Vistas del run" className="flex flex-1 items-center">
-            <TabsList variant="line">
-              {tabs.map(tab => (
-                <TabsTrigger key={tab.id} value={tab.id} className="px-2">
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </nav>
+        <div className="mx-2 flex items-center gap-2 rounded-lg border border-border px-2 py-1 text-sm">
+          <span className="text-muted-foreground">proyecto</span>
+          <span className="truncate font-mono text-xs">{projectName}</span>
+        </div>
 
+        <nav aria-label="Secciones del proyecto" className="flex flex-col gap-0.5">
+          <span className="px-2 pb-1 text-xs tracking-wider text-muted-foreground uppercase">
+            Proyecto
+          </span>
+          {sections.map(section => {
+            const isActive = section.id === activeSection;
+            return (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => onSectionChange(section.id)}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'focus-ring rounded-lg px-2 py-1 text-left text-sm transition-colors',
+                  isActive
+                    ? 'bg-foreground/5 text-foreground shadow-[inset_2px_0_0_var(--color-brand)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {section.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto flex items-center gap-2 px-2">
           <ThemeToggle />
         </div>
-      </header>
+      </aside>
 
-      <main className="flex-1">{children}</main>
-    </Tabs>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
+          <nav
+            aria-label="Ruta actual"
+            className="flex h-12 items-center gap-2 px-4 text-xs text-muted-foreground md:px-8"
+          >
+            <span className="font-mono">{projectName}</span>
+            {breadcrumb.map((part, index) => (
+              <React.Fragment key={`${part}-${index}`}>
+                <span aria-hidden>/</span>
+                <span
+                  className={cn('font-mono', index === breadcrumb.length - 1 && 'text-foreground')}
+                >
+                  {part}
+                </span>
+              </React.Fragment>
+            ))}
+          </nav>
+        </header>
+        <main className="flex-1">{children}</main>
+      </div>
+    </div>
   );
 }

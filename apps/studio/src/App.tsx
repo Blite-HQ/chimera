@@ -5,47 +5,54 @@ import React, { useState } from 'react';
 import { AppShell } from '@/components/app-shell/AppShell';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/DataState';
 import { Button } from '@/components/ui/button';
-import { TabsContent } from '@/components/ui/tabs';
 import { ThemeProvider } from '@/lib/theme';
 
 import {
-  DEMO_RUN_ID,
   ablationQueryOptions,
+  artifactsQueryOptions,
   certificateQueryOptions,
+  knowledgeQueryOptions,
   runEventsQueryOptions,
+  runSummariesQueryOptions,
   stepEvidenceQueryOptions
 } from './data/queries';
 import GridSpike from './spike/GridSpike';
 import AblationPanel from './views/AblationPanel';
+import ArtifactsView from './views/ArtifactsView';
 import CertificateView from './views/CertificateView';
 import { downloadJson } from './views/downloadJson';
+import KnowledgeView from './views/KnowledgeView';
+import PapersView from './views/PapersView';
 import ProvenanceExplorer from './views/ProvenanceExplorer';
+import RunDetail from './views/RunDetail';
+import RunsView from './views/RunsView';
 import RunTimeline from './views/RunTimeline';
 import StepInspector from './views/StepInspector';
-import type { ProvenanceFilters } from './views/types';
 import { usePlaybackReveal } from './views/usePlaybackReveal';
 
+import type { ProvenanceFilters } from './views/types';
+
 /**
- * Chimera Studio root application component.
+ * Chimera Studio — raíz (carril 2 F2, shell B).
  *
- * F3: TODO dato llega por src/data/** (queryOptions + Zod en la frontera —
- * regla depcruise: ni App ni las vistas importan fixtures/gatewayClient
- * directo). Hoy las queryFn sirven fixtures; S10 cambia la fuente sin tocar
- * este árbol. INV-1 intacto: cuando haya red, vive en gatewayClient.ts.
- *
- * Navigation is a plain useState segmented control presented by AppShell
- * (topbar real, F1) — still a demo shell; F2 lo migra a TanStack Router.
+ * IA de PROYECTO (mockups F1 validados): secciones Runs / Artifacts /
+ * Papers / Knowledge en el sidebar; un run abre como página con header
+ * persistente + sub-tabs (RunDetail). F3 intacto: TODO dato llega por
+ * src/data/** (queryOptions + Zod en la frontera); INV-1 intacto (red solo
+ * en gatewayClient cuando exista). Navegación por estado local — la
+ * migración a router es aditiva y no cambia esta IA.
  */
 
-type TabId = 'red' | 'timeline' | 'certificado' | 'ablacion' | 'procedencia';
+type SectionId = 'runs' | 'artifacts' | 'papers' | 'knowledge';
 
-const TABS: readonly { readonly id: TabId; readonly label: string }[] = [
-  { id: 'red', label: 'Red' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'certificado', label: 'Certificado' },
-  { id: 'ablacion', label: 'Ablación' },
-  { id: 'procedencia', label: 'Procedencia' }
+const SECTIONS: readonly { readonly id: SectionId; readonly label: string }[] = [
+  { id: 'runs', label: 'Runs' },
+  { id: 'artifacts', label: 'Artifacts' },
+  { id: 'papers', label: 'Papers' },
+  { id: 'knowledge', label: 'Knowledge' }
 ];
+
+const PROJECT_NAME = 'islanding-ieee14';
 
 const queryClient = new QueryClient();
 
@@ -73,162 +80,240 @@ function ToggleButton({
   );
 }
 
-function StudioTabs(): React.ReactElement {
-  const [activeTab, setActiveTab] = useState<TabId>('red');
-
-  const eventsQuery = useQuery(runEventsQueryOptions(DEMO_RUN_ID));
-  const stepsQuery = useQuery(stepEvidenceQueryOptions(DEMO_RUN_ID));
-  const certificateQuery = useQuery(certificateQueryOptions(DEMO_RUN_ID));
-  const ablationQuery = useQuery(ablationQueryOptions(DEMO_RUN_ID));
+/** Vistas del run montadas como slots de RunDetail (queries + estado acá). */
+function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElement {
+  const summariesQuery = useQuery(runSummariesQueryOptions());
+  const eventsQuery = useQuery(runEventsQueryOptions(runId));
+  const stepsQuery = useQuery(stepEvidenceQueryOptions(runId));
+  const certificateQuery = useQuery(certificateQueryOptions(runId));
+  const ablationQuery = useQuery(ablationQueryOptions(runId));
 
   const runEvents = eventsQuery.data ?? [];
   const { revealedEvents, playback } = usePlaybackReveal(runEvents);
   const [selectedGlobalSeq, setSelectedGlobalSeq] = useState<number | undefined>(undefined);
   const [timelineViewMode, setTimelineViewMode] = useState<'tree' | 'timeline'>('tree');
-
   const [provenanceFilters, setProvenanceFilters] = useState<ProvenanceFilters>({});
   const [provenanceViewMode, setProvenanceViewMode] = useState<'compact' | 'raw'>('compact');
   const [provenanceCursor, setProvenanceCursor] = useState(0);
+
+  const summary = summariesQuery.data?.find(run => run.runId === runId);
+  if (summariesQuery.isPending || !summary) {
+    return <LoadingState label="Cargando el run" />;
+  }
 
   const selectedEvent = revealedEvents.find(event => event.globalSeq === selectedGlobalSeq) ?? null;
   const selectedStep = selectedEvent?.stepId
     ? (stepsQuery.data?.[selectedEvent.stepId] ?? null)
     : null;
 
+  const timeline = eventsQuery.isPending ? (
+    <LoadingState label="Cargando los eventos del run" />
+  ) : eventsQuery.isError ? (
+    <ErrorState message={eventsQuery.error.message} onRetry={() => void eventsQuery.refetch()} />
+  ) : (
+    <div className="flex gap-4 md:gap-8">
+      <div className="flex-1">
+        <div className="mb-2 flex justify-end gap-1">
+          <ToggleButton
+            label="árbol"
+            icon={<ListTree data-icon="inline-start" />}
+            isActive={timelineViewMode === 'tree'}
+            onClick={() => setTimelineViewMode('tree')}
+          />
+          <ToggleButton
+            label="timeline"
+            icon={<List data-icon="inline-start" />}
+            isActive={timelineViewMode === 'timeline'}
+            onClick={() => setTimelineViewMode('timeline')}
+          />
+        </div>
+        <RunTimeline
+          events={revealedEvents}
+          selectedGlobalSeq={selectedGlobalSeq}
+          onSelectEvent={setSelectedGlobalSeq}
+          viewMode={timelineViewMode}
+          playback={playback}
+        />
+      </div>
+      <aside className="w-96 shrink-0">
+        <StepInspector step={selectedStep} />
+      </aside>
+    </div>
+  );
+
+  const verificacion = certificateQuery.isPending ? (
+    <LoadingState label="Cargando el certificado del run" />
+  ) : certificateQuery.isError ? (
+    <ErrorState
+      message={certificateQuery.error.message}
+      onRetry={() => void certificateQuery.refetch()}
+    />
+  ) : (
+    <div className="mx-auto max-w-3xl">
+      <CertificateView
+        envelope={certificateQuery.data.envelope}
+        onDownload={() =>
+          downloadJson('trust-certificate.example.json', certificateQuery.data.wire)
+        }
+      />
+    </div>
+  );
+
+  const ablacion = ablationQuery.isPending ? (
+    <LoadingState label="Cargando las métricas de ablación" />
+  ) : ablationQuery.isError ? (
+    <ErrorState
+      message={ablationQuery.error.message}
+      onRetry={() => void ablationQuery.refetch()}
+    />
+  ) : ablationQuery.data.length === 0 ? (
+    <EmptyState
+      title="Sin métricas de ablación todavía."
+      hint="Ejecute un run comparativo (cuántico vs. clásico) para poblar esta vista."
+    />
+  ) : (
+    <div className="mx-auto max-w-5xl">
+      <AblationPanel metrics={ablationQuery.data} />
+    </div>
+  );
+
+  const procedencia =
+    runEvents.length === 0 ? (
+      <EmptyState
+        title="Sin eventos registrados para este run."
+        hint="La procedencia aparece en cuanto el run emite su primer evento."
+      />
+    ) : (
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-2 flex justify-end gap-1">
+          <ToggleButton
+            label="compacto"
+            icon={<LayoutList data-icon="inline-start" />}
+            isActive={provenanceViewMode === 'compact'}
+            onClick={() => setProvenanceViewMode('compact')}
+          />
+          <ToggleButton
+            label="crudo"
+            icon={<Braces data-icon="inline-start" />}
+            isActive={provenanceViewMode === 'raw'}
+            onClick={() => setProvenanceViewMode('raw')}
+          />
+        </div>
+        <ProvenanceExplorer
+          events={runEvents}
+          filters={provenanceFilters}
+          onFilterChange={setProvenanceFilters}
+          viewMode={provenanceViewMode}
+          page={{ cursor: provenanceCursor, pageSize: runEvents.length, hasMore: false }}
+          onPageChange={setProvenanceCursor}
+        />
+      </div>
+    );
+
   return (
-    <AppShell tabs={TABS} activeTab={activeTab} onTabChange={value => setActiveTab(value as TabId)}>
-      <TabsContent value="red">
-        <GridSpike />
-      </TabsContent>
+    <RunDetail
+      summary={summary}
+      onDownloadBundle={() => {
+        if (certificateQuery.data) {
+          downloadJson('trust-certificate.example.json', certificateQuery.data.wire);
+        }
+      }}
+      timeline={timeline}
+      verificacion={verificacion}
+      red={<GridSpike />}
+      ablacion={ablacion}
+      procedencia={procedencia}
+    />
+  );
+}
 
-      <TabsContent value="timeline">
-        <div className="mx-auto flex max-w-7xl gap-4 px-4 py-8 md:gap-8 md:px-8">
-          {eventsQuery.isPending ? (
-            <div className="flex-1">
-              <LoadingState label="Cargando los eventos del run" />
-            </div>
-          ) : eventsQuery.isError ? (
-            <div className="flex-1">
-              <ErrorState
-                message={eventsQuery.error.message}
-                onRetry={() => void eventsQuery.refetch()}
-              />
-            </div>
-          ) : (
-            <>
-              <div className="flex-1">
-                <div className="mb-2 flex justify-end gap-1">
-                  <ToggleButton
-                    label="árbol"
-                    icon={<ListTree data-icon="inline-start" />}
-                    isActive={timelineViewMode === 'tree'}
-                    onClick={() => setTimelineViewMode('tree')}
-                  />
-                  <ToggleButton
-                    label="timeline"
-                    icon={<List data-icon="inline-start" />}
-                    isActive={timelineViewMode === 'timeline'}
-                    onClick={() => setTimelineViewMode('timeline')}
-                  />
-                </div>
-                <RunTimeline
-                  events={revealedEvents}
-                  selectedGlobalSeq={selectedGlobalSeq}
-                  onSelectEvent={setSelectedGlobalSeq}
-                  viewMode={timelineViewMode}
-                  playback={playback}
-                />
-              </div>
-              <aside className="w-96 shrink-0">
-                <StepInspector step={selectedStep} />
-              </aside>
-            </>
-          )}
-        </div>
-      </TabsContent>
+function RunsScreen({
+  onSelectRun
+}: {
+  readonly onSelectRun: (runId: string) => void;
+}): React.ReactElement {
+  const summariesQuery = useQuery(runSummariesQueryOptions());
 
-      <TabsContent value="certificado">
-        <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
-          {certificateQuery.isPending ? (
-            <LoadingState label="Cargando el certificado del run" />
-          ) : certificateQuery.isError ? (
-            <ErrorState
-              message={certificateQuery.error.message}
-              onRetry={() => void certificateQuery.refetch()}
-            />
-          ) : (
-            <CertificateView
-              envelope={certificateQuery.data.envelope}
-              onDownload={() =>
-                downloadJson('trust-certificate.example.json', certificateQuery.data.wire)
-              }
-            />
-          )}
-        </div>
-      </TabsContent>
+  if (summariesQuery.isPending) return <LoadingState label="Cargando los runs del proyecto" />;
+  if (summariesQuery.isError) {
+    return (
+      <ErrorState
+        message={summariesQuery.error.message}
+        onRetry={() => void summariesQuery.refetch()}
+      />
+    );
+  }
+  return <RunsView runs={summariesQuery.data} onSelectRun={onSelectRun} />;
+}
 
-      <TabsContent value="ablacion">
-        <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
-          {ablationQuery.isPending ? (
-            <LoadingState label="Cargando las métricas de ablación" />
-          ) : ablationQuery.isError ? (
-            <ErrorState
-              message={ablationQuery.error.message}
-              onRetry={() => void ablationQuery.refetch()}
-            />
-          ) : ablationQuery.data.length === 0 ? (
-            <EmptyState
-              title="Sin métricas de ablación todavía."
-              hint="Ejecute un run comparativo (cuántico vs. clásico) para poblar esta vista."
-            />
-          ) : (
-            <AblationPanel metrics={ablationQuery.data} />
-          )}
-        </div>
-      </TabsContent>
+function ArtifactsScreen({
+  onOpenRun
+}: {
+  readonly onOpenRun: (runId: string) => void;
+}): React.ReactElement {
+  const artifactsQuery = useQuery(artifactsQueryOptions());
 
-      <TabsContent value="procedencia">
-        <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
-          {eventsQuery.isPending ? (
-            <LoadingState label="Cargando la procedencia del run" />
-          ) : eventsQuery.isError ? (
-            <ErrorState
-              message={eventsQuery.error.message}
-              onRetry={() => void eventsQuery.refetch()}
-            />
-          ) : runEvents.length === 0 ? (
-            <EmptyState
-              title="Sin eventos registrados para este run."
-              hint="La procedencia aparece en cuanto el run emite su primer evento."
-            />
-          ) : (
-            <>
-              <div className="mb-2 flex justify-end gap-1">
-                <ToggleButton
-                  label="compacto"
-                  icon={<LayoutList data-icon="inline-start" />}
-                  isActive={provenanceViewMode === 'compact'}
-                  onClick={() => setProvenanceViewMode('compact')}
-                />
-                <ToggleButton
-                  label="crudo"
-                  icon={<Braces data-icon="inline-start" />}
-                  isActive={provenanceViewMode === 'raw'}
-                  onClick={() => setProvenanceViewMode('raw')}
-                />
-              </div>
-              <ProvenanceExplorer
-                events={runEvents}
-                filters={provenanceFilters}
-                onFilterChange={setProvenanceFilters}
-                viewMode={provenanceViewMode}
-                page={{ cursor: provenanceCursor, pageSize: runEvents.length, hasMore: false }}
-                onPageChange={setProvenanceCursor}
-              />
-            </>
-          )}
-        </div>
-      </TabsContent>
+  if (artifactsQuery.isPending) return <LoadingState label="Cargando los artifacts" />;
+  if (artifactsQuery.isError) {
+    return (
+      <ErrorState
+        message={artifactsQuery.error.message}
+        onRetry={() => void artifactsQuery.refetch()}
+      />
+    );
+  }
+  return <ArtifactsView artifacts={artifactsQuery.data} onOpenRun={onOpenRun} />;
+}
+
+function KnowledgeScreen({
+  onOpenRun
+}: {
+  readonly onOpenRun: (runId: string) => void;
+}): React.ReactElement {
+  const knowledgeQuery = useQuery(knowledgeQueryOptions());
+
+  if (knowledgeQuery.isPending) return <LoadingState label="Cargando el knowledge" />;
+  if (knowledgeQuery.isError) {
+    return (
+      <ErrorState
+        message={knowledgeQuery.error.message}
+        onRetry={() => void knowledgeQuery.refetch()}
+      />
+    );
+  }
+  return <KnowledgeView claims={knowledgeQuery.data} onOpenRun={onOpenRun} />;
+}
+
+function Studio(): React.ReactElement {
+  const [section, setSection] = useState<SectionId>('runs');
+  const [runId, setRunId] = useState<string | undefined>(undefined);
+
+  const openRun = (id: string): void => {
+    setSection('runs');
+    setRunId(id);
+  };
+  const goToSection = (id: string): void => {
+    setSection(id as SectionId);
+    setRunId(undefined);
+  };
+
+  const breadcrumb = section === 'runs' && runId ? ['runs', runId] : [section];
+
+  return (
+    <AppShell
+      projectName={PROJECT_NAME}
+      sections={SECTIONS}
+      activeSection={section}
+      onSectionChange={goToSection}
+      breadcrumb={breadcrumb}
+    >
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+        {section === 'runs' &&
+          (runId ? <RunDetailScreen runId={runId} /> : <RunsScreen onSelectRun={openRun} />)}
+        {section === 'artifacts' && <ArtifactsScreen onOpenRun={openRun} />}
+        {section === 'papers' && <PapersView />}
+        {section === 'knowledge' && <KnowledgeScreen onOpenRun={openRun} />}
+      </div>
     </AppShell>
   );
 }
@@ -237,7 +322,7 @@ export default function App(): React.ReactElement {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <StudioTabs />
+        <Studio />
       </QueryClientProvider>
     </ThemeProvider>
   );

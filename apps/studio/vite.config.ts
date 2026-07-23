@@ -17,7 +17,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: [],
+    setupFiles: ['src/test/setup.ts'],
     coverage: {
       reporter: ['text', 'json'],
       exclude: ['node_modules/', '*.config.ts']

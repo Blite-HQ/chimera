@@ -5,7 +5,9 @@ import {
   LEVEL_ORDER,
   VERIFIER_CLASS_LABELS,
   classLabel,
-  isAssuranceLevel
+  conclusionTone,
+  isAssuranceLevel,
+  verdictLabel
 } from './assurance';
 
 describe('assurance', () => {
@@ -39,5 +41,19 @@ describe('assurance', () => {
     expect(isAssuranceLevel('AL3')).toBe(true);
     expect(isAssuranceLevel('AL7')).toBe(false);
     expect(isAssuranceLevel('rung')).toBe(false);
+  });
+
+  it('mapea veredictos de conclusión a su tono (freeze §7 checklist 7)', () => {
+    expect(conclusionTone('verified')).toBe('pass');
+    expect(conclusionTone('refuted')).toBe('fail');
+    expect(conclusionTone('inconclusive')).toBe('inconclusive');
+    expect(conclusionTone('not_required_declared')).toBe('neutral');
+  });
+
+  it('etiqueta veredictos de conclusión en humano (labels primero, §8)', () => {
+    expect(verdictLabel('verified')).toBe('verificada');
+    expect(verdictLabel('refuted')).toBe('refutada');
+    expect(verdictLabel('inconclusive')).toBe('inconclusa');
+    expect(verdictLabel('not_required_declared')).toBe('no requerida');
   });
 });
