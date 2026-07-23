@@ -14,10 +14,6 @@ from blite.events import create_event_store
 
 pytestmark = [
     pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason="SEED S-G (frontera Dylan/Steven): handler de ○PolicyChanged aún no existe",
-    ),
 ]
 
 
@@ -33,9 +29,7 @@ def test_a_hardened_policy_opens_escalations_over_in_flight_cases() -> None:
     )
 
     # Act — API a fijar; el seed fija la CONDUCTA (freeze §6 EX-5)
-    from blite.runtime.policy_watch import (  # pyright: ignore[reportMissingImports]
-        on_policy_changed,  # pyright: ignore[reportUnknownVariableType]
-    )
+    from blite.runtime.policy_watch import on_policy_changed
 
     on_policy_changed(
         store,
