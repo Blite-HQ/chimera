@@ -20,6 +20,8 @@ from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 
+from blite_capability.capability import Capability
+
 INTERACTIONS = frozenset({"request_response", "job", "stream"})
 EXECUTION_PROFILES = frozenset({"in-process", "service", "remote-job"})
 
@@ -72,3 +74,49 @@ class Dispatcher(Protocol):
     def resolve(self, execution_profile: str) -> DispatchStrategy:
         """Jamás fallback silencioso a in-process (freeze §1)."""
         ...
+
+
+class InProcessStrategy:
+    """ÚNICA estrategia real de Fase 1 (freeze §1, nota execution/06 §11):
+    llamada de función directa en el mismo proceso — sin red, sin serialización.
+
+    Retorna el Result directo de `Capability.invoke()`; un `JobRef` es lo
+    ÚNICO que `remote-job` (sin estrategia en Fase 1) podría retornar.
+    """
+
+    def execute(self, capability: Capability, inputs: dict[str, Any]) -> dict[str, Any]:
+        return capability.invoke(inputs)
+
+
+class ProfileDispatcher:
+    """Tabla de despacho `{execution_profile: DispatchStrategy}` con UNA sola
+    entrada real (nota execution/06 §11) — resuelve por VALOR del perfil, nunca
+    por identidad de una capability (ADR-029).
+
+    Perfil del contrato sin estrategia ⇒ `NotImplementedError` explícito —
+    nunca fallback silencioso a in-process, porque escondería el modo de falla
+    central de la nota 06 §6 (tratar `remote-job` como síncrono). Valor fuera
+    del vocabulario congelado ⇒ `ValueError` (jamás aceptar y ver).
+    """
+
+    def __init__(self) -> None:
+        self._strategies: dict[str, DispatchStrategy] = {
+            "in-process": InProcessStrategy(),
+        }
+
+    def resolve(self, execution_profile: str) -> DispatchStrategy:
+        if execution_profile not in EXECUTION_PROFILES:
+            msg = (
+                f"execution_profile {execution_profile!r} fuera del vocabulario "
+                "congelado (freeze §1)"
+            )
+            raise ValueError(msg)
+        strategy = self._strategies.get(execution_profile)
+        if strategy is None:
+            msg = (
+                f"execution_profile {execution_profile!r} existe en el contrato "
+                "(freeze §1) pero no tiene estrategia real en Fase 1 — jamás "
+                "fallback silencioso a in-process (nota execution/06 §11)"
+            )
+            raise NotImplementedError(msg)
+        return strategy
