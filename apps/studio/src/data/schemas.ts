@@ -1,0 +1,111 @@
+/**
+ * Schemas Zod de la frontera de datos (F3) — espejo de los contratos
+ * congelados (freeze §4/§7/§9 + nota 18 §2). Regla global: schema-based
+ * validation at boundaries — TODO dato que entra a las vistas pasa por acá,
+ * venga de fixtures (hoy) o del gateway real (S10: mismo schema, otra
+ * fuente). El wire del SSE (snake_case, proyección de chimera_api) tiene su
+ * schema + mapper propios para que S10 sea un swap, no un rewrite.
+ */
+
+import { z } from 'zod';
+
+import { ASSURANCE_LEVELS } from '@/components/verification/assurance';
+
+import type { ProjectedEvent } from '../views/types';
+
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+
+export const verdictSchema = z.enum(['pass', 'fail', 'inconclusive']);
+
+export const assuranceLevelSchema = z.enum(ASSURANCE_LEVELS);
+
+/** freeze §4 — sin "model" por construcción (INV-2/PR2). */
+export const verifierClassSchema = z.enum([
+  'formal_exact',
+  'execution',
+  'ground_truth',
+  'property_rule',
+  'consensus_replication',
+  'human_expert'
+]);
+
+export const anchorKindSchema = z.enum(['solver', 'execution', 'dataset', 'rule', 'human']);
+
+/** nota 18 §2.1 — el evento proyectado que consumen las vistas (camelCase). */
+export const projectedEventSchema = z.object({
+  globalSeq: z.number().int().positive(),
+  type: z.string().min(1),
+  actorId: z.string().min(1),
+  occurredAt: z.string().min(1),
+  stepId: z.string().optional(),
+  resumen: z.string().min(1),
+  verdict: verdictSchema.optional()
+});
+
+/**
+ * Espejo del wire SSE del api (freeze §9 · `chimera_api.projection`):
+ * `data:` = `{global_seq, type, actor_id, occurred_at, step_id?, resumen,
+ * payload}`. S10 parsea cada frame con ESTE schema dentro de gatewayClient.
+ */
+export const sseProjectedEventSchema = z.object({
+  global_seq: z.number().int().positive(),
+  type: z.string().min(1),
+  actor_id: z.string().min(1),
+  occurred_at: z.string().min(1),
+  step_id: z.string().optional(),
+  resumen: z.string().min(1),
+  payload: z.record(z.string(), z.unknown())
+});
+
+export type SseProjectedEvent = z.infer<typeof sseProjectedEventSchema>;
+
+/** Mapper wire→UI (S10 lo usa tal cual; la UI jamás ve snake_case). */
+export function toProjectedEvent(wire: SseProjectedEvent): ProjectedEvent {
+  const verdict = verdictSchema.safeParse(
+    (wire.payload['verification'] as { verdict?: string } | undefined)?.verdict
+  );
+  return {
+    globalSeq: wire.global_seq,
+    type: wire.type,
+    actorId: wire.actor_id,
+    occurredAt: wire.occurred_at,
+    ...(wire.step_id !== undefined && { stepId: wire.step_id }),
+    resumen: wire.resumen,
+    ...(verdict.success && { verdict: verdict.data })
+  };
+}
+
+/** nota 18 §2.2 — attestation de un paso, en clase+AL (freeze §4). */
+export const attestationSchema = z.object({
+  verifierId: z.string().min(1),
+  verifierClass: verifierClassSchema,
+  anchorKind: anchorKindSchema,
+  level: assuranceLevelSchema,
+  verdict: verdictSchema,
+  method: z.string().min(1),
+  summary: z.string().min(1),
+  evidence: z.record(z.string(), z.unknown())
+});
+
+export const stepDetailSchema = z.object({
+  stepId: z.string().min(1),
+  capabilityId: z.string().min(1),
+  inputDigest: z.string().regex(SHA256_HEX),
+  outputDigest: z.string().regex(SHA256_HEX),
+  attestations: z.array(attestationSchema)
+});
+
+/** nota 07 §1.3 — fila de ablación. */
+export const ablationMetricSchema = z.object({
+  variant: z.enum(['quantum', 'classical']),
+  cutCost: z.number().nonnegative(),
+  wallMs: z.number().nonnegative(),
+  verificationLatencyMs: z.number().nonnegative()
+});
+
+/** freeze §7 — el envelope DSSE wire (payload base64 + firma): lo descargable. */
+export const wireEnvelopeSchema = z.object({
+  payloadType: z.string().min(1),
+  payload: z.string().min(1),
+  signatures: z.array(z.object({ keyid: z.string().min(1), sig: z.string().min(1) })).min(1)
+});

@@ -1,15 +1,20 @@
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Braces, LayoutList, List, ListTree } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
+import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/DataState';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
 import { ThemeProvider } from '@/lib/theme';
 
-import { ABLATION_METRICS } from './fixtures/ablationMetrics';
-import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from './fixtures/certificate';
-import { RUN_EVENTS } from './fixtures/runEvents';
-import { STEP_EVIDENCE } from './fixtures/stepEvidence';
+import {
+  DEMO_RUN_ID,
+  ablationQueryOptions,
+  certificateQueryOptions,
+  runEventsQueryOptions,
+  stepEvidenceQueryOptions
+} from './data/queries';
 import GridSpike from './spike/GridSpike';
 import AblationPanel from './views/AblationPanel';
 import CertificateView from './views/CertificateView';
@@ -23,9 +28,10 @@ import { usePlaybackReveal } from './views/usePlaybackReveal';
 /**
  * Chimera Studio root application component.
  *
- * All outbound calls go through gatewayClient.ts (Invariant 1 — gateway
- * chokepoint). This component never calls fetch/axios directly — every
- * view here renders static fixtures (src/fixtures/), no backend.
+ * F3: TODO dato llega por src/data/** (queryOptions + Zod en la frontera —
+ * regla depcruise: ni App ni las vistas importan fixtures/gatewayClient
+ * directo). Hoy las queryFn sirven fixtures; S10 cambia la fuente sin tocar
+ * este árbol. INV-1 intacto: cuando haya red, vive en gatewayClient.ts.
  *
  * Navigation is a plain useState segmented control presented by AppShell
  * (topbar real, F1) — still a demo shell; F2 lo migra a TanStack Router.
@@ -40,6 +46,8 @@ const TABS: readonly { readonly id: TabId; readonly label: string }[] = [
   { id: 'ablacion', label: 'Ablación' },
   { id: 'procedencia', label: 'Procedencia' }
 ];
+
+const queryClient = new QueryClient();
 
 function ToggleButton({
   label,
@@ -65,10 +73,16 @@ function ToggleButton({
   );
 }
 
-export default function App(): React.ReactElement {
+function StudioTabs(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<TabId>('red');
 
-  const { revealedEvents, playback } = usePlaybackReveal(RUN_EVENTS);
+  const eventsQuery = useQuery(runEventsQueryOptions(DEMO_RUN_ID));
+  const stepsQuery = useQuery(stepEvidenceQueryOptions(DEMO_RUN_ID));
+  const certificateQuery = useQuery(certificateQueryOptions(DEMO_RUN_ID));
+  const ablationQuery = useQuery(ablationQueryOptions(DEMO_RUN_ID));
+
+  const runEvents = eventsQuery.data ?? [];
+  const { revealedEvents, playback } = usePlaybackReveal(runEvents);
   const [selectedGlobalSeq, setSelectedGlobalSeq] = useState<number | undefined>(undefined);
   const [timelineViewMode, setTimelineViewMode] = useState<'tree' | 'timeline'>('tree');
 
@@ -77,94 +91,154 @@ export default function App(): React.ReactElement {
   const [provenanceCursor, setProvenanceCursor] = useState(0);
 
   const selectedEvent = revealedEvents.find(event => event.globalSeq === selectedGlobalSeq) ?? null;
-  const selectedStep = selectedEvent?.stepId ? (STEP_EVIDENCE[selectedEvent.stepId] ?? null) : null;
+  const selectedStep = selectedEvent?.stepId
+    ? (stepsQuery.data?.[selectedEvent.stepId] ?? null)
+    : null;
 
   return (
-    <ThemeProvider>
-      <AppShell
-        tabs={TABS}
-        activeTab={activeTab}
-        onTabChange={value => setActiveTab(value as TabId)}
-      >
-        <TabsContent value="red">
-          <GridSpike />
-        </TabsContent>
+    <AppShell tabs={TABS} activeTab={activeTab} onTabChange={value => setActiveTab(value as TabId)}>
+      <TabsContent value="red">
+        <GridSpike />
+      </TabsContent>
 
-        <TabsContent value="timeline">
-          <div className="mx-auto flex max-w-7xl gap-4 px-4 py-8 md:gap-8 md:px-8">
+      <TabsContent value="timeline">
+        <div className="mx-auto flex max-w-7xl gap-4 px-4 py-8 md:gap-8 md:px-8">
+          {eventsQuery.isPending ? (
             <div className="flex-1">
-              <div className="mb-2 flex justify-end gap-1">
-                <ToggleButton
-                  label="árbol"
-                  icon={<ListTree data-icon="inline-start" />}
-                  isActive={timelineViewMode === 'tree'}
-                  onClick={() => setTimelineViewMode('tree')}
-                />
-                <ToggleButton
-                  label="timeline"
-                  icon={<List data-icon="inline-start" />}
-                  isActive={timelineViewMode === 'timeline'}
-                  onClick={() => setTimelineViewMode('timeline')}
+              <LoadingState label="Cargando los eventos del run" />
+            </div>
+          ) : eventsQuery.isError ? (
+            <div className="flex-1">
+              <ErrorState
+                message={eventsQuery.error.message}
+                onRetry={() => void eventsQuery.refetch()}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="flex-1">
+                <div className="mb-2 flex justify-end gap-1">
+                  <ToggleButton
+                    label="árbol"
+                    icon={<ListTree data-icon="inline-start" />}
+                    isActive={timelineViewMode === 'tree'}
+                    onClick={() => setTimelineViewMode('tree')}
+                  />
+                  <ToggleButton
+                    label="timeline"
+                    icon={<List data-icon="inline-start" />}
+                    isActive={timelineViewMode === 'timeline'}
+                    onClick={() => setTimelineViewMode('timeline')}
+                  />
+                </div>
+                <RunTimeline
+                  events={revealedEvents}
+                  selectedGlobalSeq={selectedGlobalSeq}
+                  onSelectEvent={setSelectedGlobalSeq}
+                  viewMode={timelineViewMode}
+                  playback={playback}
                 />
               </div>
-              <RunTimeline
-                events={revealedEvents}
-                selectedGlobalSeq={selectedGlobalSeq}
-                onSelectEvent={setSelectedGlobalSeq}
-                viewMode={timelineViewMode}
-                playback={playback}
-              />
-            </div>
-            <aside className="w-96 shrink-0">
-              <StepInspector step={selectedStep} />
-            </aside>
-          </div>
-        </TabsContent>
+              <aside className="w-96 shrink-0">
+                <StepInspector step={selectedStep} />
+              </aside>
+            </>
+          )}
+        </div>
+      </TabsContent>
 
-        <TabsContent value="certificado">
-          <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
+      <TabsContent value="certificado">
+        <div className="mx-auto max-w-3xl px-4 py-8 md:px-8">
+          {certificateQuery.isPending ? (
+            <LoadingState label="Cargando el certificado del run" />
+          ) : certificateQuery.isError ? (
+            <ErrorState
+              message={certificateQuery.error.message}
+              onRetry={() => void certificateQuery.refetch()}
+            />
+          ) : (
             <CertificateView
-              envelope={EXAMPLE_CERTIFICATE}
+              envelope={certificateQuery.data.envelope}
               onDownload={() =>
-                downloadJson('trust-certificate.example.json', EXAMPLE_CERTIFICATE_WIRE)
+                downloadJson('trust-certificate.example.json', certificateQuery.data.wire)
               }
             />
-          </div>
-        </TabsContent>
+          )}
+        </div>
+      </TabsContent>
 
-        <TabsContent value="ablacion">
-          <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
-            <AblationPanel metrics={ABLATION_METRICS} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="procedencia">
-          <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
-            <div className="mb-2 flex justify-end gap-1">
-              <ToggleButton
-                label="compacto"
-                icon={<LayoutList data-icon="inline-start" />}
-                isActive={provenanceViewMode === 'compact'}
-                onClick={() => setProvenanceViewMode('compact')}
-              />
-              <ToggleButton
-                label="crudo"
-                icon={<Braces data-icon="inline-start" />}
-                isActive={provenanceViewMode === 'raw'}
-                onClick={() => setProvenanceViewMode('raw')}
-              />
-            </div>
-            <ProvenanceExplorer
-              events={RUN_EVENTS}
-              filters={provenanceFilters}
-              onFilterChange={setProvenanceFilters}
-              viewMode={provenanceViewMode}
-              page={{ cursor: provenanceCursor, pageSize: RUN_EVENTS.length, hasMore: false }}
-              onPageChange={setProvenanceCursor}
+      <TabsContent value="ablacion">
+        <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
+          {ablationQuery.isPending ? (
+            <LoadingState label="Cargando las métricas de ablación" />
+          ) : ablationQuery.isError ? (
+            <ErrorState
+              message={ablationQuery.error.message}
+              onRetry={() => void ablationQuery.refetch()}
             />
-          </div>
-        </TabsContent>
-      </AppShell>
+          ) : ablationQuery.data.length === 0 ? (
+            <EmptyState
+              title="Sin métricas de ablación todavía."
+              hint="Ejecute un run comparativo (cuántico vs. clásico) para poblar esta vista."
+            />
+          ) : (
+            <AblationPanel metrics={ablationQuery.data} />
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="procedencia">
+        <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
+          {eventsQuery.isPending ? (
+            <LoadingState label="Cargando la procedencia del run" />
+          ) : eventsQuery.isError ? (
+            <ErrorState
+              message={eventsQuery.error.message}
+              onRetry={() => void eventsQuery.refetch()}
+            />
+          ) : runEvents.length === 0 ? (
+            <EmptyState
+              title="Sin eventos registrados para este run."
+              hint="La procedencia aparece en cuanto el run emite su primer evento."
+            />
+          ) : (
+            <>
+              <div className="mb-2 flex justify-end gap-1">
+                <ToggleButton
+                  label="compacto"
+                  icon={<LayoutList data-icon="inline-start" />}
+                  isActive={provenanceViewMode === 'compact'}
+                  onClick={() => setProvenanceViewMode('compact')}
+                />
+                <ToggleButton
+                  label="crudo"
+                  icon={<Braces data-icon="inline-start" />}
+                  isActive={provenanceViewMode === 'raw'}
+                  onClick={() => setProvenanceViewMode('raw')}
+                />
+              </div>
+              <ProvenanceExplorer
+                events={runEvents}
+                filters={provenanceFilters}
+                onFilterChange={setProvenanceFilters}
+                viewMode={provenanceViewMode}
+                page={{ cursor: provenanceCursor, pageSize: runEvents.length, hasMore: false }}
+                onPageChange={setProvenanceCursor}
+              />
+            </>
+          )}
+        </div>
+      </TabsContent>
+    </AppShell>
+  );
+}
+
+export default function App(): React.ReactElement {
+  return (
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <StudioTabs />
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }

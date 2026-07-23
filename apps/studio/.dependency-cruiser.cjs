@@ -26,6 +26,19 @@ module.exports = {
       }
     },
     {
+      name: 'F3: views-consume-only-the-data-layer',
+      severity: 'error',
+      comment:
+        'Las vistas/componentes consumen datos SOLO vía src/data/** (queryOptions + Zod en la frontera) — jamás fixtures ni gatewayClient directo (F3; S10 cambia la fuente sin tocar vistas).',
+      from: {
+        path: '^src/(views|components|spike|App\\.tsx)',
+        pathNot: '\\.test\\.(ts|tsx)$'
+      },
+      to: {
+        path: '^src/(fixtures|gatewayClient)'
+      }
+    },
+    {
       name: 'no-circular',
       severity: 'error',
       comment: 'Circular dependencies are forbidden.',
