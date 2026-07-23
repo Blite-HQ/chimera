@@ -51,6 +51,7 @@ from blite.verification.exact_solver import (
     MaxCutInstance,
     OptimalityClaim,
 )
+from blite.verification.execution import ExecutionLimits, ExecutionVerifier
 from blite.verification.orchestrator import (
     ClaimDeclaration,
     make_verification_delegate,
@@ -257,6 +258,105 @@ class TestGoldenPath:
         assert not punto_7.ok
         assert any("pata" in f for f in punto_7.failures)
         assert any("execution" in f for f in punto_7.failures)
+
+
+class TestDosPatasReales:
+    """CERO dobles: CP-SAT real + pandapower real sobre la misma partición.
+
+    Red sintética de 4 buses (dos islas {0,1}/{2,3}, cada una con slack y
+    carga chica). Grafo del claim con pesos tales que la partición factible
+    (0,0,1,1) alcanza el corte máximo (solo la rama (1,2) pesa) — así la
+    optimalidad Y la factibilidad eléctrica son verdaderas a la vez."""
+
+    TOPOLOGY: dict[str, Any] = {
+        "buses": [{"id": i, "vn_kv": 20.0} for i in range(4)],
+        "slack": [{"bus": 0, "vm_pu": 1.0}, {"bus": 2, "vm_pu": 1.0}],
+        "branches": [
+            {"from": 0, "to": 1, "r_ohm_per_km": 0.05, "x_ohm_per_km": 0.1},
+            {"from": 2, "to": 3, "r_ohm_per_km": 0.05, "x_ohm_per_km": 0.1},
+            {"from": 1, "to": 2, "r_ohm_per_km": 0.05, "x_ohm_per_km": 0.1},
+        ],
+        "loads": [{"bus": 1, "p_mw": 1.0}, {"bus": 3, "p_mw": 1.0}],
+    }
+
+    def test_certificado_de_run_real_con_dos_anclas_reales_da_7_de_7(self) -> None:
+        anchor_pp = hashlib.sha256(b"anchor:pandapower-sintetica-v1").hexdigest()
+        statement = "la partición propuesta es óptima y electricamente factible"
+        scope: dict[str, Any] = {"instancia": "sintetica-4bus"}
+        claim = OptimalityClaim(
+            instance=MaxCutInstance(n_nodes=4, edges=((0, 1, 0), (2, 3, 0), (1, 2, 5))),
+            assignment=(0, 0, 1, 1),
+            canonical_statement=statement,
+            scope=scope,
+        )
+        verifiers = (
+            _cpsat(),
+            ExecutionVerifier(
+                verifier_id="verifier:pandapower-islanding",
+                independence_group="leg-execution",
+                anchor_digest=anchor_pp,
+                topology=self.TOPOLOGY,
+                limits=ExecutionLimits(),
+            ),
+        )
+        delegate = make_verification_delegate(
+            verifiers=verifiers,
+            declarations=(
+                ClaimDeclaration(
+                    claim=claim,
+                    canonical_statement=statement,
+                    scope=scope,
+                    claim_type="solution",
+                    is_conclusion=True,
+                ),
+            ),
+        )
+        store = create_event_store()
+        execute_run(
+            store,
+            EntryPointRegistry({"cap.echo": _EchoCapability()}),
+            ProfileDispatcher(),
+            InMemoryContentStore(),
+            run_id="run-real2",
+            actor_id="user:dylan",
+            domain_id="domain-a",
+            max_steps=8,
+            policy_digest=hashlib.sha256(POLICY_BYTES).hexdigest(),
+            capability_id="cap.echo",
+            inputs={"x": 21},
+            post_invoke=delegate,
+        )
+
+        bundle = assemble_bundle(
+            stream=store.read_stream("run-real2"),
+            conclusions=(
+                ConclusionDeclaration(
+                    canonical_statement=statement, scope=scope, claim_type="solution"
+                ),
+            ),
+            policy_yaml=POLICY_BYTES,
+            signing_key=ed25519.Ed25519PrivateKey.generate(),
+            keyid="certificate:test",
+            anchor_descriptors=(
+                ANCHOR_DESCRIPTORS[0],
+                {
+                    "anchor_digest": anchor_pp,
+                    "kind": "execution",
+                    "provenance": "pandapower-sintetica-v1",
+                },
+            ),
+        )
+        results = check_bundle(bundle)
+
+        assert all(r.ok for r in results), [
+            (r.number, r.failures) for r in results if not r.ok
+        ]
+        predicate = _predicate_of(bundle)
+        assert predicate["titular_level"] == "AL3"
+        assert {a["anchor_kind"] for a in predicate["attestations"]} == {
+            "solver",
+            "execution",
+        }
 
 
 class TestFailClosed:
