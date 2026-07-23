@@ -184,8 +184,9 @@ No se propone ninguna dependencia nueva en esta nota.
 
 - El event log (trust/01) es suficientemente rápido de leer/replay-ear para runs de duración razonable en
   Fase 1 — no se hizo ninguna medición ni prueba de carga.
-- Un `run` corresponde a un único `stream_id` en el `EventStore` (mismo supuesto que la nota 07 marca como
-  pregunta abierta — aquí se asume para poder razonar sobre replay, pero no está confirmado).
+- Un `run` corresponde a un único `stream_id` en el `EventStore` — **CONFIRMADO** (freeze §2/§13, nota 07:
+  `stream_id = run_id`, un stream por run, decisión de Dylan). Al momento de escribir esta nota era un
+  supuesto pendiente de la nota 07; ya no lo es.
 
 **Preguntas abiertas:**
 
