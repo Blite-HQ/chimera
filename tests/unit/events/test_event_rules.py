@@ -6,15 +6,17 @@ from __future__ import annotations
 import pytest
 
 from blite.events import create_event_store
+from blite.events.event import Event
 from blite.events.rules import (
     PostTerminalAppendError,
     is_system_stream,
     provenance_slice,
     validate_run_id,
 )
+from blite.events.store import EventStore
 
 
-def _append(store, stream_id: str, type: str):  # noqa: ANN001, ANN202 - helper local
+def _append(store: EventStore, stream_id: str, type: str) -> Event:
     return store.append(
         stream_id=stream_id,
         type=type,

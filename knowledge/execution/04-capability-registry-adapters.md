@@ -3,7 +3,16 @@
 **Ítem del plan:** plano de ejecución (Steven) — dar forma al contrato de `blite.runtime`'s registry
 (`engine/src/blite/runtime/registry.py`) y su frontera con los adapters de protocolo (MCP/A2A) que
 `knowledge/trust/06` ya diseñó del lado del contrato.
-**Fecha:** 2026-07-10 · **Estado:** insumo para contract freeze
+**Fecha:** 2026-07-10 · **Estado:** insumo para contract freeze — **mayormente cerrada** (S-E 2026-07-18):
+descubrimiento tolerante a fallos (opción B, §4) **adoptado tal cual**, con eventos `registry.loaded
+{capability_ids[], failed[]}` / `registry.capability_load_failed {entry_point, error_kind}`
+(`actor_id: service:runtime`, stream `system:registry`) — cierra las dos preguntas abiertas de §10 sobre
+reporte de arranque y distinción deshabilitada/fallida ("deshabilitada" = ausencia en el
+`DistributionManifest`; "fallida" = entra en `failed`). Versión duplicada de un `id` (§6/§10) — cerrada:
+pin por `DistributionManifest`, default **determinista, jamás `latest`**. Sigue **sin implementar**:
+`engine/src/blite/runtime/registry.py` sigue siendo el stub `load_capabilities() -> dict` de Fase 1, no el
+`Registry(Protocol)` de `list()`/`get()` con captura de excepción POR entry point que esta nota y el freeze
+piden — próximo trabajo de S-G, todavía sin seed propio.
 **Fuentes:** `docs/invariants.md` (ADR-008, ADR-029) · `pyproject.toml` (`[tool.uv.workspace]`,
 `members = ["sdk", "engine", "capabilities/*"]`) · `capabilities/quantum/pyproject.toml`
 (`vqe = ['qiskit>=1.0', 'qiskit-nature>=0.7', 'pyscf>=2.4']`, extra opcional que falla en Windows por

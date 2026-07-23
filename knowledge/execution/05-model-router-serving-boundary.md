@@ -3,8 +3,14 @@
 **Ítem del plan:** plano de ejecución (Steven) — cómo se selecciona un backend de modelo sin que
 `blite.serving` viole AX3 (un modelo nunca toca el mundo directo), que ya está enforced por
 import-linter contra `httpx`/`requests`/`aiohttp`/`urllib3`/`socket` dentro de `blite.serving`.
-**Fecha:** 2026-07-10 · **Estado:** insumo para contract freeze — **punto de coordinación obligatorio con
-Dylan, no una decisión de esta nota**
+**Fecha:** 2026-07-10 · **Estado:** **RESUELTA** (execution/09 + freeze §15.7, ratificación final
+Steven+Dylan, S-E 2026-07-18): se decidió la **opción (b)** de §1.4/§5 — `ModelPort` (Protocol, cero red)
+vive en `blite.serving`; el adapter que sí hace la llamada real (`ModelServer`, envuelve LiteLLM `Router`)
+vive en `blite.protocols`, bajo INV-6 (protocols exige authz). El contrato **AX3-b** (endurecido en el
+stress-final 2026-07-22) cierra el hueco de cobertura que esta nota señalaba en §6/§10 ("egreso de modelo
+sin pasar por authz"): ningún módulo del engine fuera de `blite.protocols` puede importar un SDK de modelo.
+`ModelPort` ya existe en código (`engine/src/blite/serving/model_port.py`, S-G Etapa 0 — Protocol listo,
+**SPEC**); la implementación de `ModelServer` sigue pendiente.
 **Fuentes:** `docs/invariants.md` (AX3, INV-2, INV-6) · `pyproject.toml` (contrato `AX3` de import-linter,
 `forbidden_modules` de `blite.serving`: `blite.protocols`, `blite.gateway`, `blite.runtime`, `blite.authz`,
 `httpx`, `requests`, `aiohttp`, `urllib3`, `socket`) · `engine/src/blite/serving/__init__.py` (vacío hoy) ·

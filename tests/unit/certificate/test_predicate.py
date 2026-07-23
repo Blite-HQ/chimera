@@ -9,13 +9,15 @@ import pytest
 from pydantic import ValidationError
 
 from blite.certificate.predicate import (
+    AssuranceLevel,
     Conclusion,
+    ConclusionVerdict,
     TrustCertificatePredicate,
     compute_titular_level,
 )
 
 
-def _conclusion(verdict: str, level: str) -> Conclusion:
+def _conclusion(verdict: ConclusionVerdict, level: AssuranceLevel) -> Conclusion:
     return Conclusion(
         claim_digest="sha256:aa",
         canonical_statement="stmt",
@@ -26,7 +28,7 @@ def _conclusion(verdict: str, level: str) -> Conclusion:
 
 
 def _predicate(
-    conclusions: tuple[Conclusion, ...], titular: str
+    conclusions: tuple[Conclusion, ...], titular: AssuranceLevel
 ) -> TrustCertificatePredicate:
     return TrustCertificatePredicate(
         run_id="r1",
