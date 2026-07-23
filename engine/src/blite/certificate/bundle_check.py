@@ -29,7 +29,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 from blite.certificate.canonical import canonicalize
 from blite.certificate.dsse import DSSEEnvelope, DSSESignature
 from blite.certificate.dsse import verify as dsse_verify
-from blite.certificate.predicate import _LEVEL_ORDER, Conclusion, compute_titular_level
+from blite.certificate.predicate import Conclusion, compute_titular_level
 from blite.events.rules import TERMINAL_RUN_EVENTS
 
 PROVENANCE_PREFIX = b"blite/provenance/v1\n"
@@ -45,6 +45,10 @@ CLASS_CEILINGS: dict[str, str] = {
     "consensus_replication": "AL2",
     "human_expert": "AL3",
 }
+
+# Copia PROPIA (no importada de `predicate`) a propósito: el verificador
+# offline no confía en el emisor (D20) — ver predicate.py líneas 52-54.
+_LEVEL_ORDER: dict[str, int] = {"AL0": 0, "AL1": 1, "AL2": 2, "AL3": 3, "AL4": 4}
 
 # pass↔verified · fail↔refuted (freeze §7 punto 7)
 _VERDICT_MAP = {"verified": "pass", "refuted": "fail"}

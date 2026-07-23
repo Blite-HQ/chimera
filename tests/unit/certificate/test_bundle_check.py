@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import copy
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,9 @@ def _failed_points(bundle: dict[str, Any]) -> set[int]:
     return {r.number for r in check_bundle(bundle) if not r.ok}
 
 
-def _retamper_payload(bundle: dict[str, Any], mutate) -> dict[str, Any]:  # noqa: ANN001
+def _retamper_payload(
+    bundle: dict[str, Any], mutate: Callable[[dict[str, Any]], None]
+) -> dict[str, Any]:
     """Re-encodea el payload con una mutación SIN re-firmar (forja post-emisión)."""
     tampered = copy.deepcopy(bundle)
     statement = json.loads(base64.b64decode(tampered["envelope"]["payload"]))

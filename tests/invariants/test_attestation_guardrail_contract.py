@@ -77,8 +77,8 @@ def test_signal_cannot_be_built_from_attestation_fields() -> None:
     with pytest.raises(ValidationError):
         Signal(
             verifier_id="ortools-cpsat",  # type: ignore[call-arg]
-            verifier_class="formal_exact",
-            verdict="pass",
+            verifier_class="formal_exact",  # type: ignore[call-arg]
+            verdict="pass",  # type: ignore[call-arg]
         )
 
 
@@ -86,9 +86,9 @@ def test_attestation_cannot_be_built_from_signal_fields() -> None:
     with pytest.raises(ValidationError):
         Attestation(
             detector="self-consistency",  # type: ignore[call-arg]
-            kind="egress.self_consistency",
-            target="sha256:abc",
-            flagged=True,
+            kind="egress.self_consistency",  # type: ignore[call-arg]
+            target="sha256:abc",  # type: ignore[call-arg]
+            flagged=True,  # type: ignore[call-arg]
         )
 
 
@@ -228,7 +228,7 @@ def test_all_six_classes_have_a_constructible_predicate() -> None:
             ),
         ),
     )
-    methods = set()
+    methods: set[str] = set()
     for verifier_class, anchor_kind, level, predicate in cases:
         attestation = _att(
             verifier_class=verifier_class,

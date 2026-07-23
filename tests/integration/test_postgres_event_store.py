@@ -17,6 +17,8 @@ from uuid import uuid4
 
 import pytest
 
+from blite.events.event import Event
+from blite.events.postgres import PostgresEventStore
 from blite.events.rules import PostTerminalAppendError
 from blite.events.store import ConcurrentAppendError
 
@@ -30,12 +32,10 @@ INIT_SQL = ROOT / "engine" / "sql" / "init_v2.sql"
 
 
 @pytest.fixture()
-def pg_store() -> Iterator[object]:
+def pg_store() -> Iterator[PostgresEventStore]:
     """Schema efímero + init_v2.sql aplicado + store con search_path fijado."""
     psycopg = pytest.importorskip("psycopg")
     from psycopg.conninfo import make_conninfo
-
-    from blite.events.postgres import PostgresEventStore
 
     base = os.environ["CHIMERA_TEST_DATABASE_URL"]
     schema = f"t_{uuid4().hex[:12]}"
@@ -56,7 +56,12 @@ def pg_store() -> Iterator[object]:
             conn.execute(f'DROP SCHEMA "{schema}" CASCADE')
 
 
-def _append(store, stream_id: str, type_: str, expected_seq: int | None = None):
+def _append(
+    store: PostgresEventStore,
+    stream_id: str,
+    type_: str,
+    expected_seq: int | None = None,
+) -> Event:
     return store.append(
         stream_id=stream_id,
         type=type_,
@@ -69,7 +74,7 @@ def _append(store, stream_id: str, type_: str, expected_seq: int | None = None):
 
 class TestPortContract:
     def test_append_asigna_seq_y_global_seq_y_roundtrip_del_payload(
-        self, pg_store
+        self, pg_store: PostgresEventStore
     ) -> None:
         event = _append(pg_store, "r1", "run.created")
         assert event.seq == 1
@@ -77,14 +82,18 @@ class TestPortContract:
         assert event.payload == {"k": "v"}
         assert event.occurred_at.tzinfo is not None
 
-    def test_seq_por_stream_y_global_seq_cruzado_creciente(self, pg_store) -> None:
+    def test_seq_por_stream_y_global_seq_cruzado_creciente(
+        self, pg_store: PostgresEventStore
+    ) -> None:
         first = _append(pg_store, "r1", "run.created")
         other = _append(pg_store, "r2", "run.created")
         second = _append(pg_store, "r1", "run.step.started", expected_seq=1)
         assert (first.seq, second.seq, other.seq) == (1, 2, 1)
         assert first.global_seq < other.global_seq < second.global_seq
 
-    def test_read_stream_ordenado_y_con_cursor(self, pg_store) -> None:
+    def test_read_stream_ordenado_y_con_cursor(
+        self, pg_store: PostgresEventStore
+    ) -> None:
         _append(pg_store, "r1", "run.created")
         _append(pg_store, "r2", "run.created")
         _append(pg_store, "r1", "run.step.started", expected_seq=1)
@@ -94,31 +103,39 @@ class TestPortContract:
         ]
         assert [e.seq for e in pg_store.read_stream("r1", from_seq=1)] == [2]
 
-    def test_read_all_es_el_cursor_global_para_sse(self, pg_store) -> None:
+    def test_read_all_es_el_cursor_global_para_sse(
+        self, pg_store: PostgresEventStore
+    ) -> None:
         first = _append(pg_store, "r1", "run.created")
         _append(pg_store, "r2", "run.created")
         tail = pg_store.read_all(from_global_seq=first.global_seq)
         assert [e.stream_id for e in tail] == ["r2"]
 
-    def test_conflicto_de_expected_seq_explota_y_no_apendea(self, pg_store) -> None:
+    def test_conflicto_de_expected_seq_explota_y_no_apendea(
+        self, pg_store: PostgresEventStore
+    ) -> None:
         _append(pg_store, "r1", "run.created")
         with pytest.raises(ConcurrentAppendError):
             _append(pg_store, "r1", "run.step.started", expected_seq=0)
         assert len(pg_store.read_stream("r1")) == 1
 
-    def test_expected_seq_adelantado_explota_sin_dejar_hueco(self, pg_store) -> None:
+    def test_expected_seq_adelantado_explota_sin_dejar_hueco(
+        self, pg_store: PostgresEventStore
+    ) -> None:
         _append(pg_store, "r1", "run.created")
         with pytest.raises(ConcurrentAppendError):
             _append(pg_store, "r1", "run.step.started", expected_seq=5)
         assert [e.seq for e in pg_store.read_stream("r1")] == [1]
 
-    def test_rechazo_post_terminal(self, pg_store) -> None:
+    def test_rechazo_post_terminal(self, pg_store: PostgresEventStore) -> None:
         _append(pg_store, "r1", "run.created")
         _append(pg_store, "r1", "run.completed", expected_seq=1)
         with pytest.raises(PostTerminalAppendError):
             _append(pg_store, "r1", "run.step.started", expected_seq=2)
 
-    def test_familias_de_cierre_pasan_post_terminal(self, pg_store) -> None:
+    def test_familias_de_cierre_pasan_post_terminal(
+        self, pg_store: PostgresEventStore
+    ) -> None:
         # freeze §2: métricas/familias de cierre quedan FUERA del corte del
         # hash y NO se rechazan tras el terminal.
         _append(pg_store, "r1", "run.created")

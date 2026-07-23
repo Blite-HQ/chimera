@@ -29,7 +29,7 @@ class TestForma:
             allowed=False, reason="sin permiso", decided_by="stage:authorization"
         )
         with pytest.raises(ValidationError):
-            decision.allowed = True  # type: ignore[misc]
+            decision.allowed = True
 
     def test_reason_y_decided_by_no_pueden_ser_vacios(self) -> None:
         # Fail-closed honesto: una decisión sin razón ni responsable no es

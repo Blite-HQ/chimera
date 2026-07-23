@@ -13,7 +13,9 @@ sobre `event_stream` con desconexión controlable.
 from __future__ import annotations
 
 import json
+from typing import cast
 
+import httpx
 from chimera_api.app import create_app, event_stream
 from fastapi.testclient import TestClient
 
@@ -73,10 +75,25 @@ def _parse_frames(body: str) -> list[dict[str, str]]:
     return frames
 
 
+# starlette.testclient.TestClient anota su `.get()` contra el paquete
+# `httpx2` (bajo TYPE_CHECKING) que este repo no instala — el fallback en
+# runtime es el `httpx` real (con warning de deprecación), así que el
+# `cast` de abajo es fiel al tipo efectivo en ejecución; pyright solo
+# necesita el ignore puntual sobre la llamada en sí, ya que `httpx2` no
+# está resoluble estáticamente (equivalente a "librería sin stubs").
+def _get(
+    client: TestClient, url: str, *, headers: dict[str, str] | None = None
+) -> httpx.Response:
+    return cast(
+        httpx.Response,
+        client.get(url, headers=headers),  # pyright: ignore[reportUnknownMemberType]
+    )
+
+
 class TestHealth:
     def test_health_responde_ok(self) -> None:
         client = TestClient(create_app(create_event_store()))
-        response = client.get("/health")
+        response = _get(client, "/health")
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
 
@@ -89,7 +106,7 @@ class TestRunEventsSse:
         client = TestClient(create_app(store))
 
         # Act — snapshot: catch-up y cerrar
-        response = client.get("/runs/r1/events?live=0")
+        response = _get(client, "/runs/r1/events?live=0")
 
         # Assert — los 3 de r1, en orden, con id = global_seq y event = type
         frames = _parse_frames(response.text)
@@ -107,8 +124,10 @@ class TestRunEventsSse:
         client = TestClient(create_app(store))
 
         # Act — el cursor es el global_seq del primero: llegan solo 2.º y 3.º
-        response = client.get(
-            "/runs/r1/events?live=0", headers={"Last-Event-ID": str(seqs[0])}
+        response = _get(
+            client,
+            "/runs/r1/events?live=0",
+            headers={"Last-Event-ID": str(seqs[0])},
         )
 
         # Assert
@@ -120,8 +139,10 @@ class TestRunEventsSse:
         store = create_event_store()
         seqs = _seed(store)
         client = TestClient(create_app(store))
-        response = client.get(
-            "/runs/r1/events?live=0", headers={"Last-Event-ID": "not-a-number"}
+        response = _get(
+            client,
+            "/runs/r1/events?live=0",
+            headers={"Last-Event-ID": "not-a-number"},
         )
         assert [int(f["id"]) for f in _parse_frames(response.text)] == seqs
 
@@ -132,7 +153,7 @@ class TestRunEventsSse:
         client = TestClient(create_app(store))
 
         # Act
-        frames = _parse_frames(client.get("/runs/r1/events?live=0").text)
+        frames = _parse_frames(_get(client, "/runs/r1/events?live=0").text)
 
         # Assert — jamás un evento de r2 (proyección, no fuente)
         payloads = [json.loads(f["data"]) for f in frames]
@@ -143,7 +164,7 @@ class TestRunEventsSse:
         store = create_event_store()
         _seed(store)
         client = TestClient(create_app(store))
-        frames = _parse_frames(client.get("/runs/r1/events?live=0").text)
+        frames = _parse_frames(_get(client, "/runs/r1/events?live=0").text)
         data = json.loads(frames[0]["data"])
         assert data["global_seq"] == int(frames[0]["id"])
         assert "hash" not in data
@@ -153,7 +174,7 @@ class TestRunEventsSse:
         store = create_event_store()
         _seed(store)
         client = TestClient(create_app(store))
-        response = client.get("/runs/r1/events?live=0")
+        response = _get(client, "/runs/r1/events?live=0")
         assert response.headers["content-type"].startswith("text/event-stream")
         assert response.headers["cache-control"] == "no-cache"
         assert response.headers["x-accel-buffering"] == "no"
