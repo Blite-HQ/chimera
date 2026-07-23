@@ -13,6 +13,10 @@ información para el Verifier, no vergüenza (quantum/02 §1.3 Ruta A).
 
 from __future__ import annotations
 
+# Qiskit/scipy no publican stubs completos — se silencian SOLO los reportes de
+# tipos desconocidos de terceros; las firmas propias siguen bajo strict.
+# pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false
+# pyright: reportUnknownVariableType=false, reportUnknownArgumentType=false
 from typing import Any, cast
 
 _MAX_QUBITS = 20
@@ -56,9 +60,7 @@ def _validate_matrix(raw: Any) -> list[list[float]]:
 def _energy(matrix: list[list[float]], assignment: list[int]) -> float:
     n = len(assignment)
     return sum(
-        matrix[i][j] * assignment[i] * assignment[j]
-        for i in range(n)
-        for j in range(n)
+        matrix[i][j] * assignment[i] * assignment[j] for i in range(n) for j in range(n)
     )
 
 
@@ -97,7 +99,7 @@ def solve_qaoa(
     from scipy.optimize import minimize
 
     matrix = _validate_matrix(raw_matrix)
-    if not isinstance(layers, int) or layers < 1:
+    if isinstance(layers, bool) or layers < 1:
         msg = f"layers debe ser un entero >= 1, no {layers!r}"
         raise ValueError(msg)
 
@@ -115,8 +117,15 @@ def solve_qaoa(
         ansatz, basis_gates=["rz", "ry", "rx", "h", "cx"], seed_transpiler=seed
     )
 
+    def bind(theta: Any) -> Any:
+        bound = synthesized.assign_parameters(theta)
+        if bound is None:  # pragma: no cover — solo ocurre con inplace=True
+            msg = "assign_parameters devolvió None sobre el circuito sintetizado"
+            raise RuntimeError(msg)
+        return bound
+
     def expectation(theta: Any) -> float:
-        state = Statevector(synthesized.assign_parameters(theta))
+        state = Statevector(bind(theta))
         return float(np.real(state.expectation_value(hamiltonian)))
 
     initial = np.full(ansatz.num_parameters, _INITIAL_ANGLE)
@@ -127,7 +136,7 @@ def solve_qaoa(
         options={"maxiter": _COBYLA_MAX_ITER},
     )
 
-    final_circuit = synthesized.assign_parameters(optimized.x)
+    final_circuit = bind(optimized.x)
     final_circuit.measure_all()
     simulator = AerSimulator(seed_simulator=seed)
     compiled = transpile(final_circuit, simulator, seed_transpiler=seed)

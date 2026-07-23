@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,8 @@ __all__ = [
 
 _CONVENTIONS = ("flujo", "uniforme")
 _CORPUS_RELATIVE = Path("knowledge") / "islanding" / "corpus"
+# La familia viaja a una ruta de archivo — solo minúsculas/dígitos (ieee14, cr8)
+_FAMILY_PATTERN = re.compile(r"[a-z0-9]+")
 
 Edges = tuple[tuple[int, int, int], ...]
 
@@ -86,9 +89,7 @@ def _verify_digest(raw: dict[str, Any], path: Path) -> None:
 def _parse_instance(raw: dict[str, Any], path: Path) -> _Instance:
     try:
         n_nodes = int(raw["n_nodos"])
-        edges: Edges = tuple(
-            (int(u), int(v), int(w)) for u, v, w in raw["aristas"]
-        )
+        edges: Edges = tuple((int(u), int(v), int(w)) for u, v, w in raw["aristas"])
         optimum = int(raw["optimo"])
         canonical = tuple(int(x) for x in raw["asignacion_canonica"])
     except (KeyError, TypeError, ValueError) as exc:
@@ -108,9 +109,7 @@ def _parse_instance(raw: dict[str, Any], path: Path) -> _Instance:
             "auto-referencial; esta consistencia es el chequeo independiente"
         )
         raise CorpusIntegrityError(msg)
-    return _Instance(
-        n_nodes=n_nodes, edges=edges, optimum=optimum, canonical=canonical
-    )
+    return _Instance(n_nodes=n_nodes, edges=edges, optimum=optimum, canonical=canonical)
 
 
 def _load_instance(corpus_dir: Path, family: str, convention: str) -> _Instance:
@@ -130,12 +129,16 @@ def _zero_degradation_buses(inst: _Instance) -> list[int]:
 
 
 def _default_corpus_dir() -> Path:
-    for base in (Path.cwd(), *Path.cwd().parents):
-        candidate = base / _CORPUS_RELATIVE
-        if candidate.is_dir():
-            return candidate
+    # Primero desde el propio módulo (independiente del cwd — en el monorepo
+    # sube hasta la raíz del repo), después desde el cwd como respaldo.
+    anchors = (Path(__file__).resolve(), Path.cwd())
+    for anchor in anchors:
+        for base in (anchor, *anchor.parents):
+            candidate = base / _CORPUS_RELATIVE
+            if candidate.is_dir():
+                return candidate
     msg = (
-        f"no se encontró {_CORPUS_RELATIVE} subiendo desde {Path.cwd()}; "
+        f"no se encontró {_CORPUS_RELATIVE} subiendo desde {anchors}; "
         "pase corpus_dir explícito"
     )
     raise FileNotFoundError(msg)
@@ -151,6 +154,12 @@ def _parse_instance_name(instance: str) -> tuple[str, str]:
         raise ValueError(msg)
     if convention not in _CONVENTIONS:
         msg = f"convencion {convention!r} desconocida: se espera una de {_CONVENTIONS}"
+        raise ValueError(msg)
+    if not _FAMILY_PATTERN.fullmatch(family):
+        msg = (
+            f"familia {family!r} inválida: solo [a-z0-9] — el nombre viaja a "
+            "una ruta dentro del corpus"
+        )
         raise ValueError(msg)
     return family, convention
 

@@ -17,6 +17,9 @@ Salida según el output_schema del manifest: `{"converged": bool, "metrics": {..
 
 from __future__ import annotations
 
+# pandapower no publica stubs — se silencia SOLO ese reporte; el resto de la
+# interacción va tras cast(Any, ...) explícitos.
+# pyright: reportMissingTypeStubs=false
 from typing import Any, cast
 
 
@@ -70,8 +73,8 @@ def _build_network(topology: dict[str, Any]) -> Any:
 
 
 def _metrics_of(net: Any) -> dict[str, Any]:
-    res_bus = cast(Any, net).res_bus
-    res_line = cast(Any, net).res_line
+    res_bus = net.res_bus
+    res_line = net.res_line
     return {
         "bus_vm_pu": [float(v) for v in res_bus["vm_pu"]],
         "bus_va_degree": [float(v) for v in res_bus["va_degree"]],

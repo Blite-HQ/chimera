@@ -9,23 +9,26 @@ cada bitstring medido se evalúa clásicamente contra Q.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from blite_cap_quantum import QaoaSolver
+pytest.importorskip(
+    "qiskit", reason="extra opcional: uv sync --all-packages --extra qaoa"
+)
+
+from blite_cap_quantum import QaoaSolver  # noqa: E402
 
 # G6 de knowledge/quantum/02 §1.2 — óptimo 5 en [0,0,1] (o su complemento)
 _G6 = [[4, -1, -3], [-1, 3, -2], [-3, -2, 5]]
 
 
-def _energy(matrix: list[list[float]], assignment: list[int]) -> float:
+def _energy(matrix: Sequence[Sequence[float]], assignment: list[int]) -> float:
     n = len(assignment)
     return sum(
-        matrix[i][j] * assignment[i] * assignment[j]
-        for i in range(n)
-        for j in range(n)
+        matrix[i][j] * assignment[i] * assignment[j] for i in range(n) for j in range(n)
     )
 
 
@@ -47,9 +50,7 @@ class TestSolve:
         assert first["energy"] == second["energy"]
 
     def test_reference_optimum_reports_approximation_ratio(self) -> None:
-        result = QaoaSolver().invoke(
-            {"matrix": _G6, "seed": 1, "reference_optimum": 5}
-        )
+        result = QaoaSolver().invoke({"matrix": _G6, "seed": 1, "reference_optimum": 5})
 
         assert result["approximation_ratio"] == result["energy"] / 5
 
@@ -103,6 +104,19 @@ class TestInputValidation:
     def test_layers_below_one_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="layers"):
             QaoaSolver().invoke({"matrix": _G6, "layers": 0})
+
+    def test_boolean_layers_raises_value_error(self) -> None:
+        # bool es subclase de int: True se colaría como layers=1
+        with pytest.raises(ValueError, match="layers"):
+            QaoaSolver().invoke({"matrix": _G6, "layers": True})
+
+    def test_non_integer_seed_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="seed"):
+            QaoaSolver().invoke({"matrix": _G6, "seed": "1"})
+
+    def test_non_numeric_reference_optimum_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="reference_optimum"):
+            QaoaSolver().invoke({"matrix": _G6, "reference_optimum": "5"})
 
     def test_unimplemented_backend_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="backend"):

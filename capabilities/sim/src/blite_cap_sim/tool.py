@@ -8,7 +8,7 @@ Heavy dependencies are loaded lazily (install via extras):
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from blite_capability.manifest import CapabilityManifest
 
@@ -63,4 +63,4 @@ class PowerFlowSim:
         if not isinstance(topology, dict):
             msg = "PowerFlowSim: input 'topology' (object) is required"
             raise ValueError(msg)
-        return run_power_flow(topology)
+        return run_power_flow(cast("dict[str, Any]", topology))

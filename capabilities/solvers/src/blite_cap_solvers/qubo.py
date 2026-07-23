@@ -57,9 +57,7 @@ def _validate_matrix(raw: Any) -> list[list[int]]:
 def _energy(matrix: list[list[int]], assignment: list[int]) -> int:
     n = len(assignment)
     return sum(
-        matrix[i][j] * assignment[i] * assignment[j]
-        for i in range(n)
-        for j in range(n)
+        matrix[i][j] * assignment[i] * assignment[j] for i in range(n) for j in range(n)
     )
 
 
@@ -92,6 +90,12 @@ def solve_qubo(raw_matrix: Any) -> dict[str, Any]:
     solver.parameters.max_deterministic_time = _MAX_DETERMINISTIC_TIME
     status = solver.status_name(solver.solve(model))
 
+    if status == "UNKNOWN":
+        msg = (
+            f"CP-SAT agotó el presupuesto determinista ({_MAX_DETERMINISTIC_TIME}) "
+            "sin incumbente — instancia demasiado grande para este adapter"
+        )
+        raise RuntimeError(msg)
     if status not in ("OPTIMAL", "FEASIBLE"):
         msg = f"CP-SAT devolvió {status} en un QUBO sin restricciones — bug de modelado"
         raise RuntimeError(msg)

@@ -23,9 +23,7 @@ _G6 = [[4, -1, -3], [-1, 3, -2], [-3, -2, 5]]
 def _energy(matrix: list[list[int]], assignment: list[int]) -> int:
     n = len(assignment)
     return sum(
-        matrix[i][j] * assignment[i] * assignment[j]
-        for i in range(n)
-        for j in range(n)
+        matrix[i][j] * assignment[i] * assignment[j] for i in range(n) for j in range(n)
     )
 
 

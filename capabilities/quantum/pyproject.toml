@@ -11,7 +11,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-    qaoa = ['qiskit>=1.0', 'qiskit-optimization>=0.6', 'qiskit-aer>=0.14']
+    # Floor 2.0: qaoa.py usa la API de Qiskit 2.x (QAOAAnsatz sin
+    # qiskit_algorithms, qiskit_optimization.translators.to_ising)
+    qaoa = ['qiskit>=2.0', 'qiskit-optimization>=0.6', 'qiskit-aer>=0.14']
     vqe = ['qiskit>=1.0', 'qiskit-nature>=0.7', 'pyscf>=2.4']
     vqc = ['pennylane>=0.38']
     dwave = ['dwave-ocean-sdk>=7.0']

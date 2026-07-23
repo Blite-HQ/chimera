@@ -69,6 +69,4 @@ class TestInputValidation:
 
     def test_topology_without_slack_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="slack"):
-            PowerFlowSim().invoke(
-                {"topology": {"buses": [{"id": 0, "vn_kv": 110.0}]}}
-            )
+            PowerFlowSim().invoke({"topology": {"buses": [{"id": 0, "vn_kv": 110.0}]}})

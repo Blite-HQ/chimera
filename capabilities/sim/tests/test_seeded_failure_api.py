@@ -131,21 +131,15 @@ class TestRecompute:
 class TestValidation:
     def test_rejects_malformed_instance_name(self, corpus_dir: Path) -> None:
         with pytest.raises(ValueError, match="instance"):
-            recompute_seeded_failure(
-                instance="tri_flujo", bus=1, corpus_dir=corpus_dir
-            )
+            recompute_seeded_failure(instance="tri_flujo", bus=1, corpus_dir=corpus_dir)
 
     def test_rejects_unknown_convention(self, corpus_dir: Path) -> None:
         with pytest.raises(ValueError, match="conven"):
-            recompute_seeded_failure(
-                instance="tri-pesos", bus=1, corpus_dir=corpus_dir
-            )
+            recompute_seeded_failure(instance="tri-pesos", bus=1, corpus_dir=corpus_dir)
 
     def test_rejects_bus_out_of_range(self, corpus_dir: Path) -> None:
         with pytest.raises(ValueError, match="bus"):
-            recompute_seeded_failure(
-                instance="tri-flujo", bus=3, corpus_dir=corpus_dir
-            )
+            recompute_seeded_failure(instance="tri-flujo", bus=3, corpus_dir=corpus_dir)
 
     def test_missing_instance_file_raises_file_not_found(
         self, corpus_dir: Path
@@ -154,6 +148,29 @@ class TestValidation:
             recompute_seeded_failure(
                 instance="cuadrado-flujo", bus=1, corpus_dir=corpus_dir
             )
+
+    def test_rejects_family_with_path_traversal_characters(
+        self, corpus_dir: Path
+    ) -> None:
+        # La familia viaja a una ruta de archivo: solo [a-z0-9] es válido
+        with pytest.raises(ValueError, match="familia"):
+            recompute_seeded_failure(
+                instance="../evil-flujo", bus=1, corpus_dir=corpus_dir
+            )
+
+
+class TestDefaultCorpusDir:
+    def test_finds_real_corpus_independent_of_cwd(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # Arrange — cwd fuera del repo: el default resuelve vía __file__
+        monkeypatch.chdir(tmp_path)
+
+        # Act
+        result = recompute_seeded_failure(instance="ieee14-flujo", bus=1)
+
+        # Assert — encontró el corpus congelado real
+        assert result.optimum == 57_070
 
 
 class TestCorpusIntegrity:
@@ -183,9 +200,7 @@ class TestCorpusIntegrity:
 
         # Act / Assert
         with pytest.raises(CorpusIntegrityError, match="digest"):
-            recompute_seeded_failure(
-                instance="tri-flujo", bus=1, corpus_dir=corpus
-            )
+            recompute_seeded_failure(instance="tri-flujo", bus=1, corpus_dir=corpus)
 
     def test_canonical_assignment_inconsistent_with_optimum_fails_loud(
         self, tmp_path: Path
@@ -215,6 +230,4 @@ class TestCorpusIntegrity:
 
         # Act / Assert
         with pytest.raises(CorpusIntegrityError, match="canonica"):
-            recompute_seeded_failure(
-                instance="tri-flujo", bus=1, corpus_dir=corpus
-            )
+            recompute_seeded_failure(instance="tri-flujo", bus=1, corpus_dir=corpus)

@@ -12,8 +12,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from blite_cap_quantum import QaoaSolver
-from capabilities_sim_api import recompute_seeded_failure
+import pytest
+
+pytest.importorskip(
+    "qiskit", reason="extra opcional: uv sync --all-packages --extra qaoa"
+)
+
+from blite_cap_quantum import QaoaSolver  # noqa: E402
+from capabilities_sim_api import recompute_seeded_failure  # noqa: E402
 
 _FROZEN_OPTIMUM = 57_070
 _SEEDED_RATIO = 0.5712
