@@ -57,6 +57,10 @@ class PowerFlowSim:
             ) from exc
 
     def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        raise NotImplementedError(
-            "PowerFlowSim: implementation not yet provided. Install blite-cap-sim[pandapower]."
-        )
+        from blite_cap_sim.power_flow import run_power_flow
+
+        topology = inputs.get("topology")
+        if not isinstance(topology, dict):
+            msg = "PowerFlowSim: input 'topology' (object) is required"
+            raise ValueError(msg)
+        return run_power_flow(topology)
