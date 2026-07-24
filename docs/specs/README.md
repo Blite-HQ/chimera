@@ -74,3 +74,54 @@ Reglas:
 /runs/{id}/certificate`) no tiene spec propia aquí — quedó especificado y cerrado en
 > [`../mvp/01-runtime-api.md`](../mvp/01-runtime-api.md); su prueba estrella es
 > `tests/smoke/test_runtime_api_e2e.py` (POST → SSE terminal → certificado → `check_bundle` 7/7).
+
+## Specs de costura (Fase 0 · Planeado) — convención
+
+> **Estado: SPEC (Fase 0, 2026-07-24).** Las 6 specs de costura de `05-plan-paralelo.md`
+> §Fase 0 fijan los contratos ENTRE dominios ANTES de que las 5 sesiones de implementación
+> arranquen. Autoridad: el freeze + `docs/planeado/03-research-estado-del-arte.md` (R1–R6).
+> Una spec de costura jamás contradice el freeze; si necesita cambiarlo, va como
+> supersesión con causa en `docs/mvp/decisiones.md` (regla 3 del freeze) — ej. la ceremonia
+> A1 (#66), no aquí.
+
+Cada spec de costura declara, además de lo de arriba: **(a)** una tabla de **interfaces con
+otros dominios** (interfaz tocada → dominio afectado → estado del contrato); **(b)** los
+**eventos/payloads nuevos** que introduce (nombre de wire dotted-lowercase — `plan.created` —
+y su ● del catálogo §14 — `●PlanCreated`); **(c)** sus **tests de contrato** sobre fixtures
+de costura (abajo).
+
+### Fixtures de costura — un solo origen (regla NUEVA #1 de `05`)
+
+Lección del MVP: los 6 queries del Studio corrían fixtures inventados por dominio, divergentes
+del API real. Regla: **el fixture de costura tiene UN solo origen y ambos lados lo parsean.**
+
+- **El origen es Python** (los modelos Pydantic del contrato). Un generador bajo `scripts/`
+  (patrón heredado de `gen-example-bundle.py`, que de UN bundle auto-validado 7/7 emite
+  `scripts/example-bundle.json` **y** `apps/studio/src/fixtures/certificate.example.json`)
+  importa los modelos del `engine`/`sdk`, y emite el fixture **canónico** (JCS/RFC-8785,
+  snake_case de wire) a `tests/fixtures/contract/<spec>/<caso>.json`, **espejado** a
+  `apps/studio/src/fixtures/contract/<spec>/<caso>.json` (Vite solo importa dentro de `src/`).
+- **El fixture ES el contrato:** el seed de Python lo parsea con el modelo Pydantic; el test
+  de Studio lo parsea con el schema Zod espejo (`apps/studio/src/data/schemas.ts`). Ninguno
+  inventa el dato. Un test anti-drift asegura que canónico y espejo son byte-idénticos (mismo
+  espíritu que `test_verification_policy` comparando el JSON Schema contra `.model_json_schema()`).
+- **NO se adopta codegen Pydantic→Zod** (rechazado: build-step pesado; el freeze ya descartó
+  maquinaria de wire). El par [fixture JSON generado por Python + Zod espejo a mano + gate en
+  ambos lados] es el patrón probado y suficiente; el Zod ya se declara "espejo de los contratos
+  congelados".
+- **Fase 0 entrega el contrato + el seed (xfail), no la feature.** Donde el modelo origen ya
+  existe (Event/proyección SSE, Attestation, Certificate) el fixture se genera y commitea hoy;
+  donde el modelo aún no existe (eventos de plan, manifest v2, predicado de importación) el
+  seed queda `@pytest.mark.seed` + `xfail(strict=False)` y el fixture verde lo entrega el dueño
+  en Fase 1. Cambiar una costura sin regenerar su fixture = defecto (el generador falla-fuerte).
+
+### Índice de specs de costura
+
+| Spec                                                                | Costura   | Dueño (Fase 1) | Estado |
+| ------------------------------------------------------------------- | --------- | -------------- | ------ |
+| [`harness-agentico.md`](harness-agentico.md)                        | A↔E↔D     | Dylan+Steven   | SPEC   |
+| [`capability-ingesta.md`](capability-ingesta.md)                    | B↔A       | Sebas+Dylan    | SPEC   |
+| [`evidencia-externa.md`](evidencia-externa.md)                      | B         | Sebas          | SPEC   |
+| [`informe-derivado.md`](informe-derivado.md)                        | C↔B       | Dylan          | SPEC   |
+| [`superficie-visual.md`](superficie-visual.md)                      | D↔E↔A     | Dylan          | SPEC   |
+| [`endpoints-studio.md`](endpoints-studio.md)                        | E↔D       | Steven+Dylan   | SPEC   |
