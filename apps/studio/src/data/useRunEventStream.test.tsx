@@ -1,7 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook } from '@testing-library/react';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { RUN_EVENTS } from '../fixtures/runEvents';
 import { runEventsQueryOptions } from './queries';
 import * as runStream from './runStream';
 import { appendEvent, useRunEventStream } from './useRunEventStream';
@@ -100,5 +101,52 @@ describe('useRunEventStream', () => {
 
     unmount();
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('D1 task 3 — el fetch inicial de runEventsQueryOptions (en vivo, resuelve a []) nunca pisa lo que ya escribió el SSE, y el resultado final jamás contiene un evento del fixture', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const close = vi.fn();
+    // globalSeq fuera del rango del fixture (1-14, ver runEvents.ts) para
+    // que una eventual colisión de id no de un falso positivo/negativo.
+    const LIVE_ONLY_EVENT: ProjectedEvent = {
+      globalSeq: 101,
+      type: 'capability.job.completed',
+      actorId: 'service:runtime',
+      occurredAt: '2026-07-24T00:00:00.000000Z',
+      resumen: 'Evento exclusivo del SSE — jamás debería salir de un fixture'
+    };
+    let emit: ((event: ProjectedEvent) => void) | undefined;
+    vi.mocked(runStream.subscribeToRunEvents).mockImplementation(
+      (_runId: string, _options: unknown, handlers: RunStreamHandlers): RunStreamSubscription => {
+        emit = handlers.onEvent;
+        return { close };
+      }
+    );
+
+    const queryClient = new QueryClient();
+    function useStreamAndQuery(runId: string) {
+      useRunEventStream(runId);
+      return useQuery(runEventsQueryOptions(runId));
+    }
+
+    const { result, unmount } = renderHook(() => useStreamAndQuery('8f2c1a9b'), {
+      wrapper: wrapper(queryClient)
+    });
+
+    // El fetch inicial (en vivo, resuelve a []) se asienta antes de que
+    // llegue el primer evento del SSE — el orden realista, ya que el SSE
+    // depende de la red y el queryFn no.
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
+
+    emit?.(LIVE_ONLY_EVENT);
+
+    await waitFor(() => expect(result.current.data).toEqual([LIVE_ONLY_EVENT]));
+    expect(result.current.data).toHaveLength(1);
+    RUN_EVENTS.forEach(fixtureEvent => {
+      expect(result.current.data?.map(event => event.resumen)).not.toContain(fixtureEvent.resumen);
+    });
+
+    unmount();
   });
 });

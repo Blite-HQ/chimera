@@ -65,4 +65,17 @@ describe('AppShell (shell B)', () => {
     renderShell();
     expect(screen.getByRole('main')).toHaveTextContent('contenido de la vista');
   });
+
+  test('renderiza el slot de banner por encima de main cuando se pasa como prop', () => {
+    renderShell({ banner: <p>banner de prueba</p> });
+    const banner = screen.getByText('banner de prueba');
+    const main = screen.getByRole('main');
+    expect(main).not.toContainElement(banner);
+    expect(banner.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test('no renderiza nada de banner cuando se omite la prop', () => {
+    renderShell();
+    expect(screen.queryByText('banner de prueba')).not.toBeInTheDocument();
+  });
 });

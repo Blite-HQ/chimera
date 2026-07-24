@@ -3,6 +3,7 @@ import { Braces, LayoutList, List, ListTree, Plus } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
+import { ReplayBanner } from '@/components/app-shell/ReplayBanner';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/DataState';
 import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/lib/theme';
@@ -81,6 +82,27 @@ function ToggleButton({
       {icon}
       {label}
     </Button>
+  );
+}
+
+/**
+ * Slot "Red" de RunDetailScreen (D1 task 4 — honestidad de modo): el spike
+ * IEEE-14 (`GridSpike`) es data ESTÁTICA fabricada — solo tiene sentido
+ * como vista replay (etiquetada por el banner global, no acá). En vivo no
+ * existe todavía un endpoint que devuelva la topología real del run, así
+ * que anuncia "pendiente" en vez de mostrar un grid ajeno al run. Nombrada
+ * aparte (no inline en el JSX) para poder testearla sin depender de
+ * `runSummariesQueryOptions` (que en vivo devuelve `[]` hasta que exista
+ * `GET /runs` — D3/D4 — y bloquearía la navegación a RunDetailScreen).
+ */
+export function RedSlot(): React.ReactElement {
+  return isLiveMode() ? (
+    <EmptyState
+      title="Topología en vivo — pendiente"
+      hint="La vista de red contra el payload real del run llega con D3/D4 (rutas + mapa)."
+    />
+  ) : (
+    <GridSpike />
   );
 }
 
@@ -225,7 +247,7 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
       }}
       timeline={timeline}
       verificacion={verificacion}
-      red={<GridSpike />}
+      red={<RedSlot />}
       ablacion={ablacion}
       procedencia={procedencia}
     />
@@ -344,6 +366,7 @@ function Studio(): React.ReactElement {
       activeSection={section}
       onSectionChange={goToSection}
       breadcrumb={breadcrumb}
+      banner={isLiveMode() ? undefined : <ReplayBanner />}
     >
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         {section === 'runs' &&

@@ -6,10 +6,28 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import * as gatewayClient from '../gatewayClient';
-import { EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
-import { certificateQueryOptions, DEMO_RUN_ID, loadCertificate } from './queries';
+import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
+import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
+import { RUN_EVENTS } from '../fixtures/runEvents';
+import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
+import { deriveArtifacts, deriveKnowledge, deriveRunSummary } from './projections';
+import { projectedEventSchema } from './schemas';
+import {
+  ablationQueryOptions,
+  certificateQueryOptions,
+  DEMO_RUN_ID,
+  loadAblation,
+  loadArtifacts,
+  loadCertificate,
+  loadKnowledge,
+  loadRunEvents,
+  loadRunSummaries,
+  loadStepEvidence,
+  runEventsQueryOptions
+} from './queries';
 
 vi.mock('../gatewayClient', () => ({
   getCertificate: vi.fn()
@@ -98,5 +116,209 @@ describe('loadCertificate (rama demo/live)', () => {
 
     // Act & Assert
     await expect(loadCertificate('run-live-1')).rejects.toThrow();
+  });
+});
+
+/**
+ * D1 (honestidad de modo) — los 5 recursos de proyecto/run que hoy NO
+ * tienen endpoint real en chimera_api (solo existen POST /runs,
+ * /certificate y /events): en vivo deben devolver vacío, jamás el
+ * fixture. Mismo patrón AAA que loadCertificate arriba.
+ */
+describe('loadRunSummaries (rama demo/live)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('modo demo: proyecta el run del certificado real', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', undefined);
+
+    // Act
+    const summaries = await loadRunSummaries();
+
+    // Assert
+    const events = z.array(projectedEventSchema).parse(RUN_EVENTS);
+    expect(summaries).toEqual([deriveRunSummary(EXAMPLE_CERTIFICATE, events)]);
+  });
+
+  it('modo live: sin GET /runs todavía — devuelve vacío, nunca el fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+
+    // Act
+    const summaries = await loadRunSummaries();
+
+    // Assert
+    expect(summaries).toEqual([]);
+  });
+});
+
+describe('loadArtifacts (rama demo/live)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('modo demo: proyecta los deliverables del certificado', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', undefined);
+
+    // Act
+    const artifacts = await loadArtifacts();
+
+    // Assert
+    expect(artifacts).toEqual(deriveArtifacts(EXAMPLE_CERTIFICATE));
+  });
+
+  it('modo live: sin GET /artifacts todavía — devuelve vacío, nunca el fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+
+    // Act
+    const artifacts = await loadArtifacts();
+
+    // Assert
+    expect(artifacts).toEqual([]);
+  });
+});
+
+describe('loadKnowledge (rama demo/live)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('modo demo: proyecta las conclusiones verificadas del certificado', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', undefined);
+
+    // Act
+    const claims = await loadKnowledge();
+
+    // Assert
+    expect(claims).toEqual(deriveKnowledge(EXAMPLE_CERTIFICATE));
+  });
+
+  it('modo live: sin GET /knowledge todavía — devuelve vacío, nunca el fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+
+    // Act
+    const claims = await loadKnowledge();
+
+    // Assert
+    expect(claims).toEqual([]);
+  });
+});
+
+describe('loadStepEvidence (rama demo/live)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('modo demo: devuelve el fixture de evidencia por paso', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', undefined);
+
+    // Act
+    const evidence = await loadStepEvidence();
+
+    // Assert
+    expect(evidence).toEqual(z.record(z.string(), z.unknown()).parse(STEP_EVIDENCE));
+    expect(Object.keys(evidence)).toEqual(Object.keys(STEP_EVIDENCE));
+  });
+
+  it('modo live: sin GET /step-evidence todavía — devuelve un record vacío, nunca el fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+
+    // Act
+    const evidence = await loadStepEvidence();
+
+    // Assert
+    expect(evidence).toEqual({});
+  });
+});
+
+describe('loadAblation (rama demo/live)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('modo demo: devuelve las métricas de ablación del fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', undefined);
+
+    // Act
+    const metrics = await loadAblation();
+
+    // Assert
+    expect(metrics).toEqual(ABLATION_METRICS);
+  });
+
+  it('modo live: sin GET /ablation todavía — devuelve vacío, nunca el fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+
+    // Act
+    const metrics = await loadAblation();
+
+    // Assert
+    expect(metrics).toEqual([]);
+  });
+});
+
+/**
+ * D1 task 3 — la carrera SSE/fixture muerta: runEventsQueryOptions ya no
+ * parsea el fixture incondicionalmente (useRunEventStream escribe al MISMO
+ * query key en vivo). El staleTime/refetchOnWindowFocus/refetchOnReconnect
+ * evita que un refetch automático (foco de ventana, reconexión) borre lo
+ * que el SSE ya acumuló — en vivo, el SSE es el ÚNICO escritor.
+ */
+describe('loadRunEvents (rama demo/live)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('modo demo: devuelve el fixture de eventos del run', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', undefined);
+
+    // Act
+    const events = await loadRunEvents();
+
+    // Assert
+    expect(events).toEqual(z.array(projectedEventSchema).parse(RUN_EVENTS));
+  });
+
+  it('modo live: devuelve vacío — no fuga ningún evento del fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+
+    // Act
+    const events = await loadRunEvents();
+
+    // Assert
+    expect(events).toEqual([]);
+  });
+});
+
+describe('runEventsQueryOptions', () => {
+  it('arma la queryKey por runId', () => {
+    const options = runEventsQueryOptions('run-42');
+    expect(options.queryKey).toEqual(['runs', 'run-42', 'events']);
+  });
+
+  it('desactiva el refetch automático — en vivo el SSE es el único escritor', () => {
+    const options = runEventsQueryOptions('run-42');
+    expect(options.staleTime).toBe(Infinity);
+    expect(options.refetchOnWindowFocus).toBe(false);
+    expect(options.refetchOnReconnect).toBe(false);
+  });
+});
+
+describe('ablationQueryOptions', () => {
+  it('arma la queryKey por runId', () => {
+    const options = ablationQueryOptions('run-42');
+    expect(options.queryKey).toEqual(['runs', 'run-42', 'ablation']);
   });
 });
