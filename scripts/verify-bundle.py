@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""verify-bundle — el checklist de 7 puntos del freeze §7, offline. [track Dylan #1]
+"""verify-bundle — el checklist del freeze §7 (+ punto 8, harness-agentico
+§Contrato-5), offline. [track Dylan #1]
 
 EL beat anti-ceremonia: "auditable sin confiar en nosotros" (D20) — corre en
 una segunda máquina, sin red, contra el Bundle exacto. La lógica vive en
 `blite.certificate.bundle_check` (testeada adversarialmente); este CLI solo
-reporta. Exit 0 SOLO con 7/7 OK — un punto no verificable FALLA (fail-closed),
-degradar el checklist a "firma válida" es exactamente lo que T11 prohíbe.
+reporta. Exit 0 SOLO con TODOS los puntos OK — un punto no verificable FALLA
+(fail-closed), degradar el checklist a "firma válida" es exactamente lo que
+T11 prohíbe. El denominador se deriva de `check_bundle` (nunca hardcodeado):
+así el CLI no queda desincronizado si el checklist gana un punto nuevo.
 
 Uso: verify-bundle.py <bundle.json>
 """
@@ -30,16 +33,17 @@ def main(argv: list[str]) -> int:
     bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
 
     results = check_bundle(bundle)
+    total = len(results)
     for r in results:
         if r.ok:
-            print(f"[{r.number}/7] OK — {r.name}")
+            print(f"[{r.number}/{total}] OK — {r.name}")
         else:
-            print(f"[{r.number}/7] FALLA — {r.name}:")
+            print(f"[{r.number}/{total}] FALLA — {r.name}:")
             for failure in r.failures:
                 print(f"        · {failure}")
     ok = sum(1 for r in results if r.ok)
-    print(f"{ok}/7 puntos verificados")
-    return 0 if ok == len(results) else 1
+    print(f"{ok}/{total} puntos verificados")
+    return 0 if ok == total else 1
 
 
 if __name__ == "__main__":

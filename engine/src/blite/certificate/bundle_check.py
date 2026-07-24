@@ -1,12 +1,17 @@
 """
-Checklist de 7 puntos del Bundle — freeze §7 (T11 + SF-P0-1/P1-4/P2-4 +
-stress-final 2026-07-22), implementado. [S-G track Dylan #1]
+Checklist de 8 puntos del Bundle — freeze §7 (T11 + SF-P0-1/P1-4/P2-4 +
+stress-final 2026-07-22) + `docs/specs/harness-agentico.md` §Contrato-5
+(punto 8, replay). [S-G track Dylan #1]
 
 El Bundle mínimo = envelope DSSE del certificado (attestations EMBEBIDAS en el
 payload — una sola firma) + descriptores de anclas/verificadores + la Policy
 pinneada (bytes exactos del YAML) + el stream del run + los bytes de los
 deliverables. Cada punto reporta sus fallas; lista vacía = OK. Fail-closed:
 lo que no se puede verificar FALLA, jamás se omite.
+
+Punto 8 (A5, `blite.runtime.replay`) materializa R1: "el certificado DSSE
+verifica ⟺ el replay fue fiel" — un `replay.divergence` en el stream tumba
+el bundle SIN IMPORTAR que los puntos 1-7 (firma, hashes, patas) verifiquen.
 
 Fórmulas (anexo de canonicalización, CONGELADO):
 - provenance_hash = SHA-256("blite/provenance/v1\\n" ‖ C(view(e_i))‖0x0A …) hex
@@ -277,6 +282,25 @@ def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
     return tuple(failures)
 
 
+def punto_8_replay_fidelidad(bundle: dict[str, Any]) -> tuple[str, ...]:
+    """(8) `replay.divergence` en el stream ⇒ el bundle FALLA — R1
+    (`docs/specs/harness-agentico.md` §Contrato-5): "el certificado DSSE
+    verifica ⟺ el replay fue fiel". SIN IMPORTAR que la firma DSSE (punto 1)
+    o el resto del checklist verifiquen: ninguno de los puntos 1-7 lee el
+    stream buscando divergencias de replay — este es el único que lo hace."""
+    failures: list[str] = []
+    stream: list[dict[str, Any]] = bundle.get("stream", [])
+    for event in stream:
+        if event.get("type") == "replay.divergence":
+            payload = event.get("payload", {})
+            failures.append(
+                "replay.divergence en el stream "
+                f"(effect_kind={payload.get('effect_kind')!r}, "
+                f"step_id={payload.get('step_id')!r}): el replay NO fue fiel"
+            )
+    return tuple(failures)
+
+
 _PUNTOS = (
     ("firma/PAE del envelope", punto_1_firma_pae),
     ("recompute del provenance_hash", punto_2_provenance_hash),
@@ -285,11 +309,12 @@ _PUNTOS = (
     ("pass ⇒ ancla con descriptor", punto_5_pass_ancla),
     ("recompute de claim_digest", punto_6_claim_digest),
     ("attestations: techos, proof AL4, patas vs Policy", punto_7_attestations_patas),
+    ("fidelidad de replay: sin replay.divergence en el stream", punto_8_replay_fidelidad),
 )
 
 
 def check_bundle(bundle: dict[str, Any]) -> tuple[PointResult, ...]:
-    """Corre los 7 puntos; cada uno reporta aparte (ninguno corta a los demás)."""
+    """Corre los 8 puntos; cada uno reporta aparte (ninguno corta a los demás)."""
     results: list[PointResult] = []
     for number, (name, fn) in enumerate(_PUNTOS, start=1):
         try:
