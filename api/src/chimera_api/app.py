@@ -13,9 +13,11 @@ es la sesión de seguridad del API (carril Steven) — aquí no se inventa auth.
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from blite.events import create_event_store
@@ -26,6 +28,23 @@ from chimera_api.projection import sse_frame
 from chimera_api.runs import build_run_resources, create_runs_router
 
 DEFAULT_POLL_INTERVAL_S = 0.5
+
+_CORS_ORIGINS_ENV_VAR = "CHIMERA_CORS_ORIGINS"
+
+
+def _cors_origins_from_env() -> list[str]:
+    """Orígenes explícitos permitidos vía CORS (CSV), solo para dev local.
+
+    En compose, `studio` le habla a `api` same-origin a través del reverse-
+    proxy de nginx (`docker/studio-nginx.conf`, Task 2) — CORS no aplica ahí
+    y esta var queda sin setear. Solo hace falta cuando `vite` (origin
+    propio, p.ej. `:5173`) le pega directo a `uvicorn` (`:8000`) sin proxy de
+    por medio (dev local, `api/README.md`). Vacío/ausente ⇒ sin
+    CORSMiddleware — mismo comportamiento same-origin-only de siempre.
+    """
+    raw = os.environ.get(_CORS_ORIGINS_ENV_VAR, "")
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
 
 _SSE_HEADERS = {
     # La pata `proxy_buffering off` del reverse proxy vive en el compose
@@ -82,6 +101,15 @@ def create_app(
 ) -> FastAPI:
     event_store = store if store is not None else create_event_store()
     app = FastAPI(title="chimera-api", version="0.1.0")
+
+    cors_origins = _cors_origins_from_env()
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     resources = build_run_resources(event_store, registry=registry)
     app.include_router(create_runs_router(resources))

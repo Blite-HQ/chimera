@@ -7,3 +7,15 @@ sobre el puerto `EventStore`. Contrato en `docs/specs/confianza-api-sse.md`
 ```sh
 uv run uvicorn chimera_api.main:app --reload
 ```
+
+## CORS (solo dev local)
+
+En compose, `studio` y `api` son same-origin vía el reverse-proxy de nginx
+(`docker/studio-nginx.conf`) — CORS no aplica ahí. Corriendo `uvicorn` suelto
+contra un `pnpm -C apps/studio dev` (`vite`, otro origin) sí lo necesitás:
+
+```sh
+CHIMERA_CORS_ORIGINS=http://localhost:5173 uv run uvicorn chimera_api.main:app --reload
+```
+
+CSV de orígenes exactos; sin la var, sin `CORSMiddleware` (default de siempre).
