@@ -20,7 +20,9 @@ from fastapi.responses import StreamingResponse
 
 from blite.events import create_event_store
 from blite.events.store import EventStore
+from blite.runtime.registry import Registry
 from chimera_api.projection import sse_frame
+from chimera_api.runs import build_run_resources, create_runs_router
 
 DEFAULT_POLL_INTERVAL_S = 0.5
 
@@ -74,10 +76,14 @@ async def event_stream(
 def create_app(
     store: EventStore | None = None,
     *,
+    registry: Registry | None = None,
     poll_interval: float = DEFAULT_POLL_INTERVAL_S,
 ) -> FastAPI:
     event_store = store if store is not None else create_event_store()
     app = FastAPI(title="chimera-api", version="0.1.0")
+
+    resources = build_run_resources(event_store, registry=registry)
+    app.include_router(create_runs_router(resources))
 
     @app.get("/health")
     def health() -> dict[str, str]:
