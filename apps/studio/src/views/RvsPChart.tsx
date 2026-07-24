@@ -76,12 +76,39 @@ const CHART_CONFIG = {
 
 type BaselineKey = keyof RvsPExperiment['baselines'];
 
+type BaselineLabelPosition = 'insideTopLeft' | 'insideTopRight' | 'insideBottomRight';
+
 const BASELINE_STYLE: Readonly<
-  Record<BaselineKey, { readonly color: string; readonly dash: string; readonly label: string }>
+  Record<
+    BaselineKey,
+    {
+      readonly color: string;
+      readonly dash: string;
+      readonly label: string;
+      // cpsat y gw comparten r=1.0: sus etiquetas van a esquinas opuestas
+      // para no encimarse (defecto visual cazado en la verificación).
+      readonly labelPosition: BaselineLabelPosition;
+    }
+  >
 > = {
-  cpsat: { color: 'var(--color-chart-3)', dash: '4 4', label: 'CP-SAT (exacto)' },
-  gw: { color: 'var(--color-chart-4)', dash: '2 6', label: 'Goemans-Williamson' },
-  greedy: { color: 'var(--color-chart-5)', dash: '6 3', label: 'Greedy' }
+  cpsat: {
+    color: 'var(--color-chart-3)',
+    dash: '4 4',
+    label: 'CP-SAT (exacto)',
+    labelPosition: 'insideTopLeft'
+  },
+  gw: {
+    color: 'var(--color-chart-4)',
+    dash: '2 6',
+    label: 'Goemans-Williamson',
+    labelPosition: 'insideTopRight'
+  },
+  greedy: {
+    color: 'var(--color-chart-5)',
+    dash: '6 3',
+    label: 'Greedy',
+    labelPosition: 'insideBottomRight'
+  }
 };
 
 const BASELINE_ORDER: readonly BaselineKey[] = ['cpsat', 'gw', 'greedy'];
@@ -156,7 +183,7 @@ function RvsPFigure({ experiment }: RvsPChartProps): React.ReactElement {
               ifOverflow="extendDomain"
               label={{
                 value: `${style.label} (r=${formatRatio(baseline.r)})`,
-                position: 'insideTopRight',
+                position: style.labelPosition,
                 fill: style.color,
                 fontSize: 11
               }}
