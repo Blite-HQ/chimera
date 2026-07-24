@@ -23,6 +23,15 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   prioritized S-G list + port table. The simulated-track sources live in the read-only
   exercise branch `ejercicio/sf-ratificacion-simulada`.
 
+## Design proposals
+
+- [`arquitectura-ingesta-kg-fase2.md`](arquitectura-ingesta-kg-fase2.md) — **design proposal,
+  not implemented.** Multi-modal ingestion (video/image/paper/repo) + knowledge base/graph with
+  verifiable provenance, tying into the DSSE/certificate layer. Explicitly out of hackathon scope;
+  written to preserve the design after a personal exercise concluded the cheap version (a triage
+  index over `knowledge/quantum/`, see `knowledge/quantum/_triage-map.md` and `INDEX.md`) covers
+  the near-term need instead.
+
 ## Suggested structure (create as content arrives)
 
 ```
