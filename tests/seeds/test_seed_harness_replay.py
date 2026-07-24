@@ -13,17 +13,11 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 Dylan+Steven: replay.divergence (blite.runtime.replay) "
-            "y el punto 8 de check_bundle (blite.certificate.bundle_check) "
-            "— ver docs/specs/harness-agentico.md"
-        ),
-    ),
-]
+# VERDE 2026-07-24: `blite.runtime.replay` (ReplayDivergencePayload +
+# find_replay_divergences) y el punto 8 de `blite.certificate.bundle_check`
+# implementados (A5). xfail retirado por su dueño (Dylan) — convención
+# docs/specs/README.md "el dueño implementa y quita el xfail".
+pytestmark = [pytest.mark.seed]
 
 
 def test_replay_divergence_payload_shape() -> None:
@@ -65,7 +59,7 @@ def test_replay_divergence_effect_kind_is_closed_set() -> None:
     with pytest.raises(ValueError):
         ReplayDivergencePayload(
             run_id="run-1",
-            effect_kind="something_else",
+            effect_kind="something_else",  # type: ignore[arg-type]
             request_digest="a" * 64,
             expected_response_digest="b" * 64,
             actual_response_digest="c" * 64,

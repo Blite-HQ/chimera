@@ -1,0 +1,7 @@
+{
+  "cause": "capability.job.failed",
+  "item_id": "item-1",
+  "plan_id": "plan-run-1",
+  "run_id": "run-1",
+  "status": "failed"
+}

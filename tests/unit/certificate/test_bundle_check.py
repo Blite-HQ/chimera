@@ -1,5 +1,7 @@
-"""Checklist de 7 puntos (freeze §7) — adversarial: cada punto debe cazar su
-forja. El fixture legítimo da 7/7; cada manipulación debe reprobar SU punto."""
+"""Checklist de 8 puntos (freeze §7 + harness-agentico §Contrato-5, punto 8
+— `tests/unit/certificate/test_bundle_check_replay.py`) — adversarial: cada
+punto debe cazar su forja. El fixture legítimo pasa TODOS los puntos; cada
+manipulación debe reprobar SU punto."""
 
 from __future__ import annotations
 
@@ -40,7 +42,7 @@ def _retamper_payload(
     return tampered
 
 
-def test_the_legitimate_bundle_passes_all_seven_points(bundle: dict[str, Any]) -> None:
+def test_the_legitimate_bundle_passes_all_points(bundle: dict[str, Any]) -> None:
     assert _failed_points(bundle) == set()
 
 

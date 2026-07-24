@@ -2,9 +2,10 @@
 """Genera el Bundle de ejemplo del checklist + el fixture del Studio.
 
 Vocabulario vigente (clase + AL + criticidad — freeze §4). Es auto-validante:
-corre los 7 puntos de `blite.certificate.bundle_check` y solo escribe si dan
-7/7 — el generador no puede producir un fixture que su propio verificador
-rechace. Escribe DOS salidas desde el MISMO bundle (una sola fuente):
+corre TODOS los puntos de `blite.certificate.bundle_check` y solo escribe si
+dan el 100% — el generador no puede producir un fixture que su propio
+verificador rechace. Escribe DOS salidas desde el MISMO bundle (una sola
+fuente):
 
 - `scripts/example-bundle.json` — el Bundle completo (checklist/verify-bundle).
 - `apps/studio/src/fixtures/certificate.example.json` — solo el envelope DSSE
@@ -250,20 +251,21 @@ def main() -> int:
         },
     }
 
-    # --- Auto-validación: el generador jamás escribe un bundle que no dé 7/7 ---
+    # --- Auto-validación: el generador jamás escribe un bundle que no dé el 100% ---
     results = check_bundle(bundle)
+    total = len(results)
     for r in results:
         status = "OK" if r.ok else f"FALLA {r.failures}"
-        print(f"[{r.number}/7] {status} — {r.name}")
+        print(f"[{r.number}/{total}] {status} — {r.name}")
     if not all(r.ok for r in results):
         print("ABORT: el bundle generado no pasa su propio checklist")
         return 1
 
     OUTPUT_PATH.write_text(json.dumps(bundle, indent=2) + "\n", encoding="utf-8")
-    print(f"\nBundle escrito en {OUTPUT_PATH} (7/7)")
+    print(f"\nBundle escrito en {OUTPUT_PATH} ({total}/{total})")
 
     # Fixture del Studio: SOLO el envelope (CertificateView consume DsseEnvelope,
-    # nota 18 §2.3) — mismo bundle ya validado 7/7, jamás una segunda fuente.
+    # nota 18 §2.3) — mismo bundle ya validado, jamás una segunda fuente.
     STUDIO_FIXTURE_PATH.write_text(
         json.dumps(bundle["envelope"], indent=2) + "\n", encoding="utf-8"
     )

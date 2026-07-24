@@ -1,0 +1,15 @@
+{
+  "approval_id": "approval-1",
+  "json_schema": {
+    "properties": {
+      "aprobado": {
+        "type": "boolean"
+      }
+    },
+    "required": ["aprobado"],
+    "type": "object"
+  },
+  "prompt": "El paso escribe al mundo (irreversible). ¿Aprobás?",
+  "run_id": "run-1",
+  "step_id": "step-1"
+}
