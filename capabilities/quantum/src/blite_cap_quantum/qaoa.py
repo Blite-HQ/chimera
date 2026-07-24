@@ -9,6 +9,13 @@ se evalúa clásicamente contra Q y gana el mejor).
 Determinismo del demo (freeze §15.4 "en vivo solo Aer+seed"): mismo input ⇒
 misma partición. El muestreador puede proponer soluciones malas — eso es
 información para el Verifier, no vergüenza (quantum/02 §1.3 Ruta A).
+
+Fix 4b (task4b-brief.md): además del best-of-samples (`energy`, óptimo
+casi trivial en instancias chicas — no es una métrica de benchmarking
+válida), se expone el valor esperado EXACTO ⟨C⟩ de la distribución
+variacional en los ángulos óptimos (`expected_energy`) y su estimador
+muestral sobre los shots (`sampled_mean_energy`) — ver `_sampled_mean_energy`
+y la nota de convención de signo en `solve_qaoa`.
 """
 
 from __future__ import annotations
@@ -64,14 +71,19 @@ def _energy(matrix: list[list[float]], assignment: list[int]) -> float:
     )
 
 
+def _decode_bitstring(bitstring: str, matrix: list[list[float]]) -> list[int]:
+    """Bitstrings de qiskit son little-endian (qubit 0 a la derecha)."""
+    return [int(bitstring[-1 - i]) for i in range(len(matrix))]
+
+
 def _decode_best(
     counts: dict[str, int], matrix: list[list[float]]
 ) -> tuple[list[int], float]:
-    """Best-of-samples: bitstrings de qiskit son little-endian (qubit 0 a la derecha)."""
+    """Best-of-samples: la partición muestreada de mayor energía entre shots."""
     best_assignment: list[int] | None = None
     best_energy = float("-inf")
     for bitstring in counts:
-        assignment = [int(bitstring[-1 - i]) for i in range(len(matrix))]
+        assignment = _decode_bitstring(bitstring, matrix)
         energy = _energy(matrix, assignment)
         if energy > best_energy:
             best_assignment, best_energy = assignment, energy
@@ -79,6 +91,16 @@ def _decode_best(
         msg = "el muestreo no devolvió ningún bitstring"
         raise RuntimeError(msg)
     return best_assignment, best_energy
+
+
+def _sampled_mean_energy(counts: dict[str, int], matrix: list[list[float]]) -> float:
+    """Estimador muestral de ⟨C⟩: media de `_energy` ponderada por counts."""
+    total_shots = sum(counts.values())
+    weighted_sum = sum(
+        _energy(matrix, _decode_bitstring(bitstring, matrix)) * count
+        for bitstring, count in counts.items()
+    )
+    return weighted_sum / total_shots
 
 
 def solve_qaoa(
@@ -108,7 +130,7 @@ def solve_qaoa(
         program.binary_var(f"x{i}")
     # Convención §1.2: se MAXIMIZA xᵀQx ⇒ el Ising minimiza −Q
     program.minimize(quadratic=(-np.array(matrix)))
-    hamiltonian, _offset = to_ising(program)
+    hamiltonian, offset = to_ising(program)
 
     ansatz = QAOAAnsatz(cost_operator=hamiltonian, reps=layers)
     # Sintetizar los PauliEvolution UNA vez (exponenciales scipy caras);
@@ -144,16 +166,30 @@ def solve_qaoa(
     counts = cast("dict[str, int]", counts_raw)
 
     assignment, energy = _decode_best(counts, matrix)
+
+    # Convención de signo (verificada empíricamente — ver task4b-brief.md):
+    # `to_ising` produce H tal que offset + ⟨H⟩ == -(xᵀQx) para cada bitstring
+    # x (H es diagonal en base computacional, solo términos Z ⇒ ⟨H⟩ en un
+    # estado mixto es la combinación convexa de esos valores por bitstring).
+    # COBYLA minimiza ⟨H⟩ = minimiza -corte; el valor esperado del CORTE bajo
+    # la distribución variacional en los ángulos óptimos es, por tanto, el
+    # positivo -offset - ⟨H⟩_óptimo (comparable a `energy`, NO su negación).
+    expected_energy = -float(offset) - float(optimized.fun)
+    sampled_mean_energy = _sampled_mean_energy(counts, matrix)
+
     result: dict[str, Any] = {
         "assignment": assignment,
         "energy": energy,
         "layers": layers,
         "seed": seed,
         "shots": _SHOTS,
+        "expected_energy": expected_energy,
+        "sampled_mean_energy": sampled_mean_energy,
     }
     if reference_optimum is not None:
         if reference_optimum <= 0:
             msg = f"reference_optimum debe ser > 0, no {reference_optimum!r}"
             raise ValueError(msg)
         result["approximation_ratio"] = energy / float(reference_optimum)
+        result["expected_ratio"] = expected_energy / float(reference_optimum)
     return result

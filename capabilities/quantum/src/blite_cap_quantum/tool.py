@@ -45,8 +45,26 @@ _MANIFEST = CapabilityManifest(
         "type": "object",
         "properties": {
             "assignment": {"type": "array", "description": "Binary assignment vector"},
-            "energy": {"type": "number"},
-            "approximation_ratio": {"type": "number"},
+            "energy": {
+                "type": "number",
+                "description": "Best objective value found across measurement shots (best-of-samples)",
+            },
+            "expected_energy": {
+                "type": "number",
+                "description": "Expected objective value under the variational distribution at optimized angles (exact, statevector-computed)",
+            },
+            "sampled_mean_energy": {
+                "type": "number",
+                "description": "Sample-mean objective over measurement shots (empirical estimator of expected_energy)",
+            },
+            "approximation_ratio": {
+                "type": "number",
+                "description": "energy divided by reference_optimum, when provided",
+            },
+            "expected_ratio": {
+                "type": "number",
+                "description": "expected_energy divided by reference_optimum, when provided",
+            },
         },
         "required": ["assignment"],
     },
