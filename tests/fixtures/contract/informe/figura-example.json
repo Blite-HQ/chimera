@@ -1,0 +1,15 @@
+{
+  "digest": "sha256:f80fb20e57b376b4852fa2202526a7dba23c86f19fc718a3faedf16a25703d71",
+  "provenance": {
+    "assertions": [],
+    "inputs": [],
+    "kind": "derivation",
+    "recipe": {
+      "capability": "blite.report.render_figure",
+      "code_ref": "git:HEAD",
+      "params_digest": "sha256:09dac7ae439f46237a20a72f50e8b7729a0269737a97c47033ab0c04d6fa2e69",
+      "version": "0.1.0"
+    },
+    "run_id": "fixture-informe-example"
+  }
+}

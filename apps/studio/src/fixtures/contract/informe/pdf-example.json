@@ -1,0 +1,25 @@
+{
+  "digest": "sha256:70190b35c0133ed0aef986193a2886d42e91ebda6a319671934984df616a6be5",
+  "page_count": 1,
+  "provenance": {
+    "assertions": [],
+    "inputs": [
+      {
+        "digest": "sha256:89cf5462a26ee1ab49eb60c77ac1d241040b87e2a393ab646a2f0cdf668b5afd",
+        "ref": "template"
+      },
+      {
+        "digest": "sha256:f80fb20e57b376b4852fa2202526a7dba23c86f19fc718a3faedf16a25703d71",
+        "ref": "figure:0"
+      }
+    ],
+    "kind": "derivation",
+    "recipe": {
+      "capability": "blite.report.compile_pdf",
+      "code_ref": "git:HEAD",
+      "params_digest": "sha256:19f7ccc3fdd3f2b93bc997faa0d5f7c8a18c38944a21c6bf1298b2c3a0219906",
+      "version": "0.1.0"
+    },
+    "run_id": "fixture-informe-example"
+  }
+}

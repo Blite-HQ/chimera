@@ -24,6 +24,7 @@ dependencies = [
 [project.entry-points."blite.capabilities"]
 "blite.report.render_figure" = "blite_cap_report:RenderFigure"
 "blite.report.compile_pdf" = "blite_cap_report:CompilePdf"
+"blite.report.compile_slides" = "blite_cap_report:CompileSlides"
 
 [build-system]
 requires = ["hatchling"]

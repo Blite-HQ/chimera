@@ -20,6 +20,7 @@ from blite.certificate.predicate import Conclusion
 from blite.verification.provenance import InputRef
 from blite_cap_report.pdf import compile_report
 from blite_cap_report.plotting import FigureSeries, FigureSpec, render_figure
+from blite_cap_report.slides import compile_slides
 from blite_capability.manifest import CapabilityManifest
 
 # `blite_cap_report.plotting` no importa matplotlib a nivel de módulo (lazy,
@@ -315,5 +316,99 @@ class CompilePdf:
             "digest": compiled.digest,
             "pdf_base64": base64.b64encode(compiled.pdf_bytes).decode("ascii"),
             "page_count": compiled.page_count,
+            "provenance_recipe": dict(compiled.provenance.recipe),
+        }
+
+
+_COMPILE_SLIDES_MANIFEST = CapabilityManifest(
+    id="blite.report.compile_slides",
+    description=(
+        "Compile the slide deck deterministically from a versioned Typst "
+        "presentation template plus cited figure/cifra digests "
+        "(byte-reproducible; fail-closed if a cited digest does not "
+        "resolve against the certificate)."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "template_digest": {"type": "string"},
+            "figure_digests": {"type": "array", "items": {"type": "string"}},
+            "cifra_digests": {"type": "array", "items": {"type": "string"}},
+            "certificate_conclusions": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": (
+                    "Omit/null to skip binding (recompilation mode); an "
+                    "array (possibly empty) enforces it, fail-closed."
+                ),
+            },
+            "figure_svgs_base64": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Base64-encoded SVG bytes to embed, one per figure.",
+            },
+            "run_id": {"type": "string"},
+            "title": {"type": "string"},
+        },
+        "required": ["template_digest"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "digest": {"type": "string"},
+            "pdf_base64": {"type": "string"},
+            "slide_count": {"type": "integer"},
+            "provenance_recipe": {"type": "object"},
+        },
+        "required": ["digest", "pdf_base64", "slide_count", "provenance_recipe"],
+    },
+    tags=("reporting", "deterministic", "pure"),
+)
+
+
+class CompileSlides:
+    """Generic capability: compile the slide deck deterministically."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return _COMPILE_SLIDES_MANIFEST
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        template_digest = inputs.get("template_digest")
+        if not isinstance(template_digest, str) or not template_digest:
+            msg = "CompileSlides: input 'template_digest' (str) is required"
+            raise ValueError(msg)
+        figure_digests = _build_digest_tuple(
+            inputs.get("figure_digests", []), "figure_digests"
+        )
+        cifra_digests = _build_digest_tuple(
+            inputs.get("cifra_digests", []), "cifra_digests"
+        )
+        certificate_conclusions = _build_conclusions(
+            inputs.get("certificate_conclusions")
+        )
+        figure_svgs = _build_figure_svgs(inputs.get("figure_svgs_base64"))
+        run_id = inputs.get("run_id")
+        run_id = run_id if isinstance(run_id, str) and run_id else "slides"
+        title = inputs.get("title")
+        title = (
+            title
+            if isinstance(title, str) and title
+            else "Informe de derivación certificada"
+        )
+
+        compiled = compile_slides(
+            template_digest=template_digest,
+            figure_digests=figure_digests,
+            cifra_digests=cifra_digests,
+            certificate_conclusions=certificate_conclusions,
+            figure_svgs=figure_svgs,
+            run_id=run_id,
+            title=title,
+        )
+        return {
+            "digest": compiled.digest,
+            "pdf_base64": base64.b64encode(compiled.pdf_bytes).decode("ascii"),
+            "slide_count": compiled.slide_count,
             "provenance_recipe": dict(compiled.provenance.recipe),
         }

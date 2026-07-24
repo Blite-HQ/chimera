@@ -38,7 +38,6 @@ from __future__ import annotations
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false
 # pyright: reportUnknownVariableType=false, reportUnknownArgumentType=false
 import hashlib
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import resources
@@ -51,7 +50,28 @@ from blite.verification.provenance import (
     DerivationRecipe,
     InputRef,
 )
-from blite_cap_report.binding import CertificateBinding, build_binding
+from blite_cap_report.binding import (
+    CertificateBinding,
+    UncitableFigureError,
+    build_full_binding,
+    enforce_binding,
+    resolve_cert_id,
+)
+from blite_cap_report.pdf_pages import count_pdf_pages
+
+# `UncitableFigureError`/`build_full_binding`/`enforce_binding`/
+# `resolve_cert_id` live in `binding.py` — the ONE fail-closed contract
+# shared with `slides.py::compile_slides`, never reimplemented here.
+# `UncitableFigureError` is re-exported: this module's public surface
+# (`blite_cap_report.pdf`) has always carried it and existing tests import
+# it from here.
+__all__ = [
+    "CompiledReport",
+    "ReportTooLongError",
+    "UncitableFigureError",
+    "compile_report",
+    "template_digest",
+]
 
 CAPABILITY_ID = "blite.report.compile_pdf"
 CAPABILITY_VERSION = "0.1.0"
@@ -61,20 +81,6 @@ MAX_PAGE_COUNT = 8
 
 _SHA256_PREFIX = "sha256:"
 _TEMPLATE_RESOURCE = ("template", "report.typ")
-_UNBOUND_CERT = "unbound"
-
-# Individual page objects, e.g. `/Type/Page/Resources ...` — the negative
-# lookahead excludes `/Type/Pages` (the page TREE node) and other siblings
-# like `/Type/PageLabel` (any letter right after "Page" disqualifies it, not
-# just "s" — a `/PageLabel` object matched a naive `(?!s)` lookahead and
-# silently double-counted pages until this was caught against a real render).
-_PAGE_OBJECT_RE = re.compile(rb"/Type\s*/Page(?![A-Za-z])")
-
-
-class UncitableFigureError(Exception):
-    """Fail-closed (informe-derivado.md §Binding): a cited figure/cifra whose
-    digest does NOT resolve against the certificate makes the PDF derivation
-    fail — never a report with an unsupported figure."""
 
 
 class ReportTooLongError(Exception):
@@ -114,46 +120,6 @@ def _short_digest(digest: str) -> str:
     """`sha256:<12 hex chars>` — the "digest corto" for the visible
     per-figure footer (informe-derivado.md §c)."""
     return _SHA256_PREFIX + _normalize(digest)[:12]
-
-
-def _build_full_binding(
-    *,
-    cert_id: str,
-    certificate_conclusions: tuple[Conclusion, ...] | None,
-    certificate_attestations: tuple[Mapping[str, Any], ...] | None,
-    certificate_deliverables: tuple[Deliverable, ...] | None,
-) -> CertificateBinding | None:
-    """`None` only when the caller opted OUT of the binding check entirely
-    (all three left as `None` — recompilation/determinism mode). Otherwise
-    builds the UNION binding via `build_binding`, even if some parts are
-    empty (an explicit `()` still enforces — fail-closed on an empty set)."""
-    if (
-        certificate_conclusions is None
-        and certificate_attestations is None
-        and certificate_deliverables is None
-    ):
-        return None
-    return build_binding(
-        cert_id=cert_id,
-        conclusions=certificate_conclusions or (),
-        attestations=certificate_attestations or (),
-        deliverables=certificate_deliverables or (),
-    )
-
-
-def _enforce_binding(
-    cited_digests: tuple[str, ...],
-    binding: CertificateBinding,
-) -> None:
-    for digest in cited_digests:
-        if binding.resolve(digest) is None:
-            msg = (
-                f"cited digest {digest!r} does not resolve against any "
-                "certificate conclusion/attestation/deliverable "
-                "(informe-derivado.md §Binding cifra→certificado — "
-                "fail-closed: never an unsupported claim)"
-            )
-            raise UncitableFigureError(msg)
 
 
 def _build_inputs(
@@ -205,15 +171,6 @@ def _build_recipe(params_digest: str) -> DerivationRecipe:
     }
 
 
-def _cert_for(binding: CertificateBinding | None, digest: str) -> str:
-    """`cert_id` if `binding` resolves `digest`, `"unbound"` otherwise (no
-    binding at all, or a digest that does not resolve)."""
-    if binding is None:
-        return _UNBOUND_CERT
-    citation = binding.resolve(digest)
-    return citation.cert_id if citation is not None else _UNBOUND_CERT
-
-
 def _report_data(
     *,
     title: str,
@@ -231,7 +188,7 @@ def _report_data(
         {
             "label": "template",
             "digest": template_digest_value,
-            "cert": _cert_for(binding, template_digest_value),
+            "cert": resolve_cert_id(binding, template_digest_value),
         }
     ]
     for index, digest in enumerate(figure_digests):
@@ -239,7 +196,7 @@ def _report_data(
             {
                 "label": f"figure:{index}",
                 "digest": digest,
-                "cert": _cert_for(binding, digest),
+                "cert": resolve_cert_id(binding, digest),
             }
         )
     for index, digest in enumerate(cifra_digests):
@@ -247,7 +204,7 @@ def _report_data(
             {
                 "label": f"cifra:{index}",
                 "digest": digest,
-                "cert": _cert_for(binding, digest),
+                "cert": resolve_cert_id(binding, digest),
             }
         )
     figures: list[JSONValue] = []
@@ -257,18 +214,10 @@ def _report_data(
             {
                 "key": f"figure_{index}",
                 "digest_short": _short_digest(digest),
-                "cert": _cert_for(binding, digest),
+                "cert": resolve_cert_id(binding, digest),
             }
         )
     return {"title": title, "artifacts": artifacts, "figures": figures}
-
-
-def _count_pdf_pages(pdf_bytes: bytes) -> int:
-    """Count `/Type /Page` objects (the individual pages, never the `/Pages`
-    tree node) directly in the PDF bytes — robust to key ordering inside the
-    `/Pages` dict (no dependency on `/Count` appearing right after
-    `/Type /Pages`, which may have `/Kids` or other keys interleaved)."""
-    return len(_PAGE_OBJECT_RE.findall(pdf_bytes))
 
 
 def _compile_typst(
@@ -327,14 +276,14 @@ def compile_report(
     binding resolves against — it also stamps the `cert:<id>` footer on every
     resolved artifact in the verification annex.
     """
-    binding = _build_full_binding(
+    binding = build_full_binding(
         cert_id=cert_id,
         certificate_conclusions=certificate_conclusions,
         certificate_attestations=certificate_attestations,
         certificate_deliverables=certificate_deliverables,
     )
     if binding is not None:
-        _enforce_binding(figure_digests + cifra_digests, binding)
+        enforce_binding(figure_digests + cifra_digests, binding)
 
     inputs = _build_inputs(template_digest, figure_digests, cifra_digests)
     recipe = _build_recipe(
@@ -359,7 +308,7 @@ def compile_report(
         figure_svgs=figure_svgs,
         binding=binding,
     )
-    page_count = _count_pdf_pages(pdf_bytes)
+    page_count = count_pdf_pages(pdf_bytes)
     if page_count > MAX_PAGE_COUNT:
         msg = (
             f"report exceeds the {MAX_PAGE_COUNT}-page budget "
