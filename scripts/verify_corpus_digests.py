@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verifica los 6 JSON del corpus: digest interno (islanding/01 SS1.6) y tabla del freeze SS15.3.
+"""Verifica los 8 JSON del corpus: digest interno (islanding/01 SS1.6) y tabla del freeze SS15.3.
 
 Correr desde la raiz del repo:  uv run python scripts/verify_corpus_digests.py
 Regla 15.3: el digest manda (no los bytes del archivo - fines de linea no cuentan).
@@ -10,6 +10,8 @@ import hashlib
 import json
 
 ESPERADOS_FREEZE_15_3 = {
+    "ieee6-uniforme": "bcce660e0dac057db322999496612bb48b1f51e947180b7f8c77af5b4bca2928",
+    "ieee6-flujo": "0e29de1161f14dcdd5a9ffe3e9620f52868197e46b931e35a39b04611411a9e5",
     "ieee9-uniforme": "dee38cdeea9bb35305de94308169368216838503673d3be57f0e7bea42677520",
     "ieee9-flujo": "59fb22e6ec0afd3b3caf34fb4e46b2f8003c1ea8524fcd8b06dabd3f1c52477b",
     "ieee14-uniforme": "fb9c3780d9cf06a25910b631e92c83f3c6ce5272192f216fee6101b12dd32bd4",
@@ -22,8 +24,8 @@ ESPERADOS_FREEZE_15_3 = {
 def main() -> None:
     ok = True
     archivos = sorted(glob.glob("knowledge/islanding/corpus/*.json"))
-    if len(archivos) != 6:
-        print(f"AVISO: se esperaban 6 archivos, hay {len(archivos)}")
+    if len(archivos) != 8:
+        print(f"AVISO: se esperaban 8 archivos, hay {len(archivos)}")
     for f in archivos:
         reg = json.load(open(f, encoding="utf-8"))
         embebido = reg.pop("digest")
@@ -48,7 +50,7 @@ def main() -> None:
     print()
     if ok:
         print(
-            "VEREDICTO: 6/6 digests correctos - la regeneracion reproduce la identidad congelada"
+            "VEREDICTO: 8/8 digests correctos - la regeneracion reproduce la identidad congelada"
         )
         print(
             "(si git marca los archivos como modified, es solo formato/fines de linea:"

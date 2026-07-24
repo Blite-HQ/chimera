@@ -24,7 +24,12 @@ FUERZA_BRUTA_MAX_N = 14  # 2^(n-1) asignaciones con x0=0
 CPSAT_TIEMPO_DETERMINISTA = 300.0  # trust/10 SS1.4: tiempo determinista, no de pared
 CPSAT_SEED = 1
 
-CASOS = {"ieee9": pn.case9, "ieee14": pn.case14, "ieee30": pn.case30}
+CASOS = {
+    "ieee6": pn.case6ww,
+    "ieee9": pn.case9,
+    "ieee14": pn.case14,
+    "ieee30": pn.case30,
+}
 CONVENCIONES = ("uniforme", "flujo")
 DIR_SALIDA = Path.cwd() / "knowledge" / "islanding" / "corpus"
 

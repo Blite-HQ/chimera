@@ -217,12 +217,16 @@ Extensión del vocabulario de §3 (● = propiedad de la capa de confianza; ○ 
 
 | `dataset_id`                          | digest (sha256)                                                    |
 | ------------------------------------- | ------------------------------------------------------------------ |
+| `islanding-corpus/ieee6-uniforme@v1`  | `bcce660e0dac057db322999496612bb48b1f51e947180b7f8c77af5b4bca2928` |
+| `islanding-corpus/ieee6-flujo@v1`     | `0e29de1161f14dcdd5a9ffe3e9620f52868197e46b931e35a39b04611411a9e5` |
 | `islanding-corpus/ieee9-uniforme@v1`  | `dee38cdeea9bb35305de94308169368216838503673d3be57f0e7bea42677520` |
 | `islanding-corpus/ieee9-flujo@v1`     | `59fb22e6ec0afd3b3caf34fb4e46b2f8003c1ea8524fcd8b06dabd3f1c52477b` |
 | `islanding-corpus/ieee14-uniforme@v1` | `fb9c3780d9cf06a25910b631e92c83f3c6ce5272192f216fee6101b12dd32bd4` |
 | `islanding-corpus/ieee14-flujo@v1`    | `c7880bb0d254d2d5f91c21cfd7cf0a5ac1cb9c88261c15b94cb7b22d6fd896ad` |
 | `islanding-corpus/ieee30-uniforme@v1` | `a864122e83585d19921fcb00857aea1b8f4f4248a291a7a6f9d98e1b2df25a5b` |
 | `islanding-corpus/ieee30-flujo@v1`    | `a3aed52a8c59cc2a1e44073995eb755e75e04725e997729d0fc8f662ad08c600` |
+
+**`ieee6` (D5, 2026-07-23):** instancia REAL de 6 nodos derivada de `pandapower.networks.case6ww` por la MISMA receta congelada (script §1.9 sin cambios de forma; doble ancla CP-SAT + fuerza bruta, `n=6 ≤ 14`) — stand-in reproducible mientras la instancia ICE "provincia" (P0-7 abajo) sigue diferida; ver `docs/mvp/decisiones.md` fila D5.
 
 IDs **reservados** para las instancias de P0-7 (dueño Sebas — datos abiertos del ICE): `islanding-corpus/cr8-{uniforme,flujo}@v1` y `islanding-corpus/cr6-{uniforme,flujo}@v1`; sus digests se estampan aquí al congelar los JSON (misma regla, doble ancla, fail-loud).
 

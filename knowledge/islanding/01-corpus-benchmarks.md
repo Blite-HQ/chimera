@@ -10,7 +10,7 @@
 
 ### 1.1 Qué es el corpus y dónde vive
 
-`knowledge/islanding/corpus/` contiene **6 instancias de Max-Cut con óptimo exacto conocido** — un JSON por instancia×convención — generadas desde las topologías IEEE 9/14/30 de `pandapower.networks`. Son vectores de referencia (datos versionados con digest, no código — mismo principio que "λ es dato" de quantum/02 §1.3): cualquier proponente (QAOA, heurística clásica) que corra sobre estas instancias tiene un óptimo contra el cual calcular su approximation ratio, y el `ExactSolverVerifier` (trust/10) tiene instancias medianas de calibración además de los G1–G6 hechos a mano.
+`knowledge/islanding/corpus/` contiene **8 instancias de Max-Cut con óptimo exacto conocido** — un JSON por instancia×convención — generadas desde las topologías IEEE 6/9/14/30 de `pandapower.networks`. Son vectores de referencia (datos versionados con digest, no código — mismo principio que "λ es dato" de quantum/02 §1.3): cualquier proponente (QAOA, heurística clásica) que corra sobre estas instancias tiene un óptimo contra el cual calcular su approximation ratio, y el `ExactSolverVerifier` (trust/10) tiene instancias medianas de calibración además de los G1–G6 hechos a mano. **`ieee6` (agregada 2026-07-23, D5 en `docs/mvp/decisiones.md`):** deriva de `pandapower.networks.case6ww` por la MISMA receta — stand-in reproducible de 6 nodos mientras la instancia ICE "provincia" (§1.8) sigue diferida (sus CSVs no están en el repo); re-apuntar a la red ICE cuando lleguen es mecánico.
 
 **La doble ancla independiente ES la tesis del proyecto aplicada al corpus:** ningún óptimo se publica con una sola fuente cuando dos son posibles. Cada valor de n≤14 está probado por dos métodos que no comparten código ni supuestos — CP-SAT (búsqueda exacta con prueba de optimalidad) y fuerza bruta (enumeración completa de 2^(n−1) asignaciones) — y el generador **aborta sin escribir nada** si discrepan (fail-loud, espejo de la regla "mejor que el óptimo ⇒ bug" de trust/10 §1.2). Es el mismo patrón CP-SAT ↔ enumeración de trust/10 §1.1, ahora produciendo el corpus en vez de verificando un claim.
 
@@ -89,6 +89,8 @@ fixture generado de S-G. No se persigue el formateo del writer.
 
 | Instancia | Convención | n   | \|E\| | W (peso total) | **Óptimo** | Métodos            | `solver_status` | digest (prefijo) |
 | --------- | ---------- | --- | ----- | -------------- | ---------- | ------------------ | --------------- | ---------------- |
+| ieee6     | uniforme   | 6   | 11    | 11             | **8**      | cpsat + bruteforce | OPTIMAL         | `bcce660e0dac`   |
+| ieee6     | flujo      | 6   | 11    | 25 423         | **21 692** | cpsat + bruteforce | OPTIMAL         | `0e29de1161f1`   |
 | ieee9     | uniforme   | 9   | 9     | 9              | **9**      | cpsat + bruteforce | OPTIMAL         | `dee38cdeea9b`   |
 | ieee9     | flujo      | 9   | 9     | 63 769         | **63 769** | cpsat + bruteforce | OPTIMAL         | `59fb22e6ec0a`   |
 | ieee14    | uniforme   | 14  | 20    | 20             | **16**     | cpsat + bruteforce | OPTIMAL         | `fb9c3780d9cf`   |
@@ -98,7 +100,9 @@ fixture generado de S-G. No se persigue el formateo del writer.
 
 **Chequeo de cordura estilo G1–G6 (racional a mano):** el grafo de ieee9 es **bipartito** (los 3 buses de generación cuelgan por trafo de un anillo par), así que el corte máximo corta TODAS las aristas: óptimo uniforme = \|E\| = 9 y óptimo flujo = W = 63 769. Ambas anclas lo confirman. Para ieee14/ieee30 no hay racional de una línea — para eso están las dos anclas.
 
-Las anclas **coincidieron en las 4 instancias donde ambas corren** (cero conflictos). Versiones exactas de la generación: pandapower 3.3.3 · networkx 3.6.1 · ortools 9.15.6755 · numpy 2.5.0 · Python del workspace (`uv run python`).
+Las anclas **coincidieron en las 6 instancias donde ambas corren** (ieee6 + ieee9 + ieee14, cero conflictos). Versiones exactas de la generación original (ieee9/14/30, 2026-07-14): pandapower 3.3.3 · networkx 3.6.1 · ortools 9.15.6755 · numpy 2.5.0 · Python del workspace (`uv run python`).
+
+**Provenance de `ieee6` (agregada 2026-07-23, D5):** `pandapower.networks.case6ww` — 6 buses, `vn_kv` único (230), 0 trafos, 11 líneas en servicio, fuentes (gen+ext_grid) en buses `[0,1,2]`, `runpp` converge (vm 0.985–1.07 p.u., loading máx. 94%; sonda `.superpowers/sdd/probe.py`). Generada por el MISMO script §1.9 sin cambios de forma (solo `CASOS["ieee6"] = pn.case6ww`); doble ancla CP-SAT + fuerza bruta (`n=6 ≤ 14`), cero conflictos. Versiones de esta corrida: pandapower 3.5.4 · networkx 3.6.1 · ortools 9.15.6755 · numpy 2.4.6. **Resguardo anti-drift aplicado:** antes de escribir, los 6 digests preexistentes (ieee9/14/30) se recomputaron y coincidieron byte a byte con el freeze §15.3 — cero drift de pandapower; solo `ieee6-{uniforme,flujo}.json` son archivos nuevos en el commit.
 
 ### 1.8 La red CR (cr8 + cr6) — ESPECIFICADA en S-E (P0-7); datos en curso, dueño Sebas
 
@@ -376,7 +380,7 @@ Verificadas con `importlib.metadata` sobre los paquetes instalados del workspace
 
 **Ningún contrato del freeze cambia.** El corpus es conocimiento versionado (datos), no código del engine:
 
-1. **Corpus rung 3 (trust/17):** estas 6 instancias son la semilla del corpus que el corpus runner ejecuta — instancias con óptimo conocido para computar approximation ratio y KPIs por run (quantum/04 §1: el ratio r = cut/óptimo necesita exactamente este denominador).
+1. **Corpus rung 3 (trust/17):** estas 8 instancias son la semilla del corpus que el corpus runner ejecuta — instancias con óptimo conocido para computar approximation ratio y KPIs por run (quantum/04 §1: el ratio r = cut/óptimo necesita exactamente este denominador).
 2. **`ExactSolverVerifier` (trust/10):** los G1–G6 siguen siendo el gate de implementación (óptimos a mano); estas instancias se suman como vectores de calibración de tamaño real. El campo `escala` de cada JSON es el mismo `scale` del `evidence.differential` (trust/10 §1.7) que un verify sobre la instancia debería registrar.
 3. **Claims del proponente (quantum/02 §1.6):** la canonicalización x₀=0 del corpus es la misma que la decodificación canónica del lado QAOA — una sola convención en todo el pipeline.
 4. **Digest:** el `digest` de cada instancia identifica el problema resuelto en la `evidence` de cualquier corrida (mismo rol que el digest de λ en quantum/02 §1.3). Nota: la receta de digest de esta nota es la del corpus (JSON canónico de la instancia); no es el `claim_digest` del anexo de canonicalización (que lleva prefijo de dominio) — son objetos distintos con reglas propias.
