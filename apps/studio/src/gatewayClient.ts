@@ -116,18 +116,20 @@ export async function postRun(body: CreateRunBody): Promise<GatewayResponse<{ ru
 }
 
 /**
- * Task 3 (S10) — `GET {VITE_API_URL}/runs/{id}/certificate` (freeze §7): el
- * cuerpo de la respuesta ES el wire DSSE crudo (`{payloadType, payload,
- * signatures}`), no un GatewayResponse ya envuelto — a diferencia de
- * invokeCapability/postRun, acá el envelope de éxito/error lo construye
- * este cliente. Único lugar del Studio que hace este GET (INV-1); el
- * mapeo del wire vive en data/certificateCodec.ts, no acá.
+ * D3 — GET compartido para las rutas de lectura de `chimera_api`
+ * (`docs/specs/endpoints-studio.md`): el body de la respuesta ES el wire
+ * crudo (lista u objeto snake_case), no un GatewayResponse ya envuelto —
+ * el envelope de éxito/error lo arma ESTE cliente, no el server (mismo
+ * contrato que getCertificate). Único helper interno que arma el
+ * fetch/try-catch/ok-check compartido por getCertificate/getRuns/
+ * getArtifacts/getKnowledge/getStepEvidence/getAblation (DRY — repetir
+ * este boilerplate 6 veces sería el mismo bug arreglado 6 veces distintas).
  */
-export async function getCertificate(runId: string): Promise<GatewayResponse<unknown>> {
+async function fetchWireGet<T>(url: string): Promise<GatewayResponse<T>> {
   let response: Response;
 
   try {
-    response = await fetch(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/certificate`);
+    response = await fetch(url);
   } catch (networkErr) {
     return {
       success: false,
@@ -144,8 +146,67 @@ export async function getCertificate(runId: string): Promise<GatewayResponse<unk
     };
   }
 
-  const data = (await response.json()) as unknown;
+  const data = (await response.json()) as T;
   return { success: true, data, error: null };
+}
+
+/**
+ * Task 3 (S10) — `GET {VITE_API_URL}/runs/{id}/certificate` (freeze §7): el
+ * cuerpo de la respuesta ES el wire DSSE crudo (`{payloadType, payload,
+ * signatures}`). Único lugar del Studio que hace este GET (INV-1); el
+ * mapeo del wire vive en data/certificateCodec.ts, no acá.
+ */
+export async function getCertificate(runId: string): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/certificate`);
+}
+
+/**
+ * D3 — `GET {VITE_API_URL}/runs` (endpoints-studio.md tabla, fila 1):
+ * `RunSummary[]` wire snake_case. Único lugar del Studio que hace este GET
+ * (INV-1); la validación Zod + el mapeo a `RunSummary` viven en
+ * data/schemas.ts + data/queries.ts, no acá.
+ */
+export async function getRuns(): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/runs`);
+}
+
+/**
+ * D3 — `GET {VITE_API_URL}/runs/{id}/artifacts` (tabla, fila 2):
+ * `ProjectArtifact[]` wire snake_case.
+ */
+export async function getArtifacts(runId: string): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/artifacts`);
+}
+
+/**
+ * D3 — `GET {VITE_API_URL}/runs/{id}/knowledge` (tabla, fila 3):
+ * `KnowledgeClaim[]` wire snake_case.
+ */
+export async function getKnowledge(runId: string): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/knowledge`);
+}
+
+/**
+ * D3 — `GET {VITE_API_URL}/runs/{id}/steps/{stepId}/evidence` (tabla, fila
+ * 4): `StepDetail` wire snake_case, con `capability_id`/`input_digest`/
+ * `output_digest` posiblemente `null` y `attestations` posiblemente `[]`
+ * en runs reales (E1 aún no atribuye step_id) — honesto, no fabricado.
+ */
+export async function getStepEvidence(
+  runId: string,
+  stepId: string
+): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(
+    `${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/steps/${encodeURIComponent(stepId)}/evidence`
+  );
+}
+
+/**
+ * D3 — `GET {VITE_API_URL}/runs/{id}/ablation` (tabla, fila 5):
+ * `AblationMetric[]` wire snake_case.
+ */
+export async function getAblation(runId: string): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/ablation`);
 }
 
 /**
@@ -154,10 +215,17 @@ export async function getCertificate(runId: string): Promise<GatewayResponse<unk
  * wire nombra el evento SSE (`event: {type}`), no el genérico `message`,
  * así que no hay `onmessage` que capture todo: se registra un listener por
  * tipo conocido y todos apuntan al mismo parser.
+ *
+ * D3 (`docs/specs/endpoints-studio.md` §"Discrepancia de vocabulario") —
+ * pin freeze §3/§14: el evento de provenance:pre es `capability.job.submitted`
+ * (NUNCA `.invoked`, que era el nombre desalineado que este Studio escuchaba
+ * antes). Mientras el listener registrado no coincida con el nombre real que
+ * emite el SSE, ese frame puntual se pierde en silencio — el resto del
+ * stream sigue funcionando.
  */
 const KNOWN_RUN_EVENT_TYPES = [
   'run.started',
-  'capability.job.invoked',
+  'capability.job.submitted',
   'capability.job.completed',
   'verification.completed',
   'claim.emitted',

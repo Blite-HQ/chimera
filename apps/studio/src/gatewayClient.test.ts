@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getCertificate, invokeCapability, openRunEventStream, postRun } from './gatewayClient';
+import {
+  getAblation,
+  getArtifacts,
+  getCertificate,
+  getKnowledge,
+  getRuns,
+  getStepEvidence,
+  invokeCapability,
+  openRunEventStream,
+  postRun
+} from './gatewayClient';
 
 import type { CreateRunBody } from './gatewayClient';
 import type { ProjectedEvent } from './views/types';
@@ -206,6 +216,295 @@ describe('getCertificate', () => {
   });
 });
 
+/**
+ * D3 — las 5 rutas de lectura de E1 (`docs/specs/endpoints-studio.md`),
+ * mismo patrón AAA y mismo envelope que getCertificate arriba (el body de
+ * la respuesta ES el wire crudo, el envelope de éxito/error lo arma este
+ * cliente — no el server).
+ */
+describe('getRuns', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('envía GET a {VITE_API_URL}/runs y devuelve el wire crudo como data', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = [{ run_id: '8f2c1a9b', status: 'completado' }];
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => wire
+    } as Response);
+
+    // Act
+    const result = await getRuns();
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs');
+    expect(result).toEqual({ success: true, data: wire, error: null });
+  });
+
+  it('devuelve error cuando la respuesta no es OK', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable'
+    } as Response);
+
+    // Act
+    const result = await getRuns();
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('503');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    // Act
+    const result = await getRuns();
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+    expect(result.data).toBeNull();
+  });
+});
+
+describe('getArtifacts', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('envía GET a {VITE_API_URL}/runs/{id}/artifacts y devuelve el wire crudo como data', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = [{ artifact_ref: 'partition.json' }];
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => wire
+    } as Response);
+
+    // Act
+    const result = await getArtifacts('8f2c1a9b');
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/artifacts');
+    expect(result).toEqual({ success: true, data: wire, error: null });
+  });
+
+  it('encodea el runId en la url', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({ ok: true, json: async () => [] } as Response);
+
+    await getArtifacts('run/with slash');
+
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run%2Fwith%20slash/artifacts');
+  });
+
+  it('devuelve error cuando la respuesta no es OK (404 — run desconocido)', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    } as Response);
+
+    // Act
+    const result = await getArtifacts('run-desconocido');
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('404');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    // Act
+    const result = await getArtifacts('8f2c1a9b');
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+    expect(result.data).toBeNull();
+  });
+});
+
+describe('getKnowledge', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('envía GET a {VITE_API_URL}/runs/{id}/knowledge y devuelve el wire crudo como data', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = [{ statement: 'La partición es óptima' }];
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => wire
+    } as Response);
+
+    // Act
+    const result = await getKnowledge('8f2c1a9b');
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/knowledge');
+    expect(result).toEqual({ success: true, data: wire, error: null });
+  });
+
+  it('devuelve error cuando la respuesta no es OK', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    } as Response);
+
+    const result = await getKnowledge('run-desconocido');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('404');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    const result = await getKnowledge('8f2c1a9b');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+    expect(result.data).toBeNull();
+  });
+});
+
+describe('getStepEvidence', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('envía GET a {VITE_API_URL}/runs/{id}/steps/{stepId}/evidence y devuelve el wire crudo', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = { step_id: 'step-solver', capability_id: null, attestations: [] };
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => wire
+    } as Response);
+
+    // Act
+    const result = await getStepEvidence('8f2c1a9b', 'step-solver');
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://api.test/runs/8f2c1a9b/steps/step-solver/evidence'
+    );
+    expect(result).toEqual({ success: true, data: wire, error: null });
+  });
+
+  it('encodea runId y stepId en la url', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as Response);
+
+    await getStepEvidence('run/with slash', 'step/with slash');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://api.test/runs/run%2Fwith%20slash/steps/step%2Fwith%20slash/evidence'
+    );
+  });
+
+  it('devuelve error cuando la respuesta no es OK (404 — step desconocido)', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    } as Response);
+
+    const result = await getStepEvidence('8f2c1a9b', 'step-desconocido');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('404');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    const result = await getStepEvidence('8f2c1a9b', 'step-solver');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+    expect(result.data).toBeNull();
+  });
+});
+
+describe('getAblation', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('envía GET a {VITE_API_URL}/runs/{id}/ablation y devuelve el wire crudo como data', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = [{ variant: 'quantum', cut_cost: 3, wall_ms: 820, verification_latency_ms: 410 }];
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => wire
+    } as Response);
+
+    // Act
+    const result = await getAblation('8f2c1a9b');
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/ablation');
+    expect(result).toEqual({ success: true, data: wire, error: null });
+  });
+
+  it('devuelve error cuando la respuesta no es OK', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable'
+    } as Response);
+
+    const result = await getAblation('8f2c1a9b');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('503');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    const result = await getAblation('8f2c1a9b');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+    expect(result.data).toBeNull();
+  });
+});
+
 /** Fake EventSource — captura los listeners registrados por tipo + close(). */
 class FakeEventSource {
   static instances: FakeEventSource[] = [];
@@ -285,6 +584,38 @@ describe('openRunEventStream', () => {
 
     subscription.close();
     expect(source?.closed).toBe(true);
+  });
+
+  /**
+   * Discrepancia de vocabulario (`docs/specs/endpoints-studio.md` §"Discrepancia"):
+   * el freeze (§3/§14) fija `capability.job.submitted` para provenance:pre —
+   * el SSE real emite ESE nombre, nunca `.invoked`. Mientras
+   * KNOWN_RUN_EVENT_TYPES escuche `.invoked`, este frame se pierde en
+   * silencio (ningún listener registrado lo captura).
+   */
+  it('escucha capability.job.submitted (pin freeze §3/§14 — NO capability.job.invoked)', () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const events: ProjectedEvent[] = [];
+
+    // Act
+    openRunEventStream('8f2c1a9b', { onEvent: e => events.push(e) });
+    const source = FakeEventSource.instances[0];
+    source?.dispatch(
+      'capability.job.submitted',
+      JSON.stringify({
+        global_seq: 2,
+        type: 'capability.job.submitted',
+        actor_id: 'service:runtime',
+        occurred_at: '2026-07-22T12:00:02.000000Z',
+        resumen: 'Invocando ortools-cpsat para la partición óptima',
+        payload: {}
+      })
+    );
+
+    // Assert
+    expect(events).toHaveLength(1);
+    expect(events[0]?.type).toBe('capability.job.submitted');
   });
 
   it('encodea el runId en la url', () => {

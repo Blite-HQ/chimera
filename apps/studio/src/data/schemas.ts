@@ -11,11 +11,36 @@ import { z } from 'zod';
 
 import { ASSURANCE_LEVELS } from '@chimera/assurance-ui';
 
-import type { EventAssurance, ProjectedEvent } from '../views/types';
+import type {
+  AblationMetric,
+  Attestation,
+  EventAssurance,
+  KnowledgeClaim,
+  ProjectArtifact,
+  ProjectedEvent,
+  RunSummary,
+  StepDetail
+} from '../views/types';
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 export const verdictSchema = z.enum(['pass', 'fail', 'inconclusive']);
+
+/**
+ * freeze §7 (`blite.certificate.predicate.ConclusionVerdict`) — vocabulario
+ * de un CLAIM/CONCLUSIÓN (`verified`/`refuted`/`inconclusive`/
+ * `not_required_declared`), DISTINTO del vocabulario de evento/attestation
+ * (`verdictSchema`, `pass`/`fail`/`inconclusive`). `GET /runs`,
+ * `.../artifacts` y `.../knowledge` (D3) devuelven este vocabulario porque
+ * derivan de `certificate.predicate.conclusions[].verdict`, no de un
+ * evento — mismo tipo TS que `CertificateConclusion.verdict`.
+ */
+export const conclusionVerdictSchema = z.enum([
+  'verified',
+  'refuted',
+  'inconclusive',
+  'not_required_declared'
+]);
 
 export const assuranceLevelSchema = z.enum(ASSURANCE_LEVELS);
 
@@ -178,3 +203,189 @@ export const wireEnvelopeSchema = z.object({
   payload: z.string().min(1),
   signatures: z.array(z.object({ keyid: z.string().min(1), sig: z.string().min(1) })).min(1)
 });
+
+/**
+ * D3 (`docs/specs/endpoints-studio.md` §"Contrato Zod") — los wire schemas
+ * de las 6 rutas de lectura de `chimera_api` (E1) + sus mappers wire→UI,
+ * mismo patrón que `toProjectedEvent`: se valida el wire snake_case
+ * primero, el mapeo a camelCase es una función pura — la UI jamás ve
+ * snake_case. Un run vivo o sin certificado aún puede dejar campos en
+ * `null` (honestidad de la spec, no una falla del endpoint); el mapper
+ * coalesce a los MISMOS defaults que `deriveRunSummary`/`projections.ts`
+ * ya usa para "nada que reportar todavía" (`'Sin conclusión registrada'`,
+ * `'inconclusive'`, `'formal_exact'`) en vez de fabricar una respuesta.
+ */
+
+/** `GET /runs` — `RunStatus` wire (views/types.ts lo reusa 1:1). */
+const runStatusWireSchema = z.enum(['en_curso', 'completado']);
+
+const DEFAULT_CONCLUSION = 'Sin conclusión registrada';
+const DEFAULT_VERDICT = 'inconclusive' as const;
+const DEFAULT_TITULAR_LEVEL = 'AL0' as const;
+const DEFAULT_TITULAR_CLASS = 'formal_exact';
+
+/** `GET /runs` — endpoints-studio.md tabla fila 1. */
+export const runSummaryWireSchema = z.object({
+  run_id: z.string().min(1),
+  status: runStatusWireSchema,
+  conclusion: z.string().nullable(),
+  verdict: conclusionVerdictSchema.nullable(),
+  titular_level: assuranceLevelSchema.nullable(),
+  titular_class: z.string().nullable(),
+  events_count: z.number().int().nonnegative(),
+  actor: z.string().min(1),
+  completed_at: z.string().optional()
+});
+
+export function toRunSummary(wire: z.infer<typeof runSummaryWireSchema>): RunSummary {
+  return {
+    runId: wire.run_id,
+    status: wire.status,
+    conclusion: wire.conclusion ?? DEFAULT_CONCLUSION,
+    verdict: wire.verdict ?? DEFAULT_VERDICT,
+    titularLevel: wire.titular_level ?? DEFAULT_TITULAR_LEVEL,
+    titularClass: wire.titular_class ?? DEFAULT_TITULAR_CLASS,
+    eventsCount: wire.events_count,
+    actor: wire.actor,
+    ...(wire.completed_at !== undefined && { completedAt: wire.completed_at })
+  };
+}
+
+/**
+ * `GET /runs/{id}/artifacts` — endpoints-studio.md tabla fila 2: solo
+ * existe cuando ya hay certificado emitido (la ruta responde `[]` si no lo
+ * hay), así que sus campos nunca llegan `null` — a diferencia de
+ * `runSummaryWireSchema`.
+ */
+export const projectArtifactWireSchema = z.object({
+  artifact_ref: z.string().min(1),
+  digest: z.string().min(1),
+  run_id: z.string().min(1),
+  titular_level: assuranceLevelSchema,
+  titular_class: z.string().min(1),
+  verdict: conclusionVerdictSchema,
+  issued_at: z.string().min(1)
+});
+
+export function toProjectArtifact(
+  wire: z.infer<typeof projectArtifactWireSchema>
+): ProjectArtifact {
+  return {
+    artifactRef: wire.artifact_ref,
+    digest: wire.digest,
+    runId: wire.run_id,
+    titularLevel: wire.titular_level,
+    titularClass: wire.titular_class,
+    verdict: wire.verdict,
+    issuedAt: wire.issued_at
+  };
+}
+
+/** `GET /runs/{id}/knowledge` — endpoints-studio.md tabla fila 3 (mismo motivo que artifacts: solo hay fila si ya hay certificado). */
+export const knowledgeClaimWireSchema = z.object({
+  statement: z.string().min(1),
+  scope: z.record(z.string(), z.string()),
+  verdict: conclusionVerdictSchema,
+  level: assuranceLevelSchema,
+  titular_class: z.string().min(1),
+  run_id: z.string().min(1),
+  valid_as_of: z.string().min(1)
+});
+
+export function toKnowledgeClaim(wire: z.infer<typeof knowledgeClaimWireSchema>): KnowledgeClaim {
+  return {
+    statement: wire.statement,
+    scope: wire.scope,
+    verdict: wire.verdict,
+    level: wire.level,
+    titularClass: wire.titular_class,
+    runId: wire.run_id,
+    validAsOf: wire.valid_as_of
+  };
+}
+
+/**
+ * `GET /runs/{id}/ablation` — endpoints-studio.md tabla fila 5: mismo
+ * shape que `ablationMetricSchema` (fixtures), salvo casing snake_case.
+ */
+export const ablationWireSchema = z.object({
+  variant: z.enum(['quantum', 'classical']),
+  cut_cost: z.number().nonnegative(),
+  wall_ms: z.number().nonnegative(),
+  verification_latency_ms: z.number().nonnegative()
+});
+
+export function toAblationMetric(wire: z.infer<typeof ablationWireSchema>): AblationMetric {
+  return {
+    variant: wire.variant,
+    cutCost: wire.cut_cost,
+    wallMs: wire.wall_ms,
+    verificationLatencyMs: wire.verification_latency_ms
+  };
+}
+
+/**
+ * `GET /runs/{id}/steps/{id}/evidence` — endpoints-studio.md tabla fila 4.
+ * A diferencia de `stepDetailSchema` (fixtures, exige digests SHA256 y
+ * attestations bien formadas), el wire de un run real puede traer
+ * `capability_id`/`input_digest`/`output_digest` en `null` (E1 aún no los
+ * atribuye a todo evento) y `attestations` como dicts crudos sin garantía
+ * de shape (el step aún no tiene `verification.completed` atribuido).
+ */
+export const stepDetailWireSchema = z.object({
+  step_id: z.string().min(1),
+  capability_id: z.string().nullable(),
+  input_digest: z.string().nullable(),
+  output_digest: z.string().nullable(),
+  attestations: z.array(z.unknown())
+});
+
+const attestationWireSchema = z.object({
+  verifier_id: z.string().min(1),
+  verifier_class: verifierClassSchema,
+  anchor_kind: anchorKindSchema,
+  level: assuranceLevelSchema,
+  verdict: verdictSchema,
+  method: z.string().min(1),
+  summary: z.string().min(1),
+  evidence: z.record(z.string(), z.unknown())
+});
+
+/**
+ * Degrada con gracia (mismo patrón que `toEventAssurance`): una attestation
+ * cruda que no matchea el shape esperado se DESCARTA, nunca se fabrica ni
+ * explota el parse completo — attestations:[] es el caso común hoy.
+ */
+function toAttestation(raw: unknown): Attestation | null {
+  const parsed = attestationWireSchema.safeParse(raw);
+  if (!parsed.success) {
+    return null;
+  }
+  const a = parsed.data;
+  return {
+    verifierId: a.verifier_id,
+    verifierClass: a.verifier_class,
+    anchorKind: a.anchor_kind,
+    level: a.level,
+    verdict: a.verdict,
+    method: a.method,
+    summary: a.summary,
+    evidence: a.evidence
+  };
+}
+
+/**
+ * `capability_id`/`input_digest`/`output_digest` en `null` mapean a `''`
+ * (no fabricado — un digest inventado sería peor que uno ausente); NO se
+ * re-valida el resultado contra `stepDetailSchema` (ese schema exige regex
+ * SHA256 en los digests, contrato de fixtures, no del wire honesto).
+ */
+export function toStepDetail(wire: z.infer<typeof stepDetailWireSchema>): StepDetail {
+  return {
+    stepId: wire.step_id,
+    capabilityId: wire.capability_id ?? '',
+    inputDigest: wire.input_digest ?? '',
+    outputDigest: wire.output_digest ?? '',
+    attestations: wire.attestations.map(toAttestation).filter((a): a is Attestation => a !== null)
+  };
+}

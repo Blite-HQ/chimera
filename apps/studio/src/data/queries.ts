@@ -10,7 +10,14 @@
 import { queryOptions } from '@tanstack/react-query';
 import { z } from 'zod';
 
-import { getCertificate } from '../gatewayClient';
+import {
+  getAblation,
+  getArtifacts,
+  getCertificate,
+  getKnowledge,
+  getRuns,
+  getStepEvidence
+} from '../gatewayClient';
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
 import { RUN_EVENTS } from '../fixtures/runEvents';
@@ -21,9 +28,19 @@ import { isLiveMode } from './env';
 import { deriveArtifacts, deriveKnowledge, deriveRunSummary } from './projections';
 import {
   ablationMetricSchema,
+  ablationWireSchema,
+  knowledgeClaimWireSchema,
+  projectArtifactWireSchema,
   projectedEventSchema,
+  runSummaryWireSchema,
   rvspSchema,
   stepDetailSchema,
+  stepDetailWireSchema,
+  toAblationMetric,
+  toKnowledgeClaim,
+  toProjectArtifact,
+  toRunSummary,
+  toStepDetail,
   wireEnvelopeSchema
 } from './schemas';
 
@@ -42,16 +59,21 @@ import type {
 export const DEMO_RUN_ID = '8f2c1a9b';
 
 /**
- * Rama demo/live (D1, honestidad de modo): hoy chimera_api solo expone
- * `POST /runs`, `GET /runs/{id}/certificate` y `GET /runs/{id}/events`
- * (SSE) — no hay `GET /runs` (lista), así que en vivo esto es "nada
- * todavía", nunca el fixture (D3/D4 lo cablean cuando el endpoint exista).
- * Exportada por separado, mismo patrón que loadCertificate, para poder
- * testear la selección de rama sin fabricar un QueryFunctionContext.
+ * Rama demo/live (D3 — E1 ya expone `GET /runs`): en vivo llama a
+ * `gatewayClient.getRuns`, valida el wire (`runSummaryWireSchema`) y lo
+ * mapea a `RunSummary[]` con `toRunSummary`. Cualquier `!success` (red,
+ * gateway error) rechaza — surge como ErrorState, jamás un 200 fabricado;
+ * `[]` es EmptyState honesto (proyecto sin runs todavía). Exportada por
+ * separado, mismo patrón que loadCertificate, para poder testear la
+ * selección de rama sin fabricar un QueryFunctionContext.
  */
 export async function loadRunSummaries(): Promise<readonly RunSummary[]> {
   if (isLiveMode()) {
-    return [];
+    const res = await getRuns();
+    if (!res.success || res.data === null) {
+      throw new Error(res.error ?? 'No se pudieron obtener los runs');
+    }
+    return z.array(runSummaryWireSchema).parse(res.data).map(toRunSummary);
   }
   const events = z.array(projectedEventSchema).parse(RUN_EVENTS);
   return [deriveRunSummary(EXAMPLE_CERTIFICATE, events)];
@@ -65,35 +87,56 @@ export function runSummariesQueryOptions() {
   });
 }
 
-/** Rama demo/live — sin `GET /artifacts` todavía (ver loadRunSummaries). */
-export async function loadArtifacts(): Promise<readonly ProjectArtifact[]> {
+/**
+ * Rama demo/live (D3 — E1 ya expone `GET /runs/{id}/artifacts`, pero la
+ * ruta EXIGE un `run_id` en el path): `runId` es OPCIONAL porque hoy
+ * `ArtifactsScreen` (App.tsx) es un screen de PROYECTO sin contexto de
+ * run — RunDetail todavía no tiene un tab "Artifacts" que provea uno. Sin
+ * `runId` en vivo: honest-empty (nunca el fixture, no hay ruta de
+ * proyecto agregada). Con `runId`: llama al egress real.
+ */
+export async function loadArtifacts(runId?: string): Promise<readonly ProjectArtifact[]> {
   if (isLiveMode()) {
-    return [];
+    if (runId === undefined) {
+      return [];
+    }
+    const res = await getArtifacts(runId);
+    if (!res.success || res.data === null) {
+      throw new Error(res.error ?? 'No se pudieron obtener los artifacts');
+    }
+    return z.array(projectArtifactWireSchema).parse(res.data).map(toProjectArtifact);
   }
   return deriveArtifacts(EXAMPLE_CERTIFICATE);
 }
 
 /** Artifacts del proyecto — deliverables del certificado, con procedencia. */
-export function artifactsQueryOptions() {
+export function artifactsQueryOptions(runId?: string) {
   return queryOptions({
-    queryKey: ['artifacts'] as const,
-    queryFn: loadArtifacts
+    queryKey: ['artifacts', runId] as const,
+    queryFn: () => loadArtifacts(runId)
   });
 }
 
-/** Rama demo/live — sin `GET /knowledge` todavía (ver loadRunSummaries). */
-export async function loadKnowledge(): Promise<readonly KnowledgeClaim[]> {
+/** Rama demo/live (D3) — mismo patrón que loadArtifacts (runId opcional). */
+export async function loadKnowledge(runId?: string): Promise<readonly KnowledgeClaim[]> {
   if (isLiveMode()) {
-    return [];
+    if (runId === undefined) {
+      return [];
+    }
+    const res = await getKnowledge(runId);
+    if (!res.success || res.data === null) {
+      throw new Error(res.error ?? 'No se pudo obtener el knowledge');
+    }
+    return z.array(knowledgeClaimWireSchema).parse(res.data).map(toKnowledgeClaim);
   }
   return deriveKnowledge(EXAMPLE_CERTIFICATE);
 }
 
 /** Knowledge del proyecto — conclusiones verificadas acumuladas. */
-export function knowledgeQueryOptions() {
+export function knowledgeQueryOptions(runId?: string) {
   return queryOptions({
-    queryKey: ['knowledge'] as const,
-    queryFn: loadKnowledge
+    queryKey: ['knowledge', runId] as const,
+    queryFn: () => loadKnowledge(runId)
   });
 }
 
@@ -123,18 +166,40 @@ export function runEventsQueryOptions(runId: string) {
   });
 }
 
-/** Rama demo/live — sin `GET /step-evidence` todavía (ver loadRunSummaries). */
-export async function loadStepEvidence(): Promise<Record<string, StepDetail>> {
-  if (isLiveMode()) {
-    return {};
+/**
+ * Rama demo/live (D3 — E1 expone `GET /runs/{id}/steps/{step_id}/evidence`,
+ * POR PASO, no por run entero). Reconciliación con el consumidor
+ * (`App.tsx` RunDetailScreen, `stepsQuery.data?.[stepId]` espera el mapa
+ * completo): en vivo se arma el mapa pidiendo evidencia para los
+ * `stepIds` YA presentes en los eventos del run (nunca se inventa un
+ * stepId) — N fetches acotados al tamaño del run, correcto y simple dado
+ * que E1 hoy devuelve evidencia mayormente vacía (sin over-engineering de
+ * un fetch lazy por selección). Cualquier `!success` (404 de un step
+ * desconocido, red) rechaza en vez de fabricar evidencia.
+ */
+export async function loadStepEvidence(
+  runId: string,
+  stepIds: readonly string[] = []
+): Promise<Record<string, StepDetail>> {
+  if (!isLiveMode()) {
+    return z.record(z.string(), stepDetailSchema).parse(STEP_EVIDENCE);
   }
-  return z.record(z.string(), stepDetailSchema).parse(STEP_EVIDENCE);
+  const entries = await Promise.all(
+    stepIds.map(async (stepId): Promise<readonly [string, StepDetail]> => {
+      const res = await getStepEvidence(runId, stepId);
+      if (!res.success || res.data === null) {
+        throw new Error(res.error ?? `No se pudo obtener la evidencia del paso ${stepId}`);
+      }
+      return [stepId, toStepDetail(stepDetailWireSchema.parse(res.data))];
+    })
+  );
+  return Object.fromEntries(entries);
 }
 
-export function stepEvidenceQueryOptions(runId: string) {
+export function stepEvidenceQueryOptions(runId: string, stepIds: readonly string[] = []) {
   return queryOptions({
-    queryKey: ['runs', runId, 'step-evidence'] as const,
-    queryFn: loadStepEvidence
+    queryKey: ['runs', runId, 'step-evidence', stepIds] as const,
+    queryFn: () => loadStepEvidence(runId, stepIds)
   });
 }
 
@@ -179,10 +244,18 @@ export function certificateQueryOptions(runId: string) {
   });
 }
 
-/** Rama demo/live — sin `GET /ablation` todavía (ver loadRunSummaries). */
-export async function loadAblation(): Promise<readonly AblationMetric[]> {
+/**
+ * Rama demo/live (D3 — E1 ya expone `GET /runs/{id}/ablation`): en vivo
+ * llama al egress real, valida el wire snake_case (`ablationWireSchema`) y
+ * lo mapea a `AblationMetric[]` con `toAblationMetric`.
+ */
+export async function loadAblation(runId: string): Promise<readonly AblationMetric[]> {
   if (isLiveMode()) {
-    return [];
+    const res = await getAblation(runId);
+    if (!res.success || res.data === null) {
+      throw new Error(res.error ?? 'No se pudieron obtener las métricas de ablación');
+    }
+    return z.array(ablationWireSchema).parse(res.data).map(toAblationMetric);
   }
   return z.array(ablationMetricSchema).parse(ABLATION_METRICS);
 }
@@ -190,7 +263,7 @@ export async function loadAblation(): Promise<readonly AblationMetric[]> {
 export function ablationQueryOptions(runId: string) {
   return queryOptions({
     queryKey: ['runs', runId, 'ablation'] as const,
-    queryFn: loadAblation
+    queryFn: () => loadAblation(runId)
   });
 }
 

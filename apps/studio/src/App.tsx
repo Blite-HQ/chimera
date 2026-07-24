@@ -149,12 +149,17 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
   useRunEventStream(runId);
   const summariesQuery = useQuery(runSummariesQueryOptions());
   const eventsQuery = useQuery(runEventsQueryOptions(runId));
-  const stepsQuery = useQuery(stepEvidenceQueryOptions(runId));
+  const runEvents = eventsQuery.data ?? [];
+  // D3 — GET /runs/{id}/steps/{step_id}/evidence es POR PASO; se piden los
+  // stepIds YA presentes en los eventos del run (nunca se inventa uno) y
+  // se arma el mapa que el consumidor de abajo espera (Record<stepId, _>).
+  const stepIds = Array.from(
+    new Set(runEvents.map(event => event.stepId).filter((id): id is string => id !== undefined))
+  );
+  const stepsQuery = useQuery(stepEvidenceQueryOptions(runId, stepIds));
   const certificateQuery = useQuery(certificateQueryOptions(runId));
   const ablationQuery = useQuery(ablationQueryOptions(runId));
   const rvspQuery = useQuery(rvspQueryOptions(runId));
-
-  const runEvents = eventsQuery.data ?? [];
   const { revealedEvents, playback } = usePlaybackReveal(runEvents);
   const [selectedGlobalSeq, setSelectedGlobalSeq] = useState<number | undefined>(undefined);
   const [timelineViewMode, setTimelineViewMode] = useState<'tree' | 'timeline'>('tree');
