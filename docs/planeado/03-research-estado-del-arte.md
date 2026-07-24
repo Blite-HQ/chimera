@@ -183,6 +183,30 @@ Sin research externo necesario: REST plano coherente con lo existente (`GET /run
 4. `maplibre-gl@6` es major reciente — `^5` es la versión de guerra si algo cojea.
 5. ODbL: atribución visible si entra basemap OSM.
 
+## Relación con el knowledge interno (insumo de los compañeros)
+
+Este research NO parte de cero: `knowledge/{execution,trust,quantum}` contiene la
+investigación por rol (Steven/Dylan/Sebas) que alimentó el freeze, con decisiones
+`integrar|portar|inspirar|descartar` por nota. Cruces clave:
+
+- **R1 converge con `knowledge/execution/03-durable-execution.md`** (Steven, 2026-07-10):
+  la nota ya comparó Temporal/DBOS/LangGraph/replay-simple y decidió "durabilidad por
+  replay del event log, NO un motor nuevo" — con la advertencia de que ninguna fuente fue
+  verificada en vivo. Este research la verifica con fuentes vivas y añade las dos piezas
+  que faltaban (replay por digest + detección de no-determinismo). Convergencia
+  independiente = señal fuerte.
+- R1 harness ← `execution/02` (agent loop), `05`/`09` (model router/egress), `trust/07`
+  (SSE/AG-UI, ya había descartado adoptarlo como wire). R2 ingesta ← `execution/10`
+  (RAG/ingesta como RunStep) + `trust/06` (manifest). R3 evidencia ← `quantum/08` (ruta
+  Quantinuum, campos por pata §4) + `trust/04` (mapa de anclas). R4 informe ← `trust/02`
+  (certificado/attestation). R5 UX ← `trust/18` (componentes Studio; ojo: arrastra
+  vocabulario `rung` viejo). Gobernanza tripwire ← `trust/13` (OPA/Cedar/OWASP) y
+  `trust/16` (guardrails).
+- El **catálogo maestro de repos de referencia** del Engine (roles 🟢 lite / 🔵 adapter /
+  📐 referencia, regla "envolvé, no forkees", Parte 0 = lo que se construye) vive FUERA
+  de este repo por la regla de marca — pedirlo a Dylan. Las specs deben citar la nota de
+  knowledge correspondiente como insumo, no repetirla.
+
 ## Aterrizaje: de research a specs
 
 Cada frente produce ahora su spec ejecutable en `docs/specs/` (formato existente,
