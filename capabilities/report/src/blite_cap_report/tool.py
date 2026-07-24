@@ -1,17 +1,24 @@
 """
-RenderFigure — render a generic figure (series/axes/kind) deterministically
-to byte-reproducible SVG.
+RenderFigure / CompilePdf — render a generic figure (series/axes/kind)
+deterministically to byte-reproducible SVG, and compile the final report PDF
+deterministically from a versioned Typst template plus cited digests.
 
-Registered as entry point: blite.capabilities["blite.report.render_figure"]
+Registered as entry points:
+  blite.capabilities["blite.report.render_figure"]
+  blite.capabilities["blite.report.compile_pdf"]
 Heavy dependency (matplotlib) loaded lazily (install via extras):
   uv add blite-cap-report[plot]
+typst is a CORE dependency (informe-derivado.md §b) — always installed.
 """
 
 from __future__ import annotations
 
+import base64
 from typing import Any, cast
 
+from blite.certificate.predicate import Conclusion
 from blite.verification.provenance import InputRef
+from blite_cap_report.pdf import compile_report
 from blite_cap_report.plotting import FigureSeries, FigureSpec, render_figure
 from blite_capability.manifest import CapabilityManifest
 
@@ -180,4 +187,133 @@ class RenderFigure:
             "digest": rendered.digest,
             "svg": rendered.svg_bytes.decode("utf-8"),
             "provenance_recipe": dict(rendered.provenance.recipe),
+        }
+
+
+_COMPILE_PDF_MANIFEST = CapabilityManifest(
+    id="blite.report.compile_pdf",
+    description=(
+        "Compile the final report PDF deterministically from a versioned "
+        "Typst template plus cited figure/cifra digests (byte-reproducible; "
+        "fail-closed if a cited digest does not resolve against the "
+        "certificate)."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "template_digest": {"type": "string"},
+            "figure_digests": {"type": "array", "items": {"type": "string"}},
+            "cifra_digests": {"type": "array", "items": {"type": "string"}},
+            "certificate_conclusions": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": (
+                    "Omit/null to skip binding (recompilation mode); an "
+                    "array (possibly empty) enforces it, fail-closed."
+                ),
+            },
+            "figure_svgs_base64": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Base64-encoded SVG bytes to embed, one per figure.",
+            },
+            "run_id": {"type": "string"},
+            "title": {"type": "string"},
+        },
+        "required": ["template_digest"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "digest": {"type": "string"},
+            "pdf_base64": {"type": "string"},
+            "page_count": {"type": "integer"},
+            "provenance_recipe": {"type": "object"},
+        },
+        "required": ["digest", "pdf_base64", "page_count", "provenance_recipe"],
+    },
+    tags=("reporting", "deterministic", "pure"),
+)
+
+
+def _build_digest_tuple(raw: Any, field_name: str) -> tuple[str, ...]:
+    if not isinstance(raw, list):
+        msg = f"CompilePdf: input '{field_name}' must be an array"
+        raise ValueError(msg)
+    result: list[str] = []
+    for item in cast("list[Any]", raw):
+        if not isinstance(item, str):
+            msg = f"CompilePdf: each '{field_name}' entry must be a string"
+            raise ValueError(msg)
+        result.append(item)
+    return tuple(result)
+
+
+def _build_conclusions(raw: Any) -> tuple[Conclusion, ...] | None:
+    """`None` (key absent/null) skips binding; an array (possibly empty)
+    enforces it — the tri-state that `compile_report` expects."""
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        msg = "CompilePdf: input 'certificate_conclusions' must be an array"
+        raise ValueError(msg)
+    return tuple(
+        Conclusion(**cast("dict[str, Any]", item)) for item in cast("list[Any]", raw)
+    )
+
+
+def _build_figure_svgs(raw: Any) -> tuple[bytes, ...] | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        msg = "CompilePdf: input 'figure_svgs_base64' must be an array"
+        raise ValueError(msg)
+    return tuple(base64.b64decode(cast("str", item)) for item in cast("list[Any]", raw))
+
+
+class CompilePdf:
+    """Generic capability: compile the final report PDF deterministically."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return _COMPILE_PDF_MANIFEST
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        template_digest = inputs.get("template_digest")
+        if not isinstance(template_digest, str) or not template_digest:
+            msg = "CompilePdf: input 'template_digest' (str) is required"
+            raise ValueError(msg)
+        figure_digests = _build_digest_tuple(
+            inputs.get("figure_digests", []), "figure_digests"
+        )
+        cifra_digests = _build_digest_tuple(
+            inputs.get("cifra_digests", []), "cifra_digests"
+        )
+        certificate_conclusions = _build_conclusions(
+            inputs.get("certificate_conclusions")
+        )
+        figure_svgs = _build_figure_svgs(inputs.get("figure_svgs_base64"))
+        run_id = inputs.get("run_id")
+        run_id = run_id if isinstance(run_id, str) and run_id else "report"
+        title = inputs.get("title")
+        title = (
+            title
+            if isinstance(title, str) and title
+            else "Informe de derivación certificada"
+        )
+
+        compiled = compile_report(
+            template_digest=template_digest,
+            figure_digests=figure_digests,
+            cifra_digests=cifra_digests,
+            certificate_conclusions=certificate_conclusions,
+            figure_svgs=figure_svgs,
+            run_id=run_id,
+            title=title,
+        )
+        return {
+            "digest": compiled.digest,
+            "pdf_base64": base64.b64encode(compiled.pdf_bytes).decode("ascii"),
+            "page_count": compiled.page_count,
+            "provenance_recipe": dict(compiled.provenance.recipe),
         }
