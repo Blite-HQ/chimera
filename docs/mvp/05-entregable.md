@@ -1,6 +1,6 @@
 # Dominio Entregable — lo que se le ENTREGA al jurado (dueño natural: Dylan + Geo)
 
-**Rama:** `mvp/entregable` · **Base:** `integracion/runtime-confianza`
+**Rama:** `mvp/entregable` · **Base:** `mvp/base`
 **Arranca cuando:** los dominios 01–03 tengan sus tareas MVP verdes (usa sus salidas).
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md` (sección del reto — la lista de
 entrega es CONTRATO), `docs/mvp/02-ciencia-reto.md` (experimento r vs p).

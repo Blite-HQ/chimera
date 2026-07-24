@@ -1,7 +1,7 @@
 # Plan maestro — cierre total (MVP → Planeado → Mejorado)
 
 **Fecha:** 2026-07-23 · **Autoridad:** Dylan (mandato de cierre no-bloqueante) · **Planner:** Fable
-**Rama base:** `integracion/runtime-confianza` (@ `e0515a8`, 345 passed, 4 gates verdes)
+**Rama base:** `mvp/base` (consolidación de TODAS las ramas de trabajo, 2026-07-23) (@ `e0515a8`, 345 passed, 4 gates verdes)
 
 ## Los tres niveles
 
@@ -70,7 +70,7 @@ Cada prompt se pega en una sesión nueva. TODOS empiezan igual:
 
 > Corre esta sesión con **Opus como validador** y delega la implementación a subagentes
 > **Sonnet**. Lee `docs/mvp/00-plan-maestro.md` y tu plan de dominio; trabaja en la rama
-> `mvp/<dominio>` (worktree propio) desde `integracion/runtime-confianza`. TDD; 4 gates
+> `mvp/<dominio>` (worktree propio) desde `mvp/base`. TDD; 4 gates
 > verdes antes de cada commit; commit por tarea terminada. Toda decisión que normalmente
 > esperaría a otra persona: tómala YA según el plan/arquitectura y regístrala en
 > `docs/mvp/decisiones.md` (nivel, dominio, decisión, racional, cómo revertirla). Si un

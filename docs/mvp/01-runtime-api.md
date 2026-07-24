@@ -1,6 +1,6 @@
 # Dominio Runtime/API — el sistema se vuelve usable (dueño natural: Steven)
 
-**Rama:** `mvp/runtime-api` · **Base:** `integracion/runtime-confianza`
+**Rama:** `mvp/runtime-api` · **Base:** `mvp/base`
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md`, `docs/decisiones-delegadas-2026-07-23.md`
 (decisiones 1–5 ya tomadas), `api/src/chimera_api/`, `engine/src/blite/runtime/loop.py`
 (costura `post_invoke`), `blite/verification/orchestrator.py`, `blite/certificate/assemble.py`.

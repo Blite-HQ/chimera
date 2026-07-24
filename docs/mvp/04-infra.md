@@ -1,6 +1,6 @@
 # Dominio Infra — el demo corre en cualquier máquina (dueño natural: Geovanni)
 
-**Rama:** `mvp/infra` · **Base:** `integracion/runtime-confianza`
+**Rama:** `mvp/infra` · **Base:** `mvp/base`
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md`,
 `tests/seeds/test_seed_infra_compose.py` (xfail — define el done),
 `engine/sql/init_v2.sql` (esquema append-only), `api/src/chimera_api/main.py`.

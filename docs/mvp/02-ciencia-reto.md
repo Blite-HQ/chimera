@@ -1,6 +1,6 @@
 # Dominio Ciencia/Reto — el reto 1 resuelto POR Chimera (dueño natural: Sebas)
 
-**Rama:** `mvp/ciencia-reto` · **Base:** `integracion/runtime-confianza`
+**Rama:** `mvp/ciencia-reto` · **Base:** `mvp/base`
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md` (sección "El reto 1 como contrato"),
 `knowledge/islanding/01-corpus-benchmarks.md`, `capabilities/{sim,solvers,quantum}/`,
 `engine/src/blite/verification/execution.py` (formato de topología+límites),

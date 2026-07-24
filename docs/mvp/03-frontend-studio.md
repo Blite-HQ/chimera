@@ -1,6 +1,6 @@
 # Dominio Frontend/Studio — el demo se VE en vivo (dueño natural: Dylan)
 
-**Rama:** `mvp/frontend-studio` · **Base:** `integracion/runtime-confianza`
+**Rama:** `mvp/frontend-studio` · **Base:** `mvp/base`
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md`, `apps/studio/DESIGN.md` (design
 system manda), `apps/studio/src/data/` (data layer F3: TanStack Query + Zod + seam SSE),
 `apps/studio/src/gatewayClient.ts` (único punto de egress — INV-1, dependency-cruiser).
