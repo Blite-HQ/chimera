@@ -108,3 +108,24 @@ warnings · `depcruise` 0 violaciones (96 módulos).
 
 F5 (instancia ICE diferida) y F6 (p=3 < p=2, mínimo local) siguen siendo NOTAS informativas
 de Planeado — no eran acciones de cierre y quedan tal cual.
+
+### Adenda — Dominio 05 (Entregable) cerrado en re-auditoría de completitud
+
+La auditoría Fable original (F1–F6) **no evaluó el Dominio 05**. Una re-auditoría de
+completitud del scope MVP (2026-07-24, pedida antes del freeze) lo detectó como gap real
+Nivel-1 y lo cerró: `05-entregable.md` §"Nivel MVP" define tres ítems (entry point único,
+README del reto, esqueleto de informe) — los tres implementados en `challenges/reto1/`:
+
+- `challenges/reto1/run_all.py` (decisión #56) — entry point único reproducible: reproduce
+  figuras/cifras del reto en `ieee6-flujo` (reusa `scripts/exp_r_vs_p.py`) Y dispara una
+  corrida Chimera REAL in-process que emite un certificado 7/7 (AL3, dos patas) sobre
+  `sintetica-4bus`. Salida en `results/reto1/`. `verify-bundle.py` → 7/7.
+- `challenges/reto1/README.md` — reproducción en un comando + verificación offline del
+  certificado (CLI del juez) + mapa del código.
+- `challenges/reto1/informe.md` — esqueleto del informe de 8 páginas con cifras reales
+  pre-llenadas y §Limitaciones honestas ya completa (6 limitaciones reales citadas). La
+  prosa completa / PDF / slides siguen siendo Planeado.
+
+Con esto el **MVP Nivel-1 queda completo en scope** (dominios 01–05); los diferidos (ICE
+real, informe completo, ModelServer replay, 3 escalas, superficie agéntica) están en
+Planeado con decisión registrada. Ver decisión #57.
