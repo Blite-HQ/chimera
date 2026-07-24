@@ -1,5 +1,7 @@
 # Dominio Entregable — lo que se le ENTREGA al jurado (dueño natural: Dylan + Geo)
 
+> **Estado: CERRADO — Nivel MVP ejecutado (2026-07-24)** en `challenges/reto1/` (decisiones #56/#57).
+
 **Rama:** `mvp/entregable` · **Base:** `mvp/base`
 **Arranca cuando:** los dominios 01–03 tengan sus tareas MVP verdes (usa sus salidas).
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md` (sección del reto — la lista de

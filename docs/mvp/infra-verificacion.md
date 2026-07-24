@@ -42,8 +42,9 @@ secrets/postgres_password.txt`. El `.example` es **una sola línea** con un pass
 
 ## Qué prueba el smoke (y qué NO)
 
-El api hoy solo expone `GET /health` y `GET /runs/{run_id}/events` (SSE) — no existe
-`POST /runs` ni `POST /invoke` (esos son dominio 01, runtime-api). Por eso el "evento
+El smoke solo ejercita `GET /health` y `GET /runs/{run_id}/events` (SSE) — no ejercita
+`POST /runs` (ese flujo lo cubre `tests/smoke/test_runtime_api_e2e.py`; el endpoint vive
+en `api/src/chimera_api/runs.py`, dominio 01). Por eso el "evento
 real de punta a punta" honesto para infra es:
 
 ```
@@ -87,10 +88,11 @@ api (lectura) → SSE — sin inventar rutas que no existen todavía.
 
 ### Qué queda deferido (y por qué)
 
-- **`POST /runs` / `POST /invoke` E2E completo**: no existen hasta que el dominio 01
-  (runtime-api) los construya. `docs/mvp/04-infra.md` §3 ya anticipa "el smoke E2E
+- **`POST /runs` / `POST /invoke` E2E completo**: el smoke no ejercita `POST /runs`
+  (ese flujo lo cubre `tests/smoke/test_runtime_api_e2e.py`; `POST /invoke` sigue sin
+  existir). `docs/mvp/04-infra.md` §3 ya anticipa "el smoke E2E
   del dominio runtime-api (POST /runs → SSE → certificado)" como el siguiente nivel;
-  este script cubre la porción que infra puede probar hoy con honestidad.
+  este script cubre la porción que infra puede probar por sí solo con honestidad.
 - **`worker`**: config-presente-e-inerte (decisión #6) — mismo imagen que `api`,
   comando `procrastinate worker`, pero no hay app procrastinate registrada en el
   engine todavía. El smoke NO lo levanta (fallaría al arrancar por diseño hasta que

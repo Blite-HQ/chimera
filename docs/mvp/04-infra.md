@@ -1,5 +1,7 @@
 # Dominio Infra — el demo corre en cualquier máquina (dueño natural: Geovanni)
 
+> **Estado: CERRADO — Nivel MVP ejecutado (2026-07-24).** Plan histórico; desviaciones registradas en `decisiones.md`. Nota: donde dice `VITE_API_URL` para el build del studio, el canónico es `VITE_GATEWAY_URL` (decisión #35).
+
 **Rama:** `mvp/infra` · **Base:** `mvp/base`
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md`,
 `tests/seeds/test_seed_infra_compose.py` (xfail — define el done),

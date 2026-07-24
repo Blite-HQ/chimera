@@ -6,26 +6,34 @@
 
 Chimera is a sovereign, open-source AI substrate with anchored verification and provenance. It powers verified scientific research by combining quantum and classical computation tools with a deterministic verification layer.
 
+The MVP Nivel-1 (closed 2026-07-24) ships that thesis end to end: a runtime API (`POST /runs` → SSE event stream → verifiable DSSE certificate), real anchor verifiers (CP-SAT exact solver + pandapower execution), a React Studio, and a docker-compose walking skeleton — exercised live by the reto-1 deliverable in `challenges/reto1/`.
+
 ## Monorepo layout
 
 ```
 chimera/
 ├─ sdk/                  blite-capability SDK (Capability port + CapabilityManifest + registry)
-├─ engine/               Chimera engine core (gateway, runtime, serving, verification, events, …)
+├─ engine/               Chimera engine core (gateway, runtime, serving, verification, events, certificate, …)
+│  └─ sql/               Frozen event-store schema (init_v2.sql, anti-drift gated)
+├─ api/                  chimera_api — runtime API: POST /runs, SSE /runs/{id}/events, certificate
 ├─ capabilities/         Generic tool packages — discovered at runtime via entry points (ADR-008)
-│  ├─ solvers/           QUBO/MILP solvers (OR-Tools, Gurobi) — anchor
-│  ├─ graphs/            Graph algorithms (NetworkX, igraph) — baseline
+│  ├─ solvers/           QUBO/MILP solvers (OR-Tools CP-SAT) — anchor
+│  ├─ graphs/            Graph algorithms (Max-Cut baselines: Goemans-Williamson, greedy)
 │  ├─ numeric/           Numerical utilities (numpy, scipy, pandas)
 │  ├─ sim/               Physics simulators (pandapower) — anchor
 │  ├─ ml/                Classical ML (scikit-learn, XGBoost) — baseline
-│  ├─ smt/               Formal verification (Z3) — anchor
-│  └─ quantum/           Quantum tools (Qiskit QAOA, PennyLane VQC, Qiskit Nature VQE, D-Wave)
-├─ knowledge/            Shared operational knowledge base (per area, versioned)
+│  ├─ smt/               Formal verification (Z3) — anchor (stub, not yet implemented)
+│  └─ quantum/           Quantum tools (Qiskit QAOA proposer)
 ├─ apps/studio/          Chimera Studio — React/Vite research UI
-├─ docs/
-│  └─ invariants.md      FROZEN constitution: 6 invariants + ADR-008 + ADR-029
+├─ packages/             Shared web packages (@chimera/assurance-ui)
+├─ challenges/reto1/     Reto-1 deliverable: run_all.py reproducible entry point + report
+├─ knowledge/            Shared operational knowledge base (per area, versioned)
+├─ docs/                 Authority index in docs/README.md — frozen constitution (invariants.md),
+│                        contract freeze, architecture set, specs, MVP closure record
+├─ docker/ + compose.yaml  Walking skeleton: postgres + api + worker + studio (file-based secrets)
+├─ tests/                unit / integration / invariants / seeds / smoke suites
 ├─ tools/claude/agents/  invariant-reviewer agent template (install via scripts/install-dev.sh)
-└─ scripts/              install-dev.sh, setup-branch-protection.sh
+└─ scripts/              install-dev.sh, smoke_infra.sh, verify-bundle.py, exp_r_vs_p.py, …
 ```
 
 ## Quick start
@@ -42,6 +50,13 @@ uv run lint-imports
 
 # 4. Run Studio
 pnpm -C apps/studio run dev
+
+# 5. Live end-to-end smoke of the compose stack (postgres + api + studio)
+bash scripts/smoke_infra.sh
+
+# 6. Reproduce the reto-1 deliverable: figures + a real run that emits a
+#    DSSE certificate verified 7/7 offline
+uv run python challenges/reto1/run_all.py
 ```
 
 ## Architecture gates

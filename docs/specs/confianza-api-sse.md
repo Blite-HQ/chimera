@@ -3,6 +3,11 @@
 **Gobernada por:** freeze **§9** (contrato SSE Studio↔Engine) + trust/07 §1.2–1.3 ·
 **Dueño:** Dylan · **Estado:** VERDE (2026-07-22)
 
+> **Alcance (2026-07-24):** la frontera «solo el puerto EventStore» aplica al carril SSE
+> de esta spec. El arranque de runs (`runs.py`, MVP Nivel-1) compone
+> `blite.runtime`/`blite.verification` por DI — permitido por import-linter; ver
+> `docs/mvp/01-runtime-api.md`.
+
 ## Contrato
 
 - Paquete **`chimera_api`** (miembro `api/` del workspace). Consume el puerto

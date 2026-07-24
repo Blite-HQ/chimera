@@ -18,8 +18,8 @@ There are no tagged releases yet.
 
 ## Scope
 
-In scope: this repository (`engine/`, `sdk/`, `capabilities/*`, `apps/studio/`,
-CI/tooling config). Out of scope: third-party dependencies (report upstream)
+In scope: this repository (`engine/`, `api/`, `sdk/`, `packages/`, `capabilities/*`,
+`apps/studio/`, CI/tooling config). Out of scope: third-party dependencies (report upstream)
 and infrastructure not committed to this repo (e.g. cloud deployment config).
 
 ## What We Check For

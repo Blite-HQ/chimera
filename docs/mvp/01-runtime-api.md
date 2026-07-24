@@ -1,5 +1,7 @@
 # Dominio Runtime/API — el sistema se vuelve usable (dueño natural: Steven)
 
+> **Estado: CERRADO — Nivel MVP ejecutado (2026-07-24).** Plan histórico; desviaciones registradas en `decisiones.md`.
+
 **Rama:** `mvp/runtime-api` · **Base:** `mvp/base`
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md`, `docs/decisiones-delegadas-2026-07-23.md`
 (decisiones 1–5 ya tomadas), `api/src/chimera_api/`, `engine/src/blite/runtime/loop.py`

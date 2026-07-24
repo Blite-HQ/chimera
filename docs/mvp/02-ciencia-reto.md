@@ -1,5 +1,7 @@
 # Dominio Ciencia/Reto — el reto 1 resuelto POR Chimera (dueño natural: Sebas)
 
+> **Estado: CERRADO — Nivel MVP ejecutado (2026-07-24).** Plan histórico; desviaciones registradas en `decisiones.md`. Ítem 3 (instancia ICE) diferido a Planeado (decisión #19).
+
 **Rama:** `mvp/ciencia-reto` · **Base:** `mvp/base`
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md` (sección "El reto 1 como contrato"),
 `knowledge/islanding/01-corpus-benchmarks.md`, `capabilities/{sim,solvers,quantum}/`,

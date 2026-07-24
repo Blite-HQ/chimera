@@ -1,5 +1,7 @@
 # Dominio Frontend/Studio — el demo se VE en vivo (dueño natural: Dylan)
 
+> **Estado: CERRADO — Nivel MVP ejecutado (2026-07-24).** Plan histórico; desviaciones registradas en `decisiones.md`.
+
 **Rama:** `mvp/frontend-studio` · **Base:** `mvp/base`
 **Contexto obligatorio:** `docs/mvp/00-plan-maestro.md`, `apps/studio/DESIGN.md` (design
 system manda), `apps/studio/src/data/` (data layer F3: TanStack Query + Zod + seam SSE),

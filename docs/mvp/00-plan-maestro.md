@@ -1,5 +1,7 @@
 # Plan maestro — cierre total (MVP → Planeado → Mejorado)
 
+> **Estado: MVP Nivel-1 CERRADO (2026-07-24)** — los 5 dominios mergeados a `mvp/base` @310af53; cierre y condiciones en `auditoria-mvp.md` §Cierre de hallazgos. La sección «Estado real» de abajo es un snapshot pre-cierre (histórico); el roadmap Planeado/Mejorado sigue vigente.
+
 **Fecha:** 2026-07-23 · **Autoridad:** Dylan (mandato de cierre no-bloqueante) · **Planner:** Fable
 **Rama base:** `mvp/base` (consolidación de TODAS las ramas de trabajo, 2026-07-23) (@ `e0515a8`, 345 passed, 4 gates verdes)
 

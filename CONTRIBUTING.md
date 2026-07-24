@@ -82,23 +82,30 @@ If a hook rejects your commit, **fix the code/message, don't bypass it** — see
 **`pre-push`** runs a lightweight architecture check before your commits leave your machine
 (the full gate runs in CI, this is a fast local approximation):
 
-1. `uv run lint-imports` — the 9 architecture contracts (ADR-008 ×2, INV-2, INV-3, AX3,
-   Inv-E, INV-5, INV-6, SDK-standalone).
+1. `uv run lint-imports` — the 12 architecture contracts (ADR-008 ×2, S-G ×2 — "api
+   consumes engine ports, never capability packages" / "engine and capabilities never
+   import the api" —, INV-2, INV-3, AX3, AX3-b — "model client SDKs are imported only by
+   the protocols adapter (ModelServer)" —, Inv-E, INV-5, INV-6, SDK-standalone).
 2. `pnpm -C apps/studio exec tsc --noEmit` — TypeScript typecheck.
 3. `uv run pytest tests/invariants -q` — invariant tests.
 
 ### 4. Open a PR
 
-CI (`.github/workflows/ci.yml`) runs six jobs on every PR:
+CI (`.github/workflows/ci.yml`) runs nine jobs on every PR:
 
-| Job (exact name)       | What it checks                                                      | Blocking?                                    |
-| ---------------------- | ------------------------------------------------------------------- | -------------------------------------------- |
-| **Python**             | ruff lint/format, pyright, pytest+coverage, `lint-imports`          | Yes                                          |
-| **Web (Studio)**       | eslint, tsc, vitest, dependency-cruiser (INV-1)                     | Yes                                          |
-| **Commit messages**    | commitlint on every commit in the PR                                | Yes                                          |
-| **Security**           | gitleaks (full history), pip-audit, `pnpm audit --audit-level=high` | Yes                                          |
-| **Semgrep (advisory)** | custom + registry SAST rules                                        | **No** — `continue-on-error`, annotates only |
-| **Docs**               | `markdownlint` + `prettier --check .` (whole repo, not just staged) | Yes                                          |
+| Job (exact name)                   | What it checks                                                           | Blocking?                                    |
+| ---------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
+| **Python**                         | ruff lint/format, pyright, pytest+coverage, `lint-imports`               | Yes                                          |
+| **Web (Studio)**                   | eslint, tsc, vitest, dependency-cruiser (INV-1)                          | Yes                                          |
+| **Commit messages**                | commitlint on every commit in the PR                                     | Yes                                          |
+| **PR title (Conventional Commit)** | the PR title follows Conventional Commits (same type-enum as commitlint) | Yes                                          |
+| **Security**                       | gitleaks (full history), pip-audit, `pnpm audit --audit-level=high`      | Yes                                          |
+| **Semgrep (advisory)**             | custom + registry SAST rules                                             | **No** — `continue-on-error`, annotates only |
+| **Docs**                           | `markdownlint` + `prettier --check .` (whole repo, not just staged)      | Yes                                          |
+
+The other two jobs are plumbing: **Detect changes** (path filter that decides whether
+Python/Web need to run) and **CI gate** (aggregates the required jobs into a single
+pass/fail status).
 
 Fill out the PR template's invariant checklist (`.github/pull_request_template.md`).
 
@@ -117,8 +124,10 @@ guardrails,authz}/`, `sdk/`), **Sebastián** (`capabilities/quantum/`), **Geovan
 consensus from all four.
 
 **Known gap, left as-is on purpose:** CODEOWNERS has no catch-all rule. `knowledge/`, most
-of `docs/`, and root configs have no required reviewer today — a deliberate hackathon-speed
-tradeoff (rigid per-person ownership doesn't fit the current pace), not an oversight.
+of `docs/`, and most root configs have no required reviewer today (the enforcement files
+`pyproject.toml`, `semgrep.yml`, `package.json` and `.husky/` do have owners in
+`.github/CODEOWNERS`) — a deliberate hackathon-speed tradeoff (rigid per-person ownership
+doesn't fit the current pace), not an oversight.
 
 ### 6. Merge
 
@@ -153,7 +162,7 @@ calling this out.
 | Local formatting/lint (`lint-staged`) | **Real** — blocks the commit                        | already                                         |
 | Commit message format (`commitlint`)  | **Real** — blocks the commit (unless `--no-verify`) | already                                         |
 | Architecture/types/tests (`pre-push`) | **Real** — blocks the push                          | already                                         |
-| CI on PRs (6 jobs)                    | **Informational** — red/green, doesn't stop a merge | GitHub Team upgrade (Ruleset)                   |
+| CI on PRs (9 jobs)                    | **Informational** — red/green, doesn't stop a merge | GitHub Team upgrade (Ruleset)                   |
 | 1 approving + CODEOWNERS review       | Convention                                          | GitHub Team upgrade (Ruleset)                   |
 | No force-push / no deleting `main`    | Convention (technically possible today)             | GitHub Team upgrade (Ruleset)                   |
 | Manual gate before `demo`             | Convention (team channel OK)                        | GitHub Team upgrade (Environment reviewer rule) |

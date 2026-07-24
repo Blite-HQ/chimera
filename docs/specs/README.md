@@ -26,7 +26,7 @@ Convención de archivo: `docs/specs/<plano>-<tema>.md` (ej. `confianza-verify-bu
 
 **El desacoplador es el contrato en código.** Cada quien programa contra los Protocols, los
 modelos Pydantic, el SQL de `engine/sql/init_v2.sql` y los fixtures — **nunca contra la
-implementación de otro dueño.** Las fronteras las vigilan `import-linter` (10 contratos) y
+implementación de otro dueño.** Las fronteras las vigilan `import-linter` (12 contratos) y
 CODEOWNERS; si `lint-imports` falla, se arregla el código, no el contrato.
 
 | Dueño    | Área (escribe)                                                                                           | NO toca                                             |
@@ -65,7 +65,12 @@ Reglas:
 | `AuthzDecision` publicada (`blite.authz` — freeze §5/EX-14): el único tipo que la etapa egress acepta; disjunta de `Signal` por construcción — desbloquea mediation (Steven)                                                             | confianza (Dylan)  | **VERDE** (2026-07-22)      |
 | Palanca EX-5, mitad Policy (`blite/verification/policy_diff.py` — freeze §6): `assess_hardening(old, new)` → `{hardened, causes}`; la mitad runtime (`policy_watch` + `●EscalationOpened`) sigue en el seed frontera D+S                 | confianza (Dylan)  | **VERDE** (2026-07-22)      |
 | Portadores de `●ClaimEmitted` (`blite/verification/claim.py` — freeze §6 SF-P1-2): `claim_type` + `is_conclusion` + flags de piso en el payload; `computed_criticality` (conclusión⇒C3, intermedia⇒C1, piso solo sube)                   | confianza (Dylan)  | **VERDE** (2026-07-22)      |
-| `tests/seeds/test_seed_ejecucion_runs_projection.py` — proyección regenerable por replay                                                                                                                                                 | ejecución (Steven) | **SEED** (xfail)            |
-| `tests/seeds/test_seed_ejecucion_palanca_ex5.py` — ○PolicyChanged endurecida ⇒ ●EscalationOpened                                                                                                                                         | frontera (D+S)     | **SEED** (xfail)            |
+| `tests/seeds/test_seed_ejecucion_runs_projection.py` — proyección regenerable por replay                                                                                                                                                 | ejecución (Steven) | **VERDE** (2026-07-24)      |
+| `tests/seeds/test_seed_ejecucion_palanca_ex5.py` — ○PolicyChanged endurecida ⇒ ●EscalationOpened                                                                                                                                         | frontera (D+S)     | **VERDE** (2026-07-24)      |
 | `tests/seeds/test_seed_ciencia_falla_sembrada.py` — bus 1, r=0.5712, 32 597/57 070 — `capabilities_sim_api.recompute_seeded_failure` (digest §1.6 verificado en cada carga)                                                              | ciencia (Sebas)    | **VERDE** (2026-07-23)      |
-| `tests/seeds/test_seed_infra_compose.py` — compose canónico + `*_FILE` + `compose.record.yml`                                                                                                                                            | infra (Geovanni)   | **SEED** (xfail)            |
+| `tests/seeds/test_seed_infra_compose.py` — compose canónico + `*_FILE` + `compose.record.yml`                                                                                                                                            | infra (Geovanni)   | **VERDE** (2026-07-24)      |
+
+> **Nota (2026-07-24, cierre MVP Nivel-1):** el plano runtime-API (`POST /runs` + `GET
+/runs/{id}/certificate`) no tiene spec propia aquí — quedó especificado y cerrado en
+> [`../mvp/01-runtime-api.md`](../mvp/01-runtime-api.md); su prueba estrella es
+> `tests/smoke/test_runtime_api_e2e.py` (POST → SSE terminal → certificado → `check_bundle` 7/7).
