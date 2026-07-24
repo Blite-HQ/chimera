@@ -1,0 +1,38 @@
+[project]
+name = "blite-cap-report"
+version = "0.1.0"
+description = "Deterministic, byte-reproducible figure and report derivation. Anchor: recompute-and-compare digests."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+# typst-py is CORE (not an extra): it is the deterministic backbone of the PDF
+# derivation (informe-derivado.md §b) — the byte-reproducibility seed
+# (tests/seeds/test_seed_informe_derivado.py) MUST be verifiable under a plain
+# `uv run pytest`, without `--all-extras`. matplotlib stays an extra (`plot`):
+# it is already provided by the workspace `experiment` dependency group for
+# local/dev use, and C1 figures degrade gracefully (ImportError) without it.
+dependencies = [
+    "blite-capability",
+    "chimera-engine",
+    "typst>=0.11",
+]
+
+[project.optional-dependencies]
+    plot = ['matplotlib>=3.9']
+
+[project.entry-points."blite.capabilities"]
+"blite.report.render_figure" = "blite_cap_report:RenderFigure"
+"blite.report.compile_pdf" = "blite_cap_report:CompilePdf"
+"blite.report.compile_slides" = "blite_cap_report:CompileSlides"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/blite_cap_report"]
+
+[tool.uv.sources]
+blite-capability = { workspace = true }
+chimera-engine = { workspace = true }
