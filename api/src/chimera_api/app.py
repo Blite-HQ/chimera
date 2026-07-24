@@ -21,6 +21,7 @@ from fastapi.responses import StreamingResponse
 from blite.events import create_event_store
 from blite.events.store import EventStore
 from blite.runtime.registry import Registry
+from chimera_api.certificate import create_certificate_router
 from chimera_api.projection import sse_frame
 from chimera_api.runs import build_run_resources, create_runs_router
 
@@ -84,6 +85,7 @@ def create_app(
 
     resources = build_run_resources(event_store, registry=registry)
     app.include_router(create_runs_router(resources))
+    app.include_router(create_certificate_router(resources))
 
     @app.get("/health")
     def health() -> dict[str, str]:
