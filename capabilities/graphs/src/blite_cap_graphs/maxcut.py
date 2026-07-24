@@ -8,10 +8,14 @@ como W_uv = -Q[u][v] (u≠v) — inversa exacta del transform del generador del
 corpus (scripts/gen_corpus_islanding.py).
 
 GW (Goemans & Williamson 1995): relajación SDP
-  maximize (1/4) Σ_{u<v} W_uv (1 - Y_uv)   s.a. Y⪰0, diag(Y)=1
+  maximize (1/2) Σ_{u<v} W_uv (1 - Y_uv)   s.a. Y⪰0, diag(Y)=1
 seguida de redondeo por hiperplano aleatorio (K intentos, mejor corte se
 queda). Cota de aproximación ≈0.878·óptimo (asintótica sobre el ensamble de
-hiperplanos, no garantía dura por instancia).
+hiperplanos, no garantía dura por instancia). El valor SDP sin redondear
+(`problem.value`, coeficiente 1/2 porque `terms` suma cada arista una sola
+vez) es de regalo una COTA SUPERIOR del corte máximo real, en las mismas
+unidades que `energy` — se expone como `sdp_upper_bound` (solo `method="gw"`;
+`None` en `"greedy"`, que no resuelve ningún SDP).
 
 greedy: recorrido secuencial de nodos, cada uno al lado que maximiza el
 corte parcial con los ya colocados. Determinista (sin aleatoriedad),
@@ -79,7 +83,19 @@ def _greedy(matrix: list[list[float]]) -> list[int]:
     return assignment
 
 
-def _gw(matrix: list[list[float]], seed: int) -> list[int]:
+def _gw(matrix: list[list[float]], seed: int) -> tuple[list[int], float]:
+    """Devuelve (mejor asignación redondeada, valor SDP sin redondear).
+
+    El valor SDP (`problem.value`) es la cota superior del corte máximo
+    (§1 del módulo, "gratis para la evidencia"): coeficiente **0.5** (no
+    0.25) porque `terms` suma cada arista UNA vez (`i<j`) — con 0.5·Σ_{i<j}
+    el óptimo entero coincide EXACTO en el punto de retorno ±1 con el valor
+    del corte (mismas unidades que `energy`/`optimo`); 0.25 solo sería
+    correcto si la suma recorriera pares ORDENADOS (i,j) con i≠j (doble
+    conteo de cada arista). El redondeo por hiperplano (abajo) es invariante
+    al escalar del objetivo — no cambia con este coeficiente — así que este
+    fix no toca ninguna asignación ni energía ya observada, solo la cota.
+    """
     import cvxpy as cp
     import numpy as np
 
@@ -90,12 +106,13 @@ def _gw(matrix: list[list[float]], seed: int) -> list[int]:
     y = cast(Any, cp).Variable((n, n), symmetric=True)
     constraints = [y >> 0] + [y[i, i] == 1 for i in range(n)]
     terms = [w[i, j] * (1 - y[i, j]) for i in range(n) for j in range(i + 1, n)]
-    objective = cast(Any, cp).Maximize(0.25 * cast(Any, cp).sum(terms))
+    objective = cast(Any, cp).Maximize(0.5 * cast(Any, cp).sum(terms))
     problem = cast(Any, cp).Problem(objective, constraints)
     problem.solve()
     if problem.status not in ("optimal", "optimal_inaccurate"):
         msg = f"GW: el solver SDP no convergió (status={problem.status!r})"
         raise RuntimeError(msg)
+    sdp_upper_bound = float(problem.value)
 
     y_value = cast(Any, np).asarray(y.value, dtype=float)
     y_sym = (y_value + y_value.T) / 2.0
@@ -116,17 +133,33 @@ def _gw(matrix: list[list[float]], seed: int) -> list[int]:
     if best_assignment is None:  # pragma: no cover — K>=1 siempre produce una candidata
         msg = "GW: el redondeo por hiperplano no produjo ninguna asignación"
         raise RuntimeError(msg)
-    return best_assignment
+    return best_assignment, sdp_upper_bound
 
 
 def solve_maxcut(
     raw_matrix: Any, *, method: str = "greedy", seed: int = 1
 ) -> dict[str, Any]:
-    """Aproxima el Max-Cut de una QUBO simétrica con el método elegido."""
+    """Aproxima el Max-Cut de una QUBO simétrica con el método elegido.
+
+    `sdp_upper_bound` (solo `method="gw"`, `None` en `"greedy"`): el valor
+    de la relajación SDP ANTES del redondeo — cota superior rigurosa del
+    corte máximo real (mismas unidades que `energy`), gratis del mismo
+    solve (§1 del módulo).
+    """
     if method not in ("gw", "greedy"):
         msg = f"MaxCutBaseline: method {method!r} no soportado — use 'gw' o 'greedy'"
         raise ValueError(msg)
     matrix = _validate_matrix(raw_matrix)
-    assignment = _greedy(matrix) if method == "greedy" else _gw(matrix, seed)
+    sdp_upper_bound: float | None = None
+    if method == "greedy":
+        assignment = _greedy(matrix)
+    else:
+        assignment, sdp_upper_bound = _gw(matrix, seed)
     energy = _energy(matrix, assignment)
-    return {"assignment": assignment, "energy": energy, "method": method, "seed": seed}
+    return {
+        "assignment": assignment,
+        "energy": energy,
+        "method": method,
+        "seed": seed,
+        "sdp_upper_bound": sdp_upper_bound,
+    }

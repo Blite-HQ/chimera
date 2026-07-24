@@ -138,6 +138,32 @@ class TestGwCorpusGoldenPath:
         assert first["energy"] >= math.ceil(0.878 * optimo)
         assert first["assignment"] == second["assignment"]
 
+    @pytest.mark.parametrize("name", _INSTANCES)
+    def test_sdp_upper_bound_dominates_energy_and_optimum(self, name: str) -> None:
+        # Regresión del bug de escala (coeficiente 0.25 vs 0.5, B4): con el
+        # coeficiente incorrecto `sdp_upper_bound` caía POR DEBAJO de
+        # `energy` en toda instancia — este test lo atrapa. Tolerancia
+        # relativa (1e-6) porque el SDP se resuelve numéricamente (SCS/
+        # Clarabel): en instancias donde el redondeo alcanza el óptimo
+        # exacto, `sdp_upper_bound` puede quedar una fracción de unidad por
+        # debajo de `energy` por precisión del solver, no por un bug real.
+        matrix, _edges, optimo = _load_instance(name)
+
+        result = MaxCutBaseline().invoke({"matrix": matrix, "method": "gw", "seed": 1})
+        bound = result["sdp_upper_bound"]
+        tolerance = abs(bound) * 1e-6 + 1e-6
+
+        assert bound is not None
+        assert result["energy"] <= bound + tolerance
+        assert optimo <= bound + tolerance
+
+    def test_sdp_upper_bound_is_none_for_greedy(self) -> None:
+        matrix, _edges, _optimo = _load_instance("ieee9-uniforme")
+
+        result = MaxCutBaseline().invoke({"matrix": matrix, "method": "greedy"})
+
+        assert result["sdp_upper_bound"] is None
+
 
 class TestInputValidation:
     def test_invalid_method_raises_value_error(self) -> None:
