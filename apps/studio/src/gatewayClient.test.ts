@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { invokeCapability, openRunEventStream, postRun } from './gatewayClient';
+import { getCertificate, invokeCapability, openRunEventStream, postRun } from './gatewayClient';
 
 import type { CreateRunBody } from './gatewayClient';
 import type { ProjectedEvent } from './views/types';
@@ -132,6 +132,77 @@ describe('postRun', () => {
     // Assert
     expect(result.success).toBe(false);
     expect(result.error).toContain('ERR_NETWORK');
+  });
+});
+
+describe('getCertificate', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('envía GET a {VITE_API_URL}/runs/{id}/certificate y devuelve el wire crudo como data', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = {
+      payloadType: 'application/vnd.blite.trust-certificate+json',
+      payload: 'e30=',
+      signatures: [{ keyid: 'certificate:v1-example', sig: 'abc' }]
+    };
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => wire
+    } as Response);
+
+    // Act
+    const result = await getCertificate('8f2c1a9b');
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/certificate');
+    expect(result).toEqual({ success: true, data: wire, error: null });
+  });
+
+  it('encodea el runId en la url', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({})
+    } as Response);
+
+    await getCertificate('run/with slash');
+
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run%2Fwith%20slash/certificate');
+  });
+
+  it('devuelve error cuando la respuesta no es OK', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    } as Response);
+
+    // Act
+    const result = await getCertificate('8f2c1a9b');
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('404');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    // Act
+    const result = await getCertificate('8f2c1a9b');
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+    expect(result.data).toBeNull();
   });
 });
 

@@ -160,9 +160,13 @@ export default function CertificateView({
           </Button>
           <Button variant="outline" size="sm" onClick={onDownload}>
             <Download data-icon="inline-start" />
-            Descargar JSON
+            Descargar bundle
           </Button>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Verifíquelo usted mismo:{' '}
+          <code className="font-mono">python scripts/verify-bundle.py bundle.json</code>
+        </p>
         {showRaw && (
           <div className="flex flex-col gap-2">
             <div>

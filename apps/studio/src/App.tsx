@@ -159,9 +159,7 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
     <div className="mx-auto max-w-3xl">
       <CertificateView
         envelope={certificateQuery.data.envelope}
-        onDownload={() =>
-          downloadJson('trust-certificate.example.json', certificateQuery.data.wire)
-        }
+        onDownload={() => downloadJson('bundle.json', certificateQuery.data.wire)}
       />
     </div>
   );
@@ -222,7 +220,7 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
       summary={summary}
       onDownloadBundle={() => {
         if (certificateQuery.data) {
-          downloadJson('trust-certificate.example.json', certificateQuery.data.wire);
+          downloadJson('bundle.json', certificateQuery.data.wire);
         }
       }}
       timeline={timeline}

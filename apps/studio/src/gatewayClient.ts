@@ -116,6 +116,39 @@ export async function postRun(body: CreateRunBody): Promise<GatewayResponse<{ ru
 }
 
 /**
+ * Task 3 (S10) — `GET {VITE_API_URL}/runs/{id}/certificate` (freeze §7): el
+ * cuerpo de la respuesta ES el wire DSSE crudo (`{payloadType, payload,
+ * signatures}`), no un GatewayResponse ya envuelto — a diferencia de
+ * invokeCapability/postRun, acá el envelope de éxito/error lo construye
+ * este cliente. Único lugar del Studio que hace este GET (INV-1); el
+ * mapeo del wire vive en data/certificateCodec.ts, no acá.
+ */
+export async function getCertificate(runId: string): Promise<GatewayResponse<unknown>> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/certificate`);
+  } catch (networkErr) {
+    return {
+      success: false,
+      data: null,
+      error: `Network error: ${networkErr instanceof Error ? networkErr.message : String(networkErr)}`
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      success: false,
+      data: null,
+      error: `Gateway error: ${response.status} ${response.statusText}`
+    };
+  }
+
+  const data = (await response.json()) as unknown;
+  return { success: true, data, error: null };
+}
+
+/**
  * MVP task 1 (S10) — el conjunto de tipos de evento que emite chimera_api
  * en `GET /runs/{id}/events` (freeze §9 · `chimera_api.projection`). El
  * wire nombra el evento SSE (`event: {type}`), no el genérico `message`,
