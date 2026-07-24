@@ -17,6 +17,10 @@ requires-python = ">=3.12"
 # 2026-07-24 corriendo scripts/exp_r_vs_p.py end-to-end); 1.15.0 y 1.15.1
 # están rotos en esta plataforma.
 override-dependencies = ["highspy==1.14.0"]
+# dev + experiment son grupos por defecto para que `uv run`/`uv sync` sin
+# flags instale matplotlib (necesario para scripts/exp_r_vs_p.py) además de
+# las herramientas de desarrollo.
+default-groups = ["dev", "experiment"]
 
 [tool.uv.workspace]
 members = ["sdk", "engine", "api", "capabilities/*"]
@@ -34,6 +38,7 @@ dev = [
     "import-linter>=2.1",
     "pip-audit>=2.7",
 ]
+experiment = ["matplotlib>=3.9"]
 
 # ── Ruff ──────────────────────────────────────────────────────────────────────
 
