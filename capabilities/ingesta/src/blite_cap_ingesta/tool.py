@@ -146,6 +146,55 @@ _GEOJSON_TO_GRAPH_MANIFEST = CapabilityManifest(
                 "default": "FID",
                 "description": "Property name carrying each node feature's stable identifier",
             },
+            "edge_strategy": {
+                "type": "string",
+                "default": "nearest-neighbor",
+                "enum": ["nearest-neighbor", "endpoint-name-match"],
+                "description": (
+                    "How to resolve which two nodes each edge feature "
+                    "connects. 'nearest-neighbor' snaps each line endpoint "
+                    "to the closest node by geometric distance. "
+                    "'endpoint-name-match' parses a delimited endpoint-name "
+                    "pair from an edge property (endpoint_property, split "
+                    "on endpoint_separator) and matches each side against a "
+                    "node property (node_match_property) by normalized "
+                    "name; only nodes that resolve at least one edge appear "
+                    "in the output."
+                ),
+            },
+            "node_match_property": {
+                "type": "string",
+                "description": (
+                    "Node property carrying the name matched against "
+                    "parsed edge endpoints — required when "
+                    "edge_strategy='endpoint-name-match'"
+                ),
+            },
+            "endpoint_property": {
+                "type": "string",
+                "description": (
+                    "Edge property holding the delimited endpoint-name "
+                    "pair — required when edge_strategy='endpoint-name-match'"
+                ),
+            },
+            "endpoint_separator": {
+                "type": "string",
+                "default": "-",
+                "description": (
+                    "Delimiter splitting endpoint_property into two "
+                    "endpoint names (edge_strategy='endpoint-name-match')"
+                ),
+            },
+            "weight_property": {
+                "type": ["string", "null"],
+                "default": None,
+                "description": (
+                    "Edge property summed across aggregated parallel edges "
+                    "to compute edge weight (edge_strategy='endpoint-name-"
+                    "match'); when omitted/null, weight is instead the "
+                    "count of aggregated parallel edges"
+                ),
+            },
             "run_id": {
                 "type": "string",
                 "description": "Run identifier this derivation executes under",

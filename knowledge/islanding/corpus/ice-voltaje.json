@@ -1,0 +1,607 @@
+{
+  "aristas": [
+    [
+      0,
+      5,
+      230
+    ],
+    [
+      0,
+      6,
+      230
+    ],
+    [
+      1,
+      43,
+      230
+    ],
+    [
+      1,
+      51,
+      230
+    ],
+    [
+      2,
+      56,
+      230
+    ],
+    [
+      3,
+      7,
+      138
+    ],
+    [
+      3,
+      52,
+      138
+    ],
+    [
+      4,
+      29,
+      230
+    ],
+    [
+      4,
+      33,
+      230
+    ],
+    [
+      4,
+      62,
+      230
+    ],
+    [
+      5,
+      34,
+      230
+    ],
+    [
+      6,
+      28,
+      230
+    ],
+    [
+      6,
+      56,
+      230
+    ],
+    [
+      7,
+      10,
+      138
+    ],
+    [
+      7,
+      15,
+      138
+    ],
+    [
+      7,
+      22,
+      230
+    ],
+    [
+      7,
+      36,
+      230
+    ],
+    [
+      7,
+      52,
+      138
+    ],
+    [
+      7,
+      58,
+      230
+    ],
+    [
+      8,
+      33,
+      230
+    ],
+    [
+      8,
+      61,
+      230
+    ],
+    [
+      9,
+      14,
+      138
+    ],
+    [
+      10,
+      12,
+      138
+    ],
+    [
+      10,
+      15,
+      138
+    ],
+    [
+      10,
+      25,
+      138
+    ],
+    [
+      10,
+      27,
+      230
+    ],
+    [
+      10,
+      36,
+      460
+    ],
+    [
+      10,
+      37,
+      138
+    ],
+    [
+      10,
+      57,
+      230
+    ],
+    [
+      10,
+      59,
+      138
+    ],
+    [
+      10,
+      67,
+      230
+    ],
+    [
+      11,
+      22,
+      138
+    ],
+    [
+      12,
+      37,
+      138
+    ],
+    [
+      13,
+      22,
+      230
+    ],
+    [
+      13,
+      23,
+      230
+    ],
+    [
+      13,
+      28,
+      230
+    ],
+    [
+      13,
+      57,
+      230
+    ],
+    [
+      14,
+      28,
+      138
+    ],
+    [
+      16,
+      50,
+      138
+    ],
+    [
+      16,
+      59,
+      138
+    ],
+    [
+      17,
+      23,
+      230
+    ],
+    [
+      17,
+      28,
+      230
+    ],
+    [
+      17,
+      45,
+      230
+    ],
+    [
+      18,
+      24,
+      138
+    ],
+    [
+      18,
+      25,
+      138
+    ],
+    [
+      18,
+      50,
+      138
+    ],
+    [
+      19,
+      28,
+      138
+    ],
+    [
+      19,
+      44,
+      138
+    ],
+    [
+      20,
+      32,
+      230
+    ],
+    [
+      20,
+      54,
+      230
+    ],
+    [
+      21,
+      41,
+      230
+    ],
+    [
+      21,
+      42,
+      230
+    ],
+    [
+      21,
+      61,
+      230
+    ],
+    [
+      23,
+      34,
+      230
+    ],
+    [
+      23,
+      36,
+      230
+    ],
+    [
+      23,
+      46,
+      230
+    ],
+    [
+      24,
+      26,
+      138
+    ],
+    [
+      24,
+      40,
+      138
+    ],
+    [
+      25,
+      39,
+      138
+    ],
+    [
+      25,
+      65,
+      138
+    ],
+    [
+      26,
+      40,
+      138
+    ],
+    [
+      26,
+      42,
+      138
+    ],
+    [
+      26,
+      49,
+      138
+    ],
+    [
+      26,
+      50,
+      138
+    ],
+    [
+      27,
+      67,
+      230
+    ],
+    [
+      30,
+      31,
+      230
+    ],
+    [
+      30,
+      33,
+      230
+    ],
+    [
+      30,
+      62,
+      230
+    ],
+    [
+      31,
+      50,
+      230
+    ],
+    [
+      32,
+      41,
+      230
+    ],
+    [
+      35,
+      42,
+      230
+    ],
+    [
+      35,
+      47,
+      230
+    ],
+    [
+      35,
+      60,
+      230
+    ],
+    [
+      35,
+      66,
+      230
+    ],
+    [
+      36,
+      42,
+      460
+    ],
+    [
+      36,
+      48,
+      460
+    ],
+    [
+      37,
+      42,
+      276
+    ],
+    [
+      37,
+      64,
+      138
+    ],
+    [
+      38,
+      44,
+      138
+    ],
+    [
+      42,
+      49,
+      138
+    ],
+    [
+      42,
+      60,
+      230
+    ],
+    [
+      43,
+      50,
+      230
+    ],
+    [
+      46,
+      54,
+      230
+    ],
+    [
+      47,
+      50,
+      230
+    ],
+    [
+      47,
+      53,
+      230
+    ],
+    [
+      48,
+      55,
+      230
+    ],
+    [
+      48,
+      66,
+      230
+    ],
+    [
+      49,
+      63,
+      138
+    ],
+    [
+      53,
+      55,
+      230
+    ],
+    [
+      54,
+      58,
+      230
+    ]
+  ],
+  "asignacion_canonica": null,
+  "convencion": "voltaje",
+  "definicion_peso": "suma de niveles de tension (kV) de los circuitos paralelos",
+  "descargado": "2026-07-23",
+  "digest": "7bcda6747ac19bda4f8ef9cedc87a5d8c1185a459a08c5c6beb9662ee12d9d0d",
+  "escala": 1,
+  "fuente": {
+    "lineas": "https://services1.arcgis.com/cW2GfO4rBCLoFwgj/arcgis/rest/services/LineasDeTransmision/FeatureServer",
+    "portal": "https://datos-ice-se.opendata.arcgis.com",
+    "subestaciones": "https://services1.arcgis.com/cW2GfO4rBCLoFwgj/arcgis/rest/services/Subestaciones/FeatureServer"
+  },
+  "instancia": "ice",
+  "metodos": [],
+  "n_nodos": 68,
+  "nodos": {
+    "0": "Pailas",
+    "1": "Palmar",
+    "10": "La Caja",
+    "11": "Juanilama",
+    "12": "Heredia",
+    "13": "Garabito",
+    "14": "Filadelfia",
+    "15": "El Coco",
+    "16": "Desamparados",
+    "17": "Corobici",
+    "18": "Concavas",
+    "19": "Colorado",
+    "2": "Nuevo Colon",
+    "20": "Ciudad Quesada",
+    "21": "Cariblanco",
+    "22": "Barranca",
+    "23": "Arenal",
+    "24": "Angostura",
+    "25": "Alajuelita",
+    "26": "Cachi",
+    "27": "Belen",
+    "28": "Ca\u00f1as",
+    "29": "Cahuita",
+    "3": "Naranjo",
+    "30": "Reventazon",
+    "31": "Torito",
+    "32": "Venecia",
+    "33": "Trapiche",
+    "34": "Miravalles",
+    "35": "El Este",
+    "36": "Lindora",
+    "37": "Colima",
+    "38": "Cobano",
+    "39": "Anonos",
+    "4": "Moin",
+    "40": "Turrialba",
+    "41": "Toro",
+    "42": "San Miguel",
+    "43": "San Isidro",
+    "44": "Santa Rita",
+    "45": "Sandillal",
+    "46": "Tejona",
+    "47": "Tejar",
+    "48": "Tarbaca",
+    "49": "Sabanilla",
+    "5": "Mogote",
+    "50": "Rio Macho",
+    "51": "Rio Claro",
+    "52": "Poas",
+    "53": "Pirris",
+    "54": "Pe\u00f1as Blancas",
+    "55": "Parrita",
+    "56": "Papagayo",
+    "57": "Coyol",
+    "58": "Balsa",
+    "59": "Escaz\u00fa",
+    "6": "Liberia",
+    "60": "Coronado",
+    "61": "General",
+    "62": "R\u00edo Blanco",
+    "63": "Guadalupe",
+    "64": "Uruca",
+    "65": "Los \u00c1ngeles",
+    "66": "Higuito",
+    "67": "Ribera",
+    "7": "La Garita",
+    "8": "Leesville",
+    "9": "Guayabal"
+  },
+  "notas": [
+    "n=68>14: sin prueba de optimalidad (fuera del umbral de doble ancla de fuerza bruta usado en el resto del corpus; no se corrio ningun solver de Max-Cut sobre esta instancia)",
+    "70 subestaciones en snapshot; 68 en el componente conexo; 2 aisladas por nomenclatura; 8 lineas descartadas por endpoint desconocido"
+  ],
+  "optimo": null,
+  "provenance": {
+    "derivation": {
+      "assertions": [
+        {
+          "detail": null,
+          "name": "node_geojson_schema_valid",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "edge_geojson_schema_valid",
+          "passed": true
+        },
+        {
+          "detail": null,
+          "name": "tabular_schema_valid",
+          "passed": true
+        },
+        {
+          "detail": {
+            "discarded_count": 8,
+            "total_edge_features": 102
+          },
+          "name": "edge_endpoint_names_resolved",
+          "passed": false
+        }
+      ],
+      "inputs": [
+        {
+          "digest": "sha256:3cc36cb28d378d8326fc19e7687ea16645c63068f9743374320132af9de4816d",
+          "ref": "snapshot:ice-subestaciones"
+        },
+        {
+          "digest": "sha256:a4eedb07aaf2ced9f96869568d4a1a8cb3826af76988da4a3a23fb52916bc2ec",
+          "ref": "snapshot:ice-lineas-transmision"
+        }
+      ],
+      "kind": "derivation",
+      "recipe": {
+        "capability": "blite.ingesta.geojson.to_graph",
+        "code_ref": "git:HEAD",
+        "params_digest": "sha256:9c27751836cdcb09b8fa6f508917f67b1ba2a2e61fbc659d69411c1ad0169db5",
+        "version": "0.1.0"
+      },
+      "run_id": "gen-corpus-ice-voltaje"
+    },
+    "external_sources": {
+      "ice-lineas-transmision": {
+        "content_type": "application/geo+json",
+        "http_status": 200,
+        "kind": "external-source",
+        "retrieved_at": "2026-07-23T00:00:00Z",
+        "uri": "https://services1.arcgis.com/cW2GfO4rBCLoFwgj/arcgis/rest/services/LineasDeTransmision/FeatureServer"
+      },
+      "ice-subestaciones": {
+        "content_type": "application/geo+json",
+        "http_status": 200,
+        "kind": "external-source",
+        "retrieved_at": "2026-07-23T00:00:00Z",
+        "uri": "https://services1.arcgis.com/cW2GfO4rBCLoFwgj/arcgis/rest/services/Subestaciones/FeatureServer"
+      }
+    }
+  },
+  "solver_status": "NOT_ATTEMPTED"
+}

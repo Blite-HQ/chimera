@@ -7,6 +7,25 @@ de línea), validando forma ANTES de declarar la instancia derivada válida:
 resultado — pase o falle — entra como `assertions` (mismo espíritu que
 `dataQualityAssertions` de OpenLineage, R2).
 
+Dos estrategias de derivación de aristas, seleccionadas por `edge_strategy`
+(ADR-029: los NOMBRES de estrategia y de parámetro son genéricos; los
+VALORES concretos de un dominio — p. ej. los nombres de campo de la red ICE,
+"Circuito"/"Subestacio"/"Voltaje" — viajan como PARAMS de invocación, JAMÁS
+en el manifest):
+
+- `"nearest-neighbor"` (default, comportamiento preexistente) — snap
+  geométrico del extremo de cada línea al nodo más cercano por distancia.
+- `"endpoint-name-match"` — parsea un par de nombres delimitados de una
+  propiedad de arista (`endpoint_property`, separador `endpoint_separator`)
+  y matchea cada lado por nombre normalizado contra una propiedad de nodo
+  (`node_match_property`); útil cuando la fuente ya nombra sus extremos en
+  vez de (o además de) traer geometría snap-eable. Solo los nodos que
+  resuelven al menos una arista terminan en la salida — un nodo del snapshot
+  que ninguna arista referencia queda fuera de `nodos`, honestamente (no hay
+  "nodo aislado con grado 0" implícito). Pesos: `weight_property=None` cuenta
+  aristas paralelas agregadas (uso "uniforme"); con `weight_property` fijo,
+  suma esa propiedad entre las paralelas (p. ej. sumar niveles de tensión).
+
 Determinismo (spec §Determinismo):
 1. Features ORDENADAS por `node_id_property` (default `FID`, un ID estable
    de GIS — genérico, NO específico de un dominio) antes de construir
@@ -40,6 +59,7 @@ from __future__ import annotations
 import base64
 import json
 import math
+import unicodedata
 from typing import Any
 
 import pandas as pd
@@ -57,6 +77,17 @@ _DEFAULT_NODE_ID_PROPERTY = "FID"
 # descarte aristas.
 _ENDPOINT_SNAP_TOLERANCE_DEG = 0.01
 
+_EDGE_STRATEGY_NEAREST_NEIGHBOR = "nearest-neighbor"
+_EDGE_STRATEGY_ENDPOINT_NAME_MATCH = "endpoint-name-match"
+_DEFAULT_EDGE_STRATEGY = _EDGE_STRATEGY_NEAREST_NEIGHBOR
+_DEFAULT_ENDPOINT_SEPARATOR = "-"
+# Fallback genérico de `endpoint-name-match`: algunas fuentes nombran un
+# extremo sin artículo mientras el dataset de nodos lo antepone (p. ej. un
+# extremo "Colima" que matchea un nodo "La Colima") — no es vocabulario de
+# ningún escenario, es una heurística de matching de nombres reutilizable
+# entre datasets con ese mismo sesgo de nomenclatura.
+_ENDPOINT_NAME_MATCH_ARTICLE_PREFIX = "la "
+
 _REQUIRED_DERIVE_KEYS = (
     "nodes_content_base64",
     "edges_content_base64",
@@ -65,6 +96,7 @@ _REQUIRED_DERIVE_KEYS = (
     "code_ref",
     "inputs",
 )
+_ENDPOINT_NAME_MATCH_REQUIRED_KEYS = ("node_match_property", "endpoint_property")
 
 _FeatureCollectionModel = FeatureCollection[Feature[Geometry, dict[str, Any]]]
 
@@ -201,22 +233,206 @@ def _skipped_topology_assertions() -> tuple[dict[str, Any], dict[str, Any]]:
     )
 
 
+def _skipped_endpoint_name_match_assertion() -> dict[str, Any]:
+    """Equivalente de `_skipped_topology_assertions` para la estrategia
+    `endpoint-name-match` — misma honestidad, un solo assertion propio."""
+    return {
+        "name": "edge_endpoint_names_resolved",
+        "passed": False,
+        "detail": {"reason": "skipped: upstream schema validation failed"},
+    }
+
+
+def _normalize_name(value: str) -> str:
+    """NFKD -> ASCII (descarta diacríticos) -> minúsculas -> strip — matching
+    de nombres insensible a acentos/mayúsculas entre dos datasets."""
+    flat = (
+        unicodedata.normalize("NFKD", value or "")
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    return flat.lower().strip()
+
+
+def _parse_endpoint_token(token: str, node_keys: frozenset[str]) -> str | None:
+    """Normaliza un token crudo de extremo de arista a una clave de nodo
+    conocida, o `None` si no resuelve. Quita dígitos finales (sufijo de
+    número de circuito paralelo) antes de intentar el match directo y, si
+    falla, el fallback con artículo prefijado."""
+    candidate = _normalize_name(token).rstrip("0123456789").strip()
+    if candidate in node_keys:
+        return candidate
+    prefixed = f"{_ENDPOINT_NAME_MATCH_ARTICLE_PREFIX}{candidate}"
+    if prefixed in node_keys:
+        return prefixed
+    return None
+
+
+def _resolve_edge_endpoints(
+    raw_value: str | None, separator: str, node_keys: frozenset[str]
+) -> tuple[str, str] | None:
+    """`raw_value` dividido por `separator` en exactamente 2 tokens, ambos
+    resolviendo a nodos DISTINTOS — cualquier otro caso (no son 2 tokens, un
+    token no resuelve, o resuelven al mismo nodo) es `None` (arista
+    descartada, contabilizada por el caller — nunca silenciosa)."""
+    parts = (raw_value or "").split(separator)
+    if len(parts) != 2:
+        return None
+    first = _parse_endpoint_token(parts[0], node_keys)
+    second = _parse_endpoint_token(parts[1], node_keys)
+    if first is None or second is None or first == second:
+        return None
+    return (first, second) if first < second else (second, first)
+
+
+def _build_endpoint_name_match_node_index(
+    node_features: list[dict[str, Any]], id_property: str, node_match_property: str
+) -> dict[str, dict[str, Any]]:
+    """normalized(node_match_property) -> feature de nodo. Ordenado por
+    `id_property` primero (determinismo punto 1) y first-wins ante nombres
+    normalizados duplicados."""
+    sorted_nodes = sorted(node_features, key=lambda f: f["properties"][id_property])
+    index: dict[str, dict[str, Any]] = {}
+    for feature in sorted_nodes:
+        key = _normalize_name(feature["properties"][node_match_property])
+        index.setdefault(key, feature)
+    return index
+
+
+def _aggregate_endpoint_name_match_edges(
+    edge_features: list[dict[str, Any]],
+    *,
+    id_property: str,
+    endpoint_property: str,
+    endpoint_separator: str,
+    weight_property: str | None,
+    node_keys: frozenset[str],
+) -> tuple[dict[tuple[str, str], dict[str, int]], int]:
+    """Agrega circuitos paralelos entre el mismo par de nodos resueltos —
+    devuelve el mapa (par -> {circuits, weight_sum}) más cuántas aristas se
+    descartaron por endpoint desconocido/inválido."""
+    sorted_edges = sorted(edge_features, key=lambda f: f["properties"][id_property])
+    aggregate: dict[tuple[str, str], dict[str, int]] = {}
+    discarded_count = 0
+    for feature in sorted_edges:
+        raw_value = feature["properties"].get(endpoint_property)
+        endpoints = _resolve_edge_endpoints(raw_value, endpoint_separator, node_keys)
+        if endpoints is None:
+            discarded_count += 1
+            continue
+        entry = aggregate.setdefault(endpoints, {"circuits": 0, "weight_sum": 0})
+        entry["circuits"] += 1
+        if weight_property is not None:
+            entry["weight_sum"] += int(feature["properties"][weight_property])
+    return aggregate, discarded_count
+
+
+def _endpoint_name_match_topology(
+    node_features: list[dict[str, Any]],
+    edge_features: list[dict[str, Any]],
+    *,
+    id_property: str,
+    node_match_property: str,
+    endpoint_property: str,
+    endpoint_separator: str,
+    weight_property: str | None,
+) -> tuple[dict[str, dict[str, Any]], list[list[Any]], dict[str, Any]]:
+    node_index = _build_endpoint_name_match_node_index(
+        node_features, id_property, node_match_property
+    )
+    node_keys = frozenset(node_index.keys())
+    aggregate, discarded_count = _aggregate_endpoint_name_match_edges(
+        edge_features,
+        id_property=id_property,
+        endpoint_property=endpoint_property,
+        endpoint_separator=endpoint_separator,
+        weight_property=weight_property,
+        node_keys=node_keys,
+    )
+
+    # Solo los nodos que resuelven >=1 arista entran a la salida — un nodo
+    # del snapshot que ninguna arista referencia queda fuera, honestamente.
+    matched_keys = {key for pair in aggregate for key in pair}
+    ordered_keys = sorted(
+        matched_keys, key=lambda key: node_index[key]["properties"][id_property]
+    )
+    key_to_index = {key: position for position, key in enumerate(ordered_keys)}
+
+    nodos = {
+        str(position): {
+            "source_ref": node_index[key]["properties"][id_property],
+            "coordinates": list(node_index[key]["geometry"]["coordinates"]),
+            "properties": node_index[key]["properties"],
+        }
+        for key, position in key_to_index.items()
+    }
+    aristas: list[list[Any]] = []
+    for (a, b), entry in aggregate.items():
+        i, j = sorted((key_to_index[a], key_to_index[b]))
+        weight = entry["circuits"] if weight_property is None else entry["weight_sum"]
+        aristas.append([i, j, weight])
+    aristas.sort()
+
+    resolved_assertion = {
+        "name": "edge_endpoint_names_resolved",
+        "passed": discarded_count == 0,
+        "detail": None
+        if discarded_count == 0
+        else {
+            "discarded_count": discarded_count,
+            "total_edge_features": len(edge_features),
+        },
+    }
+    return nodos, aristas, resolved_assertion
+
+
+def _endpoint_name_match_params(inputs: dict[str, Any]) -> dict[str, Any]:
+    weight_property = inputs.get("weight_property")
+    return {
+        "node_match_property": str(inputs["node_match_property"]),
+        "endpoint_property": str(inputs["endpoint_property"]),
+        "endpoint_separator": str(
+            inputs.get("endpoint_separator", _DEFAULT_ENDPOINT_SEPARATOR)
+        ),
+        "weight_property": None if weight_property is None else str(weight_property),
+    }
+
+
 def _derive_topology(
     *,
     shape_valid: bool,
     node_features: list[dict[str, Any]],
     edge_features: list[dict[str, Any]],
     id_property: str,
-) -> tuple[dict[str, dict[str, Any]], list[list[Any]], dict[str, Any], dict[str, Any]]:
+    edge_strategy: str,
+    strategy_params: dict[str, Any],
+) -> tuple[dict[str, dict[str, Any]], list[list[Any]], tuple[dict[str, Any], ...]]:
+    if edge_strategy == _EDGE_STRATEGY_ENDPOINT_NAME_MATCH:
+        if not shape_valid:
+            return {}, [], (_skipped_endpoint_name_match_assertion(),)
+        nodos, aristas, resolved_assertion = _endpoint_name_match_topology(
+            node_features,
+            edge_features,
+            id_property=id_property,
+            **_endpoint_name_match_params(strategy_params),
+        )
+        return nodos, aristas, (resolved_assertion,)
+
+    if edge_strategy != _EDGE_STRATEGY_NEAREST_NEIGHBOR:
+        msg = (
+            "blite.ingesta.geojson.to_graph: edge_strategy desconocida: "
+            f"{edge_strategy!r}"
+        )
+        raise ValueError(msg)
+
     if not shape_valid:
-        tolerance_assertion, no_self_loop_assertion = _skipped_topology_assertions()
-        return {}, [], tolerance_assertion, no_self_loop_assertion
+        return {}, [], _skipped_topology_assertions()
 
     nodos, node_coords = _build_nodes(node_features, id_property)
     aristas, tolerance_assertion, no_self_loop_assertion = _build_edges(
         edge_features, id_property, node_coords
     )
-    return nodos, aristas, tolerance_assertion, no_self_loop_assertion
+    return nodos, aristas, (tolerance_assertion, no_self_loop_assertion)
 
 
 def _build_recipe(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -235,6 +451,18 @@ def derive_graph(inputs: dict[str, Any]) -> dict[str, Any]:
     if missing:
         msg = f"blite.ingesta.geojson.to_graph: faltan llaves requeridas {missing}"
         raise ValueError(msg)
+
+    edge_strategy = str(inputs.get("edge_strategy", _DEFAULT_EDGE_STRATEGY))
+    if edge_strategy == _EDGE_STRATEGY_ENDPOINT_NAME_MATCH:
+        missing_strategy = [
+            key for key in _ENDPOINT_NAME_MATCH_REQUIRED_KEYS if key not in inputs
+        ]
+        if missing_strategy:
+            msg = (
+                "blite.ingesta.geojson.to_graph: edge_strategy="
+                f"{edge_strategy!r} requiere las llaves {missing_strategy}"
+            )
+            raise ValueError(msg)
 
     id_property = str(inputs.get("node_id_property", _DEFAULT_NODE_ID_PROPERTY))
     nodes_raw = _decode_feature_collection(inputs["nodes_content_base64"])
@@ -255,11 +483,13 @@ def derive_graph(inputs: dict[str, Any]) -> dict[str, Any]:
         and tabular_assertion["passed"]
     )
 
-    nodos, aristas, tolerance_assertion, no_self_loop_assertion = _derive_topology(
+    nodos, aristas, strategy_assertions = _derive_topology(
         shape_valid=shape_valid,
         node_features=node_features,
         edge_features=edge_features,
         id_property=id_property,
+        edge_strategy=edge_strategy,
+        strategy_params=inputs,
     )
 
     graph = {"n_nodos": len(nodos), "aristas": aristas, "nodos": nodos}
@@ -272,8 +502,7 @@ def derive_graph(inputs: dict[str, Any]) -> dict[str, Any]:
             node_geometry_assertion,
             edge_geometry_assertion,
             tabular_assertion,
-            tolerance_assertion,
-            no_self_loop_assertion,
+            *strategy_assertions,
         ),
     }
     return {"graph": graph, "provenance": provenance}

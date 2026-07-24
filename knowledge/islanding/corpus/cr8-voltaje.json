@@ -1,0 +1,88 @@
+{
+  "aristas": [
+    [
+      0,
+      1,
+      138
+    ],
+    [
+      0,
+      3,
+      230
+    ],
+    [
+      0,
+      4,
+      230
+    ],
+    [
+      0,
+      5,
+      138
+    ],
+    [
+      0,
+      6,
+      138
+    ],
+    [
+      1,
+      2,
+      138
+    ],
+    [
+      1,
+      7,
+      138
+    ],
+    [
+      3,
+      4,
+      230
+    ],
+    [
+      5,
+      6,
+      138
+    ]
+  ],
+  "asignacion_canonica": [
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    0
+  ],
+  "convencion": "voltaje",
+  "criterio_corredor": "greedy densest desde la subestacion de mayor grado, desempate alfabetico (ver scripts/build_cr_instances.py)",
+  "definicion_peso": "suma de niveles de tension (kV) de los circuitos paralelos",
+  "descargado": "2026-07-23",
+  "digest": "0af00267250f0838ce5445659238c180fe88771383001aa4c745e36462d1aa5b",
+  "escala": 1,
+  "fuente": {
+    "lineas": "https://services1.arcgis.com/cW2GfO4rBCLoFwgj/arcgis/rest/services/LineasDeTransmision/FeatureServer",
+    "portal": "https://datos-ice-se.opendata.arcgis.com",
+    "subestaciones": "https://services1.arcgis.com/cW2GfO4rBCLoFwgj/arcgis/rest/services/Subestaciones/FeatureServer"
+  },
+  "instancia": "cr8",
+  "metodos": [
+    "bruteforce",
+    "spectrum"
+  ],
+  "n_nodos": 8,
+  "nodos": {
+    "0": "La Caja",
+    "1": "Alajuelita",
+    "2": "Anonos",
+    "3": "Belen",
+    "4": "Ribera",
+    "5": "Colima",
+    "6": "Heredia",
+    "7": "Concavas"
+  },
+  "optimo": 1150,
+  "solver_status": "OPTIMAL"
+}
