@@ -1,5 +1,5 @@
 """Graph algorithms: partitioning, centrality, flow, matching."""
 
-from .tool import GraphPartitioner
+from .tool import GraphPartitioner, MaxCutBaseline
 
-__all__ = ["GraphPartitioner"]
+__all__ = ["GraphPartitioner", "MaxCutBaseline"]

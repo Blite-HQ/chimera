@@ -48,6 +48,9 @@ coverage/
 # Claude/ECC (private per-dev — each contributor keeps their own)
 .claude/
 
+# SDD progress ledger (scratch, per-session)
+.superpowers/
+
 # Secrets
 .env
 .env.*

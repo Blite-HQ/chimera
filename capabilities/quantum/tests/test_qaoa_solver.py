@@ -92,6 +92,49 @@ def _find_corpus() -> Path:
     raise FileNotFoundError(msg)
 
 
+class TestExpectedValue:
+    """Fix 4b: valor esperado exacto (statevector) vs best-of-samples.
+
+    Invariantes, NO golden frágil (Qiskit/Aer no es bit-determinista entre
+    versiones): rangos y determinismo dentro de la corrida. `_G6` tiene
+    óptimo=5 hand-checked (ver módulo).
+    """
+
+    def test_expected_energy_is_within_optimum_bounds(self) -> None:
+        result = QaoaSolver().invoke({"matrix": _G6, "layers": 2, "seed": 1})
+
+        assert 0.0 <= result["expected_energy"] <= 5.0
+
+    def test_expected_energy_is_deterministic_for_same_seed(self) -> None:
+        first = QaoaSolver().invoke({"matrix": _G6, "layers": 2, "seed": 3})
+        second = QaoaSolver().invoke({"matrix": _G6, "layers": 2, "seed": 3})
+
+        assert first["expected_energy"] == second["expected_energy"]
+
+    def test_expected_energy_does_not_exceed_best_of_samples(self) -> None:
+        # best-of-samples (energy) escoge el máximo entre 2048 muestras — en
+        # una instancia de 3 qubits eso alcanza casi siempre el óptimo, por
+        # encima del valor esperado bajo la distribución variacional.
+        result = QaoaSolver().invoke({"matrix": _G6, "layers": 2, "seed": 1})
+
+        assert result["expected_energy"] <= result["energy"]
+
+    def test_sampled_mean_energy_is_within_optimum_bounds(self) -> None:
+        result = QaoaSolver().invoke({"matrix": _G6, "layers": 2, "seed": 1})
+
+        assert 0.0 <= result["sampled_mean_energy"] <= 5.0
+
+    def test_expected_ratio_reported_when_reference_optimum_given(self) -> None:
+        result = QaoaSolver().invoke({"matrix": _G6, "seed": 1, "reference_optimum": 5})
+
+        assert result["expected_ratio"] == result["expected_energy"] / 5
+
+    def test_expected_ratio_absent_without_reference_optimum(self) -> None:
+        result = QaoaSolver().invoke({"matrix": _G6, "seed": 1})
+
+        assert "expected_ratio" not in result
+
+
 class TestInputValidation:
     def test_missing_matrix_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="matrix"):
