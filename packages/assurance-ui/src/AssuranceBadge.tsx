@@ -1,9 +1,8 @@
 import React from 'react';
 
-import { Badge } from '@/components/ui/badge';
-
 import { AssuranceScale, type VerdictTone } from './AssuranceScale';
 import { classLabel, type AssuranceLevel } from './assurance';
+import { VerdictPill } from './VerdictPill';
 
 /**
  * Composición canónica glifo + texto (DESIGN.md §4): la única forma de
@@ -31,15 +30,12 @@ export function AssuranceBadge({
 }: AssuranceBadgeProps): React.ReactElement {
   const label = detail ?? (verifierClass ? classLabel(verifierClass) : undefined);
   return (
-    <Badge variant={verdict} className={className}>
-      {/* span intermedio: el Badge fuerza size-3 en <svg> hijos directos */}
-      <span className="flex items-center">
-        <AssuranceScale level={level} />
-      </span>
+    <VerdictPill tone={verdict} className={className}>
+      <AssuranceScale level={level} />
       <span>
         {label ? <>{label} · </> : null}
         <span className="font-mono font-medium">{level}</span>
       </span>
-    </Badge>
+    </VerdictPill>
   );
 }

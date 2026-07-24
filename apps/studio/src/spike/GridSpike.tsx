@@ -18,8 +18,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
-import { AssuranceScale } from '@/components/verification/AssuranceScale';
+import { AssuranceBadge, AssuranceScale } from '@chimera/assurance-ui';
 import { useTheme } from '@/lib/theme';
 import { readToken } from '@/lib/tokens';
 

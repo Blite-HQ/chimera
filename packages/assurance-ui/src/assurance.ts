@@ -53,3 +53,33 @@ export function isAssuranceLevel(value: string): value is AssuranceLevel {
 export function classLabel(verifierClass: string, fallback?: string): string {
   return VERIFIER_CLASS_LABELS[verifierClass as VerifierClass] ?? fallback ?? verifierClass;
 }
+
+/** freeze §7 — veredicto de una conclusión del camino crítico. */
+export type ConclusionVerdict = 'verified' | 'refuted' | 'inconclusive' | 'not_required_declared';
+
+/** Tono visual de un veredicto (nivel status, DESIGN.md §2 nivel 2). */
+export type ConclusionTone = 'pass' | 'fail' | 'inconclusive' | 'neutral';
+
+/** verified→pass, refuted→fail (freeze §7 punto 7 del checklist). */
+const CONCLUSION_TONES: Readonly<Record<ConclusionVerdict, ConclusionTone>> = {
+  verified: 'pass',
+  refuted: 'fail',
+  inconclusive: 'inconclusive',
+  not_required_declared: 'neutral'
+};
+
+/** Etiquetas humanas de veredicto (labels primero, DESIGN.md §8). */
+const VERDICT_LABELS: Readonly<Record<ConclusionVerdict, string>> = {
+  verified: 'verificada',
+  refuted: 'refutada',
+  inconclusive: 'inconclusa',
+  not_required_declared: 'no requerida'
+};
+
+export function conclusionTone(verdict: ConclusionVerdict): ConclusionTone {
+  return CONCLUSION_TONES[verdict];
+}
+
+export function verdictLabel(verdict: ConclusionVerdict): string {
+  return VERDICT_LABELS[verdict];
+}

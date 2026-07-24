@@ -9,7 +9,7 @@
 
 import { z } from 'zod';
 
-import { ASSURANCE_LEVELS } from '@/components/verification/assurance';
+import { ASSURANCE_LEVELS } from '@chimera/assurance-ui';
 
 import type { ProjectedEvent } from '../views/types';
 

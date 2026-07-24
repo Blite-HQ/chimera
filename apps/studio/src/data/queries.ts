@@ -14,6 +14,7 @@ import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
 import { RUN_EVENTS } from '../fixtures/runEvents';
 import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
+import { deriveArtifacts, deriveKnowledge, deriveRunSummary } from './projections';
 import {
   ablationMetricSchema,
   projectedEventSchema,
@@ -25,6 +26,33 @@ import type { DsseEnvelope } from '../views/types';
 
 /** El run del caso demo (mismo id del bundle de ejemplo, freeze §7). */
 export const DEMO_RUN_ID = '8f2c1a9b';
+
+/** Runs del proyecto (carril 2 F2) — hoy proyecta el run del bundle real. */
+export function runSummariesQueryOptions() {
+  return queryOptions({
+    queryKey: ['runs'] as const,
+    queryFn: async () => {
+      const events = z.array(projectedEventSchema).parse(RUN_EVENTS);
+      return [deriveRunSummary(EXAMPLE_CERTIFICATE, events)];
+    }
+  });
+}
+
+/** Artifacts del proyecto — deliverables del certificado, con procedencia. */
+export function artifactsQueryOptions() {
+  return queryOptions({
+    queryKey: ['artifacts'] as const,
+    queryFn: async () => deriveArtifacts(EXAMPLE_CERTIFICATE)
+  });
+}
+
+/** Knowledge del proyecto — conclusiones verificadas acumuladas. */
+export function knowledgeQueryOptions() {
+  return queryOptions({
+    queryKey: ['knowledge'] as const,
+    queryFn: async () => deriveKnowledge(EXAMPLE_CERTIFICATE)
+  });
+}
 
 export function runEventsQueryOptions(runId: string) {
   return queryOptions({

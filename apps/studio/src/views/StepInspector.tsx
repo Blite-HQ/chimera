@@ -17,7 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
-import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
+import { AssuranceBadge } from '@chimera/assurance-ui';
 
 import type { StepDetail } from './types';
 

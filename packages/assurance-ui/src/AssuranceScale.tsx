@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { cn } from '@/lib/utils';
+import { cn } from './cn';
 
 import { ASSURANCE_LEVELS, LEVEL_ORDER, type AssuranceLevel } from './assurance';
 

@@ -1,5 +1,6 @@
 packages:
   - 'apps/*'
+  - 'packages/*'
 
 # Supply-chain quarantine: a newly published version must be at least 14 days
 # old (in minutes: 20160) before pnpm will resolve to it. Compromised releases

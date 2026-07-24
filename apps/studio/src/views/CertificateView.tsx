@@ -22,26 +22,15 @@ import React, { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { AssuranceBadge } from '@/components/verification/AssuranceBadge';
-import type { VerdictTone } from '@/components/verification/AssuranceScale';
+import { AssuranceBadge, conclusionTone } from '@chimera/assurance-ui';
 
-import type { ConclusionVerdict, DsseEnvelope } from './types';
+import { shortDigest } from './format';
+
+import type { DsseEnvelope } from './types';
 
 export interface CertificateViewProps {
   readonly envelope: DsseEnvelope;
   readonly onDownload: () => void; // ofrece el JSON crudo como archivo — sin egress nuevo (INV-1)
-}
-
-/** verified→pass, refuted→fail (freeze §7 punto 7 del checklist). */
-const CONCLUSION_TONES: Readonly<Record<ConclusionVerdict, VerdictTone>> = {
-  verified: 'pass',
-  refuted: 'fail',
-  inconclusive: 'inconclusive',
-  not_required_declared: 'neutral'
-};
-
-function shortDigest(digest: string): string {
-  return `${digest.slice(0, 12)}…`;
 }
 
 function IdentityRow({
@@ -102,7 +91,7 @@ export default function CertificateView({
               ) : (
                 <AssuranceBadge
                   level={conclusion.level}
-                  verdict={CONCLUSION_TONES[conclusion.verdict]}
+                  verdict={conclusionTone(conclusion.verdict)}
                 />
               )}
             </div>
