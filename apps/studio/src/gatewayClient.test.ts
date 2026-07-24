@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { invokeCapability, openRunEventStream } from './gatewayClient';
+import { invokeCapability, openRunEventStream, postRun } from './gatewayClient';
 
+import type { CreateRunBody } from './gatewayClient';
 import type { ProjectedEvent } from './views/types';
 
 describe('gatewayClient', () => {
@@ -59,6 +60,74 @@ describe('gatewayClient', () => {
 
     // Act
     const result = await invokeCapability({ capability: 'blite.solvers.qubo', inputs: {} });
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+  });
+});
+
+describe('postRun', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const BODY: CreateRunBody = {
+    capability_id: 'blite.solvers.qaoa',
+    inputs: { instance: 'ieee14' },
+    claim: {
+      canonical_statement: 'Partición controlada óptima de ieee14',
+      scope: { instance: 'ieee14' },
+      claim_type: 'optimality'
+    }
+  };
+
+  it('envía POST a {VITE_API_URL}/runs con el body del contrato y devuelve run_id', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: { run_id: 'run-123' }, error: null })
+    } as Response);
+
+    // Act
+    const result = await postRun(BODY);
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(BODY)
+    });
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual({ run_id: 'run-123' });
+  });
+
+  it('devuelve error cuando la respuesta no es OK', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable'
+    } as Response);
+
+    // Act
+    const result = await postRun(BODY);
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('503');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    // Act
+    const result = await postRun(BODY);
 
     // Assert
     expect(result.success).toBe(false);

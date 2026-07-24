@@ -65,6 +65,57 @@ export async function invokeCapability<T = unknown>(
 }
 
 /**
+ * MVP task 2 (S10) — contrato provisional de `POST /runs` (plan-01,
+ * decisión pendiente de ratificar cuando aterrice runtime-api). El shape
+ * exacto de `claim`/`inputs` puede cambiar; el chokepoint (INV-1) y el
+ * envelope de error no.
+ */
+export interface CreateRunBody {
+  readonly capability_id: string;
+  readonly inputs: Readonly<Record<string, unknown>>;
+  readonly claim: {
+    readonly canonical_statement: string;
+    readonly scope: Readonly<Record<string, unknown>>;
+    readonly claim_type: string;
+  };
+  readonly max_steps?: number;
+}
+
+/**
+ * Crea un run vía `POST {VITE_API_URL}/runs` (plan-01). Mismo envelope de
+ * error que invokeCapability (network error / non-OK / ok) — único lugar
+ * del Studio que hace este POST (INV-1).
+ */
+export async function postRun(body: CreateRunBody): Promise<GatewayResponse<{ run_id: string }>> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${apiBaseUrl()}/runs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch (networkErr) {
+    return {
+      success: false,
+      data: null,
+      error: `Network error: ${networkErr instanceof Error ? networkErr.message : String(networkErr)}`
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      success: false,
+      data: null,
+      error: `Gateway error: ${response.status} ${response.statusText}`
+    };
+  }
+
+  const parsed = (await response.json()) as GatewayResponse<{ run_id: string }>;
+  return parsed;
+}
+
+/**
  * MVP task 1 (S10) — el conjunto de tipos de evento que emite chimera_api
  * en `GET /runs/{id}/events` (freeze §9 · `chimera_api.projection`). El
  * wire nombra el evento SSE (`event: {type}`), no el genérico `message`,

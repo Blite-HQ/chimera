@@ -207,3 +207,15 @@ export interface AblationMetric {
   readonly wallMs: number;
   readonly verificationLatencyMs: number;
 }
+
+/**
+ * MVP task 2 — el form de "Nuevo run" (NewRunView), consumido también por
+ * `src/data/mutations.ts` (el mapper hacia el contrato plan-01 de
+ * `POST /runs`). Vive acá — no en data/mutations.ts — porque es la vista la
+ * dueña del shape del formulario (F3: data/** importa tipos de views/**,
+ * nunca al revés).
+ */
+export interface NewRunInput {
+  readonly instance: string;
+  readonly proposer: string;
+}

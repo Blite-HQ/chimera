@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Braces, LayoutList, List, ListTree } from 'lucide-react';
+import { Braces, LayoutList, List, ListTree, Plus } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/lib/theme';
 
 import { isLiveMode } from './data/env';
+import { useCreateRun } from './data/mutations';
 import {
   ablationQueryOptions,
   artifactsQueryOptions,
@@ -24,6 +25,7 @@ import ArtifactsView from './views/ArtifactsView';
 import CertificateView from './views/CertificateView';
 import { downloadJson } from './views/downloadJson';
 import KnowledgeView from './views/KnowledgeView';
+import NewRunView from './views/NewRunView';
 import PapersView from './views/PapersView';
 import ProvenanceExplorer from './views/ProvenanceExplorer';
 import RunDetail from './views/RunDetail';
@@ -238,6 +240,29 @@ function RunsScreen({
   readonly onSelectRun: (runId: string) => void;
 }): React.ReactElement {
   const summariesQuery = useQuery(runSummariesQueryOptions());
+  const [showNewRun, setShowNewRun] = useState(false);
+  const createRunMutation = useCreateRun();
+
+  // MVP task 2 — "Nuevo run" reemplaza la lista mientras está abierto; el
+  // POST /runs real no existe todavía (createRun corta a DEMO_RUN_ID en
+  // modo fixtures/demo — el flip a live ya está escrito en data/mutations).
+  if (showNewRun) {
+    return (
+      <NewRunView
+        onSubmit={input =>
+          createRunMutation.mutate(input, {
+            onSuccess: ({ runId }) => {
+              setShowNewRun(false);
+              onSelectRun(runId);
+            }
+          })
+        }
+        isPending={createRunMutation.isPending}
+        error={createRunMutation.error?.message ?? null}
+        onCancel={() => setShowNewRun(false)}
+      />
+    );
+  }
 
   if (summariesQuery.isPending) return <LoadingState label="Cargando los runs del proyecto" />;
   if (summariesQuery.isError) {
@@ -248,7 +273,17 @@ function RunsScreen({
       />
     );
   }
-  return <RunsView runs={summariesQuery.data} onSelectRun={onSelectRun} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Button size="sm" onClick={() => setShowNewRun(true)}>
+          <Plus data-icon="inline-start" />
+          Nuevo run
+        </Button>
+      </div>
+      <RunsView runs={summariesQuery.data} onSelectRun={onSelectRun} />
+    </div>
+  );
 }
 
 function ArtifactsScreen({
