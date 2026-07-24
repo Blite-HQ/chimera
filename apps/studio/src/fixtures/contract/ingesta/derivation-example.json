@@ -1,0 +1,33 @@
+{
+  "kind": "derivation",
+  "inputs": [
+    {
+      "ref": "snapshot:example-source",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "recipe": {
+    "capability": "blite.ingesta.geojson.to_graph",
+    "version": "0.1.0",
+    "params_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "code_ref": "git:HEAD"
+  },
+  "run_id": "example-run-1",
+  "assertions": [
+    {
+      "name": "node_geojson_schema_valid",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "edge_geojson_schema_valid",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "tabular_schema_valid",
+      "passed": true,
+      "detail": null
+    }
+  ]
+}
