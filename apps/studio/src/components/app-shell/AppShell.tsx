@@ -24,6 +24,12 @@ export interface AppShellProps {
   readonly onSectionChange: (sectionId: string) => void;
   /** Ruta actual bajo el proyecto, en orden (p. ej. ['runs', '8f2c1a9b']). */
   readonly breadcrumb: readonly string[];
+  /**
+   * Slot opcional al tope de la columna de contenido, por encima de
+   * `<main>` (p. ej. ReplayBanner, D1). AppShell es capa visual pura: no
+   * decide si hay banner — solo lo renderiza cuando lo recibe.
+   */
+  readonly banner?: React.ReactNode;
   readonly children: React.ReactNode;
 }
 
@@ -33,6 +39,7 @@ export function AppShell({
   activeSection,
   onSectionChange,
   breadcrumb,
+  banner,
   children
 }: AppShellProps): React.ReactElement {
   return (
@@ -102,6 +109,7 @@ export function AppShell({
             ))}
           </nav>
         </header>
+        {banner}
         <main className="flex-1">{children}</main>
       </div>
     </div>
