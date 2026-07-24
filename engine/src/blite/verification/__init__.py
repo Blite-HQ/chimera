@@ -35,6 +35,14 @@ from blite.verification.policy import (
     VerificationPolicy,
     VerificationRule,
 )
+from blite.verification.provenance import (
+    DataQualityAssertion,
+    DerivationProvenance,
+    DerivationRecipe,
+    ExternalSourceProvenance,
+    InputRef,
+    Provenance,
+)
 from blite.verification.verifier import Determinism, Verifier
 
 __all__ = [
@@ -46,8 +54,12 @@ __all__ = [
     "ConsensusReplicationPredicate",
     "CpSatStatus",
     "Criticality",
+    "DataQualityAssertion",
+    "DerivationProvenance",
+    "DerivationRecipe",
     "Determinism",
     "Differential",
+    "ExternalSourceProvenance",
     "ExecutionCheck",
     "ExecutionEnvironment",
     "ExecutionPredicate",
@@ -55,12 +67,14 @@ __all__ = [
     "GroundTruthPredicate",
     "HumanExpertPredicate",
     "InconclusiveReason",
+    "InputRef",
     "InvocationContext",
     "MatchCondition",
     "MetamorphicRelation",
     "Proof",
     "PropertyCheck",
     "PropertyRulePredicate",
+    "Provenance",
     "SideEffects",
     "Verdict",
     "VerificationPolicy",
