@@ -12,9 +12,11 @@ dependencies = [
 
 [project.optional-dependencies]
     networkx = ['networkx>=3.0']
+    gw = ['cvxpy>=1.9.2,<2']
 
 [project.entry-points."blite.capabilities"]
 "blite.graphs.partition" = "blite_cap_graphs:GraphPartitioner"
+"blite.graphs.maxcut" = "blite_cap_graphs:MaxCutBaseline"
 
 [build-system]
 requires = ["hatchling"]

@@ -266,6 +266,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+gw = [
+    { name = "cvxpy" },
+]
 networkx = [
     { name = "networkx" },
 ]
@@ -273,9 +276,10 @@ networkx = [
 [package.metadata]
 requires-dist = [
     { name = "blite-capability", editable = "sdk" },
+    { name = "cvxpy", marker = "extra == 'gw'", specifier = ">=1.9.2,<2" },
     { name = "networkx", marker = "extra == 'networkx'", specifier = ">=3.0" },
 ]
-provides-extras = ["networkx"]
+provides-extras = ["networkx", "gw"]
 
 [[package]]
 name = "blite-cap-ml"
