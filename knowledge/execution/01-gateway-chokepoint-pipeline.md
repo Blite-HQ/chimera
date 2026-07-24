@@ -209,9 +209,12 @@ No se propone ninguna dependencia nueva en esta nota.
 - ¿Cómo se extiende el pipeline sin convertirse en un bypass del chokepoint? (ej. si una capability
   necesita una etapa extra, ¿dónde se declara sin que cada capability pueda alterar el orden global?)
 - ¿Dónde entra exactamente el `model router` (nota 05) — es una etapa del pipeline, o vive completamente
-  dentro de `serving`, invocado únicamente desde la etapa de despacho? No se resuelve en esta nota.
+  dentro de `serving`, invocado únicamente desde la etapa de despacho? **RESUELTO (execution/09, freeze
+  §15.7):** no es etapa propia — `ModelPort` vive en `serving`, invocado desde la etapa de despacho como
+  cualquier otra capability; la llamada real la hace el adapter `ModelServer` en `blite.protocols`.
 - ¿Cómo se maneja el caso de §8.4 (reautorización a mitad de pipeline por un permiso adicional descubierto
-  durante el despacho)? No resuelto.
+  durante el despacho)? **RESUELTO en el freeze §8: fail-closed, jamás re-evaluación en vuelo** — esta
+  lista quedó desactualizada respecto al encabezado de la nota; ver ahí la cita completa.
 
 ## 11 · Recomendación mínima de POC
 

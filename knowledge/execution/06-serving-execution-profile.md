@@ -2,7 +2,14 @@
 
 **Ítem del plan:** plano de ejecución (Steven) — cómo `runtime`/`serving` deberían despachar según el
 campo `execution_profile` que `knowledge/trust/06` ya diseñó como parte de `CapabilityManifest` v2.
-**Fecha:** 2026-07-10 · **Estado:** insumo para contract freeze
+**Fecha:** 2026-07-10 · **Estado:** **implementada en código** (S-G Etapa 0, 2026-07-22): el
+`Dispatcher`/`DispatchStrategy` de §1.4 y la recomendación de POC de §11 (`InProcessStrategy` única,
+`NotImplementedError` explícito sin fallback silencioso a `in-process`) están construidos tal cual en
+`engine/src/blite/runtime/dispatch.py` + `tests/unit/runtime/test_dispatch_matrix.py` — **VERDE** en
+`docs/specs/README.md`. La regla de validez `interaction × execution_profile` (§1.5) se valida al cargar el
+`DistributionManifest`, fail-closed en deploy — tal como proponía esta nota, no en la primera invocación.
+La pregunta abierta de §10 sobre coherencia AX3 para `service`/`remote-job` queda ligada a la resolución de
+execution/05 (ya cerrada, ver esa nota).
 **Fuentes:** `knowledge/trust/06-protocolos-capability-mcp-a2a.md` §1.2 y §4 (los dos ejes `interaction` /
 `execution_profile`, valores congelados: `in-process|service|remote-job`) · `docs/invariants.md`
 (ADR-029, AX3) · `knowledge/execution/04-capability-registry-adapters.md` (esta misma carpeta) ·
