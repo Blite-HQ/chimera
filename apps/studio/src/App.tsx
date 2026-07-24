@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Braces, LayoutList, List, ListTree, Plus } from 'lucide-react';
+import { Braces, LayoutList, List, ListTree, Map, Network, Plus } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/lib/theme';
 
 import { isLiveMode } from './data/env';
+import { ICE_GRID_DATASET } from './data/iceGrid';
 import { useCreateRun } from './data/mutations';
 import {
   ablationQueryOptions,
@@ -25,6 +26,7 @@ import GridSpike from './spike/GridSpike';
 import AblationPanel from './views/AblationPanel';
 import ArtifactsView from './views/ArtifactsView';
 import CertificateView from './views/CertificateView';
+import DataFormatRouter from './views/DataFormatRouter';
 import { downloadJson } from './views/downloadJson';
 import KnowledgeView from './views/KnowledgeView';
 import NewRunView from './views/NewRunView';
@@ -87,24 +89,56 @@ function ToggleButton({
   );
 }
 
+type RedViewMode = 'diagrama' | 'mapa';
+
 /**
- * Slot "Red" de RunDetailScreen (D1 task 4 — honestidad de modo): el spike
- * IEEE-14 (`GridSpike`) es data ESTÁTICA fabricada — solo tiene sentido
- * como vista replay (etiquetada por el banner global, no acá). En vivo no
- * existe todavía un endpoint que devuelva la topología real del run, así
- * que anuncia "pendiente" en vez de mostrar un grid ajeno al run. Nombrada
- * aparte (no inline en el JSX) para poder testearla sin depender de
- * `runSummariesQueryOptions` (que en vivo devuelve `[]` hasta que exista
- * `GET /runs` — D3/D4 — y bloquearía la navegación a RunDetailScreen).
+ * Slot "Red" de RunDetailScreen (D1 task 4 — honestidad de modo; D4 task 6
+ * — spec superficie-visual.md §4.3 "dual diagrama + mapa, no reemplazo"):
+ * en replay ofrece AMBAS vistas vía el mismo patrón ToggleButton que usan
+ * timeline y procedencia — "Diagrama" (`GridSpike`, la partición benchmark
+ * IEEE-14 del run, data ESTÁTICA fabricada) y "Mapa" (`DataFormatRouter` →
+ * `GridMap`, la red nacional REAL del ICE, 70 subestaciones + 102 líneas).
+ * Son DOS redes distintas — el mapa nunca sustituye al diagrama, lo
+ * complementa (honestidad: no hay todavía un mapeo determinista entre la
+ * instancia benchmark y el grid real, ver GridMap.tsx).
+ *
+ * En vivo no existe todavía un endpoint que devuelva la topología real del
+ * run, así que anuncia "pendiente" en vez de mostrar cualquiera de las dos
+ * vistas — el toggle tampoco aparece. Nombrada aparte (no inline en el
+ * JSX) para poder testearla sin depender de `runSummariesQueryOptions` (que
+ * en vivo devuelve `[]` hasta que exista `GET /runs` — D3/D4 — y
+ * bloquearía la navegación a RunDetailScreen).
  */
 export function RedSlot(): React.ReactElement {
-  return isLiveMode() ? (
-    <EmptyState
-      title="Topología en vivo — pendiente"
-      hint="La vista de red contra el payload real del run llega con D3/D4 (rutas + mapa)."
-    />
-  ) : (
-    <GridSpike />
+  const [viewMode, setViewMode] = useState<RedViewMode>('diagrama');
+
+  if (isLiveMode()) {
+    return (
+      <EmptyState
+        title="Topología en vivo — pendiente"
+        hint="La vista de red contra el payload real del run llega con D3/D4 (rutas + mapa)."
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end gap-1">
+        <ToggleButton
+          label="Diagrama"
+          icon={<Network data-icon="inline-start" />}
+          isActive={viewMode === 'diagrama'}
+          onClick={() => setViewMode('diagrama')}
+        />
+        <ToggleButton
+          label="Mapa"
+          icon={<Map data-icon="inline-start" />}
+          isActive={viewMode === 'mapa'}
+          onClick={() => setViewMode('mapa')}
+        />
+      </div>
+      {viewMode === 'diagrama' ? <GridSpike /> : <DataFormatRouter dataset={ICE_GRID_DATASET} />}
+    </div>
   );
 }
 
