@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 import { ASSURANCE_LEVELS } from '@chimera/assurance-ui';
 
-import type { ProjectedEvent } from '../views/types';
+import type { EventAssurance, ProjectedEvent } from '../views/types';
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
@@ -39,7 +39,11 @@ export const projectedEventSchema = z.object({
   occurredAt: z.string().min(1),
   stepId: z.string().optional(),
   resumen: z.string().min(1),
-  verdict: verdictSchema.optional()
+  verdict: verdictSchema.optional(),
+  // MVP task 4 — sin esto Zod lo strippea silenciosamente en
+  // `z.array(projectedEventSchema).parse(RUN_EVENTS)` (queries.ts) y el
+  // AssuranceBadge nunca se muestra en fixtures/demo mode.
+  assurance: z.object({ verifierClass: z.string().min(1), level: assuranceLevelSchema }).optional()
 });
 
 /**
@@ -59,11 +63,40 @@ export const sseProjectedEventSchema = z.object({
 
 export type SseProjectedEvent = z.infer<typeof sseProjectedEventSchema>;
 
+/**
+ * `payload.attestation` tal como lo emite el orquestador (freeze §4, wire
+ * crudo snake_case) — solo los campos que este mapper necesita leer.
+ */
+const wireAttestationSchema = z.object({
+  verifier_class: z.string().min(1),
+  level: z.string().min(1)
+});
+
+/**
+ * Extrae `EventAssurance` de `payload.attestation` cuando su `level` es un
+ * `AssuranceLevel` reconocido; degrada a `undefined` (sin throw) si el
+ * attestation falta o trae un nivel fuera de vocabulario — la regla del
+ * brief es "graceful", no "explota el fixture".
+ */
+function toEventAssurance(payload: Record<string, unknown>): EventAssurance | undefined {
+  const attestation = wireAttestationSchema.safeParse(payload['attestation']);
+  if (!attestation.success) {
+    return undefined;
+  }
+  const level = assuranceLevelSchema.safeParse(attestation.data.level);
+  if (!level.success) {
+    return undefined;
+  }
+  return { verifierClass: attestation.data.verifier_class, level: level.data };
+}
+
 /** Mapper wire→UI (S10 lo usa tal cual; la UI jamás ve snake_case). */
 export function toProjectedEvent(wire: SseProjectedEvent): ProjectedEvent {
-  const verdict = verdictSchema.safeParse(
-    (wire.payload['verification'] as { verdict?: string } | undefined)?.verdict
-  );
+  // El verdict vive en `payload.verdict` (top level) — NO en
+  // `payload.verification.verdict`, que no existe en el wire real del
+  // orquestador (decisiones.md #8).
+  const verdict = verdictSchema.safeParse(wire.payload['verdict']);
+  const assurance = toEventAssurance(wire.payload);
   return {
     globalSeq: wire.global_seq,
     type: wire.type,
@@ -71,7 +104,8 @@ export function toProjectedEvent(wire: SseProjectedEvent): ProjectedEvent {
     occurredAt: wire.occurred_at,
     ...(wire.step_id !== undefined && { stepId: wire.step_id }),
     resumen: wire.resumen,
-    ...(verdict.success && { verdict: verdict.data })
+    ...(verdict.success && { verdict: verdict.data }),
+    ...(assurance && { assurance })
   };
 }
 

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Braces, LayoutList, List, ListTree } from 'lucide-react';
+import { Braces, LayoutList, List, ListTree, Plus } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
@@ -7,6 +7,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/Data
 import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/lib/theme';
 
+import { isLiveMode } from './data/env';
+import { useCreateRun } from './data/mutations';
 import {
   ablationQueryOptions,
   artifactsQueryOptions,
@@ -16,12 +18,14 @@ import {
   runSummariesQueryOptions,
   stepEvidenceQueryOptions
 } from './data/queries';
+import { useRunEventStream } from './data/useRunEventStream';
 import GridSpike from './spike/GridSpike';
 import AblationPanel from './views/AblationPanel';
 import ArtifactsView from './views/ArtifactsView';
 import CertificateView from './views/CertificateView';
 import { downloadJson } from './views/downloadJson';
 import KnowledgeView from './views/KnowledgeView';
+import NewRunView from './views/NewRunView';
 import PapersView from './views/PapersView';
 import ProvenanceExplorer from './views/ProvenanceExplorer';
 import RunDetail from './views/RunDetail';
@@ -82,6 +86,9 @@ function ToggleButton({
 
 /** Vistas del run montadas como slots de RunDetail (queries + estado acá). */
 function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElement {
+  // No-op en modo fixtures/demo; en modo live alimenta el cache con el SSE
+  // real (MVP task 1) — llamada incondicional, el hook decide adentro.
+  useRunEventStream(runId);
   const summariesQuery = useQuery(runSummariesQueryOptions());
   const eventsQuery = useQuery(runEventsQueryOptions(runId));
   const stepsQuery = useQuery(stepEvidenceQueryOptions(runId));
@@ -128,11 +135,11 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
           />
         </div>
         <RunTimeline
-          events={revealedEvents}
+          events={isLiveMode() ? runEvents : revealedEvents}
           selectedGlobalSeq={selectedGlobalSeq}
           onSelectEvent={setSelectedGlobalSeq}
           viewMode={timelineViewMode}
-          playback={playback}
+          playback={isLiveMode() ? undefined : playback}
         />
       </div>
       <aside className="w-96 shrink-0">
@@ -152,9 +159,7 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
     <div className="mx-auto max-w-3xl">
       <CertificateView
         envelope={certificateQuery.data.envelope}
-        onDownload={() =>
-          downloadJson('trust-certificate.example.json', certificateQuery.data.wire)
-        }
+        onDownload={() => downloadJson('bundle.json', certificateQuery.data.wire)}
       />
     </div>
   );
@@ -215,7 +220,7 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
       summary={summary}
       onDownloadBundle={() => {
         if (certificateQuery.data) {
-          downloadJson('trust-certificate.example.json', certificateQuery.data.wire);
+          downloadJson('bundle.json', certificateQuery.data.wire);
         }
       }}
       timeline={timeline}
@@ -233,6 +238,29 @@ function RunsScreen({
   readonly onSelectRun: (runId: string) => void;
 }): React.ReactElement {
   const summariesQuery = useQuery(runSummariesQueryOptions());
+  const [showNewRun, setShowNewRun] = useState(false);
+  const createRunMutation = useCreateRun();
+
+  // MVP task 2 — "Nuevo run" reemplaza la lista mientras está abierto; el
+  // POST /runs real no existe todavía (createRun corta a DEMO_RUN_ID en
+  // modo fixtures/demo — el flip a live ya está escrito en data/mutations).
+  if (showNewRun) {
+    return (
+      <NewRunView
+        onSubmit={input =>
+          createRunMutation.mutate(input, {
+            onSuccess: ({ runId }) => {
+              setShowNewRun(false);
+              onSelectRun(runId);
+            }
+          })
+        }
+        isPending={createRunMutation.isPending}
+        error={createRunMutation.error?.message ?? null}
+        onCancel={() => setShowNewRun(false)}
+      />
+    );
+  }
 
   if (summariesQuery.isPending) return <LoadingState label="Cargando los runs del proyecto" />;
   if (summariesQuery.isError) {
@@ -243,7 +271,17 @@ function RunsScreen({
       />
     );
   }
-  return <RunsView runs={summariesQuery.data} onSelectRun={onSelectRun} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Button size="sm" onClick={() => setShowNewRun(true)}>
+          <Plus data-icon="inline-start" />
+          Nuevo run
+        </Button>
+      </div>
+      <RunsView runs={summariesQuery.data} onSelectRun={onSelectRun} />
+    </div>
+  );
 }
 
 function ArtifactsScreen({

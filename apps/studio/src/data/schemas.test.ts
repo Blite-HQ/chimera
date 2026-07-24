@@ -31,19 +31,81 @@ describe('schemas de la frontera (F3)', () => {
     ).toThrow();
   });
 
-  it('parsea el wire SSE del api y lo mapea a camelCase con verdict embebido', () => {
+  it('parsea el wire SSE del api y lo mapea a camelCase con verdict + assurance embebidos (wire real del orquestador)', () => {
     const wire = sseProjectedEventSchema.parse({
       global_seq: 4,
       type: 'verification.completed',
       actor_id: 'service:verifier',
       occurred_at: '2026-07-22T12:00:04.000000Z',
       resumen: 'Verificación formal exacta (AL3)',
-      payload: { verification: { verdict: 'pass' } }
+      payload: {
+        claim_digest: 'sha256:abc',
+        verifier_id: 'verifier:cpsat-exact',
+        verdict: 'pass',
+        attestation: {
+          verifier_class: 'formal_exact',
+          level: 'AL3',
+          verdict: 'pass',
+          claim_digest: 'sha256:abc',
+          verifier_id: 'verifier:cpsat-exact',
+          independence_group: 'solver',
+          issued_at: '2026-07-22T12:00:04.000000Z'
+        }
+      }
     });
     const projected = toProjectedEvent(wire);
     expect(projected.globalSeq).toBe(4);
     expect(projected.actorId).toBe('service:verifier');
     expect(projected.verdict).toBe('pass');
+    expect(projected.assurance).toEqual({ verifierClass: 'formal_exact', level: 'AL3' });
     expect('payload' in projected).toBe(false);
+  });
+
+  it('un evento claim.emitted no trae verdict ni assurance (el wire no los incluye)', () => {
+    const wire = sseProjectedEventSchema.parse({
+      global_seq: 3,
+      type: 'claim.emitted',
+      actor_id: 'service:runtime',
+      occurred_at: '2026-07-22T12:00:03.000000Z',
+      resumen: 'Claim declarado — corte óptimo propuesto',
+      payload: {
+        claim_digest: 'sha256:def',
+        claim_type: 'partition.optimal_cut',
+        is_conclusion: true,
+        world: 'ieee14',
+        irreversible: false,
+        affects_third_party: false
+      }
+    });
+    const projected = toProjectedEvent(wire);
+    expect(projected.verdict).toBeUndefined();
+    expect(projected.assurance).toBeUndefined();
+  });
+
+  it('degrada con gracia (sin assurance) cuando el level de la attestation no es reconocido', () => {
+    const wire = sseProjectedEventSchema.parse({
+      global_seq: 4,
+      type: 'verification.completed',
+      actor_id: 'service:verifier',
+      occurred_at: '2026-07-22T12:00:04.000000Z',
+      resumen: 'Verificación formal exacta',
+      payload: {
+        claim_digest: 'sha256:abc',
+        verifier_id: 'verifier:cpsat-exact',
+        verdict: 'pass',
+        attestation: {
+          verifier_class: 'formal_exact',
+          level: 'AL99',
+          verdict: 'pass',
+          claim_digest: 'sha256:abc',
+          verifier_id: 'verifier:cpsat-exact',
+          independence_group: 'solver',
+          issued_at: '2026-07-22T12:00:04.000000Z'
+        }
+      }
+    });
+    const projected = toProjectedEvent(wire);
+    expect(projected.verdict).toBe('pass');
+    expect(projected.assurance).toBeUndefined();
   });
 });
