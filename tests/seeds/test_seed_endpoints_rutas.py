@@ -1,40 +1,42 @@
 """SEED · endpoints Studio (Steven+Dylan) — spec `docs/specs/endpoints-studio.md`.
 
-Fase 0 fija el contrato ruta→forma (freeze §7/§9, proyecciones YA congeladas)
-ANTES de que las rutas existan. Ninguna de las 6 vive todavía en
-`chimera_api/app.py` (solo `/health`, `/runs` POST, `/runs/{id}/events` SSE,
-`/runs/{id}/certificate` GET) — cada test de abajo describe la CONDUCTA
-esperada (código 200 + forma de la respuesta) y hoy falla con 404 porque la
-ruta no está montada. El dueño de Fase 1 quita el `xfail` ruta por ruta.
+Fase 0 fijó el contrato ruta→forma (freeze §7/§9, proyecciones YA congeladas)
+ANTES de que las rutas existieran. Fase 1 (Steven+Dylan) las implementó las
+6 de una vez en `chimera_api.reads.create_reads_router` (montado en
+`chimera_api.app.create_app` junto a `/health`, `/runs` POST,
+`/runs/{id}/events` SSE y `/runs/{id}/certificate` GET) — cada test de abajo
+describe la CONDUCTA esperada (código 200 + forma de la respuesta) y ya
+pasa en VERDE; el `xfail` se retiró de las 6 (no quedó ninguna pendiente).
 
 Collection-safe a propósito (import de `chimera_api`/`blite` DENTRO de cada
-función, nunca a nivel de módulo): estas rutas se agregarán a `create_app`,
+función, nunca a nivel de módulo): estas rutas se agregaron a `create_app`,
 no a un módulo nuevo, así que el import del paquete en sí no fallaría hoy —
 pero se mantiene la convención de la sesión para no divergir del patrón
 pedido y para que el seed siga siendo seguro de recolectar incluso si algún
-módulo intermedio cambia de forma en Fase 1.
+módulo intermedio cambia de forma más adelante.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
+import httpx
 import pytest
+from fastapi.testclient import TestClient
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 Steven+Dylan: las rutas REST de docs/specs/endpoints-"
-            "studio.md (GET /runs, /runs/{id}/artifacts, /runs/{id}/"
-            "knowledge, /runs/{id}/steps/{id}/evidence, /runs/{id}/ablation, "
-            "/runs/{id}/topology) aun no existen en chimera_api.app.create_app "
-            "— hoy responden 404. Este seed fija ruta->forma; se destraba "
-            "ruta por ruta."
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
+
+
+# starlette.testclient.TestClient anota `.get()` contra el paquete `httpx2`
+# (bajo TYPE_CHECKING) que este repo no instala — el fallback real en
+# runtime es `httpx`; mismo patrón de cast + ignore puntual que
+# `tests/unit/api/test_runs.py::_get`/`test_certificate.py::_get`. `httpx`/
+# `TestClient` no son `chimera_api`/`blite` — no rompen collection-safe.
+def _get(client: TestClient, url: str) -> httpx.Response:
+    return cast(
+        httpx.Response,
+        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+    )
 
 
 def _seed_minimal_run(store: Any, run_id: str) -> None:
@@ -81,12 +83,12 @@ def test_get_runs_returns_run_summary_list() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs")
+    response = _get(client, "/runs")
 
     assert response.status_code == 200
-    body = response.json()
+    body: list[dict[str, Any]] = response.json()
     assert isinstance(body, list)
-    row = body[0]
+    row: dict[str, Any] = body[0]
     for key in (
         "run_id",
         "status",
@@ -110,7 +112,7 @@ def test_get_run_artifacts_returns_project_artifact_list() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/artifacts")
+    response = _get(client, "/runs/r1/artifacts")
 
     assert response.status_code == 200
     body = response.json()
@@ -138,7 +140,7 @@ def test_get_run_knowledge_returns_knowledge_claim_list() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/knowledge")
+    response = _get(client, "/runs/r1/knowledge")
 
     assert response.status_code == 200
     body = response.json()
@@ -166,7 +168,7 @@ def test_get_step_evidence_returns_step_detail() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/steps/s1/evidence")
+    response = _get(client, "/runs/r1/steps/s1/evidence")
 
     assert response.status_code == 200
     body = response.json()
@@ -191,7 +193,7 @@ def test_get_ablation_returns_ablation_metric_list() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/ablation")
+    response = _get(client, "/runs/r1/ablation")
 
     assert response.status_code == 200
     body = response.json()
@@ -211,7 +213,7 @@ def test_get_topology_returns_partition_with_verification_per_island() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/topology")
+    response = _get(client, "/runs/r1/topology")
 
     assert response.status_code == 200
     body = response.json()
@@ -232,6 +234,6 @@ def test_unknown_run_id_is_404_not_fabricated_data() -> None:
 
     client = TestClient(create_app(create_event_store()))
 
-    response = client.get("/runs/no-existe/artifacts")
+    response = _get(client, "/runs/no-existe/artifacts")
 
     assert response.status_code == 404
