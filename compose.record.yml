@@ -1,0 +1,15 @@
+# Override de modo GRABACIÓN (infra/03 §record; decisión #11,
+# docs/mvp/decisiones.md). Uso: `docker compose -f compose.yaml -f
+# compose.record.yml up`.
+#
+# Mínimo por ahora: bind-mount de ./recordings (donde el runtime escribirá
+# los bundles cuando el dominio de entregable los emita) + TZ=UTC para que
+# los timestamps de la grabación sean deterministas. El cableado real de la
+# captura de bundles llega cuando runtime/entregable emitan al disco — este
+# override solo declara dónde caen.
+services:
+  api:
+    environment:
+      TZ: UTC
+    volumes:
+      - ./recordings:/recordings

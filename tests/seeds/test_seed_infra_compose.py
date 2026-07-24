@@ -18,10 +18,6 @@ ROOT = Path(__file__).resolve().parents[2]
 
 pytestmark = [
     pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason="SEED S-G (Geovanni): el compose canónico aún no existe en el repo",
-    ),
 ]
 
 

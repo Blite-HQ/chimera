@@ -71,4 +71,8 @@ pnpm-debug.log*
 .playwright-mcp/
 
 # Key custody (escalon 1 env/file) — never commit real secrets
-secrets/
+secrets/*
+!secrets/*.example
+
+# SDD scratch (superpowers skill) — never commit
+.superpowers/
