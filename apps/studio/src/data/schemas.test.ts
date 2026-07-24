@@ -194,7 +194,7 @@ describe('runSummaryWireSchema / toRunSummary (D3 — GET /runs)', () => {
       verdict: null,
       titular_level: null,
       titular_class: null,
-      completed_at: undefined
+      completed_at: null // E1 lo emite null (no undefined) en un run en curso
     });
     expect(toRunSummary(wire)).toEqual({
       runId: '8f2c1a9b',

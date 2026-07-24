@@ -234,7 +234,10 @@ export const runSummaryWireSchema = z.object({
   titular_class: z.string().nullable(),
   events_count: z.number().int().nonnegative(),
   actor: z.string().min(1),
-  completed_at: z.string().optional()
+  // Un run en curso llega con `completed_at: null` (no `undefined`) — E1 lo
+  // emite explícito. `.nullish()` = string | null | undefined; `.optional()`
+  // solo aceptaba undefined y explotaba en vivo (bug cazado por el smoke).
+  completed_at: z.string().nullish()
 });
 
 export function toRunSummary(wire: z.infer<typeof runSummaryWireSchema>): RunSummary {
@@ -247,7 +250,7 @@ export function toRunSummary(wire: z.infer<typeof runSummaryWireSchema>): RunSum
     titularClass: wire.titular_class ?? DEFAULT_TITULAR_CLASS,
     eventsCount: wire.events_count,
     actor: wire.actor,
-    ...(wire.completed_at !== undefined && { completedAt: wire.completed_at })
+    ...(typeof wire.completed_at === 'string' && { completedAt: wire.completed_at })
   };
 }
 
