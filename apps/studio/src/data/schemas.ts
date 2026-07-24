@@ -137,6 +137,41 @@ export const ablationMetricSchema = z.object({
   verificationLatencyMs: z.number().nonnegative()
 });
 
+/** D5 — un baseline clásico/exacto: r ∈ [0, 1] (energía / óptimo). */
+const rvspBaselineSchema = z.object({
+  energy: z.number().nonnegative(),
+  r: z.number().min(0).max(1)
+});
+
+/**
+ * D5 — espejo de `RvsPExperiment` (views/types.ts): fuente = la ciencia
+ * real (`results/exp_r_vs_p/<instancia>.json`), NO `AblationMetric[]`
+ * (divergencia de spec §5 registrada en decisiones.md). `p` es la
+ * profundidad QAOA (entero positivo); toda razón `r` vive en [0, 1].
+ */
+export const rvspSchema = z.object({
+  instance: z.string().min(1),
+  optimo: z.number().positive(),
+  baselines: z.object({
+    cpsat: rvspBaselineSchema,
+    greedy: rvspBaselineSchema,
+    gw: rvspBaselineSchema
+  }),
+  points: z
+    .array(
+      z.object({
+        p: z.number().int().positive(),
+        rEsperadoMean: z.number().min(0).max(1),
+        rMuestralMean: z.number().min(0).max(1),
+        rMuestralStd: z.number().nonnegative(),
+        rMuestralMin: z.number().min(0).max(1),
+        rMuestralMax: z.number().min(0).max(1),
+        successRate: z.number().min(0).max(1)
+      })
+    )
+    .min(1)
+});
+
 /** freeze §7 — el envelope DSSE wire (payload base64 + firma): lo descargable. */
 export const wireEnvelopeSchema = z.object({
   payloadType: z.string().min(1),

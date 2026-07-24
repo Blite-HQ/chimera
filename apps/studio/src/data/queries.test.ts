@@ -12,6 +12,7 @@ import * as gatewayClient from '../gatewayClient';
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
 import { RUN_EVENTS } from '../fixtures/runEvents';
+import { RVSP_EXPERIMENT } from '../fixtures/rvsp';
 import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
 import { deriveArtifacts, deriveKnowledge, deriveRunSummary } from './projections';
 import { projectedEventSchema } from './schemas';
@@ -25,8 +26,10 @@ import {
   loadKnowledge,
   loadRunEvents,
   loadRunSummaries,
+  loadRvsP,
   loadStepEvidence,
-  runEventsQueryOptions
+  runEventsQueryOptions,
+  rvspQueryOptions
 } from './queries';
 
 vi.mock('../gatewayClient', () => ({
@@ -320,5 +323,45 @@ describe('ablationQueryOptions', () => {
   it('arma la queryKey por runId', () => {
     const options = ablationQueryOptions('run-42');
     expect(options.queryKey).toEqual(['runs', 'run-42', 'ablation']);
+  });
+});
+
+/**
+ * D5 (dataviz "r vs p") — mismo patrón AAA que loadAblation: demo sirve el
+ * experimento real copiado a fixture; en vivo, sin `GET /rvsp` todavía,
+ * "nada" es `null` (no `[]` — este recurso es un objeto único, no lista).
+ */
+describe('loadRvsP (rama demo/live)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('modo demo: devuelve el experimento r-vs-p del fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', undefined);
+
+    // Act
+    const experiment = await loadRvsP();
+
+    // Assert
+    expect(experiment).toEqual(RVSP_EXPERIMENT);
+  });
+
+  it('modo live: sin GET /rvsp todavía — devuelve null, nunca el fixture', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+
+    // Act
+    const experiment = await loadRvsP();
+
+    // Assert
+    expect(experiment).toBeNull();
+  });
+});
+
+describe('rvspQueryOptions', () => {
+  it('arma la queryKey por runId', () => {
+    const options = rvspQueryOptions('run-42');
+    expect(options.queryKey).toEqual(['runs', 'run-42', 'rvsp']);
   });
 });

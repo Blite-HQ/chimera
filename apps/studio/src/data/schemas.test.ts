@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
 import { RUN_EVENTS } from '../fixtures/runEvents';
+import { RVSP_EXPERIMENT } from '../fixtures/rvsp';
 import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
 import {
   ablationMetricSchema,
   projectedEventSchema,
+  rvspSchema,
   sseProjectedEventSchema,
   stepDetailSchema,
   toProjectedEvent,
@@ -18,6 +20,7 @@ describe('schemas de la frontera (F3)', () => {
     expect(() => RUN_EVENTS.map(e => projectedEventSchema.parse(e))).not.toThrow();
     expect(() => Object.values(STEP_EVIDENCE).map(s => stepDetailSchema.parse(s))).not.toThrow();
     expect(() => ABLATION_METRICS.map(m => ablationMetricSchema.parse(m))).not.toThrow();
+    expect(() => rvspSchema.parse(RVSP_EXPERIMENT)).not.toThrow();
     expect(() => wireEnvelopeSchema.parse(EXAMPLE_CERTIFICATE_WIRE)).not.toThrow();
   });
 
@@ -107,5 +110,31 @@ describe('schemas de la frontera (F3)', () => {
     const projected = toProjectedEvent(wire);
     expect(projected.verdict).toBe('pass');
     expect(projected.assurance).toBeUndefined();
+  });
+});
+
+describe('rvspSchema (D5 — dataviz "r vs p")', () => {
+  it('rechaza un punto con r fuera de [0, 1] (frontera — un dato corrupto explota acá)', () => {
+    const corrupted = {
+      ...RVSP_EXPERIMENT,
+      points: [{ ...RVSP_EXPERIMENT.points[0]!, rMuestralMean: 1.4 }]
+    };
+    expect(() => rvspSchema.parse(corrupted)).toThrow();
+  });
+
+  it('rechaza p no entero o no positivo', () => {
+    const corrupted = { ...RVSP_EXPERIMENT, points: [{ ...RVSP_EXPERIMENT.points[0]!, p: 0 }] };
+    expect(() => rvspSchema.parse(corrupted)).toThrow();
+  });
+
+  it('rechaza cuando falta un baseline', () => {
+    const corrupted = {
+      ...RVSP_EXPERIMENT,
+      baselines: {
+        cpsat: RVSP_EXPERIMENT.baselines.cpsat,
+        greedy: RVSP_EXPERIMENT.baselines.greedy
+      }
+    };
+    expect(() => rvspSchema.parse(corrupted)).toThrow();
   });
 });

@@ -14,6 +14,7 @@ import { getCertificate } from '../gatewayClient';
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
 import { RUN_EVENTS } from '../fixtures/runEvents';
+import { RVSP_EXPERIMENT } from '../fixtures/rvsp';
 import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
 import { decodeEnvelope } from './certificateCodec';
 import { isLiveMode } from './env';
@@ -21,6 +22,7 @@ import { deriveArtifacts, deriveKnowledge, deriveRunSummary } from './projection
 import {
   ablationMetricSchema,
   projectedEventSchema,
+  rvspSchema,
   stepDetailSchema,
   wireEnvelopeSchema
 } from './schemas';
@@ -32,6 +34,7 @@ import type {
   ProjectArtifact,
   ProjectedEvent,
   RunSummary,
+  RvsPExperiment,
   StepDetail
 } from '../views/types';
 
@@ -188,5 +191,26 @@ export function ablationQueryOptions(runId: string) {
   return queryOptions({
     queryKey: ['runs', runId, 'ablation'] as const,
     queryFn: loadAblation
+  });
+}
+
+/**
+ * D5 (dataviz "r vs p") — rama demo/live: sin `GET /rvsp` todavía (ver
+ * loadRunSummaries). A diferencia de los recursos en lista (`[]` vacío),
+ * este es un experimento único por instancia, así que "nada todavía" en
+ * vivo es `null`, no un array — el consumidor (App.tsx) lo trata igual que
+ * las demás ramas vacías: EmptyState, jamás el fixture inventado.
+ */
+export async function loadRvsP(): Promise<RvsPExperiment | null> {
+  if (isLiveMode()) {
+    return null;
+  }
+  return rvspSchema.parse(RVSP_EXPERIMENT);
+}
+
+export function rvspQueryOptions(runId: string) {
+  return queryOptions({
+    queryKey: ['runs', runId, 'rvsp'] as const,
+    queryFn: loadRvsP
   });
 }

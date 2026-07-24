@@ -222,6 +222,57 @@ export interface AblationMetric {
 }
 
 /**
+ * D5 (dataviz "r vs p") — un baseline clásico/exacto contra el que QAOA se
+ * mide: `r = energía / óptimo` (o su análogo de corte), SIN barras de error
+ * porque es determinista (un solo run, no N semillas).
+ */
+export interface RvsPBaseline {
+  readonly energy: number;
+  readonly r: number;
+}
+
+/**
+ * D5 — una fila de la curva r-vs-p para un valor de profundidad `p` de
+ * QAOA, agregando sobre las semillas del experimento (`config.seeds` de la
+ * fuente científica). Dos curvas honestas conviven en la misma fila
+ * (decisión #21 — no trivializar con best-of-shots):
+ * - `rEsperadoMean`: valor esperado ⟨C⟩ (`r_esperado.mean`) — independiente
+ *   de la semilla, por eso NO trae std/min/max (son ≈0 por construcción).
+ * - `rMuestralMean`/`rMuestralStd`/`rMuestralMin`/`rMuestralMax`: el
+ *   muestreo real (`r_muestral`) — ESTA es la curva con barras de error.
+ * - `successRate`: fracción de semillas cuyo mejor shot alcanzó el óptimo
+ *   (`success_rate`) — se muestra en la tabla, etiquetado honestamente,
+ *   nunca como titular (es trivialmente 1.0 en esta instancia pequeña).
+ */
+export interface RvsPPoint {
+  readonly p: number;
+  readonly rEsperadoMean: number;
+  readonly rMuestralMean: number;
+  readonly rMuestralStd: number;
+  readonly rMuestralMin: number;
+  readonly rMuestralMax: number;
+  readonly successRate: number;
+}
+
+/**
+ * D5 — el experimento r-vs-p completo de una instancia (fuente: la
+ * ciencia real `results/exp_r_vs_p/<instancia>.json`, NO `AblationMetric[]`
+ * — divergencia deliberada de spec `superficie-visual.md` §5, registrada en
+ * `docs/mvp/decisiones.md`: esa forma no tiene eje `p` ni barras de error,
+ * no puede expresar esta curva). Consumido por `RvsPChart`.
+ */
+export interface RvsPExperiment {
+  readonly instance: string;
+  readonly optimo: number;
+  readonly baselines: {
+    readonly cpsat: RvsPBaseline;
+    readonly greedy: RvsPBaseline;
+    readonly gw: RvsPBaseline;
+  };
+  readonly points: readonly RvsPPoint[];
+}
+
+/**
  * MVP task 2 — el form de "Nuevo run" (NewRunView), consumido también por
  * `src/data/mutations.ts` (el mapper hacia el contrato plan-01 de
  * `POST /runs`). Vive acá — no en data/mutations.ts — porque es la vista la

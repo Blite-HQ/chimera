@@ -17,6 +17,7 @@ import {
   knowledgeQueryOptions,
   runEventsQueryOptions,
   runSummariesQueryOptions,
+  rvspQueryOptions,
   stepEvidenceQueryOptions
 } from './data/queries';
 import { useRunEventStream } from './data/useRunEventStream';
@@ -32,6 +33,7 @@ import ProvenanceExplorer from './views/ProvenanceExplorer';
 import RunDetail from './views/RunDetail';
 import RunsView from './views/RunsView';
 import RunTimeline from './views/RunTimeline';
+import RvsPChart from './views/RvsPChart';
 import StepInspector from './views/StepInspector';
 import { usePlaybackReveal } from './views/usePlaybackReveal';
 
@@ -116,6 +118,7 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
   const stepsQuery = useQuery(stepEvidenceQueryOptions(runId));
   const certificateQuery = useQuery(certificateQueryOptions(runId));
   const ablationQuery = useQuery(ablationQueryOptions(runId));
+  const rvspQuery = useQuery(rvspQueryOptions(runId));
 
   const runEvents = eventsQuery.data ?? [];
   const { revealedEvents, playback } = usePlaybackReveal(runEvents);
@@ -186,7 +189,27 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
     </div>
   );
 
-  const ablacion = ablationQuery.isPending ? (
+  // D5 (dataviz "r vs p") — contenido PRIMARIO de la sub-tab "Ablación": la
+  // curva r-vs-p real de la ciencia (ver RvsPChart.tsx, divergencia
+  // deliberada de spec superficie-visual.md §5). Sin endpoint en vivo
+  // todavía (rvspQueryOptions), mismo patrón de EmptyState que el resto.
+  const rvspSection = rvspQuery.isPending ? (
+    <LoadingState label="Cargando la curva r vs p" />
+  ) : rvspQuery.isError ? (
+    <ErrorState message={rvspQuery.error.message} onRetry={() => void rvspQuery.refetch()} />
+  ) : rvspQuery.data === null ? (
+    <EmptyState
+      title="Sin curva r vs p todavía."
+      hint="Esta vista solo existe en modo réplica hoy — el endpoint en vivo llega con un run comparativo real."
+    />
+  ) : (
+    <RvsPChart experiment={rvspQuery.data} />
+  );
+
+  // Contenido SECUNDARIO: la ablación cuántico vs. clásico ya existente
+  // (nota 07 §1.3) — ambas son vistas honestas de ablación, conviven en la
+  // misma sub-tab (D5 no reemplaza AblationPanel, lo complementa).
+  const ablationSection = ablationQuery.isPending ? (
     <LoadingState label="Cargando las métricas de ablación" />
   ) : ablationQuery.isError ? (
     <ErrorState
@@ -199,8 +222,18 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
       hint="Ejecute un run comparativo (cuántico vs. clásico) para poblar esta vista."
     />
   ) : (
-    <div className="mx-auto max-w-5xl">
-      <AblationPanel metrics={ablationQuery.data} />
+    <AblationPanel metrics={ablationQuery.data} />
+  );
+
+  const ablacion = (
+    <div className="mx-auto flex max-w-5xl flex-col gap-8">
+      {rvspSection}
+      <div className="flex flex-col gap-4 border-t border-border pt-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Ablación — cuántico vs. clásico
+        </h3>
+        {ablationSection}
+      </div>
     </div>
   );
 
