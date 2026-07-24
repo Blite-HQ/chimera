@@ -62,6 +62,8 @@
 | 66  | 07-24 | Planeado | A · Harness (frontera runtime §13/§8)               | **Ceremonia de supersede A1** — "pipeline fijo Fase 1" (freeze §13, `loop.py` "NO ReAct/NO plan-execute") → **loop agéntico Planeado** (P4). Diseño de los 5 componentes R1: (1) loop plano proponer→gobernar(8 etapas §8)→ejecutar→journalizar→verificar, el modelo propone y el harness es el único que ejecuta, cada transición = evento inmutable; (2) plan como artefacto en el stream (`plan.created`/`plan.item_updated` sobre `●PlanCreated` §14), ítems `{id, description, verification, status}`; replanificar = append con causa, JAMÁS re-entrada al gateway (respeta §8); (3) terminación triple: `max_turns` (~30) + budget declarado al crear el run + gate de verificación (done ⟺ verifier pasa; agotar budget ⇒ `exhausted`, nunca done implícito); (4) el agente elige sub-runs del registry (limpia el set hardcodeado formular/QAOA/baseline/verificar de §13) — sub-run = unidad que produce claims que el certificado citará; (5) replay por digest de cada efecto + evento `replay.divergence` (certificado verifica ⟺ replay fiel). Sobre `ModelPort`/`ModelServer`+backend `replay` (§15.7). Se materializa en `docs/specs/harness-agentico.md`; **NO se edita `contract-freeze.md`**. | El mandato (Chimera genera, no solo verifica) exige el loop; el freeze §13 congeló lo contrario a propósito. R1 y `execution/03` convergen en "loop plano, durabilidad por replay del stream, NO motor nuevo". La ceremonia registra la supersesión con causa (regla 3 del freeze) sin tocar código. | **PENDIENTE-Steven** (es su plano §13/§8): ratifica ANTES de tocar `loop.py`. Si no ratifica, A3 avanza sobre este diseño registrado (regla del plan). Revertir = volver al pipeline fijo de `loop.py` y borrar `harness-agentico.md`. |
 | 67  | 07-24 | Planeado | transversal (contratos/costura)                     | **Convención de fixtures de costura** (Fase 0, regla NUEVA #1 de `05`): un solo origen — modelos Pydantic del engine/sdk → JSON canónico (JCS/RFC-8785) emitido por un generador bajo `scripts/` (patrón `gen-example-bundle.py`), canónico en `tests/fixtures/contract/<spec>/`, **espejado** a `apps/studio/src/fixtures/contract/<spec>/` (Vite importa solo dentro de `src/`); parseado por el seed Pydantic Y por el Zod espejo (`schemas.ts`); test anti-drift byte-idéntico. **NO codegen Pydantic→Zod** (build-step pesado, descartado). Documentado en `docs/specs/README.md` §"Specs de costura". Fase 0 entrega spec+seed (`@pytest.mark.seed`+`xfail`); el fixture verde lo da el dueño en Fase 1 donde el modelo origen aún no existe. | Los 6 queries del Studio con fixtures divergentes del API real fueron LA lección del MVP; el origen único vuelve "cambiar una costura sin regenerar su fixture = defecto" enforceable en gate (el generador falla-fuerte). | Quitar la sección del README y los dirs `*/fixtures/contract/`; cada dominio volvería a fixtures propios (el defecto corregido). |
 | 68  | 07-24 | Planeado | A · Harness / confianza (freeze §14/§3 delta)       | **Eventos nuevos de la capa agéntica** — las specs introducen wire events que §14/§3 aún no listan: `plan.item_updated` (↔ `●PlanItemUpdated`), `replay.divergence` (↔ `●ReplayDivergenceDetected`), `approval.requested`/`approval.responded` (↔ `●ApprovalRequested`/`●ApprovalResponded`); `external_certificate.imported` (↔ `●ExternalCertificateImported`, ya reservado §14); más campos ADITIVOS `run.created.{max_turns, budget}` y el valor `run.failed{error_kind:"exhausted"}`. `plan.created`/`claim.emitted` ya existen. Se especifican en las 6 specs; NO se edita `contract-freeze.md`. Costura de naming: el Studio usa `capability.job.invoked`, el canónico es `capability.job.submitted` (§3/§14 C4) — el mirror del Studio se alinea en Fase 1 (D3). | Los eventos materializan el loop agéntico (#66) y la evidencia importada (#64a); registrarlos como delta explícito evita que entren sin ratificación (regla 3 del freeze). | **PENDIENTE-Steven** (§14/§3 [confianza/frontera]; misma ceremonia que #66). Los `●` y campos aditivos se revierten quitando su entrada del catálogo; ninguno debilita formas congeladas. |
+| 69  | 07-24 | Planeado | E · API (`endpoints-studio.md`) | **E1 — semántica de proyección de las 6 rutas de lectura.** `GET /runs` porta `deriveRunSummary` server-side: `status="completado"` sii hay `run.completed` (el enum wire congelado no distingue failed/cancelled → `en_curso`); `verdict` emite el `ConclusionVerdict` del certificado (`verified`/`refuted`/`inconclusive`/`not_required_declared`), **NO** `pass\|fail\|inconclusive` — la prosa Zod de `runSummaryWireSchema.verdict` en la spec se LEE como `conclusionVerdict` (pin E↔D para el mirror de D3). Sin certificado (run vivo / sin ticket / `AssembleError`): defaults honestos (`"Sin conclusión registrada"`, `inconclusive`, `AL0`, `formal_exact`) para `/runs`; `[]` para `/artifacts`·`/knowledge`·`/ablation`; envelope vacío `{topology_ref:"",islands:[],cut_branch_ids:[],cut_cost:0}` para `/topology`; `attestations:[]` para step sin verificar. El certificado se proyecta reusando `assemble_bundle` + decode del payload DSSE (mismo helper que `get_certificate`). `/topology` pasa el payload de partición **INTACTO** (verification por-isla, §9). `run_id`/`step_id` desconocido → 404 (nunca 200 fabricado). | Un solo origen de verdad E↔D (portar la derivación del cliente mata la deriva mock-vs-real del MVP); fail-closed idéntico a `certificate.py::get_certificate`. | Quitar `create_reads_router` de `create_app`; las formas son aditivas, no tocan nada congelado (`project_runs`/`assemble_bundle` intactos). |
+| 70  | 07-24 | Planeado | E · API (costuras E↔A/E↔D destapadas en Fase 1) | **Huecos que E1 destapa, a cerrar por su dueño — E no los resuelve inventando binding:** (a) `verification.completed` real NO estampa `step_id` top-level (el orquestador emite `{claim_digest,verifier_id,verdict,attestation}`) → `/runs/{id}/steps/{step}/evidence` da `attestations:[]` para runs reales hasta que **A** estampe `step_id` (lo tiene en `PostInvokeContext`). (b) `POST /runs` (`runs.py`) no pasa `deliverables=` a `assemble_bundle` → `/artifacts` da `[]` aun en golden path (hueco Task **B**). (c) `run.metrics.recorded` (ablación) y el payload de partición (`islands`, topología) no los emite ningún run hoy → `[]`/envelope vacío contra runs reales (emisores: ciencia **B** / harness **A**). Las 6 rutas sirven **VIVO** (uvicorn + httpx, socket TCP real): `/runs` lista golden `completado`/`verified`/AL3 + `/knowledge` la conclusión AL3 real + 404 fail-closed + topología por-isla intacta + SSE aditivo fluyendo. Docker no está en este WSL: el smoke compose containerizado queda para Dylan. | Honestidad > conveniencia: E expone la forma congelada y deja `[]`/envelope vacío donde el emisor aún no produce, con la costura flaggeada, en vez de fabricar. | Cada gap se cierra en su dominio (A: step_id; B: deliverables/metrics; A/ciencia: partición) sin tocar `reads.py`. |
 
 ## Sesión Fase 0 — contratos de costura (worktree `planeado/contratos`, 2026-07-24)
 
@@ -79,3 +81,48 @@
 | `capability-ingesta.md` (B↔A) · `evidencia-externa.md` (B) · `informe-derivado.md` (C↔B) + 3 seeds | B, A, C | SPEC+SEED (xfail) |
 | `superficie-visual.md` (D↔E↔A) · `endpoints-studio.md` (E↔D) + 2 seeds | D, E, A | SPEC+SEED (`superficie` verde, `endpoints` xfail) |
 | Costura naming `capability.job.invoked`→`submitted` (Studio mirror) | D (Studio) | PENDIENTE Fase 1 (D3) |
+
+## Sesión Fase 1 — Dominio E · API (worktree `planeado/api`, 2026-07-24)
+
+**Estado: E1 + E2 VERDES, integración viva OK — lado E del checkpoint 2 listo.**
+E1 (`chimera_api/reads.py`, 6 rutas GET) y E2 (lock del contrato SSE aditivo) sobre
+`planeado/base`. Delegado a subagente Sonnet (E1) con TDD; Opus validó cada gate y
+revisó el código. Decisiones #69–#70 (renumerar si colisionan con B/C al merge — el
+ledger es compartido y hay sesiones paralelas). El otro lado del checkpoint es **D3**
+(egress del Studio contra estas rutas), que programa contra las formas de #69.
+
+**Gates (worktree `planeado/api`):** ruff `All checks passed`; ruff format 170/170;
+lint-imports 12 kept/0 broken; pytest **469 passed**, cov **91.48%** (≥30). **pyright:**
+la superficie de E está 100% limpia (0 err en `reads.py`/`app.py`/`test_reads.py`/
+`test_sse_superficie.py`/`test_seed_endpoints_rutas.py`); el whole-repo marca 68 err
+pre-existentes, TODOS en seeds de contrato de otros dominios (A/B/C) que referencian
+módulos aún no implementados en su Fase 1 — baseline pre-rojo verificado por stash
+(103 sin cambios = 103 con cambios; limpié mi seed 36→0, quedan 68). "4 gates verdes"
+bajo Fase 1 paralela = **cero errores nuevos + superficie del dominio limpia** (el
+whole-repo no puede estar verde hasta que A/B/C aterricen sus módulos — fuera del
+alcance de E, no se tocan).
+
+**Integración viva (DoD regla #2):** Docker no está en este WSL distro, así que el
+smoke compose containerizado no corrió acá. Equivalente alcanzable ejecutado: `create_app`
+bajo **uvicorn real** + httpx sobre **socket TCP** (round-trip HTTP genuino, no el ASGI
+in-memory del TestClient). Las 6 rutas + el SSE aditivo respondieron correcto y honesto
+(golden `verified`/AL3 enriquecido, topología por-isla intacta, 404 fail-closed, plan/
+aprobación fluyendo por SSE). Hallazgo del smoke: `GET /runs` hereda el fail-loud de
+`project_runs` ante un `run.created` sin `max_steps` (freeze §3 — explota a propósito, no
+rellena defaults); el engine SIEMPRE lo estampa, así que solo un stream hand-seeded
+malformado lo dispara — robustez a considerar en Mejorado (proyección parcial-tolerante),
+sin tocar la proyección congelada ahora. **Para Dylan:** el smoke containerizado queda
+pendiente — `docker compose up -d postgres api && curl :8000/runs` (o `smoke_infra.sh`).
+
+### Tabla de interacciones (regla NUEVA #3)
+
+| Interfaz tocada | Dominio afectado | Estado del contrato |
+| --- | --- | --- |
+| `chimera_api.reads` — 6 rutas GET (`/runs`, `/runs/{id}/artifacts`, `/knowledge`, `/steps/{step}/evidence`, `/ablation`, `/topology`) | E↔D (D3 egress) | **VERDE** — rutas vivas; seed `test_seed_endpoints_rutas.py` verde; D3 programa contra las formas de #69 |
+| Pin E↔D: `verdict` de `/runs`+`/knowledge` = `ConclusionVerdict` (no `pass\|fail\|inconclusive`) | E↔D (mirror Zod de D3) | **PIN** — la prosa `runSummaryWireSchema.verdict` de la spec se lee como `conclusionVerdict` |
+| SSE aditivo `plan.*`/`approval.*`/partición sobre `GET /runs/{id}/events` | E↔D↔A | **VERDE (E2)** — proyección type-agnostic transporta intacto; test end-to-end lock (`test_sse_superficie.py`) |
+| `verification.completed` sin `step_id` top-level → step-evidence `attestations:[]` | E↔A (orquestador) | **PENDIENTE A** — A estampa `step_id` (lo tiene en `PostInvokeContext`) |
+| `RunTicket` sin `deliverables` → `/artifacts` `[]` aun en golden | E↔A (Task B, `runs.py`) | **PENDIENTE B** — declarar `deliverables` en el ticket |
+| Emisores de `run.metrics.recorded` (ablación) y partición `islands` (topología) | E↔B/A (ciencia/harness) | **PENDIENTE** — E sirve la forma; el emisor la produce |
+| Studio `KNOWN_RUN_EVENT_TYPES` sin `plan.*`/`approval.*` | D (Studio, D6) | **PENDIENTE D** — el SSE ya los emite; el mirror del Studio debe escucharlos |
+| Naming `capability.job.invoked`→`submitted` (heredado #68) | D3 | **PENDIENTE D** (sin cambio en E — E ya proyecta `.submitted`) |
