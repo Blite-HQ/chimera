@@ -11,19 +11,11 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 Dylan+Steven: plan.created/plan.item_updated "
-            "(blite.runtime.plan), max_turns/budget en execute_run + "
-            "EXHAUSTED_ERROR_KIND (blite.runtime.loop), y sub_run_id en "
-            "ClaimEmittedPayload (blite.verification.claim) — ver "
-            "docs/specs/harness-agentico.md"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
+"""A3 (plan.created/plan.item_updated, max_turns/budget, EXHAUSTED_ERROR_KIND)
+y A4 (sub_run_id en ClaimEmittedPayload) implementados — los 5 tests de este
+seed pasan en verde; el `xfail` se retira (docs/specs/README.md §"Specs de
+costura": el dueño implementa y quita el xfail al cerrar)."""
 
 
 def test_plan_created_payload_shape_and_closed_status_set() -> None:

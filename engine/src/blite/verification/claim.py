@@ -53,7 +53,19 @@ class ClaimEmittedPayload(BaseModel):
     irreversible: bool = False
     affects_third_party: bool = False
     sub_run_provenance_hash: str | None = Field(default=None, pattern=_SHA256_HEX)
-    """Run jerárquico (§13): el claim de un sub-run viaja con su hash."""
+    """Run jerárquico (§13 regla 2): el claim de un sub-run viaja con su
+    hash — el hash ENCADENA (Merkle-style) el trabajo del sub-run dentro del
+    corte de procedencia del raíz."""
+    sub_run_id: str | None = None
+    """Run jerárquico (§13 regla 2, campo gemelo del hash — docs/specs/
+    harness-agentico.md §Contrato-4): el `sub_run_id` CORRELACIONA el claim
+    con el sub-run que lo aportó. Ninguno de los dos basta solo: el hash sin
+    id no dice DE QUÉ sub-run viene el trabajo amparado; el id sin hash es
+    "un puntero sin integridad" (freeze §13) — un sub-run_id fabricado
+    apuntaría a un run real sin que el certificado lo pueda atar a un
+    contenido específico. Ambos viajan siempre juntos en la práctica (quien
+    aporta un claim de sub-run conoce los dos), pero se declaran como campos
+    independientes porque cada uno responde una pregunta distinta."""
 
 
 def computed_criticality(payload: ClaimEmittedPayload) -> Criticality:

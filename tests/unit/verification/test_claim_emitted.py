@@ -43,6 +43,26 @@ class TestPortadores:
         )
         assert payload.sub_run_provenance_hash == "a" * 64
 
+    def test_sub_run_id_opcional_correlaciona_con_el_hash(self) -> None:
+        # freeze §13 regla 2: "el hash encadena, el id correlaciona" — ambos
+        # campos son gemelos, uno solo no basta (A4).
+        assert "sub_run_id" in ClaimEmittedPayload.model_fields
+        payload = ClaimEmittedPayload(
+            claim_digest=DIGEST,
+            claim_type="solution",
+            is_conclusion=True,
+            sub_run_id="run-sub-1",
+            sub_run_provenance_hash="a" * 64,
+        )
+        assert payload.sub_run_id == "run-sub-1"
+        assert payload.sub_run_provenance_hash == "a" * 64
+
+    def test_sub_run_id_es_none_por_defecto(self) -> None:
+        payload = ClaimEmittedPayload(
+            claim_digest=DIGEST, claim_type="solution", is_conclusion=True
+        )
+        assert payload.sub_run_id is None
+
 
 class TestCriticidadComputada:
     def test_conclusion_es_c3_intermedia_es_c1(self) -> None:
