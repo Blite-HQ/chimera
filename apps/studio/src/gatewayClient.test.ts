@@ -267,7 +267,9 @@ describe('openRunEventStream', () => {
         actor_id: 'service:verifier',
         occurred_at: '2026-07-22T12:00:04.000000Z',
         resumen: 'Verificación formal exacta (AL3)',
-        payload: { verification: { verdict: 'pass' } }
+        // Wire real del orquestador: el verdict vive en payload.verdict
+        // (top level), no en payload.verification.verdict.
+        payload: { verdict: 'pass' }
       })
     );
 

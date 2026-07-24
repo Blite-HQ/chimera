@@ -20,6 +20,18 @@ import type { AnchorKind, Verdict } from '../spike/ieee14';
 
 export type { AnchorKind, AssuranceLevel, ConclusionVerdict, Verdict, VerifierClass };
 
+/**
+ * MVP task 4 — clase+AL de un evento `verification.completed`, tomado de
+ * `payload.attestation.{verifier_class, level}` (wire real del
+ * orquestador). Nota 18 §5 permite props de capa UI adaptables además del
+ * wire congelado; este campo es aditivo y opcional para no romper eventos
+ * sin attestation (p. ej. `claim.emitted`).
+ */
+export interface EventAssurance {
+  readonly verifierClass: VerifierClass | string; // wire crudo; se etiqueta con classLabel()
+  readonly level: AssuranceLevel;
+}
+
 /** nota 18 §2.1 — consumed by RunTimeline and ProvenanceExplorer. */
 export interface ProjectedEvent {
   readonly globalSeq: number;
@@ -29,6 +41,7 @@ export interface ProjectedEvent {
   readonly stepId?: string;
   readonly resumen: string;
   readonly verdict?: Verdict; // presente si el evento representa un resultado
+  readonly assurance?: EventAssurance; // MVP task 4 — solo verification.completed
 }
 
 /** nota 18 §2.1 — fixture/demo-only playback simulation for RunTimeline. */

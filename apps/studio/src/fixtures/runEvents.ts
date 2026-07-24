@@ -44,7 +44,8 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     occurredAt: '2026-07-07T17:59:51.500Z',
     stepId: 'step-solver',
     resumen: 'Verificación formal exacta (AL3): corte óptimo confirmado',
-    verdict: 'pass'
+    verdict: 'pass',
+    assurance: { verifierClass: 'formal_exact', level: 'AL3' }
   },
   {
     globalSeq: 5,
@@ -69,7 +70,8 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     occurredAt: '2026-07-07T17:59:53.400Z',
     stepId: 'step-execution-a',
     resumen: 'Verificación por ejecución (AL3): Isla A factible',
-    verdict: 'pass'
+    verdict: 'pass',
+    assurance: { verifierClass: 'execution', level: 'AL3' }
   },
   {
     globalSeq: 8,
@@ -94,7 +96,8 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     occurredAt: '2026-07-07T17:59:55.600Z',
     stepId: 'step-execution-b',
     resumen: 'Verificación por ejecución (AL3): Isla B factible',
-    verdict: 'pass'
+    verdict: 'pass',
+    assurance: { verifierClass: 'execution', level: 'AL3' }
   },
   {
     globalSeq: 11,
@@ -119,7 +122,8 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     occurredAt: '2026-07-07T17:59:58.100Z',
     stepId: 'step-dataset',
     resumen: 'Verificación contra verdad conocida (AL3): coincide con el corpus',
-    verdict: 'pass'
+    verdict: 'pass',
+    assurance: { verifierClass: 'ground_truth', level: 'AL3' }
   },
   {
     globalSeq: 14,

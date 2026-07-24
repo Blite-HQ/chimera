@@ -20,6 +20,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { AssuranceBadge } from '@chimera/assurance-ui';
 
 import type { PlaybackControls, ProjectedEvent } from './types';
 
@@ -70,6 +71,32 @@ function formatTime(occurredAt: string): string {
   return date.toISOString().slice(11, 23);
 }
 
+/**
+ * MVP task 4 — la confianza (o su ausencia) de un evento, en el orden de
+ * prioridad del brief: `assurance` gana siempre (AssuranceBadge clase+AL +
+ * veredicto); si no hay assurance pero sí veredicto, el Badge plano de
+ * siempre; `claim.emitted` (sin veredicto todavía) se marca como
+ * declaración; cualquier otro evento no lleva badge.
+ */
+function EventBadge({ event }: { readonly event: ProjectedEvent }): React.ReactElement | null {
+  if (event.assurance) {
+    return (
+      <AssuranceBadge
+        level={event.assurance.level}
+        verdict={event.verdict ?? 'inconclusive'}
+        verifierClass={event.assurance.verifierClass}
+      />
+    );
+  }
+  if (event.verdict) {
+    return <Badge variant={event.verdict}>{event.verdict}</Badge>;
+  }
+  if (event.type === 'claim.emitted') {
+    return <Badge variant="outline">claim declarado</Badge>;
+  }
+  return null;
+}
+
 interface EventRowProps {
   readonly event: ProjectedEvent;
   readonly isSelected: boolean;
@@ -92,7 +119,7 @@ function EventRow({ event, isSelected, onSelectEvent }: EventRowProps): React.Re
           <span className="font-mono text-xs text-muted-foreground">
             {formatTime(event.occurredAt)}
           </span>
-          {event.verdict && <Badge variant={event.verdict}>{event.verdict}</Badge>}
+          <EventBadge event={event} />
         </div>
         <p className="text-foreground">{event.resumen}</p>
         <p className="font-mono text-xs text-muted-foreground">
