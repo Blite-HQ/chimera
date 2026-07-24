@@ -1,0 +1,8 @@
+{
+  "actual_response_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "effect_kind": "model_call",
+  "expected_response_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "request_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "run_id": "run-1",
+  "step_id": "step-1"
+}

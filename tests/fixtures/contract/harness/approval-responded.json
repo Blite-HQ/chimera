@@ -1,0 +1,8 @@
+{
+  "approval_id": "approval-1",
+  "authorized_by": "user:dylan",
+  "response": {
+    "aprobado": true
+  },
+  "run_id": "run-1"
+}

@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "description": "formular el QUBO del corte máximo",
+      "id": "item-1",
+      "status": "pending",
+      "verification": "formal_exact"
+    }
+  ],
+  "plan_id": "plan-run-1",
+  "run_id": "run-1"
+}
