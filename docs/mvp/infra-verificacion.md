@@ -33,6 +33,13 @@ ejecutar `uvicorn`. El archivo real `secrets/postgres_password.txt` está gitign
 `scripts/smoke_infra.sh` lo crea a partir de `secrets/postgres_password.txt.example`
 si falta, para que un clon nuevo del repo funcione sin pasos manuales.
 
+> Para un bring-up **manual** (sin el smoke): `cp secrets/postgres_password.txt.example
+> secrets/postgres_password.txt`. El `.example` es **una sola línea** con un password
+> **URL-safe** (sin `@ : / #`, espacios ni saltos de línea): tanto `postgres`
+> (`POSTGRES_PASSWORD_FILE`) como el entrypoint leen el archivo *entero*, y el entrypoint
+> lo embebe en `CHIMERA_DATABASE_URL` — un comentario o un carácter no-URL rompería el DSN
+> (decisión #13). Para uso real, sustituílo por un secreto fuerte que cumpla esa regla.
+
 ## Qué prueba el smoke (y qué NO)
 
 El api hoy solo expone `GET /health` y `GET /runs/{run_id}/events` (SSE) — no existe
