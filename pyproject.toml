@@ -5,6 +5,19 @@ description = "Workspace root — tooling and invariant tests for the Chimera mo
 readme = "README.md"
 requires-python = ">=3.12"
 
+[tool.uv]
+# highspy 1.15.x (dependencia transitiva de cvxpy, vía el extra [gw] de
+# blite-cap-graphs y la dependencia directa de chimera-engine) rompe con
+# "undefined symbol: _ZN5Highs13releaseMemoryEv" en linux cp312 — ABI
+# mismatch en el wheel publicado. HiGHS es un solver LP/MIP y no participa
+# en la SDP relaxation que usa el baseline Goemans-Williamson (cvxpy cae a
+# Clarabel/SCS), así que fijar una versión que importe limpio es puramente
+# cosmético (silencia el log ruidoso de cvxpy) — no cambia ningún resultado.
+# 1.14.0 es la versión más alta que importa sin el symbol error (verificado
+# 2026-07-24 corriendo scripts/exp_r_vs_p.py end-to-end); 1.15.0 y 1.15.1
+# están rotos en esta plataforma.
+override-dependencies = ["highspy==1.14.0"]
+
 [tool.uv.workspace]
 members = ["sdk", "engine", "api", "capabilities/*"]
 
