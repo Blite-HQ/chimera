@@ -33,15 +33,21 @@ def test_report_pdf_recompilation_is_byte_reproducible() -> None:
     # Arrange
     from blite_cap_report.pdf import compile_report
 
-    inputs = {
-        "template_digest": "sha256:" + "a" * 64,
-        "figure_digests": ("sha256:" + "b" * 64,),
-        "cifra_digests": ("sha256:" + "c" * 64,),
-    }
+    template_digest = "sha256:" + "a" * 64
+    figure_digests = ("sha256:" + "b" * 64,)
+    cifra_digests = ("sha256:" + "c" * 64,)
 
     # Act — dos compilaciones independientes de los mismos inputs pinneados
-    first = compile_report(**inputs)
-    second = compile_report(**inputs)
+    first = compile_report(
+        template_digest=template_digest,
+        figure_digests=figure_digests,
+        cifra_digests=cifra_digests,
+    )
+    second = compile_report(
+        template_digest=template_digest,
+        figure_digests=figure_digests,
+        cifra_digests=cifra_digests,
+    )
 
     # Assert
     assert first.digest == second.digest

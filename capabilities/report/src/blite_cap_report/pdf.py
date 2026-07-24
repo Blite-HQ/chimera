@@ -9,11 +9,16 @@ IDENTICAL bytes (verified same-process AND cross-process). This is the
 property that makes "verify the report = recompile and compare digests"
 (informe-derivado.md §b) more than a slogan.
 
-Binding fail-closed (C3 skeleton — informe-derivado.md §Binding
-cifra→certificado): when `certificate_conclusions` is given (even `()`),
-every cited digest MUST resolve against it, or the PDF never gets compiled.
-`certificate_conclusions=None` opts OUT of the check entirely (recompilation/
-determinism mode — no certificate to bind against yet).
+Binding fail-closed (C3 — informe-derivado.md §Binding cifra→certificado):
+when ANY of `certificate_conclusions`/`certificate_attestations`/
+`certificate_deliverables` is given (even `()`), every cited digest MUST
+resolve against their UNION (`blite_cap_report.binding.build_binding`), or
+the PDF never gets compiled. Leaving all three as `None` opts OUT of the
+check entirely (recompilation/determinism mode — no certificate to bind
+against yet). Each artifact in the verification annex also carries a `cert`
+field (`cert_id` if bound, `"unbound"` otherwise) — the visible
+`sha256:<digest> · cert:<id>` footer under each figure (informe-derivado.md
+§c "Trazabilidad visible").
 
 Data is injected into the Typst source via `sys_inputs` (see `report.typ`):
 never raw string interpolation into the template (Typst-syntax injection
@@ -34,16 +39,19 @@ from __future__ import annotations
 # pyright: reportUnknownVariableType=false, reportUnknownArgumentType=false
 import hashlib
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import resources
+from typing import Any
 
 from blite.certificate.canonical import JSONValue, canonicalize
-from blite.certificate.predicate import Conclusion
+from blite.certificate.predicate import Conclusion, Deliverable
 from blite.verification.provenance import (
     DerivationProvenance,
     DerivationRecipe,
     InputRef,
 )
+from blite_cap_report.binding import CertificateBinding, build_binding
 
 CAPABILITY_ID = "blite.report.compile_pdf"
 CAPABILITY_VERSION = "0.1.0"
@@ -53,6 +61,7 @@ MAX_PAGE_COUNT = 8
 
 _SHA256_PREFIX = "sha256:"
 _TEMPLATE_RESOURCE = ("template", "report.typ")
+_UNBOUND_CERT = "unbound"
 
 # Individual page objects, e.g. `/Type/Page/Resources ...` — the negative
 # lookahead excludes `/Type/Pages` (the page TREE node) and other siblings
@@ -101,26 +110,48 @@ def _normalize(digest: str) -> str:
     return digest.removeprefix(_SHA256_PREFIX)
 
 
-def _resolvable_digests(
-    certificate_conclusions: tuple[Conclusion, ...],
-) -> frozenset[str]:
-    """The set of digests a cited figure/cifra may resolve against. Structured
-    as its own function so C3 can extend it to attestations/deliverables
-    without touching the binding enforcement below."""
-    return frozenset(_normalize(c.claim_digest) for c in certificate_conclusions)
+def _short_digest(digest: str) -> str:
+    """`sha256:<12 hex chars>` — the "digest corto" for the visible
+    per-figure footer (informe-derivado.md §c)."""
+    return _SHA256_PREFIX + _normalize(digest)[:12]
+
+
+def _build_full_binding(
+    *,
+    cert_id: str,
+    certificate_conclusions: tuple[Conclusion, ...] | None,
+    certificate_attestations: tuple[Mapping[str, Any], ...] | None,
+    certificate_deliverables: tuple[Deliverable, ...] | None,
+) -> CertificateBinding | None:
+    """`None` only when the caller opted OUT of the binding check entirely
+    (all three left as `None` — recompilation/determinism mode). Otherwise
+    builds the UNION binding via `build_binding`, even if some parts are
+    empty (an explicit `()` still enforces — fail-closed on an empty set)."""
+    if (
+        certificate_conclusions is None
+        and certificate_attestations is None
+        and certificate_deliverables is None
+    ):
+        return None
+    return build_binding(
+        cert_id=cert_id,
+        conclusions=certificate_conclusions or (),
+        attestations=certificate_attestations or (),
+        deliverables=certificate_deliverables or (),
+    )
 
 
 def _enforce_binding(
     cited_digests: tuple[str, ...],
-    certificate_conclusions: tuple[Conclusion, ...],
+    binding: CertificateBinding,
 ) -> None:
-    resolvable = _resolvable_digests(certificate_conclusions)
     for digest in cited_digests:
-        if _normalize(digest) not in resolvable:
+        if binding.resolve(digest) is None:
             msg = (
                 f"cited digest {digest!r} does not resolve against any "
-                "certificate conclusion (informe-derivado.md §Binding "
-                "cifra→certificado — fail-closed: never an unsupported claim)"
+                "certificate conclusion/attestation/deliverable "
+                "(informe-derivado.md §Binding cifra→certificado — "
+                "fail-closed: never an unsupported claim)"
             )
             raise UncitableFigureError(msg)
 
@@ -144,12 +175,23 @@ def _params_digest(
     template_digest_value: str,
     figure_digests: tuple[str, ...],
     cifra_digests: tuple[str, ...],
+    cert_id: str,
+    binding_active: bool,
 ) -> str:
+    """`cert_id` only enters the payload when a binding is actually active —
+    with `binding_active=False` the footer always renders `"unbound"`
+    regardless of `cert_id` (it's unused), so two calls that differ ONLY in
+    an inactive `cert_id` must still collapse to the same params_digest (they
+    render byte-identical PDFs). When active, `cert_id` DOES change the
+    rendered footer/annex, so it must be part of what params_digest pins —
+    otherwise a verifier could not recompute the exact bytes from the recipe
+    alone (informe-derivado.md §b)."""
     payload: JSONValue = {
         "title": title,
         "template_digest": template_digest_value,
         "figure_digests": list(figure_digests),
         "cifra_digests": list(cifra_digests),
+        "cert_id": cert_id if binding_active else None,
     }
     return _SHA256_PREFIX + hashlib.sha256(canonicalize(payload)).hexdigest()
 
@@ -163,6 +205,15 @@ def _build_recipe(params_digest: str) -> DerivationRecipe:
     }
 
 
+def _cert_for(binding: CertificateBinding | None, digest: str) -> str:
+    """`cert_id` if `binding` resolves `digest`, `"unbound"` otherwise (no
+    binding at all, or a digest that does not resolve)."""
+    if binding is None:
+        return _UNBOUND_CERT
+    citation = binding.resolve(digest)
+    return citation.cert_id if citation is not None else _UNBOUND_CERT
+
+
 def _report_data(
     *,
     title: str,
@@ -170,18 +221,45 @@ def _report_data(
     figure_digests: tuple[str, ...],
     cifra_digests: tuple[str, ...],
     figure_count: int,
+    binding: CertificateBinding | None,
 ) -> JSONValue:
     """The verification annex data — `template.typ` reads this via
     `json(bytes(sys.inputs.data))`. Enumerates EVERY artifact (template,
-    figures, cifras) -> digest (informe-derivado.md §c)."""
+    figures, cifras) -> digest + `cert` (informe-derivado.md §c: the visible
+    `sha256:<digest> · cert:<id>` footer/annex)."""
     artifacts: list[JSONValue] = [
-        {"label": "template", "digest": template_digest_value}
+        {
+            "label": "template",
+            "digest": template_digest_value,
+            "cert": _cert_for(binding, template_digest_value),
+        }
     ]
     for index, digest in enumerate(figure_digests):
-        artifacts.append({"label": f"figure:{index}", "digest": digest})
+        artifacts.append(
+            {
+                "label": f"figure:{index}",
+                "digest": digest,
+                "cert": _cert_for(binding, digest),
+            }
+        )
     for index, digest in enumerate(cifra_digests):
-        artifacts.append({"label": f"cifra:{index}", "digest": digest})
-    figures: list[JSONValue] = [f"figure_{index}" for index in range(figure_count)]
+        artifacts.append(
+            {
+                "label": f"cifra:{index}",
+                "digest": digest,
+                "cert": _cert_for(binding, digest),
+            }
+        )
+    figures: list[JSONValue] = []
+    for index in range(figure_count):
+        digest = figure_digests[index]
+        figures.append(
+            {
+                "key": f"figure_{index}",
+                "digest_short": _short_digest(digest),
+                "cert": _cert_for(binding, digest),
+            }
+        )
     return {"title": title, "artifacts": artifacts, "figures": figures}
 
 
@@ -200,6 +278,7 @@ def _compile_typst(
     figure_digests: tuple[str, ...],
     cifra_digests: tuple[str, ...],
     figure_svgs: tuple[bytes, ...] | None,
+    binding: CertificateBinding | None,
 ) -> bytes:
     """Deterministic Typst compilation, fully in-memory: the template bytes
     plus a `sys_inputs` string map — never a real tempfile/tempdir, so no
@@ -213,6 +292,7 @@ def _compile_typst(
         figure_digests=figure_digests,
         cifra_digests=cifra_digests,
         figure_count=figure_count,
+        binding=binding,
     )
     sys_inputs: dict[str, str] = {"data": canonicalize(data).decode("utf-8")}
     if figure_svgs is not None:
@@ -228,6 +308,9 @@ def compile_report(
     figure_digests: tuple[str, ...],
     cifra_digests: tuple[str, ...],
     certificate_conclusions: tuple[Conclusion, ...] | None = None,
+    certificate_attestations: tuple[Mapping[str, Any], ...] | None = None,
+    certificate_deliverables: tuple[Deliverable, ...] | None = None,
+    cert_id: str = "",
     figure_svgs: tuple[bytes, ...] | None = None,
     run_id: str = "report",
     title: str = "Informe de derivación certificada",
@@ -235,13 +318,23 @@ def compile_report(
     """Compile the final report PDF — itself a `DerivationProvenance`
     (informe-derivado.md §b), reusing the R2 recipe shape verbatim.
 
-    `certificate_conclusions=None` skips the binding check (recompilation/
-    determinism mode). Any other value — including `()` — enforces that
-    EVERY digest in `figure_digests`/`cifra_digests` resolves against it,
-    fail-closed (`UncitableFigureError`).
+    Leaving `certificate_conclusions`/`certificate_attestations`/
+    `certificate_deliverables` ALL as `None` skips the binding check
+    (recompilation/determinism mode). Passing ANY of them — including `()` —
+    enforces that EVERY digest in `figure_digests`/`cifra_digests` resolves
+    against their UNION (C3, `blite_cap_report.binding.build_binding`),
+    fail-closed (`UncitableFigureError`). `cert_id` is the certificate that
+    binding resolves against — it also stamps the `cert:<id>` footer on every
+    resolved artifact in the verification annex.
     """
-    if certificate_conclusions is not None:
-        _enforce_binding(figure_digests + cifra_digests, certificate_conclusions)
+    binding = _build_full_binding(
+        cert_id=cert_id,
+        certificate_conclusions=certificate_conclusions,
+        certificate_attestations=certificate_attestations,
+        certificate_deliverables=certificate_deliverables,
+    )
+    if binding is not None:
+        _enforce_binding(figure_digests + cifra_digests, binding)
 
     inputs = _build_inputs(template_digest, figure_digests, cifra_digests)
     recipe = _build_recipe(
@@ -250,6 +343,8 @@ def compile_report(
             template_digest_value=template_digest,
             figure_digests=figure_digests,
             cifra_digests=cifra_digests,
+            cert_id=cert_id,
+            binding_active=binding is not None,
         )
     )
     provenance = DerivationProvenance(
@@ -262,6 +357,7 @@ def compile_report(
         figure_digests=figure_digests,
         cifra_digests=cifra_digests,
         figure_svgs=figure_svgs,
+        binding=binding,
     )
     page_count = _count_pdf_pages(pdf_bytes)
     if page_count > MAX_PAGE_COUNT:

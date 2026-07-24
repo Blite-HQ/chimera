@@ -39,8 +39,13 @@ resultado — sin volver a confiar en quien lo generó.
 #if data.figures.len() > 0 [
   == Figuras
 
-  #for key in data.figures [
-    #image(bytes(sys.inputs.at(key)), format: "svg", width: 80%)
+  #for fig in data.figures [
+    #image(bytes(sys.inputs.at(fig.key)), format: "svg", width: 80%)
+    // Pie visible por figura (patrón showyourwork, informe-derivado.md §c):
+    // la cifra citada, no solo en el anexo — al pie de la figura misma.
+    #align(center)[
+      #text(size: 9pt, fill: gray)[#fig.digest_short · cert:#fig.cert]
+    ]
     #v(0.5em)
   ]
 ]
@@ -48,7 +53,7 @@ resultado — sin volver a confiar en quien lo generó.
 == Anexo de verificación
 
 #table(
-  columns: (auto, 1fr),
-  table.header([*Artefacto*], [*Digest*]),
-  ..data.artifacts.map(a => (a.label, a.digest)).flatten()
+  columns: (auto, 1fr, auto),
+  table.header([*Artefacto*], [*Digest*], [*Certificado*]),
+  ..data.artifacts.map(a => (a.label, a.digest, a.cert)).flatten()
 )
