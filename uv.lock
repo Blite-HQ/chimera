@@ -16,6 +16,7 @@ members = [
     "blite-cap-ml",
     "blite-cap-numeric",
     "blite-cap-quantum",
+    "blite-cap-report",
     "blite-cap-sim",
     "blite-cap-smt",
     "blite-cap-solvers",
@@ -369,6 +370,28 @@ requires-dist = [
     { name = "qiskit-optimization", marker = "extra == 'qaoa'", specifier = ">=0.6" },
 ]
 provides-extras = ["qaoa", "vqe", "vqc", "dwave"]
+
+[[package]]
+name = "blite-cap-report"
+version = "0.1.0"
+source = { editable = "capabilities/report" }
+dependencies = [
+    { name = "blite-capability" },
+    { name = "chimera-engine" },
+]
+
+[package.optional-dependencies]
+plot = [
+    { name = "matplotlib" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "blite-capability", editable = "sdk" },
+    { name = "chimera-engine", editable = "engine" },
+    { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.9" },
+]
+provides-extras = ["plot"]
 
 [[package]]
 name = "blite-cap-sim"
