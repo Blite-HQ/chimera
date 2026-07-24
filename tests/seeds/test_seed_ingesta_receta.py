@@ -56,9 +56,8 @@ def test_derivation_digest_uses_the_single_canonicalization_gate() -> None:
     §Determinismo) — el digest de una instancia derivada usa el MISMO `C(x)`
     que `provenance_hash`/`claim_digest`, cero segunda copia del formateo."""
     # Arrange
-    from blite.verification.provenance import DerivationProvenance
-
     from blite.certificate.canonical import canonicalize
+    from blite.verification.provenance import DerivationProvenance
 
     provenance = DerivationProvenance(
         kind="derivation",
