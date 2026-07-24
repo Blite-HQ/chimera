@@ -1,0 +1,39 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "builder": {
+      "id": "nexus://quantinuum/H2-Emulator"
+    },
+    "externalParameters": {
+      "circuit_digest": "sha256:d67621e9e33b88b3c0d06c5716e6047674a2ce463ad87c0c18a78e531c8c73ea",
+      "shots_requested": 1024
+    },
+    "invocationId": "753d5f23-8d2d-4d93-82da-5740e04ab05f",
+    "metadata": {
+      "finishedOn": "2026-07-23T15:14:49+00:00"
+    },
+    "resolvedDependencies": [
+      {
+        "digest": {
+          "sha256": "09cb1af54552b7c97d0c6011ba84c5f698461a54527204286e260adc8cbb3d83"
+        },
+        "name": "transpiled_circuit"
+      },
+      {
+        "digest": {
+          "sha256": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136"
+        },
+        "name": "noise_model"
+      }
+    ]
+  },
+  "predicateType": "https://blite.dev/ExternalImport/v1",
+  "subject": [
+    {
+      "digest": {
+        "sha256": "5848ac4081bba7be3384deb97ba1620eb68c42c7fae425a6dfc45ab4fa4171fa"
+      },
+      "name": "nexus-job:753d5f23-8d2d-4d93-82da-5740e04ab05f"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ from blite.verification.attestation import (
 from blite.verification.context import InvocationContext
 from blite.verification.evidence import (
     ClassPredicate,
+    ConsensusLeg,
     ConsensusReplicationPredicate,
     CpSatStatus,
     Differential,
@@ -43,6 +44,7 @@ __all__ = [
     "AssuranceLevel",
     "Attestation",
     "ClassPredicate",
+    "ConsensusLeg",
     "ConsensusReplicationPredicate",
     "CpSatStatus",
     "Criticality",

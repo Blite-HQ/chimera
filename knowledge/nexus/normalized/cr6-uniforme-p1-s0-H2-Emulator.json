@@ -1,0 +1,118 @@
+{
+  "normalized_counts": {
+    "backend": "H2-Emulator",
+    "bit_order": "msb-left",
+    "counts": {
+      "000100": 1,
+      "000101": 1,
+      "000110": 1,
+      "000111": 1,
+      "001000": 2,
+      "001001": 1,
+      "001010": 1,
+      "001011": 11,
+      "001100": 1,
+      "001101": 10,
+      "001110": 11,
+      "001111": 11,
+      "010000": 1,
+      "010010": 9,
+      "010011": 16,
+      "010100": 14,
+      "010101": 14,
+      "010110": 6,
+      "010111": 13,
+      "011010": 2,
+      "011011": 4,
+      "011100": 2,
+      "011101": 3,
+      "011110": 2,
+      "011111": 6,
+      "100000": 7,
+      "100010": 6,
+      "100011": 2,
+      "100100": 9,
+      "100101": 2,
+      "101000": 15,
+      "101001": 4,
+      "101010": 10,
+      "101011": 4,
+      "101100": 11,
+      "101101": 7,
+      "110000": 7,
+      "110001": 4,
+      "110010": 9,
+      "110011": 3,
+      "110100": 6,
+      "110101": 1,
+      "110111": 2,
+      "111000": 1,
+      "111001": 1,
+      "111111": 1
+    },
+    "error_params": {
+      "detail": "parametros numericos (p1/p2/p_init/p_meas/...) no expuestos por la respuesta qnexus cacheada; el dispositivo aplica el modelo de ruido H2 default de Quantinuum del lado del servidor",
+      "device": "H2-Emulator",
+      "model": "quantinuum-h2-default-noise-model",
+      "source": "device_default"
+    },
+    "noisy_simulation": true
+  },
+  "provenance": {
+    "assertions": [
+      {
+        "detail": {
+          "bit_order": "msb-left",
+          "consistent_orders": [
+            "msb-left",
+            "msb-right"
+          ],
+          "narrowed_orders": [
+            "msb-left"
+          ],
+          "reason": "unambiguous"
+        },
+        "name": "bit_order_declared",
+        "passed": true
+      },
+      {
+        "detail": {
+          "best_cut": 5,
+          "instance": "cr6-uniforme"
+        },
+        "name": "bit_order_matches_recomputed_best_cut",
+        "passed": true
+      },
+      {
+        "detail": {
+          "circuit_digest": "canonicalize({kind, instance, p, betas, gammas}) \u2014 cubre la definici\u00f3n determinista del circuito QAOA l\u00f3gico (ansatz + \u00e1ngulos); NO son bytes de circuito.",
+          "noise_config_digest": "canonicalize({kind, backend, noisy_simulation, error_params}) \u2014 error_params=None para H2-1LE (emulador sin ruido, documentado en reto1-vanilla/README.md); descriptor declarativo sin par\u00e1metros num\u00e9ricos para H2-Emulator (modelo de ruido H2 default de Quantinuum, no expuesto por la respuesta cacheada de qnexus).",
+          "transpiled_circuit_digest": "misma fuente que circuit_digest (instance/p/betas/gammas), namespace distinto ('kind') \u2014 la corrida cacheada NO trae los bytes del circuito post-AutoRebase/QASM nativo ni el HUGR compilado; esta es la MEJOR representaci\u00f3n disponible, declarada como tal (freeze \u00a711, patr\u00f3n 'ingerido\u2260ancla')."
+        },
+        "name": "digest_coverage_declared",
+        "passed": true
+      }
+    ],
+    "inputs": [
+      {
+        "digest": "d84972186731bbb06a334d9c864db9dd6d51a04d3c35ce2abd644c25d8da1266",
+        "ref": "nexus-response"
+      }
+    ],
+    "kind": "derivation",
+    "recipe": {
+      "capability": "blite.evidencia.nexus.normalize_counts",
+      "code_ref": "git:HEAD",
+      "params_digest": "sha256:66f134af7bcd960b52dfdaf64a186e85bc5d5a46af2def21c5b69b8704743e12",
+      "version": "0.1.0"
+    },
+    "run_id": "b984c195-5a19-4d6c-a12e-d53780b0d05c"
+  },
+  "source_provenance": {
+    "content_type": "application/json",
+    "http_status": null,
+    "kind": "external-source",
+    "retrieved_at": "2026-07-23T14:42:45Z",
+    "uri": "nexus://quantathon-reto1/b984c195-5a19-4d6c-a12e-d53780b0d05c"
+  }
+}
