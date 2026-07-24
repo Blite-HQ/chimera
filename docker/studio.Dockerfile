@@ -15,7 +15,8 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 
 ARG VITE_GATEWAY_URL=""
-RUN VITE_GATEWAY_URL=$VITE_GATEWAY_URL pnpm -C apps/studio run build
+ARG VITE_API_URL=""
+RUN VITE_GATEWAY_URL=$VITE_GATEWAY_URL VITE_API_URL=$VITE_API_URL pnpm -C apps/studio run build
 
 FROM nginx:1.27-alpine AS runtime
 
