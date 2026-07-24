@@ -13,16 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 Sebas+Dylan: blite.verification.provenance (DerivationProvenance/"
-            "ExternalSourceProvenance) no existe todavía — docs/specs/capability-ingesta.md"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 
 def test_derivation_provenance_carries_the_dvc_lock_shaped_recipe() -> None:

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CpSatStatus = Literal["OPTIMAL", "FEASIBLE", "INFEASIBLE", "MODEL_INVALID", "UNKNOWN"]
 
@@ -130,6 +130,24 @@ class PropertyRulePredicate(BaseModel):
     unsat_core: str | None = None
 
 
+class ConsensusLeg(BaseModel):
+    """Una pata de consenso multi-backend — freeze §11 (campos multi-backend
+    del claim proponente), portados aquí por
+    `docs/specs/evidencia-externa.md` §`ConsensusReplicationPredicate`
+    (extensión ADITIVA, Fase 1 Sebas). `transpiled_circuit_digest`: el
+    circuito rebaseado al gate set nativo del backend (artefacto derivado
+    DISTINTO del circuito fuente); `noise_config_digest`: parámetros de
+    error efectivos (o `ideal`) canonicalizados — dos corridas con ruido
+    distinto no son comparables sin esto."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    seed: int
+    backend_id: str
+    transpiled_circuit_digest: str
+    noise_config_digest: str
+
+
 class ConsensusReplicationPredicate(BaseModel):
     """Réplicas con seeds pinneados — SOLO procesos no-modelo (S7)."""
 
@@ -139,6 +157,32 @@ class ConsensusReplicationPredicate(BaseModel):
     replicas: int = Field(ge=2)
     seeds: tuple[int, ...]
     agreement: bool
+    legs: tuple[ConsensusLeg, ...] = ()
+    """NUEVO, aditivo (spec evidencia-externa.md) — `replicas`/`seeds`/
+    `agreement` INTACTOS, ningún campo existente cambia de forma. Vacío por
+    default: no dispara el validador de abajo, los tests existentes de este
+    predicate siguen verdes sin tocarlos."""
+
+    @model_validator(mode="after")
+    def _legs_match_replicas_and_seeds_when_present(
+        self,
+    ) -> ConsensusReplicationPredicate:
+        if not self.legs:
+            return self
+        if len(self.legs) != self.replicas:
+            msg = (
+                f"ConsensusReplicationPredicate.legs: {len(self.legs)} patas != "
+                f"replicas={self.replicas}"
+            )
+            raise ValueError(msg)
+        leg_seeds = tuple(leg.seed for leg in self.legs)
+        if leg_seeds != self.seeds:
+            msg = (
+                f"ConsensusReplicationPredicate.legs: seeds de las patas {leg_seeds} "
+                f"!= seeds={self.seeds}"
+            )
+            raise ValueError(msg)
+        return self
 
 
 class HumanExpertPredicate(BaseModel):

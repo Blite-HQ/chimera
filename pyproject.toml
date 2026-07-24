@@ -55,6 +55,7 @@ src = [
     "capabilities/smt/src",
     "capabilities/quantum/src",
     "capabilities/report/src",
+    "capabilities/ingesta/src",
     "tests",
 ]
 
@@ -120,6 +121,7 @@ source = [
     "blite_cap_smt",
     "blite_cap_quantum",
     "blite_cap_report",
+    "blite_cap_ingesta",
 ]
 branch = true
 omit = ["*/tests/*"]
@@ -151,6 +153,7 @@ root_packages = [
     "blite_cap_smt",
     "blite_cap_quantum",
     "blite_cap_report",
+    "blite_cap_ingesta",
 ]
 include_external_packages = true
 
@@ -168,6 +171,7 @@ forbidden_modules = [
     "blite_cap_smt",
     "blite_cap_quantum",
     "blite_cap_report",
+    "blite_cap_ingesta",
 ]
 
 [[tool.importlinter.contracts]]
@@ -182,6 +186,7 @@ source_modules = [
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
+    "blite_cap_ingesta",
 ]
 forbidden_modules = ["blite"]
 
@@ -225,6 +230,7 @@ forbidden_modules = [
     "blite_cap_smt",
     "blite_cap_quantum",
     "blite_cap_report",
+    "blite_cap_ingesta",
 ]
 
 [[tool.importlinter.contracts]]
@@ -363,4 +369,5 @@ forbidden_modules = [
     "blite_cap_smt",
     "blite_cap_quantum",
     "blite_cap_report",
+    "blite_cap_ingesta",
 ]

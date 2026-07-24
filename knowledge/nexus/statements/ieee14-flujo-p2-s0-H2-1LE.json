@@ -1,0 +1,39 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "builder": {
+      "id": "nexus://quantinuum/H2-1LE"
+    },
+    "externalParameters": {
+      "circuit_digest": "sha256:33855972ce30632caaac245ea85f44c8e67a7aa3ca79666d2f07ffbda174b652",
+      "shots_requested": 1024
+    },
+    "invocationId": "876d1ac1-0060-4a2a-8851-1c025fac496c",
+    "metadata": {
+      "finishedOn": "2026-07-23T14:54:24+00:00"
+    },
+    "resolvedDependencies": [
+      {
+        "digest": {
+          "sha256": "092bad1b13e468c43095a5863308d2008a8cb9b4d16d5796541401f494dcd0c4"
+        },
+        "name": "transpiled_circuit"
+      },
+      {
+        "digest": {
+          "sha256": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66"
+        },
+        "name": "noise_model"
+      }
+    ]
+  },
+  "predicateType": "https://blite.dev/ExternalImport/v1",
+  "subject": [
+    {
+      "digest": {
+        "sha256": "8ce8d5dd9e56cac05f0db5b6a997544a136a35ec620d38a7f5d39311fce3e66a"
+      },
+      "name": "nexus-job:876d1ac1-0060-4a2a-8851-1c025fac496c"
+    }
+  ]
+}

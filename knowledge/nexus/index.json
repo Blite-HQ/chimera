@@ -1,0 +1,541 @@
+{
+  "digest_coverage_notes": {
+    "circuit_digest": "canonicalize({kind, instance, p, betas, gammas}) \u2014 cubre la definici\u00f3n determinista del circuito QAOA l\u00f3gico (ansatz + \u00e1ngulos); NO son bytes de circuito.",
+    "noise_config_digest": "canonicalize({kind, backend, noisy_simulation, error_params}) \u2014 error_params=None para H2-1LE (emulador sin ruido, documentado en reto1-vanilla/README.md); descriptor declarativo sin par\u00e1metros num\u00e9ricos para H2-Emulator (modelo de ruido H2 default de Quantinuum, no expuesto por la respuesta cacheada de qnexus).",
+    "transpiled_circuit_digest": "misma fuente que circuit_digest (instance/p/betas/gammas), namespace distinto ('kind') \u2014 la corrida cacheada NO trae los bytes del circuito post-AutoRebase/QASM nativo ni el HUGR compilado; esta es la MEJOR representaci\u00f3n disponible, declarada como tal (freeze \u00a711, patr\u00f3n 'ingerido\u2260ancla')."
+  },
+  "imports": [
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "54d40986735ae5b7dfa0fddc6e436e8a585bf2c162d1988dc21a55164cfc5dc6",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "dfe1c421-7684-4696-a498-f8b5207d3346",
+        "normalized_digest": "0dd7344a1cd44c9364b639fc9e22d22a64aa09c39bea25ff59e923ab18f4bf96",
+        "raw_blob_digest": "0cc7ac2ac6e827c9bf1ba0815bcbc790b454657ce675a711602c4f6933e213d7",
+        "statement_digest": "54d05e11482628b5ef629256922d1d840411363444a600d6ed0a91a18590a482"
+      },
+      "instance": "cr6-uniforme",
+      "job_id": "dfe1c421-7684-4696-a498-f8b5207d3346",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "0dd7344a1cd44c9364b639fc9e22d22a64aa09c39bea25ff59e923ab18f4bf96",
+      "p": 1,
+      "raw_blob_digest": "0cc7ac2ac6e827c9bf1ba0815bcbc790b454657ce675a711602c4f6933e213d7",
+      "seed": 0,
+      "statement_digest": "54d05e11482628b5ef629256922d1d840411363444a600d6ed0a91a18590a482",
+      "transpiled_circuit_digest": "80ab87aa8fe2da0323155d9f06ff49f0024d012059caab7c792e11a9fcf1c45b"
+    },
+    {
+      "backend_id": "H2-Emulator",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "54d40986735ae5b7dfa0fddc6e436e8a585bf2c162d1988dc21a55164cfc5dc6",
+      "event": {
+        "backend_id": "H2-Emulator",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "b984c195-5a19-4d6c-a12e-d53780b0d05c",
+        "normalized_digest": "5f0220a8f62a40c2f31b04831766a8456946bb3cda7b816e9ed14194376fb307",
+        "raw_blob_digest": "d84972186731bbb06a334d9c864db9dd6d51a04d3c35ce2abd644c25d8da1266",
+        "statement_digest": "0dd85afb596ab1aa3f6045333f21525c7fc8b53e2f0dcc4b6df068fec0de803d"
+      },
+      "instance": "cr6-uniforme",
+      "job_id": "b984c195-5a19-4d6c-a12e-d53780b0d05c",
+      "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
+      "normalized_digest": "5f0220a8f62a40c2f31b04831766a8456946bb3cda7b816e9ed14194376fb307",
+      "p": 1,
+      "raw_blob_digest": "d84972186731bbb06a334d9c864db9dd6d51a04d3c35ce2abd644c25d8da1266",
+      "seed": 0,
+      "statement_digest": "0dd85afb596ab1aa3f6045333f21525c7fc8b53e2f0dcc4b6df068fec0de803d",
+      "transpiled_circuit_digest": "80ab87aa8fe2da0323155d9f06ff49f0024d012059caab7c792e11a9fcf1c45b"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "ce3347db11ea1e7ac85d6428b9bfdd3a54e29f4449192a6a66e0acc27e104f43",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "97fa88d2-c2c4-4243-a95e-485a1c1021c3",
+        "normalized_digest": "b0c6dbed3357801d0d5e643e8f6987b3ca86062b0cd73787c5161c5afd4995c9",
+        "raw_blob_digest": "102f93e5129630ddda1defe5ea2c4126fb59d8ef5f18fb090231cf48fef72549",
+        "statement_digest": "16e0d6523725314843f2bdb09c3281a5709edd1eac7e7453170e146bb890c0fd"
+      },
+      "instance": "cr6-uniforme",
+      "job_id": "97fa88d2-c2c4-4243-a95e-485a1c1021c3",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "b0c6dbed3357801d0d5e643e8f6987b3ca86062b0cd73787c5161c5afd4995c9",
+      "p": 2,
+      "raw_blob_digest": "102f93e5129630ddda1defe5ea2c4126fb59d8ef5f18fb090231cf48fef72549",
+      "seed": 0,
+      "statement_digest": "16e0d6523725314843f2bdb09c3281a5709edd1eac7e7453170e146bb890c0fd",
+      "transpiled_circuit_digest": "a11a00c94defea3bc8d3b15db7263e646884e5a0133b6695619f2a659029c05a"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left", "msb-right"],
+        "reason": "tie_broken_by_corpus_consensus"
+      },
+      "circuit_digest": "e9ee9f3cda8197aba8fadf3e74f857e130cc6caad6f77c6a4635b2775b84472b",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "e94cd80c-a705-4941-9220-08b75a26427f",
+        "normalized_digest": "b7085589549947259a691759df2e1fd0231ce1c87db0e1d248ad36f0c3b86050",
+        "raw_blob_digest": "393cab34252ef01c5979e37c716bce1f47da25d6d70ee2d1d0d62b8d22a9e1a5",
+        "statement_digest": "7a612a8adbb6b771db3de3604874bf01720b109c1ac24a5c99fbe87d2d052fbf"
+      },
+      "instance": "cr6-uniforme",
+      "job_id": "e94cd80c-a705-4941-9220-08b75a26427f",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "b7085589549947259a691759df2e1fd0231ce1c87db0e1d248ad36f0c3b86050",
+      "p": 3,
+      "raw_blob_digest": "393cab34252ef01c5979e37c716bce1f47da25d6d70ee2d1d0d62b8d22a9e1a5",
+      "seed": 0,
+      "statement_digest": "7a612a8adbb6b771db3de3604874bf01720b109c1ac24a5c99fbe87d2d052fbf",
+      "transpiled_circuit_digest": "bd981126e8dc12cdc2605bf4201da7da5541db752dd1b06818aa04c3e7fa49f5"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left", "msb-right"],
+        "reason": "tie_broken_by_corpus_consensus"
+      },
+      "circuit_digest": "4fe00c1cf9fca4635571c407000b7bb2f237df9b5e5a95d4d7beff38937c8424",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "4a24ed97-9bf8-439f-aec9-d022c3e705b2",
+        "normalized_digest": "eaf6f2a3f376328dbd37231e1271bdd3c3053a1ddefbb1c542f917577aa8b975",
+        "raw_blob_digest": "ca2edab99b9f2b7fed6c25e85b47ca1233b02f69f791fe86ac3b670c7c62f217",
+        "statement_digest": "d43a93f29c3f7b28626b2c368fc4cb24b4ea0ce9999ce14198ce66ca70f25666"
+      },
+      "instance": "cr8-uniforme",
+      "job_id": "4a24ed97-9bf8-439f-aec9-d022c3e705b2",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "eaf6f2a3f376328dbd37231e1271bdd3c3053a1ddefbb1c542f917577aa8b975",
+      "p": 1,
+      "raw_blob_digest": "ca2edab99b9f2b7fed6c25e85b47ca1233b02f69f791fe86ac3b670c7c62f217",
+      "seed": 0,
+      "statement_digest": "d43a93f29c3f7b28626b2c368fc4cb24b4ea0ce9999ce14198ce66ca70f25666",
+      "transpiled_circuit_digest": "39cbf9a1faeda1b0fe1d7ed31b86b83ead1cc11b17a28947b64a5c9f88db76c0"
+    },
+    {
+      "backend_id": "H2-Emulator",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left", "msb-right"],
+        "reason": "tie_broken_by_corpus_consensus"
+      },
+      "circuit_digest": "4fe00c1cf9fca4635571c407000b7bb2f237df9b5e5a95d4d7beff38937c8424",
+      "event": {
+        "backend_id": "H2-Emulator",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "489e7037-67fa-4fd6-b697-29d7ca8740e5",
+        "normalized_digest": "8cba1d74af029dce62d9d5caca670498e7e1ead923e1c3c5edc665c4282165b3",
+        "raw_blob_digest": "0df8ddac252e6438bb93f09df7ec089b27c7dd280b2e9f22f9f3fb76c4cc5ddc",
+        "statement_digest": "9732e1c1cc3d12813d6025f0d1e1ab81015cc513495a534fe69033456223513c"
+      },
+      "instance": "cr8-uniforme",
+      "job_id": "489e7037-67fa-4fd6-b697-29d7ca8740e5",
+      "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
+      "normalized_digest": "8cba1d74af029dce62d9d5caca670498e7e1ead923e1c3c5edc665c4282165b3",
+      "p": 1,
+      "raw_blob_digest": "0df8ddac252e6438bb93f09df7ec089b27c7dd280b2e9f22f9f3fb76c4cc5ddc",
+      "seed": 0,
+      "statement_digest": "9732e1c1cc3d12813d6025f0d1e1ab81015cc513495a534fe69033456223513c",
+      "transpiled_circuit_digest": "39cbf9a1faeda1b0fe1d7ed31b86b83ead1cc11b17a28947b64a5c9f88db76c0"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "ecb6cff2a5eeb601015c1e2f1112d948048301a013cd168af8da56798b9bbed6",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "7add6a66-7fd6-44d6-b316-90aec5a360cb",
+        "normalized_digest": "9a5617046e60ea9b0c56248e5a5b9bb53941499d60e25c9c81d19a12af720609",
+        "raw_blob_digest": "c994fc3cec25aaf48c344604e5074388f7938964bcf13fd123f1258435d39cbd",
+        "statement_digest": "33a188a9ad5d02ef583d6bbbd0a648400f0bfdb6ad38bf092adf02bf64b6f82b"
+      },
+      "instance": "cr8-uniforme",
+      "job_id": "7add6a66-7fd6-44d6-b316-90aec5a360cb",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "9a5617046e60ea9b0c56248e5a5b9bb53941499d60e25c9c81d19a12af720609",
+      "p": 2,
+      "raw_blob_digest": "c994fc3cec25aaf48c344604e5074388f7938964bcf13fd123f1258435d39cbd",
+      "seed": 0,
+      "statement_digest": "33a188a9ad5d02ef583d6bbbd0a648400f0bfdb6ad38bf092adf02bf64b6f82b",
+      "transpiled_circuit_digest": "61c390d15cac272e38b5f298ef2ad593632ac04803c6bfe63567abf405723b16"
+    },
+    {
+      "backend_id": "H2-Emulator",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "ecb6cff2a5eeb601015c1e2f1112d948048301a013cd168af8da56798b9bbed6",
+      "event": {
+        "backend_id": "H2-Emulator",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "3ae607ec-94f9-4ae3-ad62-12b4418aa71d",
+        "normalized_digest": "4aca40ed87363502707f9fe8a67b56d26e16d297df589062e2254f0fb32a4dd9",
+        "raw_blob_digest": "83434b57325491a8b967a424576ccc27d96994732ac95c6b26770295b95f2787",
+        "statement_digest": "9e50cd01ed50c02509bd9055cd74421287cdd09a499d74aa6a1ebf2e7c9de9d8"
+      },
+      "instance": "cr8-uniforme",
+      "job_id": "3ae607ec-94f9-4ae3-ad62-12b4418aa71d",
+      "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
+      "normalized_digest": "4aca40ed87363502707f9fe8a67b56d26e16d297df589062e2254f0fb32a4dd9",
+      "p": 2,
+      "raw_blob_digest": "83434b57325491a8b967a424576ccc27d96994732ac95c6b26770295b95f2787",
+      "seed": 0,
+      "statement_digest": "9e50cd01ed50c02509bd9055cd74421287cdd09a499d74aa6a1ebf2e7c9de9d8",
+      "transpiled_circuit_digest": "61c390d15cac272e38b5f298ef2ad593632ac04803c6bfe63567abf405723b16"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left", "msb-right"],
+        "reason": "tie_broken_by_corpus_consensus"
+      },
+      "circuit_digest": "d67621e9e33b88b3c0d06c5716e6047674a2ce463ad87c0c18a78e531c8c73ea",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "f8d16ef7-9c3d-4fb6-9795-458e5563ae44",
+        "normalized_digest": "05bb85f3e0f39ac4621a1afa98c4e2ea82d0f2c1d5e3fca38198f6e27bd4e8a4",
+        "raw_blob_digest": "e58efe78021758bb76c82ebb62d7e154e9e069ed2488456f521fd7a8372b669d",
+        "statement_digest": "5b3137a74f387000c892c293b656cbad40c43809da060f5040e1762654a14370"
+      },
+      "instance": "cr8-uniforme",
+      "job_id": "f8d16ef7-9c3d-4fb6-9795-458e5563ae44",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "05bb85f3e0f39ac4621a1afa98c4e2ea82d0f2c1d5e3fca38198f6e27bd4e8a4",
+      "p": 3,
+      "raw_blob_digest": "e58efe78021758bb76c82ebb62d7e154e9e069ed2488456f521fd7a8372b669d",
+      "seed": 0,
+      "statement_digest": "5b3137a74f387000c892c293b656cbad40c43809da060f5040e1762654a14370",
+      "transpiled_circuit_digest": "09cb1af54552b7c97d0c6011ba84c5f698461a54527204286e260adc8cbb3d83"
+    },
+    {
+      "backend_id": "H2-Emulator",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "d67621e9e33b88b3c0d06c5716e6047674a2ce463ad87c0c18a78e531c8c73ea",
+      "event": {
+        "backend_id": "H2-Emulator",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "753d5f23-8d2d-4d93-82da-5740e04ab05f",
+        "normalized_digest": "5848ac4081bba7be3384deb97ba1620eb68c42c7fae425a6dfc45ab4fa4171fa",
+        "raw_blob_digest": "761bcb160ce1476c16f6bae70b4ffd109877e1f6e3430f4b83d154d567d07e71",
+        "statement_digest": "a072bab9ebc21f34a28e53c22494ad1292fc30e597b7e6bdff0f61ca1ffa4f92"
+      },
+      "instance": "cr8-uniforme",
+      "job_id": "753d5f23-8d2d-4d93-82da-5740e04ab05f",
+      "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
+      "normalized_digest": "5848ac4081bba7be3384deb97ba1620eb68c42c7fae425a6dfc45ab4fa4171fa",
+      "p": 3,
+      "raw_blob_digest": "761bcb160ce1476c16f6bae70b4ffd109877e1f6e3430f4b83d154d567d07e71",
+      "seed": 0,
+      "statement_digest": "a072bab9ebc21f34a28e53c22494ad1292fc30e597b7e6bdff0f61ca1ffa4f92",
+      "transpiled_circuit_digest": "09cb1af54552b7c97d0c6011ba84c5f698461a54527204286e260adc8cbb3d83"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "21c20a3dda4c70fcd821a2ed9679c785eeb9ab849c1a1164cf63bd3a9001386b",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "184d125b-5485-4152-88ff-edf1f484ffa0",
+        "normalized_digest": "21ec38c7e171cafa4b6712bd59567392487dafd21e9a79f37a19b2fc371e0e85",
+        "raw_blob_digest": "a5e020cccd70706b742c00cc728d06edf7954cf8b7daef9fb62c4e1ea82932fa",
+        "statement_digest": "60414cb6cc12ec5c7a33c9c82e9f34d96d406f605aadcc2c9c9a045c71e0ebdf"
+      },
+      "instance": "cr8-voltaje",
+      "job_id": "184d125b-5485-4152-88ff-edf1f484ffa0",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "21ec38c7e171cafa4b6712bd59567392487dafd21e9a79f37a19b2fc371e0e85",
+      "p": 1,
+      "raw_blob_digest": "a5e020cccd70706b742c00cc728d06edf7954cf8b7daef9fb62c4e1ea82932fa",
+      "seed": 0,
+      "statement_digest": "60414cb6cc12ec5c7a33c9c82e9f34d96d406f605aadcc2c9c9a045c71e0ebdf",
+      "transpiled_circuit_digest": "deab6eaaf97880c458d0b6fcd55345d368421c2bd4d270663e5b4a4ccf400ca6"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "e196204e4421466743d98f54367921bf8f9450e3b8c16cce10150463ef4fa80d",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "50e140f9-7c30-4dff-a55e-aea8822262a2",
+        "normalized_digest": "a5ab91973d2bb933581d83dc0bce5d25db393cb8a2c02963c0e3d37eb748a5be",
+        "raw_blob_digest": "16403a6ea368bd68b4527d21dbe567a3c5d12e3740c1e0ea375f55105c40b895",
+        "statement_digest": "f6fe3c1282007686d51c718eaee0d621f61cbd5e454bbb13f4022697372effda"
+      },
+      "instance": "cr8-voltaje",
+      "job_id": "50e140f9-7c30-4dff-a55e-aea8822262a2",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "a5ab91973d2bb933581d83dc0bce5d25db393cb8a2c02963c0e3d37eb748a5be",
+      "p": 2,
+      "raw_blob_digest": "16403a6ea368bd68b4527d21dbe567a3c5d12e3740c1e0ea375f55105c40b895",
+      "seed": 0,
+      "statement_digest": "f6fe3c1282007686d51c718eaee0d621f61cbd5e454bbb13f4022697372effda",
+      "transpiled_circuit_digest": "5d08951822b4e7f3bc7f015f0fe54ffd5e5f866be1636fbd42fc361a51a34f7f"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "6bb5d3c157d59de55b1f01527e15b64c6d893b55bae7b1017f304d0495be54fa",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "cf628d8d-f639-439e-90e9-eee152c22d47",
+        "normalized_digest": "69edb906d746183606015c3c33f0a79e859383d3729fc58f6e0e50c7a992344a",
+        "raw_blob_digest": "5c166b0bfec239fe4bdeded9a69bc4cd2630ebc2fd2c27bc6fc0b7cee194a777",
+        "statement_digest": "5b546c8bea10d2b06b40ec2ac46ca2e6229d2da061665e539068fd7d8bbe9091"
+      },
+      "instance": "cr8-voltaje",
+      "job_id": "cf628d8d-f639-439e-90e9-eee152c22d47",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "69edb906d746183606015c3c33f0a79e859383d3729fc58f6e0e50c7a992344a",
+      "p": 3,
+      "raw_blob_digest": "5c166b0bfec239fe4bdeded9a69bc4cd2630ebc2fd2c27bc6fc0b7cee194a777",
+      "seed": 0,
+      "statement_digest": "5b546c8bea10d2b06b40ec2ac46ca2e6229d2da061665e539068fd7d8bbe9091",
+      "transpiled_circuit_digest": "8efbc56468a85ca394de38100ad07ce65422203f1b147208d385ea865343764f"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "1742032bda352e4dcaa8ec566e47216b07f3c5d735b11c350d1c11d734439594",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "bddedd47-821a-4be4-a796-015da4997f80",
+        "normalized_digest": "5d9db3516e06d1b81f0b41dd9a708b6cda12302604032573766097eb353e4db9",
+        "raw_blob_digest": "4dc47ea7ce1f7f178dc88c3e1b26efc02cd1247b7c51519eace52bc271d07255",
+        "statement_digest": "8328908003c8b25e172e5cb6a9b364eb8e7969f27bc90415ae0f53bbf1c4c81d"
+      },
+      "instance": "ieee14-flujo",
+      "job_id": "bddedd47-821a-4be4-a796-015da4997f80",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "5d9db3516e06d1b81f0b41dd9a708b6cda12302604032573766097eb353e4db9",
+      "p": 1,
+      "raw_blob_digest": "4dc47ea7ce1f7f178dc88c3e1b26efc02cd1247b7c51519eace52bc271d07255",
+      "seed": 0,
+      "statement_digest": "8328908003c8b25e172e5cb6a9b364eb8e7969f27bc90415ae0f53bbf1c4c81d",
+      "transpiled_circuit_digest": "5e21a3d12b05d1854c82ecc4df13bd90302ba8becc6714366c208e602072b93d"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "33855972ce30632caaac245ea85f44c8e67a7aa3ca79666d2f07ffbda174b652",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "876d1ac1-0060-4a2a-8851-1c025fac496c",
+        "normalized_digest": "8ce8d5dd9e56cac05f0db5b6a997544a136a35ec620d38a7f5d39311fce3e66a",
+        "raw_blob_digest": "474d9eae07d9f7679d6045e39e8eda2bd272634d24f44143ff932e3ab846db0d",
+        "statement_digest": "4f47b21cc747bfe9be867ad16e4af9fb383bd660a5cbff251744198cab5f33db"
+      },
+      "instance": "ieee14-flujo",
+      "job_id": "876d1ac1-0060-4a2a-8851-1c025fac496c",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "8ce8d5dd9e56cac05f0db5b6a997544a136a35ec620d38a7f5d39311fce3e66a",
+      "p": 2,
+      "raw_blob_digest": "474d9eae07d9f7679d6045e39e8eda2bd272634d24f44143ff932e3ab846db0d",
+      "seed": 0,
+      "statement_digest": "4f47b21cc747bfe9be867ad16e4af9fb383bd660a5cbff251744198cab5f33db",
+      "transpiled_circuit_digest": "092bad1b13e468c43095a5863308d2008a8cb9b4d16d5796541401f494dcd0c4"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "a961c8331e8436db5ae04a2039d6aa71e4ea7edce6cd97cfeb9f16c5ab56b780",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "0e0ae9b0-5a38-46eb-b492-47ef31bc34d9",
+        "normalized_digest": "2624aae76faf96ed8d273bb641ad794d2ad81d10eb7883a428f0fcd64b6e4852",
+        "raw_blob_digest": "291c67ce56ce94e32ba9423afdd1d965831e0f64e5eed5cea14e0f56f861c918",
+        "statement_digest": "021ab12b148e73ed2bebcf488b51aa1cea85e17f6e4a01a0cacad3b2a48c337e"
+      },
+      "instance": "ieee14-flujo",
+      "job_id": "0e0ae9b0-5a38-46eb-b492-47ef31bc34d9",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "2624aae76faf96ed8d273bb641ad794d2ad81d10eb7883a428f0fcd64b6e4852",
+      "p": 3,
+      "raw_blob_digest": "291c67ce56ce94e32ba9423afdd1d965831e0f64e5eed5cea14e0f56f861c918",
+      "seed": 0,
+      "statement_digest": "021ab12b148e73ed2bebcf488b51aa1cea85e17f6e4a01a0cacad3b2a48c337e",
+      "transpiled_circuit_digest": "1f02efe444e106f920b963eef3269d83af3af74d717d714f557dfdcade46a809"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "657ffb5cd7a7bbca57ccc5994463040cb373c77b6dc91d1d82addd4977a3b014",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "43638fad-0e53-4d9e-a499-870dce1f55d9",
+        "normalized_digest": "af199924fa942224bbc7b9e658933ef2873cc09205238812da225f5d712b8f58",
+        "raw_blob_digest": "03783afcb4824c696e53cedc8d051c99ee44e7f6a8a0227105be528f3d3fcde3",
+        "statement_digest": "81e097cffd9e58918fcbc66e37c918397af312d5ec1b2e0e9c641d7ab0de1286"
+      },
+      "instance": "ieee9-uniforme",
+      "job_id": "43638fad-0e53-4d9e-a499-870dce1f55d9",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "af199924fa942224bbc7b9e658933ef2873cc09205238812da225f5d712b8f58",
+      "p": 1,
+      "raw_blob_digest": "03783afcb4824c696e53cedc8d051c99ee44e7f6a8a0227105be528f3d3fcde3",
+      "seed": 0,
+      "statement_digest": "81e097cffd9e58918fcbc66e37c918397af312d5ec1b2e0e9c641d7ab0de1286",
+      "transpiled_circuit_digest": "6dc85e6273c0b2db5532cf107caa6ac2495150950c7e32ad8c153e4bdd929344"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "64d44625736558b41a3492d85430c62ff78b527ad1e6383a4a8b32438ee0547e",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "a04ec66d-ecc5-4dbb-b0e5-0eff40619969",
+        "normalized_digest": "185b415059e176f753b56a3a11a94ef138e795e9c52c8f648bc8294d9e3a04ce",
+        "raw_blob_digest": "c835b61467dcece133e1241569141c073f5edae9fbc001da38eeb744508fdcf3",
+        "statement_digest": "22b9f93cf839c590133d8e197e4b0330ccaa9c8e4ccb25dcbbc2c490184f31a1"
+      },
+      "instance": "ieee9-uniforme",
+      "job_id": "a04ec66d-ecc5-4dbb-b0e5-0eff40619969",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "185b415059e176f753b56a3a11a94ef138e795e9c52c8f648bc8294d9e3a04ce",
+      "p": 2,
+      "raw_blob_digest": "c835b61467dcece133e1241569141c073f5edae9fbc001da38eeb744508fdcf3",
+      "seed": 0,
+      "statement_digest": "22b9f93cf839c590133d8e197e4b0330ccaa9c8e4ccb25dcbbc2c490184f31a1",
+      "transpiled_circuit_digest": "108279525c438c6f071b85151b3f5473784bfacc5d2880ca97d1e0d0a0ca05ff"
+    },
+    {
+      "backend_id": "H2-1LE",
+      "bit_order": "msb-left",
+      "bit_order_resolution": {
+        "consistent_orders": ["msb-left", "msb-right"],
+        "narrowed_orders": ["msb-left"],
+        "reason": "unambiguous"
+      },
+      "circuit_digest": "3cff99ca13d79b3a09fc69de33e16c9313bd67c145c91f2312d3b563a4ebe5f8",
+      "event": {
+        "backend_id": "H2-1LE",
+        "imported_at": "2026-07-24T00:00:00+00:00",
+        "imported_by": "scripts/import_nexus_runs.py",
+        "job_id": "aa27694b-5bb4-470b-b870-61b86dfb41b2",
+        "normalized_digest": "9af81d821c0b06b949b4c8b4a3f7ffa44ce8146570622556d999c39a15e8af7b",
+        "raw_blob_digest": "90da6aa04d34ef4f0808ac258f06c9febd1abe82b35527761c3fe1f48ad809db",
+        "statement_digest": "64bb9654446d8a5fbd6668b0fd5ca79b032707c6e7e0b88bb1ab50b26738b10f"
+      },
+      "instance": "ieee9-uniforme",
+      "job_id": "aa27694b-5bb4-470b-b870-61b86dfb41b2",
+      "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+      "normalized_digest": "9af81d821c0b06b949b4c8b4a3f7ffa44ce8146570622556d999c39a15e8af7b",
+      "p": 3,
+      "raw_blob_digest": "90da6aa04d34ef4f0808ac258f06c9febd1abe82b35527761c3fe1f48ad809db",
+      "seed": 0,
+      "statement_digest": "64bb9654446d8a5fbd6668b0fd5ca79b032707c6e7e0b88bb1ab50b26738b10f",
+      "transpiled_circuit_digest": "fa00d799141682c34feaeeb81610df5823e965f2500b6ae1eb623ba3f4ac69df"
+    }
+  ]
+}

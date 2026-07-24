@@ -1,0 +1,40 @@
+{
+  "aristas": [
+    [0, 1, 1],
+    [0, 3, 1],
+    [0, 4, 1],
+    [0, 5, 1],
+    [0, 6, 1],
+    [1, 2, 1],
+    [1, 7, 1],
+    [3, 4, 1],
+    [5, 6, 1]
+  ],
+  "asignacion_canonica": [0, 1, 0, 0, 1, 0, 1, 0],
+  "convencion": "uniforme",
+  "criterio_corredor": "greedy densest desde la subestacion de mayor grado, desempate alfabetico (ver scripts/build_cr_instances.py)",
+  "definicion_peso": "1 por circuito paralelo",
+  "descargado": "2026-07-23",
+  "digest": "66bb6c5ae0eadb1c697436ea36c069b3bf3c3a4ef436d1eda9540a3e79f91392",
+  "escala": 1,
+  "fuente": {
+    "lineas": "https://services1.arcgis.com/cW2GfO4rBCLoFwgj/arcgis/rest/services/LineasDeTransmision/FeatureServer",
+    "portal": "https://datos-ice-se.opendata.arcgis.com",
+    "subestaciones": "https://services1.arcgis.com/cW2GfO4rBCLoFwgj/arcgis/rest/services/Subestaciones/FeatureServer"
+  },
+  "instancia": "cr8",
+  "metodos": ["bruteforce", "spectrum"],
+  "n_nodos": 8,
+  "nodos": {
+    "0": "La Caja",
+    "1": "Alajuelita",
+    "2": "Anonos",
+    "3": "Belen",
+    "4": "Ribera",
+    "5": "Colima",
+    "6": "Heredia",
+    "7": "Concavas"
+  },
+  "optimo": 7,
+  "solver_status": "OPTIMAL"
+}

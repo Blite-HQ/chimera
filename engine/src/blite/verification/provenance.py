@@ -16,7 +16,11 @@ digest/identidad gratis, sin agregar ningún campo a `Artifact` (freeze §12 int
 
 Reutilizada TAL CUAL por el dominio del informe (docs/specs/informe-derivado.md):
 cada figura y el PDF final son instancias `DerivationProvenance` con
-`recipe.capability = "blite.report.*"` — cero tipo nuevo para el reporte.
+`recipe.capability = "blite.report.*"` — cero tipo nuevo para el reporte. El
+dominio de ingesta (B) la reutiliza igual, sin cambio de forma (co-propiedad
+Sebas+Dylan): las capabilities NUNCA importan este módulo (ADR-008), construyen
+dicts con esta MISMA forma y el CALLER (engine/scripts) los re-parsea con
+`parse_provenance` y cruza la única puerta de canonicalización.
 
 INV-2 (verificación no importa serving): este módulo es datos puros (Pydantic) —
 no importa nada de `blite.serving`. La canonicalización se aplica DESDE afuera
@@ -28,7 +32,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 
 class InputRef(TypedDict):
@@ -85,7 +89,8 @@ class DerivationProvenance(BaseModel):
     El PDF/figura del informe hereda TODOS los digests de sus insumos
     (informe-derivado.md §b): `inputs` incluye la plantilla, cada figura y cada
     cifra citada, todos por digest — verificar = recompilar desde esos insumos y
-    comparar digests, sin re-confiar en quien lo generó."""
+    comparar digests, sin re-confiar en quien lo generó. Ingesta (B) la usa igual:
+    `recipe.capability = "blite.ingesta.*"` / `"blite.evidencia.*"`."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -102,3 +107,22 @@ Provenance = Annotated[
 ]
 """Unión discriminada por `kind` — el tipo que viaja como payload aditivo de
 `capability.job.completed {output_digest, provenance_digest}` (freeze §3)."""
+
+
+_PROVENANCE_ADAPTER: TypeAdapter[ExternalSourceProvenance | DerivationProvenance] = (
+    TypeAdapter(Provenance)
+)
+
+
+def parse_provenance(
+    data: dict[str, Any],
+) -> ExternalSourceProvenance | DerivationProvenance:
+    """Reconstruye la rama correcta (`kind`) desde un dict plano — fail-loud si
+    `kind` no matchea ninguna rama o faltan campos requeridos.
+
+    Helper ADITIVO (B, co-propiedad Sebas+Dylan): las capabilities de ingesta
+    (ADR-008) construyen la procedencia como dict plano; el generador del corpus
+    (`scripts/gen_corpus_ice.py`) y el de fixtures (`scripts/gen-fixtures-ingesta.py`)
+    la re-parsean con esto antes de escribir (origen único, decisión #67). NO
+    cambia la forma que consume el informe (C) — solo añade una puerta de entrada."""
+    return _PROVENANCE_ADAPTER.validate_python(data)
