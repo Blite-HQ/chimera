@@ -1,7 +1,7 @@
 # Nota 10 — Spec del `ExactSolverVerifier` (CP-SAT): status→verdict, determinismo, tolerancias, formulación de referencia
 
 **Ítem del plan (§4 Dylan / ficha A1):** Anclas duras — de decisión a diseño de adapter. Parte 1: el adapter rung 1 (verificación diferencial contra CP-SAT).
-**Fecha:** 2026-07-07 · **Estado:** spec de diseño — insumo directo de la sesión 11 (escalera 1–3, TDD). **SOLO diseño; nada implementado.**
+**Fecha:** 2026-07-07 · **Estado:** **EJECUTADA fielmente (2026-07-24)** — `engine/src/blite/verification/exact_solver.py`: `map_optimality_verdict` (error≠fail, contradicción candidato-mejor-que-óptimo), determinismo `workers=1`/`random_seed=1`, ruptura de simetría `x0=0`, XOR linealizado, `verifier_params_digest`. Desviación consciente documentada en el código: siempre resuelve (el `Differential` congelado exige `status` real), en vez del paso-1 "energía mentida sin resolver" de §1.1. Los vectores G1–G6 viven como tests.
 **Fuentes:** nota 03 §1.2 (forma `evidence` `differential`) y §1.4 (verdict tri-estado) · nota 04 §1.1 (CP-SAT como ancla estrella, diversidad) · `contract-freeze.md` §4 · anexo de canonicalización §5 (`claim_digest`) · docs OR-Tools CP-SAT (`CpSolverStatus`, parámetros de determinismo) · óptimos de Max-Cut calculados a mano · `CHIMERA-Harness-Metodologias.md` §4.4/§6 (ubicación del diferencial cuántico-clásico en escalón 5; verify Reto 1 → OR-Tools rung 1).
 
 ---

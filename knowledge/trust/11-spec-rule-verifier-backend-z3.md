@@ -1,7 +1,7 @@
 # Nota 11 — Spec del `RuleVerifier`: backend intercambiable (Python / Z3), unsat core como evidencia, ruta rung 4→1
 
 **Ítem del plan (§4 Dylan / ficha A1):** Anclas duras — de decisión a diseño de adapter. Parte 2: el constraint-checker genérico (corrección #4 de Arquitectura-Python).
-**Fecha:** 2026-07-07 · **Estado:** spec de diseño — insumo de la sesión 11. **SOLO diseño; nada implementado.**
+**Fecha:** 2026-07-07 · **Estado:** **SIGUE SIN IMPLEMENTAR (verificado 2026-07-24, post-MVP)** — no existe `RuleVerifier` en el engine; el único vestigio es el stub `capabilities/smt` (`NotImplementedError`). El adapter Z3 = Fase 2, como decía la nota. Hueco vigente y documentado.
 **Fuentes:** nota 03 §1.2 (`property`/`metamorphic`) y §1.4 (tri-estado) · nota 04 §1.1 (Z3 como adapter futuro del mismo puerto), §4 item 3 (reglas del dominio como DATOS) · `contract-freeze.md` §4 · anexo de canonicalización §5 (digest de artefacto) · docs Z3 (`assert_and_track`/`unsat_core`, estados `sat|unsat|unknown`).
 
 ---

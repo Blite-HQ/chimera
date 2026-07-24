@@ -25,14 +25,15 @@ con su reconciliación contra `docs/invariants.md` (la base lógica no está baj
 
 ## Índice
 
-| Nota                          | Tema                                                                                                                                                                                                                                                                        | Contratos que toca                                                                                                                                                                     |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [01](01-corpus-benchmarks.md) | Corpus de benchmarks con óptimos conocidos (IEEE 9/14/30 × convenciones `uniforme`/`flujo`): doble ancla CP-SAT + fuerza bruta, escalado entero S=100, canonicalización x₀=0, digest por instancia; cr8/cr6 desde datos del ICE en curso (dueño Sebas — P0-7, freeze §15.3) | ninguno cambia; alimenta el ancla `ground_truth` del corpus (trust/17) y el `ExactSolverVerifier` (trust/10); el campo `escala` de cada JSON es el `scale` del `evidence.differential` |
+| Nota                          | Tema                                                                                                                                                                                                                                                                                                        | Contratos que toca                                                                                                                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [01](01-corpus-benchmarks.md) | Corpus de benchmarks con óptimos conocidos (IEEE 6/9/14/30 × convenciones `uniforme`/`flujo`; ieee6 añadida 2026-07-23, D5): doble ancla CP-SAT + fuerza bruta, escalado entero S=100, canonicalización x₀=0, digest por instancia; cr8/cr6 desde datos del ICE en curso (dueño Sebas — P0-7, freeze §15.3) | ninguno cambia; alimenta el ancla `ground_truth` del corpus (trust/17) y el `ExactSolverVerifier` (trust/10); el campo `escala` de cada JSON es el `scale` del `evidence.differential` |
 
 ## Datos versionados
 
-`corpus/` — 6 instancias de Max-Cut con óptimo exacto conocido, un JSON por
-instancia×convención (`ieee{9,14,30}-{uniforme,flujo}.json`), cada una con su
+`corpus/` — 8 instancias de Max-Cut con óptimo exacto conocido, un JSON por
+instancia×convención (`ieee{6,9,14,30}-{uniforme,flujo}.json`; `ieee6-{uniforme,flujo}.json`
+añadidas 2026-07-23, decisión D5 — provenance en la nota 01 §1.7), cada una con su
 `digest` SHA-256 (receta de verificación en la nota 01 §1.6). El JSON congelado es
 la fuente de verdad: una regeneración que no reproduzca el digest se reporta, no se
 sobreescribe.

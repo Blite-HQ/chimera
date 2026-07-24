@@ -1,7 +1,7 @@
 # Nota 05 — Verificación adaptativa, `VerificationPolicy` declarativa, y los trade-offs que el contrato debe soportar
 
 **Ítem del plan (§4 Dylan):** Métodos de la escalera (parte 3: cuándo/cuánto verificar) + formas de policy-as-code (adelantado de Fase 2 porque informa el contrato)
-**Fecha:** 2026-07-02 · **Estado:** insumo para el contract freeze del viernes
+**Fecha:** 2026-07-02 · **Estado:** **EJECUTADA (2026-07-24)** — `engine/src/blite/verification/policy.py` (`VerificationPolicy`) + `policy_diff.py` + `runtime/policy_watch.py`.
 **Fuentes:** Revisión de arquitectura de referencia de Chimera (ADR-017) · compass deep-dive (AVA, Goodhart, model collapse, over-refusal, imposibilidad) · OPA/Cedar verificados en vivo 2026-07-02
 
 ---

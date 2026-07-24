@@ -1,7 +1,7 @@
 # Nota 01 — Event Sourcing sobre Postgres: el event store que aguanta la tesis
 
 **Ítem del plan (§4 Dylan):** Congelar esquema `events` + puerto writer (seq por stream, idempotencia por UNIQUE, LISTEN/NOTIFY u outbox → SSE)
-**Fecha:** 2026-07-02 · **Estado:** insumo para el contract freeze del viernes
+**Fecha:** 2026-07-02 · **Estado:** **EJECUTADA en el MVP Nivel-1 (2026-07-24)** — implementada en `engine/src/blite/events/{postgres,store,writer}.py` (append-only, `global_seq`, `actor_id` obligatorio, `expected_seq` vía UNIQUE) + `engine/sql/init_v2.sql` (montado en compose). El hash-chain (`hash`/`prev_hash`) sigue siendo Fase 2, como preveía la nota.
 **Fuentes:** Esquema semilla (interno) · message-db estudiado en vivo 2026-07-02 · EventStoreDB (conceptos) · Revisión de arquitectura de referencia de Chimera (ADR-016/ADR-021) · MS Agent Governance Toolkit (audit log tamper-evident, MIT)
 
 ---

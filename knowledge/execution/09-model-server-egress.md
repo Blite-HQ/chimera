@@ -8,7 +8,10 @@ Ollama, MISMO router) y con el freeze.
 **Fecha:** 2026-07-14 · **Estado:** **DECIDIDA en el freeze (S-E 2026-07-18, `docs/contract-freeze.md`
 §15.7)** — `ModelPort` (Protocol, en `serving`) + `ModelServer` (adapter en `protocols`, LiteLLM
 `Router` + backend `replay`) + eventos `model.call.*` (freeze §3). Ratificación final de Steven +
-Dylan (frontera), ajustable bajo su criterio.
+Dylan (frontera), ajustable bajo su criterio. **[2026-07-24, MVP Nivel-1]** El MVP embarcó SOLO el
+puerto — `serving/model_port.py` (`ModelPort` Protocol, doctrina `replay` fail-closed con
+`ReplayMissError`); el adapter `ModelServer`/LiteLLM NO existe aún (`protocols/` vacío) — pendiente
+post-MVP.
 **Fuentes:** `pyproject.toml`, contrato import-linter `AX3` (leído en esta sesión: `source_modules =
 ["blite.serving"]`, `forbidden_modules = ["blite.protocols", "blite.gateway", "blite.runtime",
 "blite.authz", "httpx", "requests", "aiohttp", "urllib3", "socket"]`) y contratos `INV-2`

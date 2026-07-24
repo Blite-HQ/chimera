@@ -1,7 +1,7 @@
 # Nota 08 — Identidad lite: forma SPIFFE + delegación RFC 8693 + intersección de permisos, sin SPIRE
 
 **Ítem del plan (§4 Dylan):** Identidad lite — JWT claims scoped + intersección de permisos (forma SPIFFE/RFC 8693 sin SPIRE); nota de diseño
-**Fecha:** 2026-07-03 · **Estado:** insumo para el contract freeze
+**Fecha:** 2026-07-03 · **Estado:** **EJECUTADA (2026-07-24)** — `engine/src/blite/identity/{identity,derive}.py` (campo `spiffe_id` reservado, delegación `act`) + `authz/decision.py` (`AuthzDecision`).
 **Fuentes:** Kagenti verificado en vivo 2026-07-03 (Apache-2.0, "Identity and Auth Bridge") · compass panorama (patrón Kagenti detallado, AgentCore Identity, Entra Agent ID) · Revisión de arquitectura de referencia de Chimera (ADR-018) · RFC 8693 (OAuth Token Exchange) · semilla TS §1
 
 ---

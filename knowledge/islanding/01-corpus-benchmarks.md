@@ -121,7 +121,9 @@ y se recalculan sobre la red real (recalibrar λ y el cálculo de shots de `quan
 valores nuevos). Congelar con el mismo formato + doble ancla + digest (`cr8-uniforme.json` /
 `cr8-flujo.json`). **Agregar además una instancia de 6 nodos** (p. ej. reducción de la misma red
 CR): el criterio oficial de suficiencia (p=1 con r ≥ 0.6) se define sobre una instancia de 6
-nodos y hoy el corpus no tiene ninguna.
+nodos y hoy el corpus no tiene ninguna. **[Verificado 2026-07-24, post-MVP: cr8/cr6 (datos ICE)
+SIGUE AUSENTE del repo — `corpus/` solo contiene ieee{6,9,14,30}; la instancia de 6 nodos quedó
+cubierta por `ieee6` (2026-07-23, D5), no por una reducción de la red CR.]**
 
 **[S-F 2026-07-20] Gate de fecha y fallback (E1 — el cumplimiento del "6–12 nodos, red real"
 del enunciado pende SOLO de cr8/cr6):** fecha límite **~25-jul** con fallback declarado. Los
@@ -137,6 +139,8 @@ reaparecer; ningún vector de falla sembrada se elige sin ese cómputo.
 ### 1.9 Script de generación completo (para regenerar y ratificar)
 
 Correr **desde la raíz del repo** con el Python del workspace. Regenera los 6 JSON; la ratificación consiste en correrlo y comparar los digests contra los archivos congelados (§1.6 — **por digest, jamás por bytes**).
+
+**[2026-07-24]** La copia viva es `scripts/gen_corpus_islanding.py`, que ya incluye `ieee6` en `CASOS`; este inline es histórico (todavía dice `CASOS = {ieee9, ieee14, ieee30}` y "los 6 JSON").
 
 > **[S-F 2026-07-20] Receta EXACTA del entorno (la que faltaba — `uv sync` default NO instala
 > los extras y el lock viejo crasheaba `runpp`):**

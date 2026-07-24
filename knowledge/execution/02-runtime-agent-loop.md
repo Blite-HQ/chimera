@@ -9,6 +9,9 @@ pregunta abierta de §10; (2) `max_steps` a nivel de `Run` es **obligatorio**, v
 **abierta** la pregunta de en qué punto se necesitaría ReAct-style/plan-execute (sin evidencia de producto
 todavía). El proyector de `RunStep`/`RunRow` que esta nota anticipa (§1.3) es ahora el seed activo
 `tests/seeds/test_seed_ejecucion_runs_projection.py` [S-G Etapa 0] — sin implementar todavía.
+**EJECUTADA (2026-07-24)** — `engine/src/blite/runtime/loop.py` (`execute_run`: secuencia fija
+resolve→invoke, guard `max_steps`, `capability.job.submitted` antes de ejecutar, delegate
+`post_invoke` para la verificación; el loop no verifica, INV-2).
 **Fuentes:** `docs/invariants.md` (INV-2, INV-5, INV-4) · `engine/src/blite/runtime/registry.py` ·
 `knowledge/trust/06-protocolos-capability-mcp-a2a.md` §1.3 (vocabulario `capability.job.*`) ·
 `knowledge/execution/07-run-lifecycle-events.md` (vocabulario `run.*`) · patrones generales de loop de

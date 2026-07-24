@@ -1,7 +1,7 @@
 # Nota 12 — Anatomía del harness (HumanEval/SWE-bench) → checklist del `ExecutionVerifier` + costura al puerto Sandbox (A7)
 
 **Ítem del plan (§4 Dylan / ficha A1):** Anclas duras — de decisión a diseño de adapter. Parte 3: el adapter rung 2 (ejecución/factibilidad) y su costura Fase 2.
-**Fecha:** 2026-07-07 · **Estado:** spec de diseño — insumo de la sesión 11 (rung 2 = pandapower) + semilla de la ficha A7. **SOLO diseño; nada implementado.**
+**Fecha:** 2026-07-07 · **Estado:** **EJECUTADA en su parte rung-2 (2026-07-24)** — `engine/src/blite/verification/execution.py`: checks por isla (`island_connectivity`, `island_has_source`, `powerflow_converged`, `voltage_limits`, `line_loading`, `power_balance`), no-convergencia ⇒ `inconclusive` (no `fail`), prefijo `island-{k}`. La costura §1.4 (`ExecutionHarness`/Sandbox microVM) sigue siendo Fase 2, sin tocar.
 **Fuentes:** nota 03 §1.2 (forma `evidence` `execution`) · nota 04 §1.1 (pandapower rung 2, "correr y observar") y §2/§4 (E2B/Firecracker como forma, microVM Fase 2) · `contract-freeze.md` §4 y §9 (verificación POR ISLA) · anexo de canonicalización §2 (`C()` para `input_digest`) · anatomía de HumanEval (OpenAI) y SWE-bench (Princeton) · `docs/invariants.md` AX3 · `CHIMERA-Harness-Metodologias.md` (§1 def. de harness, §4–5 pool + árbol PEV, §6 mapeo Reto 1).
 
 ---

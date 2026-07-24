@@ -13,6 +13,9 @@ pin por `DistributionManifest`, default **determinista, jamás `latest`**. Sigue
 `engine/src/blite/runtime/registry.py` sigue siendo el stub `load_capabilities() -> dict` de Fase 1, no el
 `Registry(Protocol)` de `list()`/`get()` con captura de excepción POR entry point que esta nota y el freeze
 piden — próximo trabajo de S-G, todavía sin seed propio.
+**EJECUTADA (2026-07-24)** — `runtime/registry.py` (`load_registry`, la opción B literal, eventos
+`registry.loaded`/`registry.capability_load_failed`, pin determinista con `PinnedVersionNotFound`
+fail-closed).
 **Fuentes:** `docs/invariants.md` (ADR-008, ADR-029) · `pyproject.toml` (`[tool.uv.workspace]`,
 `members = ["sdk", "engine", "capabilities/*"]`) · `capabilities/quantum/pyproject.toml`
 (`vqe = ['qiskit>=1.0', 'qiskit-nature>=0.7', 'pyscf>=2.4']`, extra opcional que falla en Windows por

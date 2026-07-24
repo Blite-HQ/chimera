@@ -10,7 +10,9 @@ vive en `blite.protocols`, bajo INV-6 (protocols exige authz). El contrato **AX3
 stress-final 2026-07-22) cierra el hueco de cobertura que esta nota señalaba en §6/§10 ("egreso de modelo
 sin pasar por authz"): ningún módulo del engine fuera de `blite.protocols` puede importar un SDK de modelo.
 `ModelPort` ya existe en código (`engine/src/blite/serving/model_port.py`, S-G Etapa 0 — Protocol listo,
-**SPEC**); la implementación de `ModelServer` sigue pendiente.
+**SPEC**); la implementación de `ModelServer` sigue pendiente. **[2026-07-24, MVP Nivel-1]** El MVP embarcó
+SOLO el puerto — `serving/model_port.py` (`ModelPort` Protocol, doctrina `replay` fail-closed con
+`ReplayMissError`); el adapter `ModelServer`/LiteLLM NO existe aún (`protocols/` vacío) — pendiente post-MVP.
 **Fuentes:** `docs/invariants.md` (AX3, INV-2, INV-6) · `pyproject.toml` (contrato `AX3` de import-linter,
 `forbidden_modules` de `blite.serving`: `blite.protocols`, `blite.gateway`, `blite.runtime`, `blite.authz`,
 `httpx`, `requests`, `aiohttp`, `urllib3`, `socket`) · `engine/src/blite/serving/__init__.py` (vacío hoy) ·

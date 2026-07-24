@@ -1,7 +1,7 @@
 # Nota 02 — `TrustCertificate` v0: el certificado con forma de attestation firmada (in-toto + DSSE, versión lite)
 
 **Ítem del plan (§4 Dylan):** in-toto + Sigstore (formas) → `TrustCertificate` v0: JSON schema estilo attestation + firma lite; hash-chain queda semilla
-**Fecha:** 2026-07-02 · **Estado:** insumo para el contract freeze del viernes
+**Fecha:** 2026-07-02 · **Estado:** **EJECUTADA (2026-07-24)** — `engine/src/blite/certificate/{dsse,keys,predicate,bundle_check}.py` (DSSE+PAE Ed25519, verify-bundle de 7 puntos). La nomenclatura evolucionó respecto de esta nota: `aggregate_rung` → `titular_level` (vocabulario clase+AL de la spec v3.2); el JSON de §1.3 es histórico, la forma vigente es `predicate.py`.
 **Fuentes:** in-toto Attestation Framework (v1.2.0, verificado en vivo) · DSSE (verificado en vivo) · Sigstore cosign/Rekor (verificado en vivo) · semilla TS §6 · notas 01 (provenance) y 03 (aggregate_rung)
 
 ---

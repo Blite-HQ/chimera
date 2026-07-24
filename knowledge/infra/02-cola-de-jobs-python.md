@@ -1,7 +1,7 @@
 # Nota 02 — La cola de jobs en Python: Postgres ya es la cola
 
 **Ítem del plan (§4, Geovanni):** re-mapear el patrón cola→worker al stack vigente. La nota 01 (y el documento de infraestructura original) asumían BullMQ sobre NestJS/Redis — supersedido por el core Python/FastAPI (`docs/arquitectura-python.md`). Esta nota compara los candidatos reales en Python y cierra el pendiente #1 del README de infra.
-**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y ratificación de Geovanni
+**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y ratificación de Geovanni. **NO ejecutada en el MVP (2026-07-24)** — no existe puerto `JobQueue` ni app Procrastinate; el servicio `worker` del compose es config-presente-e-inerte (decisión #6, `compose.yaml`). La durabilidad del MVP es replay del event log (ver execution/03), no la cola. La decisión Procrastinate sigue válida como pendiente.
 **Fuentes:** verificado en vivo 2026-07-14: `procrastinate-org/procrastinate` (repo + docs readthedocs, sección de mecanismo interno) · `python-arq/arq` (repo, aviso maintenance-only #510) · `celery/celery` (repo; discusión #9049 sobre asyncio) · `Bogdanp/dramatiq` (repo + `COPYING.LESSER`) · `tobymao/saq` (repo + changelog) · `rq/rq` (repo + `LICENSE`) · guía oficial de uv para Docker (contexto nota 03) · artículo "Postgres LISTEN/NOTIFY does not scale" (recall.ai) y referencias de campo del patrón `SELECT ... FOR UPDATE SKIP LOCKED`. Internas: `knowledge/trust/01-event-sourcing-postgres.md`, `knowledge/execution/03-durable-execution.md`, `knowledge/execution/06-serving-execution-profile.md`, `knowledge/trust/06-protocolos-capability-mcp-a2a.md`, `docs/invariants.md`.
 
 ---
