@@ -1,17 +1,21 @@
 /**
  * Seam de stream para S10 (F3, ficha punto 3) — interfaz EventSource-compatible.
  *
- * HOY: implementación fixture (emite los eventos del run demo con cadencia,
- * status 'demo' → 'complete'). S10 la rellena DENTRO de gatewayClient
- * (EventSource real contra `GET /runs/{id}/events` del api, reanudación
- * `Last-Event-ID` — freeze §9) y alimenta el cache vía
- * `queryClient.setQueryData(runEventsQueryOptions(runId).queryKey, ...)`.
- * ESTA interfaz no cambia con el swap; el SSE no se fuerza dentro de Query.
- * El contrato de props de nota 18 (events/selectedGlobalSeq/onSelectEvent/
- * viewMode) tampoco cambia — solo existe `status` además.
+ * FIXTURES (VITE_API_URL ausente): emite los eventos del run demo con
+ * cadencia, status 'demo' → 'complete' — comportamiento sin cambios. LIVE
+ * (VITE_API_URL presente, MVP task 1): delega en
+ * `gatewayClient.openRunEventStream` (el único lugar que construye un
+ * EventSource real, INV-1) y alimenta el cache vía
+ * `queryClient.setQueryData(runEventsQueryOptions(runId).queryKey, ...)`
+ * desde `useRunEventStream.ts`. ESTA interfaz no cambió con el swap; el SSE
+ * no se fuerza dentro de Query. El contrato de props de nota 18
+ * (events/selectedGlobalSeq/onSelectEvent/viewMode) tampoco cambia — solo
+ * existe `status` además.
  */
 
 import { RUN_EVENTS } from '../fixtures/runEvents';
+import { openRunEventStream } from '../gatewayClient';
+import { isLiveMode } from './env';
 
 import type { ProjectedEvent } from '../views/types';
 
@@ -34,12 +38,16 @@ export interface RunStreamSubscription {
 const DEMO_INTERVAL_MS = 400;
 
 export function subscribeToRunEvents(
-  // La implementación fixture sirve un único run demo; el parámetro es parte
-  // del contrato que S10 sí usa (URL del SSE real).
-  _runId: string,
+  runId: string,
   options: RunStreamOptions,
   handlers: RunStreamHandlers
 ): RunStreamSubscription {
+  if (isLiveMode()) {
+    handlers.onStatus?.('live');
+    const subscription = openRunEventStream(runId, { onEvent: handlers.onEvent });
+    return { close: () => subscription.close() };
+  }
+
   const cursor = options.lastEventId ?? 0;
   // Fixture del run demo: un solo stream conocido; el filtro por cursor es
   // el MISMO contrato de reanudación que el SSE real (catch-up, cero

@@ -1,9 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RUN_EVENTS } from '../fixtures/runEvents';
+import * as gatewayClient from '../gatewayClient';
 import { subscribeToRunEvents, type RunStreamStatus } from './runStream';
 
+import type { RunEventStreamHandlers, RunEventStreamSubscription } from '../gatewayClient';
 import type { ProjectedEvent } from '../views/types';
+
+vi.mock('../gatewayClient', () => ({
+  openRunEventStream: vi.fn()
+}));
 
 describe('subscribeToRunEvents (seam de S10)', () => {
   beforeEach(() => {
@@ -49,5 +55,49 @@ describe('subscribeToRunEvents (seam de S10)', () => {
     vi.advanceTimersByTime(400 * 5);
 
     expect(events.length).toBe(seen);
+  });
+});
+
+describe('subscribeToRunEvents — modo live (MVP task 1)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.mocked(gatewayClient.openRunEventStream).mockReset();
+  });
+
+  it('delega en gatewayClient.openRunEventStream, reenvía eventos y emite status live', () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const close = vi.fn();
+    let capturedHandlers: RunEventStreamHandlers | undefined;
+    vi.mocked(gatewayClient.openRunEventStream).mockImplementation(
+      (_runId: string, handlers: RunEventStreamHandlers): RunEventStreamSubscription => {
+        capturedHandlers = handlers;
+        return { close };
+      }
+    );
+
+    const events: ProjectedEvent[] = [];
+    const statuses: RunStreamStatus[] = [];
+
+    // Act
+    const subscription = subscribeToRunEvents(
+      '8f2c1a9b',
+      {},
+      { onEvent: e => events.push(e), onStatus: s => statuses.push(s) }
+    );
+
+    // Assert
+    expect(gatewayClient.openRunEventStream).toHaveBeenCalledWith(
+      '8f2c1a9b',
+      expect.objectContaining({ onEvent: expect.any(Function) })
+    );
+    expect(statuses).toEqual(['live']);
+
+    const fakeEvent = RUN_EVENTS[0]!;
+    capturedHandlers?.onEvent(fakeEvent);
+    expect(events).toEqual([fakeEvent]);
+
+    subscription.close();
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });

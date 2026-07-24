@@ -1,5 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { invokeCapability } from './gatewayClient';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { invokeCapability, openRunEventStream } from './gatewayClient';
+
+import type { ProjectedEvent } from './views/types';
 
 describe('gatewayClient', () => {
   afterEach(() => {
@@ -60,5 +63,128 @@ describe('gatewayClient', () => {
     // Assert
     expect(result.success).toBe(false);
     expect(result.error).toContain('ERR_NETWORK');
+  });
+});
+
+/** Fake EventSource — captura los listeners registrados por tipo + close(). */
+class FakeEventSource {
+  static instances: FakeEventSource[] = [];
+  readonly url: string;
+  readonly listenersByType = new Map<string, ((event: MessageEvent<string>) => void)[]>();
+  onerror: (() => void) | null = null;
+  closed = false;
+
+  constructor(url: string) {
+    this.url = url;
+    FakeEventSource.instances.push(this);
+  }
+
+  addEventListener(type: string, listener: (event: MessageEvent<string>) => void): void {
+    const existing = this.listenersByType.get(type) ?? [];
+    this.listenersByType.set(type, [...existing, listener]);
+  }
+
+  close(): void {
+    this.closed = true;
+  }
+
+  dispatch(type: string, data: string): void {
+    const listeners = this.listenersByType.get(type) ?? [];
+    for (const listener of listeners) {
+      listener({ data } as unknown as MessageEvent<string>);
+    }
+  }
+}
+
+describe('openRunEventStream', () => {
+  beforeEach(() => {
+    FakeEventSource.instances = [];
+    vi.stubGlobal('EventSource', FakeEventSource);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('abre el EventSource contra {VITE_API_URL}/runs/{id}/events y mapea un frame nombrado', () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const events: ProjectedEvent[] = [];
+
+    // Act
+    const subscription = openRunEventStream('8f2c1a9b', { onEvent: e => events.push(e) });
+    const source = FakeEventSource.instances[0];
+
+    // Assert
+    expect(source?.url).toBe('http://api.test/runs/8f2c1a9b/events');
+
+    source?.dispatch(
+      'verification.completed',
+      JSON.stringify({
+        global_seq: 4,
+        type: 'verification.completed',
+        actor_id: 'service:verifier',
+        occurred_at: '2026-07-22T12:00:04.000000Z',
+        resumen: 'Verificación formal exacta (AL3)',
+        payload: { verification: { verdict: 'pass' } }
+      })
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toEqual({
+      globalSeq: 4,
+      type: 'verification.completed',
+      actorId: 'service:verifier',
+      occurredAt: '2026-07-22T12:00:04.000000Z',
+      resumen: 'Verificación formal exacta (AL3)',
+      verdict: 'pass'
+    });
+
+    subscription.close();
+    expect(source?.closed).toBe(true);
+  });
+
+  it('encodea el runId en la url', () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+
+    openRunEventStream('run/with slash', { onEvent: () => {} });
+
+    expect(FakeEventSource.instances[0]?.url).toBe(
+      'http://api.test/runs/run%2Fwith%20slash/events'
+    );
+  });
+
+  it('llama a onError (nunca lanza) cuando un frame no parsea', () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const onError = vi.fn();
+
+    openRunEventStream('8f2c1a9b', { onEvent: () => {}, onError });
+    const source = FakeEventSource.instances[0];
+
+    expect(() => source?.dispatch('run.started', 'not-json')).not.toThrow();
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it('llama a onError cuando el EventSource subyacente reporta un error', () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const onError = vi.fn();
+
+    openRunEventStream('8f2c1a9b', { onEvent: () => {}, onError });
+    const source = FakeEventSource.instances[0];
+    source?.onerror?.();
+
+    expect(onError).toHaveBeenCalledWith('SSE connection error');
+  });
+
+  it('no construye un EventSource cuando VITE_API_URL no está configurada', () => {
+    vi.stubEnv('VITE_API_URL', undefined);
+    const onError = vi.fn();
+
+    const subscription = openRunEventStream('8f2c1a9b', { onEvent: () => {}, onError });
+
+    expect(FakeEventSource.instances).toHaveLength(0);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(() => subscription.close()).not.toThrow();
   });
 });

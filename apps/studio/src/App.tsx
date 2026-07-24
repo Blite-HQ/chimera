@@ -7,6 +7,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/Data
 import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/lib/theme';
 
+import { isLiveMode } from './data/env';
 import {
   ablationQueryOptions,
   artifactsQueryOptions,
@@ -16,6 +17,7 @@ import {
   runSummariesQueryOptions,
   stepEvidenceQueryOptions
 } from './data/queries';
+import { useRunEventStream } from './data/useRunEventStream';
 import GridSpike from './spike/GridSpike';
 import AblationPanel from './views/AblationPanel';
 import ArtifactsView from './views/ArtifactsView';
@@ -82,6 +84,9 @@ function ToggleButton({
 
 /** Vistas del run montadas como slots de RunDetail (queries + estado acá). */
 function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElement {
+  // No-op en modo fixtures/demo; en modo live alimenta el cache con el SSE
+  // real (MVP task 1) — llamada incondicional, el hook decide adentro.
+  useRunEventStream(runId);
   const summariesQuery = useQuery(runSummariesQueryOptions());
   const eventsQuery = useQuery(runEventsQueryOptions(runId));
   const stepsQuery = useQuery(stepEvidenceQueryOptions(runId));
@@ -128,11 +133,11 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
           />
         </div>
         <RunTimeline
-          events={revealedEvents}
+          events={isLiveMode() ? runEvents : revealedEvents}
           selectedGlobalSeq={selectedGlobalSeq}
           onSelectEvent={setSelectedGlobalSeq}
           viewMode={timelineViewMode}
-          playback={playback}
+          playback={isLiveMode() ? undefined : playback}
         />
       </div>
       <aside className="w-96 shrink-0">
