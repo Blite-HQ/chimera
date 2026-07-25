@@ -1,3 +1,12 @@
 # Auto-generated lockfiles — owned by their package managers, not prettier
 pnpm-lock.yaml
 uv.lock
+
+# Fixtures de costura — un solo origen (docs/specs/README.md).
+# Los generan `scripts/gen-contract-fixtures-harness.py`, `gen-informe-fixtures.py`
+# y `gen-fixtures-ingesta.py` con json.dumps(indent=2, sort_keys=True), y los tests
+# anti-drift exigen que el archivo en disco sea BYTE-IDÉNTICO a esa salida (y al
+# espejo de Studio). Prettier colapsa arrays de un elemento (`["aprobado"]`), lo que
+# rompe el anti-drift en cada commit. El generador es el dueño, no prettier.
+tests/fixtures/contract/
+apps/studio/src/fixtures/contract/

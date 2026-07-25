@@ -6,7 +6,9 @@
         "type": "boolean"
       }
     },
-    "required": ["aprobado"],
+    "required": [
+      "aprobado"
+    ],
     "type": "object"
   },
   "prompt": "El paso escribe al mundo (irreversible). ¿Aprobás?",
