@@ -1,0 +1,102 @@
+[
+  {
+    "instance": "cr6-uniforme",
+    "job_ids": ["dfe1c421-7684-4696-a498-f8b5207d3346", "b984c195-5a19-4d6c-a12e-d53780b0d05c"],
+    "p": 1,
+    "predicate": {
+      "agreement": true,
+      "legs": [
+        {
+          "backend_id": "H2-1LE",
+          "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+          "seed": 0,
+          "transpiled_circuit_digest": "80ab87aa8fe2da0323155d9f06ff49f0024d012059caab7c792e11a9fcf1c45b"
+        },
+        {
+          "backend_id": "H2-Emulator",
+          "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
+          "seed": 0,
+          "transpiled_circuit_digest": "80ab87aa8fe2da0323155d9f06ff49f0024d012059caab7c792e11a9fcf1c45b"
+        }
+      ],
+      "method": "consensus_replication",
+      "replicas": 2,
+      "seeds": [0, 0]
+    }
+  },
+  {
+    "instance": "cr8-uniforme",
+    "job_ids": ["4a24ed97-9bf8-439f-aec9-d022c3e705b2", "489e7037-67fa-4fd6-b697-29d7ca8740e5"],
+    "p": 1,
+    "predicate": {
+      "agreement": true,
+      "legs": [
+        {
+          "backend_id": "H2-1LE",
+          "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+          "seed": 0,
+          "transpiled_circuit_digest": "39cbf9a1faeda1b0fe1d7ed31b86b83ead1cc11b17a28947b64a5c9f88db76c0"
+        },
+        {
+          "backend_id": "H2-Emulator",
+          "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
+          "seed": 0,
+          "transpiled_circuit_digest": "39cbf9a1faeda1b0fe1d7ed31b86b83ead1cc11b17a28947b64a5c9f88db76c0"
+        }
+      ],
+      "method": "consensus_replication",
+      "replicas": 2,
+      "seeds": [0, 0]
+    }
+  },
+  {
+    "instance": "cr8-uniforme",
+    "job_ids": ["7add6a66-7fd6-44d6-b316-90aec5a360cb", "3ae607ec-94f9-4ae3-ad62-12b4418aa71d"],
+    "p": 2,
+    "predicate": {
+      "agreement": true,
+      "legs": [
+        {
+          "backend_id": "H2-1LE",
+          "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+          "seed": 0,
+          "transpiled_circuit_digest": "61c390d15cac272e38b5f298ef2ad593632ac04803c6bfe63567abf405723b16"
+        },
+        {
+          "backend_id": "H2-Emulator",
+          "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
+          "seed": 0,
+          "transpiled_circuit_digest": "61c390d15cac272e38b5f298ef2ad593632ac04803c6bfe63567abf405723b16"
+        }
+      ],
+      "method": "consensus_replication",
+      "replicas": 2,
+      "seeds": [0, 0]
+    }
+  },
+  {
+    "instance": "cr8-uniforme",
+    "job_ids": ["f8d16ef7-9c3d-4fb6-9795-458e5563ae44", "753d5f23-8d2d-4d93-82da-5740e04ab05f"],
+    "p": 3,
+    "predicate": {
+      "agreement": true,
+      "legs": [
+        {
+          "backend_id": "H2-1LE",
+          "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
+          "seed": 0,
+          "transpiled_circuit_digest": "09cb1af54552b7c97d0c6011ba84c5f698461a54527204286e260adc8cbb3d83"
+        },
+        {
+          "backend_id": "H2-Emulator",
+          "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
+          "seed": 0,
+          "transpiled_circuit_digest": "09cb1af54552b7c97d0c6011ba84c5f698461a54527204286e260adc8cbb3d83"
+        }
+      ],
+      "method": "consensus_replication",
+      "replicas": 2,
+      "seeds": [0, 0]
+    }
+  }
+]

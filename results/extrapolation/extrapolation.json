@@ -1,0 +1,502 @@
+{
+  "barrier_qubits": 26,
+  "barrier_source": "knowledge/quantum/08-ruta-quantinuum-guppy.md \u00a72 (actualizaci\u00f3n oficial 2026-07-18: 'tope de 26 qubits confirma la escalera de instancias: cr8/ieee9/ieee14 en emulador; ieee30 solo cl\u00e1sico')",
+  "digest": "e4eb94daf0e540b66b413521774f65d29916d6e2566e18e2e76f675b184178c8",
+  "honest_limitations": {
+    "barrier_26_qubits": {
+      "classical_only_instances": ["ieee30-uniforme", "ice-uniforme", "ice-voltaje"],
+      "quantum_eligible_instances": [
+        "cr6-uniforme",
+        "cr8-uniforme",
+        "cr8-voltaje",
+        "ieee9-uniforme",
+        "ieee14-flujo"
+      ],
+      "source": "knowledge/quantum/08-ruta-quantinuum-guppy.md \u00a72 (actualizaci\u00f3n oficial 2026-07-18: 'tope de 26 qubits confirma la escalera de instancias: cr8/ieee9/ieee14 en emulador; ieee30 solo cl\u00e1sico')",
+      "statement": "El emulador H2 hace tratamiento EXACTO hasta 26 qubits (1 nodo = 1 qubit en la codificaci\u00f3n Max-Cut congelada) \u2014 NO es una brecha que no intentamos, es una barrera f\u00edsica del emulador confirmada por el enunciado oficial (2026-07-18). ['ieee30-uniforme', 'ice-uniforme', 'ice-voltaje'] exceden la barrera y son SOLO cl\u00e1sicas; ['cr6-uniforme', 'cr8-uniforme', 'cr8-voltaje', 'ieee9-uniforme', 'ieee14-flujo'] tienen evidencia cu\u00e1ntica real.",
+      "value": 26
+    },
+    "ice_no_ground_truth": {
+      "instances": ["ice-uniforme", "ice-voltaje"],
+      "source": "scripts/gen_corpus_ice.py",
+      "statement": "A n=68 no hay verdad de terreno: el \u00f3ptimo no fue probado (excede FUERZA_BRUTA_MAX_N=14 de la doble ancla y esta generaci\u00f3n no corri\u00f3 CP-SAT sobre la red completa \u2014 scripts/gen_corpus_ice.py) \u2014 solo se reporta la banda [greedy_cut, gw_cut, sdp_upper_bound] por instancia, nunca un r inventado."
+    },
+    "qaoa_vs_gw": {
+      "guarantee_source": "docs/retos/reto1-consigna.md (enunciado oficial: 'QAOA no supera a GW para Max-Cut en ninguna instancia... los equipos DEBEN reportar esta brecha') + knowledge/quantum/01-fundamentos-matematicos.md \u00a7... (Farhi et al. 2014, p=1 en grafos 3-regulares; Goemans-Williamson 1995)",
+      "gw_theoretical_guarantee": 0.878,
+      "instances_where_qaoa_beat_gw": [],
+      "max_ratio_best_observed": 1.0,
+      "max_ratio_mean_observed": 0.9440569196428571,
+      "qaoa_p1_theoretical_guarantee": 0.6924,
+      "statement": "QAOA no super\u00f3 a GW en ninguna corrida Nexus de este artefacto ('instances_where_qaoa_beat_gw' vac\u00edo \u21d2 verificado, no supuesto): en las instancias con evidencia cu\u00e1ntica (n<=14) GW ya alcanza el \u00f3ptimo exacto (r_gw=1.0); el ratio_best de QAOA solo lo empata por muestreo en espacios de estados chicos (best-of-~1024 shots sobre <=2^14 estados) \u2014 artefacto de muestreo documentado en scripts/exp_r_vs_p.py (Fix 4b), no ventaja cu\u00e1ntica; el ratio_mean muestral (la m\u00e9trica honesta) se queda sistem\u00e1ticamente por debajo de 1.0. Coherente con la garant\u00eda te\u00f3rica: QAOA p=1 (0.6924) < GW (0.878)."
+    }
+  },
+  "instances": [
+    {
+      "band": null,
+      "band_note": null,
+      "barrier_qubits": 26,
+      "classical": {
+        "greedy_cut": 5.0,
+        "gw_cut": 5.0,
+        "sdp_upper_bound": 5.249999991171491
+      },
+      "convencion": "uniforme",
+      "corpus_digest": "e8b2121c61399aa758a356835f1e849e435377ebc2eadf0dd08356c702b680db",
+      "corpus_source": "knowledge/islanding/corpus/cr6-uniforme.json",
+      "instance": "cr6-uniforme",
+      "n_nodos": 6,
+      "optimo": 5,
+      "quantum": [
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 5,
+          "bit_order": "msb-left",
+          "job_id": "dfe1c421-7684-4696-a498-f8b5207d3346",
+          "normalized_digest": "0dd7344a1cd44c9364b639fc9e22d22a64aa09c39bea25ff59e923ab18f4bf96",
+          "p": 1,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.82109375,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "54d05e11482628b5ef629256922d1d840411363444a600d6ed0a91a18590a482"
+        },
+        {
+          "backend_id": "H2-Emulator",
+          "best_cut": 5,
+          "bit_order": "msb-left",
+          "job_id": "b984c195-5a19-4d6c-a12e-d53780b0d05c",
+          "normalized_digest": "5f0220a8f62a40c2f31b04831766a8456946bb3cda7b816e9ed14194376fb307",
+          "p": 1,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.81484375,
+          "seed": 0,
+          "shots": 256,
+          "statement_digest": "0dd85afb596ab1aa3f6045333f21525c7fc8b53e2f0dcc4b6df068fec0de803d"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 5,
+          "bit_order": "msb-left",
+          "job_id": "97fa88d2-c2c4-4243-a95e-485a1c1021c3",
+          "normalized_digest": "b0c6dbed3357801d0d5e643e8f6987b3ca86062b0cd73787c5161c5afd4995c9",
+          "p": 2,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.88984375,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "16e0d6523725314843f2bdb09c3281a5709edd1eac7e7453170e146bb890c0fd"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 5,
+          "bit_order": "msb-left",
+          "job_id": "e94cd80c-a705-4941-9220-08b75a26427f",
+          "normalized_digest": "b7085589549947259a691759df2e1fd0231ce1c87db0e1d248ad36f0c3b86050",
+          "p": 3,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.932421875,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "7a612a8adbb6b771db3de3604874bf01720b109c1ac24a5c99fbe87d2d052fbf"
+        }
+      ],
+      "r_greedy": 1.0,
+      "r_gw": 1.0,
+      "reason": null,
+      "regime": "quantum-eligible"
+    },
+    {
+      "band": null,
+      "band_note": null,
+      "barrier_qubits": 26,
+      "classical": {
+        "greedy_cut": 7.0,
+        "gw_cut": 7.0,
+        "sdp_upper_bound": 7.499997858187237
+      },
+      "convencion": "uniforme",
+      "corpus_digest": "66bb6c5ae0eadb1c697436ea36c069b3bf3c3a4ef436d1eda9540a3e79f91392",
+      "corpus_source": "knowledge/islanding/corpus/cr8-uniforme.json",
+      "instance": "cr8-uniforme",
+      "n_nodos": 8,
+      "optimo": 7,
+      "quantum": [
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 7,
+          "bit_order": "msb-left",
+          "job_id": "4a24ed97-9bf8-439f-aec9-d022c3e705b2",
+          "normalized_digest": "eaf6f2a3f376328dbd37231e1271bdd3c3053a1ddefbb1c542f917577aa8b975",
+          "p": 1,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.8556082589285714,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "d43a93f29c3f7b28626b2c368fc4cb24b4ea0ce9999ce14198ce66ca70f25666"
+        },
+        {
+          "backend_id": "H2-Emulator",
+          "best_cut": 7,
+          "bit_order": "msb-left",
+          "job_id": "489e7037-67fa-4fd6-b697-29d7ca8740e5",
+          "normalized_digest": "8cba1d74af029dce62d9d5caca670498e7e1ead923e1c3c5edc665c4282165b3",
+          "p": 1,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.8556082589285714,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "9732e1c1cc3d12813d6025f0d1e1ab81015cc513495a534fe69033456223513c"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 7,
+          "bit_order": "msb-left",
+          "job_id": "7add6a66-7fd6-44d6-b316-90aec5a360cb",
+          "normalized_digest": "9a5617046e60ea9b0c56248e5a5b9bb53941499d60e25c9c81d19a12af720609",
+          "p": 2,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.9087611607142857,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "33a188a9ad5d02ef583d6bbbd0a648400f0bfdb6ad38bf092adf02bf64b6f82b"
+        },
+        {
+          "backend_id": "H2-Emulator",
+          "best_cut": 7,
+          "bit_order": "msb-left",
+          "job_id": "3ae607ec-94f9-4ae3-ad62-12b4418aa71d",
+          "normalized_digest": "4aca40ed87363502707f9fe8a67b56d26e16d297df589062e2254f0fb32a4dd9",
+          "p": 2,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.9020647321428571,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "9e50cd01ed50c02509bd9055cd74421287cdd09a499d74aa6a1ebf2e7c9de9d8"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 7,
+          "bit_order": "msb-left",
+          "job_id": "f8d16ef7-9c3d-4fb6-9795-458e5563ae44",
+          "normalized_digest": "05bb85f3e0f39ac4621a1afa98c4e2ea82d0f2c1d5e3fca38198f6e27bd4e8a4",
+          "p": 3,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.9440569196428571,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "5b3137a74f387000c892c293b656cbad40c43809da060f5040e1762654a14370"
+        },
+        {
+          "backend_id": "H2-Emulator",
+          "best_cut": 7,
+          "bit_order": "msb-left",
+          "job_id": "753d5f23-8d2d-4d93-82da-5740e04ab05f",
+          "normalized_digest": "5848ac4081bba7be3384deb97ba1620eb68c42c7fae425a6dfc45ab4fa4171fa",
+          "p": 3,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.9344308035714286,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "a072bab9ebc21f34a28e53c22494ad1292fc30e597b7e6bdff0f61ca1ffa4f92"
+        }
+      ],
+      "r_greedy": 1.0,
+      "r_gw": 1.0,
+      "reason": null,
+      "regime": "quantum-eligible"
+    },
+    {
+      "band": null,
+      "band_note": null,
+      "barrier_qubits": 26,
+      "classical": {
+        "greedy_cut": 1150.0,
+        "gw_cut": 1150.0,
+        "sdp_upper_bound": 1241.9997697266315
+      },
+      "convencion": "voltaje",
+      "corpus_digest": "0af00267250f0838ce5445659238c180fe88771383001aa4c745e36462d1aa5b",
+      "corpus_source": "knowledge/islanding/corpus/cr8-voltaje.json",
+      "instance": "cr8-voltaje",
+      "n_nodos": 8,
+      "optimo": 1150,
+      "quantum": [
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 1150,
+          "bit_order": "msb-left",
+          "job_id": "184d125b-5485-4152-88ff-edf1f484ffa0",
+          "normalized_digest": "21ec38c7e171cafa4b6712bd59567392487dafd21e9a79f37a19b2fc371e0e85",
+          "p": 1,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.859609375,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "60414cb6cc12ec5c7a33c9c82e9f34d96d406f605aadcc2c9c9a045c71e0ebdf"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 1150,
+          "bit_order": "msb-left",
+          "job_id": "50e140f9-7c30-4dff-a55e-aea8822262a2",
+          "normalized_digest": "a5ab91973d2bb933581d83dc0bce5d25db393cb8a2c02963c0e3d37eb748a5be",
+          "p": 2,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.901953125,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "f6fe3c1282007686d51c718eaee0d621f61cbd5e454bbb13f4022697372effda"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 1150,
+          "bit_order": "msb-left",
+          "job_id": "cf628d8d-f639-439e-90e9-eee152c22d47",
+          "normalized_digest": "69edb906d746183606015c3c33f0a79e859383d3729fc58f6e0e50c7a992344a",
+          "p": 3,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.915390625,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "5b546c8bea10d2b06b40ec2ac46ca2e6229d2da061665e539068fd7d8bbe9091"
+        }
+      ],
+      "r_greedy": 1.0,
+      "r_gw": 1.0,
+      "reason": null,
+      "regime": "quantum-eligible"
+    },
+    {
+      "band": null,
+      "band_note": null,
+      "barrier_qubits": 26,
+      "classical": {
+        "greedy_cut": 9.0,
+        "gw_cut": 9.0,
+        "sdp_upper_bound": 9.000024265476833
+      },
+      "convencion": "uniforme",
+      "corpus_digest": "dee38cdeea9bb35305de94308169368216838503673d3be57f0e7bea42677520",
+      "corpus_source": "knowledge/islanding/corpus/ieee9-uniforme.json",
+      "instance": "ieee9-uniforme",
+      "n_nodos": 9,
+      "optimo": 9,
+      "quantum": [
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 9,
+          "bit_order": "msb-left",
+          "job_id": "43638fad-0e53-4d9e-a499-870dce1f55d9",
+          "normalized_digest": "af199924fa942224bbc7b9e658933ef2873cc09205238812da225f5d712b8f58",
+          "p": 1,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.7286241319444444,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "81e097cffd9e58918fcbc66e37c918397af312d5ec1b2e0e9c641d7ab0de1286"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 9,
+          "bit_order": "msb-left",
+          "job_id": "a04ec66d-ecc5-4dbb-b0e5-0eff40619969",
+          "normalized_digest": "185b415059e176f753b56a3a11a94ef138e795e9c52c8f648bc8294d9e3a04ce",
+          "p": 2,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.8196614583333334,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "22b9f93cf839c590133d8e197e4b0330ccaa9c8e4ccb25dcbbc2c490184f31a1"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 9,
+          "bit_order": "msb-left",
+          "job_id": "aa27694b-5bb4-470b-b870-61b86dfb41b2",
+          "normalized_digest": "9af81d821c0b06b949b4c8b4a3f7ffa44ce8146570622556d999c39a15e8af7b",
+          "p": 3,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.8505859375,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "64bb9654446d8a5fbd6668b0fd5ca79b032707c6e7e0b88bb1ab50b26738b10f"
+        }
+      ],
+      "r_greedy": 1.0,
+      "r_gw": 1.0,
+      "reason": null,
+      "regime": "quantum-eligible"
+    },
+    {
+      "band": null,
+      "band_note": null,
+      "barrier_qubits": 26,
+      "classical": {
+        "greedy_cut": 57070.0,
+        "gw_cut": 57070.0,
+        "sdp_upper_bound": 57766.894230045014
+      },
+      "convencion": "flujo",
+      "corpus_digest": "c7880bb0d254d2d5f91c21cfd7cf0a5ac1cb9c88261c15b94cb7b22d6fd896ad",
+      "corpus_source": "knowledge/islanding/corpus/ieee14-flujo.json",
+      "instance": "ieee14-flujo",
+      "n_nodos": 14,
+      "optimo": 57070,
+      "quantum": [
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 57070,
+          "bit_order": "msb-left",
+          "job_id": "bddedd47-821a-4be4-a796-015da4997f80",
+          "normalized_digest": "5d9db3516e06d1b81f0b41dd9a708b6cda12302604032573766097eb353e4db9",
+          "p": 1,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.7591357447542492,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "8328908003c8b25e172e5cb6a9b364eb8e7969f27bc90415ae0f53bbf1c4c81d"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 57070,
+          "bit_order": "msb-left",
+          "job_id": "876d1ac1-0060-4a2a-8851-1c025fac496c",
+          "normalized_digest": "8ce8d5dd9e56cac05f0db5b6a997544a136a35ec620d38a7f5d39311fce3e66a",
+          "p": 2,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.8422263092474155,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "4f47b21cc747bfe9be867ad16e4af9fb383bd660a5cbff251744198cab5f33db"
+        },
+        {
+          "backend_id": "H2-1LE",
+          "best_cut": 57070,
+          "bit_order": "msb-left",
+          "job_id": "0e0ae9b0-5a38-46eb-b492-47ef31bc34d9",
+          "normalized_digest": "2624aae76faf96ed8d273bb641ad794d2ad81d10eb7883a428f0fcd64b6e4852",
+          "p": 3,
+          "ratio_best": 1.0,
+          "ratio_mean": 0.8547732123105397,
+          "seed": 0,
+          "shots": 1024,
+          "statement_digest": "021ab12b148e73ed2bebcf488b51aa1cea85e17f6e4a01a0cacad3b2a48c337e"
+        }
+      ],
+      "r_greedy": 1.0,
+      "r_gw": 1.0,
+      "reason": null,
+      "regime": "quantum-eligible"
+    },
+    {
+      "band": null,
+      "band_note": null,
+      "barrier_qubits": 26,
+      "classical": {
+        "greedy_cut": 34.0,
+        "gw_cut": 35.0,
+        "sdp_upper_bound": 36.29424308038841
+      },
+      "convencion": "uniforme",
+      "corpus_digest": "a864122e83585d19921fcb00857aea1b8f4f4248a291a7a6f9d98e1b2df25a5b",
+      "corpus_source": "knowledge/islanding/corpus/ieee30-uniforme.json",
+      "instance": "ieee30-uniforme",
+      "n_nodos": 30,
+      "optimo": 35,
+      "quantum": null,
+      "r_greedy": 0.9714285714285714,
+      "r_gw": 1.0,
+      "reason": "excede la barrera de 26 qubits del emulador H2",
+      "regime": "classical-only"
+    },
+    {
+      "band": [75.0, 82.0, 86.43247646372534],
+      "band_note": "sin \u00f3ptimo probado a n=68 (excede FUERZA_BRUTA_MAX_N=14 de la doble ancla; esta generaci\u00f3n no corri\u00f3 CP-SAT sobre la red completa \u2014 scripts/gen_corpus_ice.py); banda honesta [greedy_cut, gw_cut, sdp_upper_bound], GW heur\u00edstico + cota SDP, NUNCA un r inventado",
+      "barrier_qubits": 26,
+      "classical": {
+        "greedy_cut": 75.0,
+        "gw_cut": 82.0,
+        "sdp_upper_bound": 86.43247646372534
+      },
+      "convencion": "uniforme",
+      "corpus_digest": "0078d201ff590345598ab0d7698a724cc642eaec4dca660a4ec66361402485a7",
+      "corpus_source": "knowledge/islanding/corpus/ice-uniforme.json",
+      "instance": "ice-uniforme",
+      "n_nodos": 68,
+      "optimo": null,
+      "quantum": null,
+      "r_greedy": null,
+      "r_gw": null,
+      "reason": "excede la barrera de 26 qubits del emulador H2",
+      "regime": "classical-only"
+    },
+    {
+      "band": [14858.0, 16192.0, 17044.88369269128],
+      "band_note": "sin \u00f3ptimo probado a n=68 (excede FUERZA_BRUTA_MAX_N=14 de la doble ancla; esta generaci\u00f3n no corri\u00f3 CP-SAT sobre la red completa \u2014 scripts/gen_corpus_ice.py); banda honesta [greedy_cut, gw_cut, sdp_upper_bound], GW heur\u00edstico + cota SDP, NUNCA un r inventado",
+      "barrier_qubits": 26,
+      "classical": {
+        "greedy_cut": 14858.0,
+        "gw_cut": 16192.0,
+        "sdp_upper_bound": 17044.88369269128
+      },
+      "convencion": "voltaje",
+      "corpus_digest": "7bcda6747ac19bda4f8ef9cedc87a5d8c1185a459a08c5c6beb9662ee12d9d0d",
+      "corpus_source": "knowledge/islanding/corpus/ice-voltaje.json",
+      "instance": "ice-voltaje",
+      "n_nodos": 68,
+      "optimo": null,
+      "quantum": null,
+      "r_greedy": null,
+      "r_gw": null,
+      "reason": "excede la barrera de 26 qubits del emulador H2",
+      "regime": "classical-only"
+    }
+  ],
+  "provenance": {
+    "inputs": [
+      {
+        "digest": "e8b2121c61399aa758a356835f1e849e435377ebc2eadf0dd08356c702b680db",
+        "ref": "knowledge/islanding/corpus/cr6-uniforme.json"
+      },
+      {
+        "digest": "66bb6c5ae0eadb1c697436ea36c069b3bf3c3a4ef436d1eda9540a3e79f91392",
+        "ref": "knowledge/islanding/corpus/cr8-uniforme.json"
+      },
+      {
+        "digest": "0af00267250f0838ce5445659238c180fe88771383001aa4c745e36462d1aa5b",
+        "ref": "knowledge/islanding/corpus/cr8-voltaje.json"
+      },
+      {
+        "digest": "dee38cdeea9bb35305de94308169368216838503673d3be57f0e7bea42677520",
+        "ref": "knowledge/islanding/corpus/ieee9-uniforme.json"
+      },
+      {
+        "digest": "c7880bb0d254d2d5f91c21cfd7cf0a5ac1cb9c88261c15b94cb7b22d6fd896ad",
+        "ref": "knowledge/islanding/corpus/ieee14-flujo.json"
+      },
+      {
+        "digest": "a864122e83585d19921fcb00857aea1b8f4f4248a291a7a6f9d98e1b2df25a5b",
+        "ref": "knowledge/islanding/corpus/ieee30-uniforme.json"
+      },
+      {
+        "digest": "0078d201ff590345598ab0d7698a724cc642eaec4dca660a4ec66361402485a7",
+        "ref": "knowledge/islanding/corpus/ice-uniforme.json"
+      },
+      {
+        "digest": "7bcda6747ac19bda4f8ef9cedc87a5d8c1185a459a08c5c6beb9662ee12d9d0d",
+        "ref": "knowledge/islanding/corpus/ice-voltaje.json"
+      },
+      {
+        "digest": "eb37a3613a77e47684361e0ffb64b9aa5c70fd8c7df072e2f1967734aaff5646",
+        "ref": "knowledge/nexus/index.json"
+      }
+    ],
+    "recipe": {
+      "capability": "blite.evidencia.extrapolacion.gen_extrapolation",
+      "code_ref": "git:HEAD",
+      "params_digest": "sha256:d3765ef99951ff36ff0f7cb003c5487472d039e5f22979b3e88d4e5e80c59684",
+      "version": "0.1.0"
+    }
+  }
+}

@@ -1,11 +1,10 @@
 """SEED · endpoints Studio (Steven+Dylan) — spec `docs/specs/endpoints-studio.md`.
 
-Fase 0 fija el contrato ruta→forma (freeze §7/§9, proyecciones YA congeladas)
-ANTES de que las rutas existan. Ninguna de las 6 vive todavía en
-`chimera_api/app.py` (solo `/health`, `/runs` POST, `/runs/{id}/events` SSE,
-`/runs/{id}/certificate` GET) — cada test de abajo describe la CONDUCTA
-esperada (código 200 + forma de la respuesta) y hoy falla con 404 porque la
-ruta no está montada. El dueño de Fase 1 quita el `xfail` ruta por ruta.
+Fase 0 fijó el contrato ruta→forma (freeze §7/§9, proyecciones YA congeladas);
+Fase 1 (dominio E) montó las 6 rutas en `chimera_api.reads.create_reads_router`
+(cableado en `create_app`) y este seed pasó a VERDE — el `xfail` se retiró como
+pide `docs/specs/README.md`. Cada test fija la CONDUCTA de una ruta (código
+200/404 + forma de la respuesta) contra un store con un run mínimo servido.
 
 Collection-safe a propósito (import de `chimera_api`/`blite` DENTRO de cada
 función, nunca a nivel de módulo): estas rutas se agregarán a `create_app`,
@@ -17,24 +16,25 @@ módulo intermedio cambia de forma en Fase 1.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
+import httpx
 import pytest
+from fastapi.testclient import TestClient
 
 pytestmark = [
     pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 Steven+Dylan: las rutas REST de docs/specs/endpoints-"
-            "studio.md (GET /runs, /runs/{id}/artifacts, /runs/{id}/"
-            "knowledge, /runs/{id}/steps/{id}/evidence, /runs/{id}/ablation, "
-            "/runs/{id}/topology) aun no existen en chimera_api.app.create_app "
-            "— hoy responden 404. Este seed fija ruta->forma; se destraba "
-            "ruta por ruta."
-        ),
-    ),
 ]
+
+
+# Mismo patrón de pyright-ignore puntual que `tests/unit/api/test_certificate.py`:
+# `TestClient.get` anota contra `httpx2` (bajo TYPE_CHECKING), que este repo no
+# instala — el fallback real en runtime es `httpx`.
+def _get(client: TestClient, url: str) -> httpx.Response:
+    return cast(
+        httpx.Response,
+        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+    )
 
 
 def _seed_minimal_run(store: Any, run_id: str) -> None:
@@ -73,7 +73,6 @@ def _seed_minimal_run(store: Any, run_id: str) -> None:
 
 def test_get_runs_returns_run_summary_list() -> None:
     from chimera_api.app import create_app
-    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -81,12 +80,11 @@ def test_get_runs_returns_run_summary_list() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs")
+    response = _get(client, "/runs")
 
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body, list)
-    row = body[0]
     for key in (
         "run_id",
         "status",
@@ -97,12 +95,11 @@ def test_get_runs_returns_run_summary_list() -> None:
         "events_count",
         "actor",
     ):
-        assert key in row
+        assert key in body[0]
 
 
 def test_get_run_artifacts_returns_project_artifact_list() -> None:
     from chimera_api.app import create_app
-    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -110,7 +107,7 @@ def test_get_run_artifacts_returns_project_artifact_list() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/artifacts")
+    response = _get(client, "/runs/r1/artifacts")
 
     assert response.status_code == 200
     body = response.json()
@@ -130,7 +127,6 @@ def test_get_run_artifacts_returns_project_artifact_list() -> None:
 
 def test_get_run_knowledge_returns_knowledge_claim_list() -> None:
     from chimera_api.app import create_app
-    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -138,7 +134,7 @@ def test_get_run_knowledge_returns_knowledge_claim_list() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/knowledge")
+    response = _get(client, "/runs/r1/knowledge")
 
     assert response.status_code == 200
     body = response.json()
@@ -158,7 +154,6 @@ def test_get_run_knowledge_returns_knowledge_claim_list() -> None:
 
 def test_get_step_evidence_returns_step_detail() -> None:
     from chimera_api.app import create_app
-    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -166,7 +161,7 @@ def test_get_step_evidence_returns_step_detail() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/steps/s1/evidence")
+    response = _get(client, "/runs/r1/steps/s1/evidence")
 
     assert response.status_code == 200
     body = response.json()
@@ -183,7 +178,6 @@ def test_get_step_evidence_returns_step_detail() -> None:
 
 def test_get_ablation_returns_ablation_metric_list() -> None:
     from chimera_api.app import create_app
-    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -191,7 +185,7 @@ def test_get_ablation_returns_ablation_metric_list() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/ablation")
+    response = _get(client, "/runs/r1/ablation")
 
     assert response.status_code == 200
     body = response.json()
@@ -203,7 +197,6 @@ def test_get_ablation_returns_ablation_metric_list() -> None:
 
 def test_get_topology_returns_partition_with_verification_per_island() -> None:
     from chimera_api.app import create_app
-    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -211,7 +204,7 @@ def test_get_topology_returns_partition_with_verification_per_island() -> None:
     _seed_minimal_run(store, "r1")
     client = TestClient(create_app(store))
 
-    response = client.get("/runs/r1/topology")
+    response = _get(client, "/runs/r1/topology")
 
     assert response.status_code == 200
     body = response.json()
@@ -226,12 +219,11 @@ def test_unknown_run_id_is_404_not_fabricated_data() -> None:
     # run_id desconocido es 404, jamas una lista vacia disfrazada de exito
     # silencioso ni un 200 con datos inventados.
     from chimera_api.app import create_app
-    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
     client = TestClient(create_app(create_event_store()))
 
-    response = client.get("/runs/no-existe/artifacts")
+    response = _get(client, "/runs/no-existe/artifacts")
 
     assert response.status_code == 404

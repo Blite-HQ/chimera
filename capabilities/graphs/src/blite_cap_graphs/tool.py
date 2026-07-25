@@ -104,6 +104,14 @@ _MAXCUT_MANIFEST = CapabilityManifest(
             },
             "method": {"type": "string"},
             "seed": {"type": "integer"},
+            "sdp_upper_bound": {
+                "type": ["number", "null"],
+                "description": (
+                    "SDP relaxation value before rounding (method='gw' only; "
+                    "null for 'greedy') — a rigorous upper bound on the true "
+                    "max-cut, same units as 'energy'."
+                ),
+            },
         },
         "required": ["assignment", "energy"],
     },

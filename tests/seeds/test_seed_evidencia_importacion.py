@@ -5,24 +5,15 @@ freeze §7 (T6/#64a — attestations embebidas en el DSSE del certificado) / §1
 ya reservado) + docs/specs/evidencia-externa.md: el esquema normalizado de
 counts carga `bit_order` EXPLÍCITO (footgun endianness Qiskit↔pytket,
 knowledge/quantum/08 §1.5) y el `ExternalImportStatement` (in-toto/SLSA v1)
-entra por `deliverables` sin firma DSSE individual (Fase 2 declarada). xfail:
-`blite.verification.external_evidence` no existe todavía (Fase 1, dueño Sebas).
+entra por `deliverables` sin firma DSSE individual (Fase 2 declarada).
+`blite.verification.external_evidence` (Fase 1, dueño Sebas): en verde.
 """
 
 from __future__ import annotations
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 Sebas: blite.verification.external_evidence (NormalizedCounts/"
-            "ExternalImportStatement) no existe todavía — docs/specs/evidencia-externa.md"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 
 def test_normalized_counts_schema_requires_an_explicit_bit_order() -> None:

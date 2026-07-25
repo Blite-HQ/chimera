@@ -1,0 +1,7 @@
+{
+  "kind": "external-source",
+  "uri": "https://services.example.gov/FeatureServer/0/query",
+  "retrieved_at": "2026-07-24T12:00:00Z",
+  "content_type": "application/geo+json",
+  "http_status": 200
+}

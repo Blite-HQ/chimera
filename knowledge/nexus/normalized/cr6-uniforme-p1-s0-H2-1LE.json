@@ -1,0 +1,116 @@
+{
+  "normalized_counts": {
+    "backend": "H2-1LE",
+    "bit_order": "msb-left",
+    "counts": {
+      "000000": 2,
+      "000010": 1,
+      "000011": 3,
+      "000101": 3,
+      "000110": 2,
+      "000111": 5,
+      "001000": 12,
+      "001001": 4,
+      "001011": 27,
+      "001100": 7,
+      "001101": 38,
+      "001110": 15,
+      "001111": 42,
+      "010001": 2,
+      "010010": 20,
+      "010011": 66,
+      "010100": 14,
+      "010101": 65,
+      "010110": 26,
+      "010111": 49,
+      "011010": 11,
+      "011011": 18,
+      "011100": 12,
+      "011101": 26,
+      "011110": 9,
+      "011111": 24,
+      "100000": 16,
+      "100001": 17,
+      "100010": 30,
+      "100011": 6,
+      "100100": 23,
+      "100101": 13,
+      "100110": 1,
+      "101000": 50,
+      "101001": 25,
+      "101010": 55,
+      "101011": 27,
+      "101100": 73,
+      "101101": 24,
+      "101111": 3,
+      "110000": 37,
+      "110001": 12,
+      "110010": 40,
+      "110011": 4,
+      "110100": 34,
+      "110101": 2,
+      "110111": 11,
+      "111000": 7,
+      "111001": 1,
+      "111010": 3,
+      "111100": 2,
+      "111101": 1,
+      "111110": 2,
+      "111111": 2
+    },
+    "error_params": null,
+    "noisy_simulation": false
+  },
+  "provenance": {
+    "assertions": [
+      {
+        "detail": {
+          "bit_order": "msb-left",
+          "consistent_orders": ["msb-left", "msb-right"],
+          "narrowed_orders": ["msb-left"],
+          "reason": "unambiguous"
+        },
+        "name": "bit_order_declared",
+        "passed": true
+      },
+      {
+        "detail": {
+          "best_cut": 5,
+          "instance": "cr6-uniforme"
+        },
+        "name": "bit_order_matches_recomputed_best_cut",
+        "passed": true
+      },
+      {
+        "detail": {
+          "circuit_digest": "canonicalize({kind, instance, p, betas, gammas}) \u2014 cubre la definici\u00f3n determinista del circuito QAOA l\u00f3gico (ansatz + \u00e1ngulos); NO son bytes de circuito.",
+          "noise_config_digest": "canonicalize({kind, backend, noisy_simulation, error_params}) \u2014 error_params=None para H2-1LE (emulador sin ruido, documentado en reto1-vanilla/README.md); descriptor declarativo sin par\u00e1metros num\u00e9ricos para H2-Emulator (modelo de ruido H2 default de Quantinuum, no expuesto por la respuesta cacheada de qnexus).",
+          "transpiled_circuit_digest": "misma fuente que circuit_digest (instance/p/betas/gammas), namespace distinto ('kind') \u2014 la corrida cacheada NO trae los bytes del circuito post-AutoRebase/QASM nativo ni el HUGR compilado; esta es la MEJOR representaci\u00f3n disponible, declarada como tal (freeze \u00a711, patr\u00f3n 'ingerido\u2260ancla')."
+        },
+        "name": "digest_coverage_declared",
+        "passed": true
+      }
+    ],
+    "inputs": [
+      {
+        "digest": "0cc7ac2ac6e827c9bf1ba0815bcbc790b454657ce675a711602c4f6933e213d7",
+        "ref": "nexus-response"
+      }
+    ],
+    "kind": "derivation",
+    "recipe": {
+      "capability": "blite.evidencia.nexus.normalize_counts",
+      "code_ref": "git:HEAD",
+      "params_digest": "sha256:a1ed078fdb3e8403f5ad3ce43c30688b99259b7d63787150c798dec60614327c",
+      "version": "0.1.0"
+    },
+    "run_id": "dfe1c421-7684-4696-a498-f8b5207d3346"
+  },
+  "source_provenance": {
+    "content_type": "application/json",
+    "http_status": null,
+    "kind": "external-source",
+    "retrieved_at": "2026-07-23T14:47:46Z",
+    "uri": "nexus://quantathon-reto1/dfe1c421-7684-4696-a498-f8b5207d3346"
+  }
+}

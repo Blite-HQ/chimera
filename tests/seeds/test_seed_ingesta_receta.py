@@ -13,16 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 Sebas+Dylan: blite.verification.provenance (DerivationProvenance/"
-            "ExternalSourceProvenance) no existe todavía — docs/specs/capability-ingesta.md"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 
 def test_derivation_provenance_carries_the_dvc_lock_shaped_recipe() -> None:
@@ -56,9 +47,8 @@ def test_derivation_digest_uses_the_single_canonicalization_gate() -> None:
     §Determinismo) — el digest de una instancia derivada usa el MISMO `C(x)`
     que `provenance_hash`/`claim_digest`, cero segunda copia del formateo."""
     # Arrange
-    from blite.verification.provenance import DerivationProvenance
-
     from blite.certificate.canonical import canonicalize
+    from blite.verification.provenance import DerivationProvenance
 
     provenance = DerivationProvenance(
         kind="derivation",

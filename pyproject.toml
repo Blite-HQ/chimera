@@ -54,6 +54,8 @@ src = [
     "capabilities/ml/src",
     "capabilities/smt/src",
     "capabilities/quantum/src",
+    "capabilities/report/src",
+    "capabilities/ingesta/src",
     "tests",
 ]
 
@@ -118,6 +120,8 @@ source = [
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
+    "blite_cap_report",
+    "blite_cap_ingesta",
 ]
 branch = true
 omit = ["*/tests/*"]
@@ -148,6 +152,8 @@ root_packages = [
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
+    "blite_cap_report",
+    "blite_cap_ingesta",
 ]
 include_external_packages = true
 
@@ -164,6 +170,8 @@ forbidden_modules = [
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
+    "blite_cap_report",
+    "blite_cap_ingesta",
 ]
 
 [[tool.importlinter.contracts]]
@@ -178,8 +186,35 @@ source_modules = [
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
+    "blite_cap_ingesta",
 ]
 forbidden_modules = ["blite"]
+
+[[tool.importlinter.contracts]]
+name = "ADR-008-report: the report capability reuses only frozen trust primitives"
+type = "forbidden"
+# informe-derivado.md / capability-ingesta.md (decisión #69): la familia de
+# capabilities de DERIVACIÓN (report aquí; ingesta en B) es una excepción
+# DELIBERADA al contrato de cómputo puro de arriba — reutiliza los primitivos
+# CONGELADOS del kernel de confianza (blite.verification.*, blite.certificate.*,
+# blite.content) porque la identidad de una derivación ES su provenance + digest
+# canónico (freeze §7/§12), y "una sola puerta de canonicalización" obliga a usar
+# blite.certificate.canonical, no una copia. Pero JAMÁS los internos OPERATIVOS
+# del engine — eso convertiría la derivación en un actor con efectos, no en una
+# figura/PDF recomputable. Gate explícito para que report no quede CIEGO al
+# linter (root_packages lo incluye) — el smell de "contrato implícito" que
+# 05-plan-paralelo.md prohíbe.
+source_modules = ["blite_cap_report"]
+forbidden_modules = [
+    "blite.serving",
+    "blite.gateway",
+    "blite.runtime",
+    "blite.authz",
+    "blite.protocols",
+    "blite.guardrails",
+    "blite.events",
+    "blite.identity",
+]
 
 [[tool.importlinter.contracts]]
 name = "S-G: api consumes engine ports, never capability packages"
@@ -194,6 +229,8 @@ forbidden_modules = [
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
+    "blite_cap_report",
+    "blite_cap_ingesta",
 ]
 
 [[tool.importlinter.contracts]]
@@ -331,4 +368,6 @@ forbidden_modules = [
     "blite_cap_ml",
     "blite_cap_smt",
     "blite_cap_quantum",
+    "blite_cap_report",
+    "blite_cap_ingesta",
 ]
