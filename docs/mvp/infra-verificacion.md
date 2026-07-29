@@ -42,7 +42,8 @@ secrets/postgres_password.txt`. El `.example` es **una sola línea** con un pass
 
 ## Qué prueba el smoke (y qué NO)
 
-El smoke solo ejercita `GET /health` y `GET /runs/{run_id}/events` (SSE) — no ejercita
+El smoke solo ejercita `GET /health`, `GET /runs/{run_id}/events` (SSE), `GET /runs`
+(supervivencia de la lista) y el conteo de entry points en el contenedor — no ejercita
 `POST /runs` (ese flujo lo cubre `tests/smoke/test_runtime_api_e2e.py`; el endpoint vive
 en `api/src/chimera_api/runs.py`, dominio 01). Por eso el "evento
 real de punta a punta" honesto para infra es:
@@ -61,13 +62,20 @@ host (uv run python -c ...)          contenedor api (mismo postgres:5432)
    Task 2).
 2. **Espera acotada** (~60s) a que `postgres` esté `healthy` (healthcheck
    `pg_isready`) y `api` responda `{"status":"ok"}` en `/health`.
+   2.5. **Registry no-vacío**: `docker compose exec api` enumera los entry points
+   del grupo `blite.capabilities` y falla si no hay ninguno. El runtime descubre
+   capabilities por entry points instalados (ADR-008); una imagen sin ellas hace
+   que TODO run vivo muera en `resolve` con `KeyError` — pasó cuando la imagen
+   instalaba solo `chimera-api` (auditoría Fase 2, decisión #95): por eso
+   `docker/api.Dockerfile` sincroniza el workspace completo
+   (`uv sync --all-packages --all-extras --no-dev`).
 3. **Contrato de integración real**: corre
    `tests/integration/test_postgres_event_store.py` con
    `CHIMERA_TEST_DATABASE_URL` apuntando al Postgres del compose (puerto loopback
    `5544`, decisión #9) — el contrato completo del `EventStore` (append, seq,
    concurrencia optimista, rechazo post-terminal) contra Postgres de verdad, no un
    mock.
-4. **El evento único**: el host escribe UN evento (`type="run.created"`, un
+4. **El evento único**: el host escribe UN evento (`type="smoke.event"`, un
    `stream_id` único `smoke-<timestamp>`) vía
    `create_event_store()` (la MISMA factory que usa el api — sin DSN cae a
    in-memory, con `CHIMERA_DATABASE_URL` cae a `PostgresEventStore`, lee
@@ -80,8 +88,19 @@ host (uv run python -c ...)          contenedor api (mismo postgres:5432)
 5. **La lectura real por el contenedor**: `curl` a
    `http://localhost:8000/runs/<run_id>/events?live=false` — el contenedor `api`
    (conectado al MISMO `postgres:5432` vía Docker network) sirve el frame SSE
-   (`id: <global_seq>` / `event: run.created` / `data: {...}`) de vuelta. El script
-   verifica que el frame contenga `run.created` y el `run_id`.
+   (`id: <global_seq>` / `event: smoke.event` / `data: {...}`) de vuelta. El script
+   verifica que el frame contenga `smoke.event` y el `run_id`.
+
+   > Por qué `smoke.event` y no `run.created`: la proyección de runs
+   > (`blite.runtime.projection.project_runs`) es fail-loud por doctrina (freeze
+   > §3 — `max_steps`/`policy_digest` obligatorios en el payload); un
+   > `run.created` mínimo del smoke quedaba en pgdata como píldora envenenada y
+   > `GET /runs` (E1) devolvía 500 para siempre — se reprodujo en vivo en la
+   > auditoría Fase 2. La proyección ignora tipos fuera del ciclo `run.*`, así
+   > que `smoke.event` prueba el mismo camino sin fingir un run.
+
+6. **La lista sobrevive**: `curl` a `GET /runs` debe responder 200 y NO listar el
+   stream del smoke — el smoke es invisible para la proyección por construcción.
 
 Esto ejercita genuinamente engine (escritura) → Postgres del compose → contenedor
 api (lectura) → SSE — sin inventar rutas que no existen todavía.

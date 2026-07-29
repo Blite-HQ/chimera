@@ -124,6 +124,21 @@ if [ "$postgres_ready" -ne 1 ] || [ "$api_ready" -ne 1 ]; then
   _fail "timeout de ${HEALTH_TIMEOUT_S}s esperando postgres healthy (${postgres_ready}) y api /health (${api_ready})"
 fi
 
+# 3.5. El registry del contenedor NO puede estar vacío: el runtime descubre
+# capabilities por entry points instalados (ADR-008). Una imagen sin
+# capabilities hace que TODO run vivo muera en resolve con KeyError — se
+# detectó en la auditoría Fase 2 (la imagen instalaba solo chimera-api).
+_log "verificando entry points blite.capabilities dentro del contenedor api"
+if ! docker compose exec -T api python -c '
+from importlib.metadata import entry_points
+
+eps = sorted(ep.name for ep in entry_points(group="blite.capabilities"))
+assert eps, "registry vacío: la imagen api no instala las capabilities del workspace"
+print(f"[smoke] capabilities instaladas: {len(eps)} ({eps[0]} … {eps[-1]})")
+'; then
+  _fail "el contenedor api no tiene entry points blite.capabilities (registry vacío)"
+fi
+
 # 4. Contrato de integración contra el Postgres REAL del compose.
 # `--no-cov`: los `addopts` del repo (pyproject.toml) traen `--cov-fail-under=30`
 # pensado para la suite COMPLETA (gate separado, `uv run pytest`); un archivo
@@ -146,7 +161,14 @@ run_id = os.environ["RUN_ID"]
 store = create_event_store()
 event = store.append(
     stream_id=run_id,
-    type="run.created",
+    # type "smoke.event", NUNCA "run.created": un run.created sin el payload
+    # completo del freeze §3 (max_steps, policy_digest) envenena la proyección
+    # de runs (project_runs es fail-loud por doctrina) y GET /runs devuelve
+    # 500 para siempre — se reprodujo en vivo en la auditoría Fase 2. La
+    # proyección ignora tipos fuera del ciclo run.* por construcción, y el
+    # SSE sirve cualquier evento del stream: el camino engine -> postgres ->
+    # api -> SSE queda igual de probado sin fingir un run.
+    type="smoke.event",
     actor_id="user:smoke",
     domain_id="d-default",
     # run_id va también en el payload: la proyección SSE (chimera_api.projection,
@@ -169,11 +191,22 @@ echo "--- SSE frame ---"
 echo "$SSE_BODY"
 echo "-----------------"
 
-if ! printf '%s' "$SSE_BODY" | grep -q "run.created"; then
-  _fail "el frame SSE no contiene event: run.created"
+if ! printf '%s' "$SSE_BODY" | grep -q "smoke.event"; then
+  _fail "el frame SSE no contiene event: smoke.event"
 fi
 if ! printf '%s' "$SSE_BODY" | grep -q "$RUN_ID"; then
   _fail "el frame SSE no contiene el RUN_ID ${RUN_ID}"
 fi
 
-_log "SMOKE: PASS — evento ${RUN_ID} (run.created) confirmado engine -> postgres(compose) -> api SSE"
+# 7. El evento del smoke NO envenena la proyección de runs: GET /runs debe
+# seguir respondiendo 200 (con `run.created` mínimo aquí, la proyección
+# fail-loud explotaba con KeyError y la lista entera devolvía 500 — se
+# reprodujo en vivo en la auditoría Fase 2).
+_log "curl ${API_URL}/runs (la lista sobrevive al evento del smoke)"
+RUNS_BODY="$(curl -fsS "${API_URL}/runs")" \
+  || _fail "GET /runs no devolvió 200 tras el evento del smoke (¿proyección envenenada?)"
+if printf '%s' "$RUNS_BODY" | grep -q "$RUN_ID"; then
+  _fail "GET /runs lista el stream del smoke ${RUN_ID} — el smoke debe ser invisible para la proyección"
+fi
+
+_log "SMOKE: PASS — evento ${RUN_ID} (smoke.event) confirmado engine -> postgres(compose) -> api SSE"
