@@ -1,27 +1,35 @@
 """
-`GET /runs` + 5 rutas de lectura del Studio — `docs/specs/endpoints-studio.md`
-(costura E↔D, dueño Fase 1 Steven+Dylan). Todas sirven de PROYECCIONES del
-`EventStore` — `blite.runtime.projection.project_runs` para la lista de runs,
-`blite.certificate.assemble.assemble_bundle` para todo lo que depende del
-certificado — jamás la tabla cruda, jamás internals de gateway/runtime.
+Los 6 GETs de lectura del Studio — spec `docs/specs/endpoints-studio.md`
+(E↔D, freeze §7/§9). [S-G · Steven+Dylan]
 
-Mismo patrón fail-closed que `chimera_api/certificate.py::get_certificate`:
-`run_id`/`step_id` desconocido ⇒ 404, jamás un 200 con datos fabricados. Un
-run vivo o sin certificado emitido todavía NO es error — es honestidad:
-`[]` para artifacts/knowledge/ablation, envelope vacío para topology,
-`attestations: []` para un step aún no verificado.
+Router de LECTURA puro sobre la MISMA infra que `/runs`/`/runs/{id}/certificate`
+(`RunResources` de `chimera_api.runs`): jamás la tabla cruda, jamás internals
+de gateway/runtime/serving — solo el puerto `EventStore` (`blite.events`), la
+proyección `project_runs` (freeze §2, ejecución) y el ensamblador de
+certificados (`blite.certificate.assemble`, freeze §7), exactamente como
+`certificate.py`.
 
-`GET /runs` porta server-side, campo por campo, la lógica que hoy vive
-client-side en `apps/studio/src/data/projections.ts::deriveRunSummary` (y
-`deriveArtifacts`/`deriveKnowledge` para las otras dos rutas con forma
-`ProjectArtifact`/`KnowledgeClaim`) — mismo cómputo, nueva ubicación.
+Doctrina fail-closed de esta spec (verbatim en la tabla de la spec):
+- `run_id`/`step_id` desconocido ⇒ 404 (mismo patrón que
+  `certificate.py::get_certificate`) — jamás un 200 con datos fabricados.
+- Un run vivo o sin certificado emitible TODAVÍA (sin `RunTicket` — nunca
+  arrancó por `POST /runs` de ESTE proceso — o `AssembleError`) NO es error:
+  `GET /runs` deja `conclusion/verdict/titular_level/titular_class` en
+  `None`, `.../artifacts` y `.../knowledge` responden `[]`. Honestidad, no
+  falla del endpoint (letra explícita de la spec).
+- `.../steps/{step_id}/evidence` sobre un step sin `verification.completed`
+  responde `attestations: []` (paso corrió, aún no lo verificaron).
+- `.../ablation` y `.../topology` no tienen productor real todavía
+  (`run.metrics.recorded` por variante / partición embebida en
+  `verification.completed` — ninguno de los dos está cableado por
+  `harness-agentico.md`/dominio ciencia aún); esta spec fija la FORMA de la
+  respuesta, no quién la produce — sin esos eventos, honest-empty.
 """
 
 from __future__ import annotations
 
 import base64
 import json
-from datetime import datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
@@ -31,39 +39,46 @@ from blite.certificate.assemble import AssembleError, assemble_bundle
 from blite.certificate.predicate import AssuranceLevel, ConclusionVerdict
 from blite.events.event import Event
 from blite.events.rules import TERMINAL_RUN_EVENTS
-from blite.runtime.projection import RunRow, project_runs
+from blite.runtime.projection import project_runs
 from chimera_api.runs import RunResources
 
-# Orden local de niveles — mismo valor que `assemble.py`/`predicate.py`
-# (D20: cada consumidor mantiene su propia copia, a propósito, no se comparte).
+RunStatusWire = Literal["en_curso", "completado"]
+
+# freeze §4/predicate.py: orden de fuerza de un AssuranceLevel — mismo mínimo
+# local que `deriveRunSummary`/`titularClassFor` (apps/studio/src/data/projections.ts),
+# portado server-side (letra de la spec: "MISMA lógica ... portada server-side").
 _LEVEL_ORDER: dict[str, int] = {"AL0": 0, "AL1": 1, "AL2": 2, "AL3": 3, "AL4": 4}
+_DEFAULT_TITULAR_CLASS = "formal_exact"
 
-_NO_CERT_CONCLUSION = "Sin conclusión registrada"
-_NO_CERT_VERDICT: ConclusionVerdict = "inconclusive"
-_NO_CERT_TITULAR_LEVEL: AssuranceLevel = "AL0"
-_NO_CERT_TITULAR_CLASS = "formal_exact"
+_CAPABILITY_JOB_PREFIX = "capability.job."
+_RUN_STEP_PREFIX = "run.step."
+_VERIFICATION_COMPLETED = "verification.completed"
+_ABLATION_FIELDS = ("variant", "cut_cost", "wall_ms", "verification_latency_ms")
+# Convención de ESTA ruta (no hay productor real todavía — spec: "no quién la
+# produce ni cuándo"): un `verification.completed` puede embeber el
+# resultado de partición bajo esta llave, en la MISMA forma snake_case que
+# `PartitionView`/`Island` (apps/studio/src/spike/ieee14.ts).
+_PARTITION_PAYLOAD_KEY = "partition"
 
-RunSummaryStatus = Literal["completado", "en_curso"]
 
-
-class RunSummaryWire(BaseModel):
-    """Fila de `GET /runs` — wire snake_case de `RunSummary` (`views/types.ts`)."""
+class RunSummary(BaseModel):
+    """`GET /runs` — proyección + certificado (freeze §2/§7), fila plana."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     run_id: str
-    status: RunSummaryStatus
-    conclusion: str
-    verdict: ConclusionVerdict
-    titular_level: AssuranceLevel
-    titular_class: str
+    status: RunStatusWire
+    conclusion: str | None
+    verdict: ConclusionVerdict | None
+    titular_level: AssuranceLevel | None
+    titular_class: str | None
     events_count: int
     actor: str
     completed_at: str | None = None
 
 
-class ProjectArtifactWire(BaseModel):
-    """Fila de `GET /runs/{run_id}/artifacts` — wire de `ProjectArtifact`."""
+class ProjectArtifact(BaseModel):
+    """`GET /runs/{run_id}/artifacts` — `certificate.predicate.deliverables`."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -76,8 +91,8 @@ class ProjectArtifactWire(BaseModel):
     issued_at: str
 
 
-class KnowledgeClaimWire(BaseModel):
-    """Fila de `GET /runs/{run_id}/knowledge` — wire de `KnowledgeClaim`."""
+class KnowledgeClaim(BaseModel):
+    """`GET /runs/{run_id}/knowledge` — `certificate.predicate.conclusions`."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -90,33 +105,63 @@ class KnowledgeClaimWire(BaseModel):
     valid_as_of: str
 
 
-class AblationMetricWire(BaseModel):
-    """Fila de `GET /runs/{run_id}/ablation` — wire de `AblationMetric`."""
+class StepDetail(BaseModel):
+    """`GET /runs/{run_id}/steps/{step_id}/evidence` — proyección filtrada
+    por `step_id` sobre `run.step.*`/`capability.job.*`/`verification.completed`.
+
+    `capability_id`/`input_digest`/`output_digest` son `None` cuando el log
+    aún no tiene el evento que los carga (honesto, no fabricado) — TS
+    (`views/types.ts::StepDetail`) los declara no-opcionales; D3 resuelve el
+    coalesce en la rama live, esta ruta jamás inventa un digest.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    variant: str
+    step_id: str
+    capability_id: str | None = None
+    input_digest: str | None = None
+    output_digest: str | None = None
+    attestations: tuple[dict[str, Any], ...] = ()
+
+
+class AblationMetric(BaseModel):
+    """`GET /runs/{run_id}/ablation` — `run.metrics.recorded` por variante."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    variant: Literal["quantum", "classical"]
     cut_cost: float
     wall_ms: float
     verification_latency_ms: float
 
 
-def _rfc3339(value: datetime) -> str:
-    """Mismo formato que `chimera_api/projection.py::_rfc3339` (anexo §3)."""
-    return value.isoformat().replace("+00:00", "Z")
+class TopologyResponse(BaseModel):
+    """`GET /runs/{run_id}/topology` — partición embebida en
+    `verification.completed`; cada isla trae SU `verification` (freeze §9,
+    sin excepción) — pass-through honesto, jamás badge fabricado por isla."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    topology_ref: str | None
+    islands: tuple[dict[str, Any], ...]
+    cut_branch_ids: tuple[str, ...]
+    cut_cost: float
 
 
-def _run_exists(resources: RunResources, run_id: str) -> bool:
-    """Un run existe si dejó rastro en el stream O si `POST /runs` le abrió
-    ticket — cubre tanto runs reales como runs sembrados directo en tests."""
-    return bool(resources.store.read_stream(run_id)) or run_id in resources.run_tickets
+def _require_known_run(resources: RunResources, run_id: str) -> tuple[Event, ...]:
+    """404 fail-closed (mismo patrón que `certificate.py::get_certificate`):
+    un stream vacío es un `run_id` que el log jamás vio."""
+    stream = resources.store.read_stream(run_id)
+    if not stream:
+        raise HTTPException(status_code=404, detail="run desconocido")
+    return stream
 
 
-def _project_predicate(resources: RunResources, run_id: str) -> dict[str, Any] | None:
-    """El predicate del certificado si el run terminó Y `assemble_bundle`
-    encuentra evidencia amparándolo — `None` en cualquier otro caso (run
-    vivo, sin ticket, o `AssembleError` fail-closed). Mismo helper que
-    `tests/unit/api/test_certificate.py::_predicate_of`, aplicado server-side."""
+def _bundle_for(resources: RunResources, run_id: str) -> dict[str, Any] | None:
+    """Intenta ensamblar el certificado ya emitido — `None` = "sin
+    certificado todavía" (honesto, no error): sin `RunTicket` (el run nunca
+    arrancó por `POST /runs` de ESTE proceso), sin terminal, o
+    `AssembleError` del ensamblador (evidencia insuficiente) caen acá."""
     ticket = resources.run_tickets.get(run_id)
     if ticket is None:
         return None
@@ -124,7 +169,7 @@ def _project_predicate(resources: RunResources, run_id: str) -> dict[str, Any] |
     if not stream or stream[-1].type not in TERMINAL_RUN_EVENTS:
         return None
     try:
-        bundle = assemble_bundle(
+        return assemble_bundle(
             stream=stream,
             conclusions=ticket.conclusions,
             policy_yaml=resources.policy_bytes,
@@ -134,225 +179,252 @@ def _project_predicate(resources: RunResources, run_id: str) -> dict[str, Any] |
         )
     except AssembleError:
         return None
-    payload_bytes = base64.b64decode(bundle["envelope"]["payload"])
-    predicate: dict[str, Any] = json.loads(payload_bytes)["predicate"]
+
+
+def _predicate_of(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Decodifica `envelope.payload` (base64 → JSON) al `predicate` — mismo
+    helper que `tests/unit/api/test_certificate.py::_predicate_of`."""
+    payload = base64.b64decode(bundle["envelope"]["payload"])
+    statement: dict[str, Any] = json.loads(payload)
+    predicate: dict[str, Any] = statement["predicate"]
     return predicate
 
 
 def _titular_class_for(predicate: dict[str, Any], claim_digest: str) -> str:
-    """Puerto de `projections.ts::titularClassFor` — la clase del attestation
-    MÁS FUERTE (mayor AL) amarrado a `claim_digest`; sin attestations
-    amarradas, `"formal_exact"` (mismo default que el cliente)."""
+    """Clase del attestation MÁS FUERTE amarrado a `claim_digest` — mismo
+    cómputo que `titularClassFor` (`apps/studio/src/data/projections.ts`),
+    portado server-side: empate se resuelve por orden de aparición en el log
+    (`max` de Python es estable ante empates, igual que el sort de JS)."""
     bound = [a for a in predicate["attestations"] if a["claim_digest"] == claim_digest]
     if not bound:
-        return _NO_CERT_TITULAR_CLASS
+        return _DEFAULT_TITULAR_CLASS
     strongest = max(bound, key=lambda a: _LEVEL_ORDER[a["level"]])
     return str(strongest["verifier_class"])
 
 
-def _run_summary_row(resources: RunResources, row: RunRow) -> RunSummaryWire:
-    """Puerto server-side de `projections.ts::deriveRunSummary` — el enum wire
-    congelado solo tiene `completado`/`en_curso` (failed/cancelled ⇒
-    `en_curso`, misma regla que `events.some(type === 'run.completed')` del
-    cliente: sin `run.completed` no hay "completado")."""
-    stream = resources.store.read_stream(row.run_id)
-    is_completed = row.status == "completed"
-    predicate = _project_predicate(resources, row.run_id)
+def _run_status(stream: tuple[Event, ...]) -> RunStatusWire:
+    """Mismo cómputo que `deriveRunSummary` (client): `completado` exige el
+    evento `run.completed` explícito, no cualquier terminal — mirror
+    deliberado de la lógica cliente (letra de la spec), no una
+    generalización propia."""
+    if any(event.type == "run.completed" for event in stream):
+        return "completado"
+    return "en_curso"
 
-    if predicate is not None and predicate["conclusions"]:
-        conclusion = predicate["conclusions"][0]
-        conclusion_text = conclusion["canonical_statement"]
-        verdict = conclusion["verdict"]
+
+def _run_summary(resources: RunResources, run_id: str, actor_id: str) -> RunSummary:
+    stream = resources.store.read_stream(run_id)
+    bundle = _bundle_for(resources, run_id)
+    conclusion: str | None = None
+    verdict: ConclusionVerdict | None = None
+    titular_level: AssuranceLevel | None = None
+    titular_class: str | None = None
+    completed_at: str | None = None
+    if bundle is not None:
+        predicate = _predicate_of(bundle)
+        conclusions = predicate["conclusions"]
         titular_level = predicate["titular_level"]
-        titular_class = _titular_class_for(predicate, conclusion["claim_digest"])
-        actor = predicate["actor"]
-    else:
-        conclusion_text = _NO_CERT_CONCLUSION
-        verdict = _NO_CERT_VERDICT
-        titular_level = _NO_CERT_TITULAR_LEVEL
-        titular_class = _NO_CERT_TITULAR_CLASS
-        actor = row.actor_id
-
-    completed_at = _rfc3339(stream[-1].occurred_at) if is_completed and stream else None
-    return RunSummaryWire(
-        run_id=row.run_id,
-        status="completado" if is_completed else "en_curso",
-        conclusion=conclusion_text,
+        completed_at = predicate["valid_as_of"]
+        if conclusions:
+            first = conclusions[0]
+            conclusion = first["canonical_statement"]
+            verdict = first["verdict"]
+            titular_class = _titular_class_for(predicate, first["claim_digest"])
+        else:
+            titular_class = _DEFAULT_TITULAR_CLASS
+    return RunSummary(
+        run_id=run_id,
+        status=_run_status(stream),
+        conclusion=conclusion,
         verdict=verdict,
         titular_level=titular_level,
         titular_class=titular_class,
         events_count=len(stream),
-        actor=actor,
+        actor=actor_id,
         completed_at=completed_at,
     )
 
 
-def _project_step_detail(stream: tuple[Event, ...], step_id: str) -> dict[str, Any]:
-    """Proyecta el stream filtrando por `step_id` (trust/07 §1.3 "Inspector de
-    paso"). `capability.job.submitted`/`.completed` mandan; `run.step.*` es
-    el fallback cuando esos eventos no aparecen para este `step_id`.
+def _event_step_id(payload: dict[str, Any]) -> str | None:
+    """El `step_id` de un evento — vive plano en `run.step.*`/
+    `capability.job.*` y en la convención simplificada de
+    `verification.completed` (freeze §9, `{step_id, verification}`), o
+    anidado en `payload.attestation.step_id` (vocabulario real del
+    orquestador, `Attestation.step_id` — `blite/verification/attestation.py`)."""
+    step_id = payload.get("step_id")
+    if step_id is not None:
+        return str(step_id)
+    attestation = payload.get("attestation")
+    if isinstance(attestation, dict):
+        nested = attestation.get("step_id")
+        if nested is not None:
+            return str(nested)
+    return None
 
-    Costura E↔A a flaggear: el orquestador real
-    (`blite.verification.orchestrator.make_verification_delegate`) NO
-    estampa `step_id` en el payload TOP-LEVEL de `verification.completed`
-    (solo `claim_digest`/`verifier_id`/`verdict`/`attestation`) — el
-    `step_id` vive, si acaso, DENTRO de `attestation.step_id`. Mientras esa
-    costura no se cierre, `attestations` da `[]` para runs reales aunque la
-    verificación sí corrió; no se inventa un binding no declarado por el
-    emisor (honestidad > conveniencia)."""
-    capability_id = ""
-    primary_input_digest = ""
-    primary_output_digest = ""
-    fallback_input_digest = ""
-    fallback_output_digest = ""
+
+def _project_step_detail(stream: tuple[Event, ...], step_id: str) -> StepDetail | None:
+    """Proyección del stream filtrada por `step_id` — `None` = el step jamás
+    aparece en el log (404 fail-closed la capa de arriba)."""
+    capability_id: str | None = None
+    input_digest: str | None = None
+    output_digest: str | None = None
     attestations: list[dict[str, Any]] = []
-
+    found = False
     for event in stream:
         payload = event.payload
-        if payload.get("step_id") != step_id:
+        if _event_step_id(payload) != step_id:
             continue
-        if event.type == "capability.job.submitted":
+        found = True
+        if event.type.startswith(_CAPABILITY_JOB_PREFIX):
             capability_id = payload.get("capability_id", capability_id)
-            primary_input_digest = payload.get("input_digest", primary_input_digest)
-        elif event.type == "capability.job.completed":
-            primary_output_digest = payload.get("output_digest", primary_output_digest)
-        elif event.type.startswith("run.step."):
-            fallback_input_digest = payload.get("input_digest", fallback_input_digest)
-            fallback_output_digest = payload.get(
-                "output_digest", fallback_output_digest
-            )
-        elif event.type == "verification.completed":
-            attestation = payload.get("attestation", payload.get("verification"))
-            if attestation is not None:
-                attestations.append(attestation)
-
-    return {
-        "step_id": step_id,
-        "capability_id": capability_id,
-        "input_digest": primary_input_digest or fallback_input_digest,
-        "output_digest": primary_output_digest or fallback_output_digest,
-        "attestations": attestations,
-    }
+            input_digest = payload.get("input_digest", input_digest)
+            output_digest = payload.get("output_digest", output_digest)
+        elif event.type.startswith(_RUN_STEP_PREFIX):
+            input_digest = payload.get("input_digest", input_digest)
+            output_digest = payload.get("output_digest") or output_digest
+        elif event.type == _VERIFICATION_COMPLETED:
+            attestation = payload.get("attestation") or payload.get("verification")
+            attestations.append(attestation if attestation is not None else payload)
+    if not found:
+        return None
+    return StepDetail(
+        step_id=step_id,
+        capability_id=capability_id,
+        input_digest=input_digest,
+        output_digest=output_digest,
+        attestations=tuple(attestations),
+    )
 
 
-def _project_ablation(stream: tuple[Event, ...]) -> list[AblationMetricWire]:
-    """`run.metrics.recorded` por variante (trust/07 §1.3 "Ablación") — hoy
-    ningún run los emite (el emisor es dominio B/ciencia), así que en la
-    práctica esto da `[]`; un evento sin `variant` en el payload se ignora
-    (no es una fila de ablación)."""
-    rows: list[AblationMetricWire] = []
+def _project_ablation(stream: tuple[Event, ...]) -> list[AblationMetric]:
+    """Filas `run.metrics.recorded` por variante — un evento sin los 4 campos
+    esperados se OMITE (honesto: nunca se fabrica el faltante), no se cae."""
+    metrics: list[AblationMetric] = []
     for event in stream:
         if event.type != "run.metrics.recorded":
             continue
         payload = event.payload
-        variant = payload.get("variant")
-        if variant is None:
+        if not all(field in payload for field in _ABLATION_FIELDS):
             continue
-        rows.append(
-            AblationMetricWire(
-                variant=variant,
-                cut_cost=payload.get("cut_cost", 0),
-                wall_ms=payload.get("wall_ms", 0),
-                verification_latency_ms=payload.get("verification_latency_ms", 0),
-            )
+        metrics.append(
+            AblationMetric(**{field: payload[field] for field in _ABLATION_FIELDS})
         )
-    return rows
+    return metrics
 
 
-_TOPOLOGY_EVENT_TYPES = frozenset({"verification.completed", "run.step.completed"})
+def _empty_topology() -> dict[str, Any]:
+    return {"topology_ref": None, "islands": (), "cut_branch_ids": (), "cut_cost": 0.0}
+
+
+def _is_valid_island(island: Any) -> bool:
+    """freeze §9: `verification` POR ISLA, sin excepción — una partición
+    embebida sin ese campo por isla se descarta ENTERA (fail-closed) en vez
+    de exponerse a medias con un badge fabricado."""
+    return isinstance(island, dict) and "verification" in island
 
 
 def _project_topology(stream: tuple[Event, ...]) -> dict[str, Any]:
-    """El primer payload de partición (`islands` presente) en el stream,
-    TAL CUAL — `verification` viaja POR ISLA, intacto (freeze §9, sin
-    excepción). Sin partición en el stream ⇒ envelope vacío honesto: el run
-    no produjo topología, no es un error de la ruta."""
-    for event in stream:
-        if event.type in _TOPOLOGY_EVENT_TYPES and "islands" in event.payload:
-            return event.payload
-    return {"topology_ref": "", "islands": [], "cut_branch_ids": [], "cut_cost": 0}
+    """Última partición embebida en un `verification.completed` — honest-
+    empty si ninguna aparece o si la que aparece no trae `verification` por
+    isla (harness-agentico/dominio ciencia aún no cablea el productor real)."""
+    for event in reversed(stream):
+        if event.type != _VERIFICATION_COMPLETED:
+            continue
+        partition = event.payload.get(_PARTITION_PAYLOAD_KEY)
+        if not isinstance(partition, dict):
+            continue
+        islands = partition.get("islands")
+        if not isinstance(islands, list) or not all(
+            _is_valid_island(island) for island in islands
+        ):
+            continue
+        return {
+            "topology_ref": partition.get("topology_ref"),
+            "islands": tuple(islands),
+            "cut_branch_ids": tuple(partition.get("cut_branch_ids", ())),
+            "cut_cost": partition.get("cut_cost", 0.0),
+        }
+    return _empty_topology()
 
 
 def create_reads_router(resources: RunResources) -> APIRouter:
-    """Router de lectura del Studio cerrado sobre la MISMA infra de
-    vida-de-app que `/runs` y `/runs/{run_id}/certificate` (mismo `store`,
-    mismos `run_tickets`) — 6 rutas, todas GET, todas proyecciones."""
+    """Router de los 6 GETs de lectura, cerrado sobre la MISMA infra de
+    vida-de-app que `/runs`/`/runs/{run_id}/certificate` (un `RunResources`
+    por app — mismo `store`, mismos `run_tickets`)."""
     router = APIRouter()
 
-    # `completed_at` es Optional-y-OMITIDO (no `null`) cuando el run no
-    # terminó — `exclude_none` en la respuesta, no un default fabricado.
-    @router.get("/runs", response_model_exclude_none=True)
-    def list_runs() -> list[RunSummaryWire]:
+    @router.get("/runs")
+    def list_runs() -> list[RunSummary]:
         rows = project_runs(resources.store.read_all())
-        return [_run_summary_row(resources, row) for row in rows.values()]
+        return [
+            _run_summary(resources, run_id, row.actor_id)
+            for run_id, row in rows.items()
+        ]
 
     @router.get("/runs/{run_id}/artifacts")
-    def list_artifacts(run_id: str) -> list[ProjectArtifactWire]:
-        if not _run_exists(resources, run_id):
-            raise HTTPException(status_code=404, detail="run desconocido")
-        predicate = _project_predicate(resources, run_id)
-        if predicate is None:
+    def get_run_artifacts(run_id: str) -> list[ProjectArtifact]:
+        _require_known_run(resources, run_id)
+        bundle = _bundle_for(resources, run_id)
+        if bundle is None:
             return []
+        predicate = _predicate_of(bundle)
         conclusions = predicate["conclusions"]
-        conclusion = conclusions[0] if conclusions else None
+        first = conclusions[0] if conclusions else None
+        verdict: ConclusionVerdict = first["verdict"] if first else "inconclusive"
+        titular_class = (
+            _titular_class_for(predicate, first["claim_digest"])
+            if first
+            else _DEFAULT_TITULAR_CLASS
+        )
         return [
-            ProjectArtifactWire(
+            ProjectArtifact(
                 artifact_ref=deliverable["artifact_ref"],
                 digest=deliverable["digest"],
-                run_id=predicate["run_id"],
+                run_id=run_id,
                 titular_level=predicate["titular_level"],
-                titular_class=(
-                    _titular_class_for(predicate, conclusion["claim_digest"])
-                    if conclusion is not None
-                    else _NO_CERT_TITULAR_CLASS
-                ),
-                verdict=conclusion["verdict"]
-                if conclusion is not None
-                else _NO_CERT_VERDICT,
+                titular_class=titular_class,
+                verdict=verdict,
                 issued_at=predicate["valid_as_of"],
             )
             for deliverable in predicate["deliverables"]
         ]
 
     @router.get("/runs/{run_id}/knowledge")
-    def list_knowledge(run_id: str) -> list[KnowledgeClaimWire]:
-        if not _run_exists(resources, run_id):
-            raise HTTPException(status_code=404, detail="run desconocido")
-        predicate = _project_predicate(resources, run_id)
-        if predicate is None:
+    def get_run_knowledge(run_id: str) -> list[KnowledgeClaim]:
+        _require_known_run(resources, run_id)
+        bundle = _bundle_for(resources, run_id)
+        if bundle is None:
             return []
+        predicate = _predicate_of(bundle)
         return [
-            KnowledgeClaimWire(
+            KnowledgeClaim(
                 statement=conclusion["canonical_statement"],
                 scope=conclusion["scope"],
                 verdict=conclusion["verdict"],
                 level=conclusion["level"],
                 titular_class=_titular_class_for(predicate, conclusion["claim_digest"]),
-                run_id=predicate["run_id"],
+                run_id=run_id,
                 valid_as_of=predicate["valid_as_of"],
             )
             for conclusion in predicate["conclusions"]
         ]
 
     @router.get("/runs/{run_id}/steps/{step_id}/evidence")
-    def get_step_evidence(run_id: str, step_id: str) -> dict[str, Any]:
-        if not _run_exists(resources, run_id):
-            raise HTTPException(status_code=404, detail="run desconocido")
-        stream = resources.store.read_stream(run_id)
-        return _project_step_detail(stream, step_id)
+    def get_step_evidence(run_id: str, step_id: str) -> StepDetail:
+        stream = _require_known_run(resources, run_id)
+        detail = _project_step_detail(stream, step_id)
+        if detail is None:
+            raise HTTPException(status_code=404, detail="step desconocido")
+        return detail
 
     @router.get("/runs/{run_id}/ablation")
-    def list_ablation(run_id: str) -> list[AblationMetricWire]:
-        if not _run_exists(resources, run_id):
-            raise HTTPException(status_code=404, detail="run desconocido")
-        stream = resources.store.read_stream(run_id)
+    def get_run_ablation(run_id: str) -> list[AblationMetric]:
+        stream = _require_known_run(resources, run_id)
         return _project_ablation(stream)
 
     @router.get("/runs/{run_id}/topology")
-    def get_topology(run_id: str) -> dict[str, Any]:
-        if not _run_exists(resources, run_id):
-            raise HTTPException(status_code=404, detail="run desconocido")
-        stream = resources.store.read_stream(run_id)
-        return _project_topology(stream)
+    def get_run_topology(run_id: str) -> TopologyResponse:
+        stream = _require_known_run(resources, run_id)
+        return TopologyResponse(**_project_topology(stream))
 
     return router

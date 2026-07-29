@@ -1,17 +1,19 @@
 """SEED · endpoints Studio (Steven+Dylan) — spec `docs/specs/endpoints-studio.md`.
 
-Fase 0 fijó el contrato ruta→forma (freeze §7/§9, proyecciones YA congeladas);
-Fase 1 (dominio E) montó las 6 rutas en `chimera_api.reads.create_reads_router`
-(cableado en `create_app`) y este seed pasó a VERDE — el `xfail` se retiró como
-pide `docs/specs/README.md`. Cada test fija la CONDUCTA de una ruta (código
-200/404 + forma de la respuesta) contra un store con un run mínimo servido.
+Fase 0 fijó el contrato ruta→forma (freeze §7/§9, proyecciones YA congeladas)
+ANTES de que las rutas existieran. Fase 1 (Steven+Dylan) las implementó las
+6 de una vez en `chimera_api.reads.create_reads_router` (montado en
+`chimera_api.app.create_app` junto a `/health`, `/runs` POST,
+`/runs/{id}/events` SSE y `/runs/{id}/certificate` GET) — cada test de abajo
+describe la CONDUCTA esperada (código 200 + forma de la respuesta) y ya
+pasa en VERDE; el `xfail` se retiró de las 6 (no quedó ninguna pendiente).
 
 Collection-safe a propósito (import de `chimera_api`/`blite` DENTRO de cada
-función, nunca a nivel de módulo): estas rutas se agregarán a `create_app`,
+función, nunca a nivel de módulo): estas rutas se agregaron a `create_app`,
 no a un módulo nuevo, así que el import del paquete en sí no fallaría hoy —
 pero se mantiene la convención de la sesión para no divergir del patrón
 pedido y para que el seed siga siendo seguro de recolectar incluso si algún
-módulo intermedio cambia de forma en Fase 1.
+módulo intermedio cambia de forma más adelante.
 """
 
 from __future__ import annotations
@@ -22,14 +24,14 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-pytestmark = [
-    pytest.mark.seed,
-]
+pytestmark = [pytest.mark.seed]
 
 
-# Mismo patrón de pyright-ignore puntual que `tests/unit/api/test_certificate.py`:
-# `TestClient.get` anota contra `httpx2` (bajo TYPE_CHECKING), que este repo no
-# instala — el fallback real en runtime es `httpx`.
+# starlette.testclient.TestClient anota `.get()` contra el paquete `httpx2`
+# (bajo TYPE_CHECKING) que este repo no instala — el fallback real en
+# runtime es `httpx`; mismo patrón de cast + ignore puntual que
+# `tests/unit/api/test_runs.py::_get`/`test_certificate.py::_get`. `httpx`/
+# `TestClient` no son `chimera_api`/`blite` — no rompen collection-safe.
 def _get(client: TestClient, url: str) -> httpx.Response:
     return cast(
         httpx.Response,
@@ -73,6 +75,7 @@ def _seed_minimal_run(store: Any, run_id: str) -> None:
 
 def test_get_runs_returns_run_summary_list() -> None:
     from chimera_api.app import create_app
+    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -83,8 +86,9 @@ def test_get_runs_returns_run_summary_list() -> None:
     response = _get(client, "/runs")
 
     assert response.status_code == 200
-    body = response.json()
+    body: list[dict[str, Any]] = response.json()
     assert isinstance(body, list)
+    row: dict[str, Any] = body[0]
     for key in (
         "run_id",
         "status",
@@ -95,11 +99,12 @@ def test_get_runs_returns_run_summary_list() -> None:
         "events_count",
         "actor",
     ):
-        assert key in body[0]
+        assert key in row
 
 
 def test_get_run_artifacts_returns_project_artifact_list() -> None:
     from chimera_api.app import create_app
+    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -127,6 +132,7 @@ def test_get_run_artifacts_returns_project_artifact_list() -> None:
 
 def test_get_run_knowledge_returns_knowledge_claim_list() -> None:
     from chimera_api.app import create_app
+    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -154,6 +160,7 @@ def test_get_run_knowledge_returns_knowledge_claim_list() -> None:
 
 def test_get_step_evidence_returns_step_detail() -> None:
     from chimera_api.app import create_app
+    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -178,6 +185,7 @@ def test_get_step_evidence_returns_step_detail() -> None:
 
 def test_get_ablation_returns_ablation_metric_list() -> None:
     from chimera_api.app import create_app
+    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -197,6 +205,7 @@ def test_get_ablation_returns_ablation_metric_list() -> None:
 
 def test_get_topology_returns_partition_with_verification_per_island() -> None:
     from chimera_api.app import create_app
+    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 
@@ -219,6 +228,7 @@ def test_unknown_run_id_is_404_not_fabricated_data() -> None:
     # run_id desconocido es 404, jamas una lista vacia disfrazada de exito
     # silencioso ni un 200 con datos inventados.
     from chimera_api.app import create_app
+    from fastapi.testclient import TestClient
 
     from blite.events import create_event_store
 

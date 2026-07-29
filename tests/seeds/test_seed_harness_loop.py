@@ -9,7 +9,12 @@ no la feature — docs/specs/README.md §"Specs de costura").
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
 import pytest
+
+if TYPE_CHECKING:
+    from blite.runtime.plan import PlanItemStatus
 
 pytestmark = [pytest.mark.seed]
 """A3 (plan.created/plan.item_updated, max_turns/budget, EXHAUSTED_ERROR_KIND)
@@ -44,7 +49,7 @@ def test_plan_created_payload_shape_and_closed_status_set() -> None:
             id="item-2",
             description="fuera del conjunto cerrado",
             verification="formal_exact",
-            status="bogus",
+            status=cast("PlanItemStatus", "bogus"),
         )
 
 

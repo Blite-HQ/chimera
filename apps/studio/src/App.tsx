@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Braces, LayoutList, List, ListTree, Plus } from 'lucide-react';
+import { Braces, LayoutList, List, ListTree, Map, Network, Plus } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/lib/theme';
 
 import { isLiveMode } from './data/env';
+import { ICE_GRID_DATASET } from './data/iceGrid';
 import { useCreateRun } from './data/mutations';
 import {
   ablationQueryOptions,
@@ -17,6 +18,7 @@ import {
   knowledgeQueryOptions,
   runEventsQueryOptions,
   runSummariesQueryOptions,
+  rvspQueryOptions,
   stepEvidenceQueryOptions
 } from './data/queries';
 import { useRunEventStream } from './data/useRunEventStream';
@@ -24,6 +26,7 @@ import GridSpike from './spike/GridSpike';
 import AblationPanel from './views/AblationPanel';
 import ArtifactsView from './views/ArtifactsView';
 import CertificateView from './views/CertificateView';
+import DataFormatRouter from './views/DataFormatRouter';
 import { downloadJson } from './views/downloadJson';
 import KnowledgeView from './views/KnowledgeView';
 import NewRunView from './views/NewRunView';
@@ -32,6 +35,7 @@ import ProvenanceExplorer from './views/ProvenanceExplorer';
 import RunDetail from './views/RunDetail';
 import RunsView from './views/RunsView';
 import RunTimeline from './views/RunTimeline';
+import RvsPChart from './views/RvsPChart';
 import StepInspector from './views/StepInspector';
 import { usePlaybackReveal } from './views/usePlaybackReveal';
 
@@ -85,24 +89,56 @@ function ToggleButton({
   );
 }
 
+type RedViewMode = 'diagrama' | 'mapa';
+
 /**
- * Slot "Red" de RunDetailScreen (D1 task 4 — honestidad de modo): el spike
- * IEEE-14 (`GridSpike`) es data ESTÁTICA fabricada — solo tiene sentido
- * como vista replay (etiquetada por el banner global, no acá). En vivo no
- * existe todavía un endpoint que devuelva la topología real del run, así
- * que anuncia "pendiente" en vez de mostrar un grid ajeno al run. Nombrada
- * aparte (no inline en el JSX) para poder testearla sin depender de
- * `runSummariesQueryOptions` (que en vivo devuelve `[]` hasta que exista
- * `GET /runs` — D3/D4 — y bloquearía la navegación a RunDetailScreen).
+ * Slot "Red" de RunDetailScreen (D1 task 4 — honestidad de modo; D4 task 6
+ * — spec superficie-visual.md §4.3 "dual diagrama + mapa, no reemplazo"):
+ * en replay ofrece AMBAS vistas vía el mismo patrón ToggleButton que usan
+ * timeline y procedencia — "Diagrama" (`GridSpike`, la partición benchmark
+ * IEEE-14 del run, data ESTÁTICA fabricada) y "Mapa" (`DataFormatRouter` →
+ * `GridMap`, la red nacional REAL del ICE, 70 subestaciones + 102 líneas).
+ * Son DOS redes distintas — el mapa nunca sustituye al diagrama, lo
+ * complementa (honestidad: no hay todavía un mapeo determinista entre la
+ * instancia benchmark y el grid real, ver GridMap.tsx).
+ *
+ * En vivo no existe todavía un endpoint que devuelva la topología real del
+ * run, así que anuncia "pendiente" en vez de mostrar cualquiera de las dos
+ * vistas — el toggle tampoco aparece. Nombrada aparte (no inline en el
+ * JSX) para poder testearla sin depender de `runSummariesQueryOptions` (que
+ * en vivo devuelve `[]` hasta que exista `GET /runs` — D3/D4 — y
+ * bloquearía la navegación a RunDetailScreen).
  */
 export function RedSlot(): React.ReactElement {
-  return isLiveMode() ? (
-    <EmptyState
-      title="Topología en vivo — pendiente"
-      hint="La vista de red contra el payload real del run llega con D3/D4 (rutas + mapa)."
-    />
-  ) : (
-    <GridSpike />
+  const [viewMode, setViewMode] = useState<RedViewMode>('diagrama');
+
+  if (isLiveMode()) {
+    return (
+      <EmptyState
+        title="Topología en vivo — pendiente"
+        hint="La vista de red contra el payload real del run llega con D3/D4 (rutas + mapa)."
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end gap-1">
+        <ToggleButton
+          label="Diagrama"
+          icon={<Network data-icon="inline-start" />}
+          isActive={viewMode === 'diagrama'}
+          onClick={() => setViewMode('diagrama')}
+        />
+        <ToggleButton
+          label="Mapa"
+          icon={<Map data-icon="inline-start" />}
+          isActive={viewMode === 'mapa'}
+          onClick={() => setViewMode('mapa')}
+        />
+      </div>
+      {viewMode === 'diagrama' ? <GridSpike /> : <DataFormatRouter dataset={ICE_GRID_DATASET} />}
+    </div>
   );
 }
 
@@ -113,11 +149,17 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
   useRunEventStream(runId);
   const summariesQuery = useQuery(runSummariesQueryOptions());
   const eventsQuery = useQuery(runEventsQueryOptions(runId));
-  const stepsQuery = useQuery(stepEvidenceQueryOptions(runId));
+  const runEvents = eventsQuery.data ?? [];
+  // D3 — GET /runs/{id}/steps/{step_id}/evidence es POR PASO; se piden los
+  // stepIds YA presentes en los eventos del run (nunca se inventa uno) y
+  // se arma el mapa que el consumidor de abajo espera (Record<stepId, _>).
+  const stepIds = Array.from(
+    new Set(runEvents.map(event => event.stepId).filter((id): id is string => id !== undefined))
+  );
+  const stepsQuery = useQuery(stepEvidenceQueryOptions(runId, stepIds));
   const certificateQuery = useQuery(certificateQueryOptions(runId));
   const ablationQuery = useQuery(ablationQueryOptions(runId));
-
-  const runEvents = eventsQuery.data ?? [];
+  const rvspQuery = useQuery(rvspQueryOptions(runId));
   const { revealedEvents, playback } = usePlaybackReveal(runEvents);
   const [selectedGlobalSeq, setSelectedGlobalSeq] = useState<number | undefined>(undefined);
   const [timelineViewMode, setTimelineViewMode] = useState<'tree' | 'timeline'>('tree');
@@ -186,7 +228,27 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
     </div>
   );
 
-  const ablacion = ablationQuery.isPending ? (
+  // D5 (dataviz "r vs p") — contenido PRIMARIO de la sub-tab "Ablación": la
+  // curva r-vs-p real de la ciencia (ver RvsPChart.tsx, divergencia
+  // deliberada de spec superficie-visual.md §5). Sin endpoint en vivo
+  // todavía (rvspQueryOptions), mismo patrón de EmptyState que el resto.
+  const rvspSection = rvspQuery.isPending ? (
+    <LoadingState label="Cargando la curva r vs p" />
+  ) : rvspQuery.isError ? (
+    <ErrorState message={rvspQuery.error.message} onRetry={() => void rvspQuery.refetch()} />
+  ) : rvspQuery.data === null ? (
+    <EmptyState
+      title="Sin curva r vs p todavía."
+      hint="Esta vista solo existe en modo réplica hoy — el endpoint en vivo llega con un run comparativo real."
+    />
+  ) : (
+    <RvsPChart experiment={rvspQuery.data} />
+  );
+
+  // Contenido SECUNDARIO: la ablación cuántico vs. clásico ya existente
+  // (nota 07 §1.3) — ambas son vistas honestas de ablación, conviven en la
+  // misma sub-tab (D5 no reemplaza AblationPanel, lo complementa).
+  const ablationSection = ablationQuery.isPending ? (
     <LoadingState label="Cargando las métricas de ablación" />
   ) : ablationQuery.isError ? (
     <ErrorState
@@ -199,8 +261,18 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
       hint="Ejecute un run comparativo (cuántico vs. clásico) para poblar esta vista."
     />
   ) : (
-    <div className="mx-auto max-w-5xl">
-      <AblationPanel metrics={ablationQuery.data} />
+    <AblationPanel metrics={ablationQuery.data} />
+  );
+
+  const ablacion = (
+    <div className="mx-auto flex max-w-5xl flex-col gap-8">
+      {rvspSection}
+      <div className="flex flex-col gap-4 border-t border-border pt-6">
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Ablación — cuántico vs. clásico
+        </h3>
+        {ablationSection}
+      </div>
     </div>
   );
 
