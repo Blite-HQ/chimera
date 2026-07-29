@@ -305,3 +305,117 @@ ruff 0 · pyright 0 · 207 tests studio (27 files) · eslint 0.
 | `ProjectedEvent.payload?` + `toProjectedEvent` conserva el payload íntegro                           | D · Studio (interno)               | Aditivo, backward-compatible (nota 18 §5 / freeze §9)                                                                                                                  |
 | Tab "Hilo" primera y default en `RunDetail` (slot `hilo` nuevo)                                      | D · Studio (D6, directriz #78)     | IMPLEMENTADO (decisión #93) — layout sobre eventos existentes, sin M1                                                                                                  |
 | Orden de eventos en el camino de error del turno agéntico                                            | A · Harness (Steven)               | **FLAG** — `plan.item_updated {failed}` se apendea DESPUÉS de `run.failed` (`loop.py::_run_agentic_turn`); el test del API asevera presencia del terminal, no posición |
+
+## Sesión auditoría Fase 2 — stack vivo (rama `planeado/base`, 2026-07-29)
+
+**Estado: AUDITORÍA EJECUTADA.** Primera corrida REAL del stack compose completo
+(postgres+api+studio, WSL2+Docker Desktop) con los 7 checkpoints verificados EN VIVO,
+guion del demo ejecutado (óptimo AL3 verificado + falla sembrada refutada AL0 + bundle
+8/8 offline), UI validada con Playwright. Cuatro fixes chicos (#95–#98, mandato "lo
+chico arréglalo") + análisis para discusión (sin número, gobernanza #94). Gates al
+cierre: 776 pytest (90.56%) · 13 contratos · ruff 0 · pyright 0 · 208 studio · eslint 0
+· `SMOKE: PASS` con asserts nuevos.
+
+### #95 — la imagen api instala el workspace completo (registry vivo dejaba de estar vacío)
+
+- **Hallazgo (vivo)**: `uv sync --package chimera-api` dejaba la imagen SIN capabilities
+  → `entry_points("blite.capabilities")` == `[]` en el contenedor → TODO run vivo
+  (claim-first Y misión) moría en resolve con `run.failed {KeyError}`. El camino dorado
+  POST /runs → verificación → certificado JAMÁS había corrido sobre compose (los smoke
+  E2E usan TestClient + registry echo inyectado). Repro: run óptimo sintetica-4bus.
+- **Decisión**: `uv sync --locked --all-packages --all-extras --no-dev` en
+  `docker/api.Dockerfile` — restaura la intención escrita del propio Dockerfile
+  ("workspace uv completo"), pineado por uv.lock. Tras el fix: óptimo `run.completed`
+  con 2 patas + AL3, QAOA REAL (Aer 14q p=3) completado vivo, bundle 8/8 offline.
+- **Alternativas evaluadas**: (a) capabilities como deps de chimera-api — ensucia la
+  frontera de composición; (b) paquete `distributions/chimera` real como raíz de
+  composición con extras curados — la opción correcta a mediano plazo, propuesta como
+  ítem Mejorado (M14). Imagen queda 10.9GB (aceptable demo local, freeze §15.4).
+- Colateral: `.dockerignore` no cubría `**/node_modules/` anidados ni `.claude/`
+  (worktrees) — contexto de build ~25GB; corregido.
+
+### #96 — el smoke deja de fingir un run (píldora envenenada en pgdata)
+
+- **Hallazgo (vivo)**: `smoke_infra.sh` escribía `run.created` con payload mínimo;
+  `project_runs` es fail-loud POR DOCTRINA (freeze §3) → `GET /runs` (E1) devolvía 500
+  PARA SIEMPRE con ese stream en pgdata.
+- **Decisión**: el smoke escribe `type="smoke.event"` (la proyección ignora tipos fuera
+  del ciclo `run.*` por construcción; el SSE sirve cualquier evento) + asserts nuevos:
+  registry no-vacío en el contenedor (paso 2.5) y `GET /runs` 200 sin listar el stream
+  del smoke. Runbook `infra-verificacion.md` sincronizado. `SMOKE: PASS` verificado.
+
+### #97 — el cliente escucha el vocabulario completo del stream
+
+- **Hallazgo (vivo)**: en live TODO llega por SSE (`loadRunEvents` → `[]`) y
+  `KNOWN_RUN_EVENT_TYPES` no incluía `run.created`, `run.step.*` ni
+  `capability.job.failed` → el timeline mostraba 2 de 5 eventos de un run fallido
+  (header: "5 eventos") mientras la demo narra "cero eventos perdidos".
+- **Decisión**: listeners para el vocabulario completo que `execute_run` emite +
+  `replay.divergence` (A5). Aditivo, cero cambio de contrato. TDD RED→GREEN en
+  `gatewayClient.test.ts`; verificado en navegador (8/8 eventos renderizados).
+
+### #98 — la vista Verificación acepta el bundle real + nginx no cachea index
+
+- **Hallazgo (vivo)**: `loadCertificate` parseaba la respuesta de `GET /certificate`
+  como envelope DSSE pelado; el api devuelve el BUNDLE completo `{envelope, public_key,
+stream, …}` → la vista Verificación explotaba en Zod con TODO certificado vivo, y la
+  descarga habría bajado solo el envelope (insuficiente para `verify-bundle.py`).
+  Además nginx servía `index.html` sin `Cache-Control` → tras un redeploy el navegador
+  retenía el bundle JS viejo (reproducido).
+- **Decisión**: `certificateBundleWireSchema` (loose: solo tipa `envelope`, el resto
+  pasa íntegro para descarga/verify offline) + `wire` = bundle entero; nginx gana
+  `no-cache` para index.html e `immutable` para `/assets/`. TDD RED→GREEN; vista AL3
+  verificada en vivo tras el fix.
+
+### Análisis para discusión con Dylan (SIN decidir — gobernanza #94)
+
+1. **Misión muere `KeyError`, no `exhausted` (doc #92 ↔ vivo)**: el proposer placeholder
+   propone `{mission, instance_id}` como inputs de `blite.solvers.qubo` (ValueError:
+   matrix requerida) y el Studio mapea proposers a `blite.solvers.qaoa|goemans_williamson|greedy`
+   — IDs que NO existen como entry points (reales: `blite.quantum.qaoa`,
+   `blite.graphs.maxcut`…) → KeyError turno 1. Los unit tests usan `cap.mission-echo`
+   tolerante (mundo más amable que el vivo). El hilo D6 muestra el cierre honesto en
+   todos los casos (verificado vivo). Opciones: (a) alinear `PROPOSER_CAPABILITY` con
+   IDs reales + inputs válidos por capability (tabla instancia→matrix desde el corpus);
+   (b) capability hermética `blite.mission.noop` para el placeholder; (c) aceptar el
+   cierre KeyError y corregir #92/spec.
+2. **`plan.item_updated {failed}` post-terminal (débil b, flag #91)**: repro in-memory
+   Y vivo (seq 39 `run.failed` → seq 40 `plan.item_updated{failed}`). El store lo
+   ACEPTA (familias rechazadas = solo `run.step.*`/`capability.job.*`) y queda FUERA
+   del corte del provenance_hash. Fix natural: `_run_resolve_and_invoke` deja de
+   journalizar `run.failed` y lo devuelve al caller (`_run_agentic_turn` emite el
+   update ANTES del terminal; `_execute_single_turn` conserva su orden). Toca la
+   costura compartida pipeline-fijo/loop — se discute antes de tocar.
+3. **`status` wire sin estado fallido**: la spec (endpoints-studio §Zod) fija
+   `enum(en_curso|completado)` → un run fallido queda "en curso" PARA SIEMPRE en la
+   lista (verificado vivo + screenshot). Propuesta: extensión aditiva
+   `fallido|cancelado` en wire+client+spec+fixture — toca contrato Fase 0.
+4. **Proyección fail-loud vs lista entera**: ¿debe UNA fila envenenada tumbar TODO
+   `GET /runs` (500)? Opciones: mantener doctrina (señal fuerte) vs skip honesto
+   por-stream con `discarded_streams` en la respuesta. Toca freeze §3.
+5. **Productores vivos ausentes para lo visual**: `run.metrics.recorded` (ablación),
+   partición en `verification.completed` (badges del mapa), `GET /rvsp` — sin productor
+   en el harness; Studio muestra honest-empty. El payoff visual de Actos 2-3 hoy solo
+   existe en modo Replay etiquetado. (El tab Red vivo además dice "llega con D3/D4",
+   copy caduco — D3/D4 ya mergearon; lo que falta es el productor.)
+6. **Sesión agéntica real grabada NO existe** (A5 dejó maquinaria verde: 22 tests
+   ModelServer/replay; sin artefacto de sesión ni wiring proposer→ModelServer, frontera
+   P4) → el Acto 1 del guion (replay de sesión real) no es ejecutable hoy.
+7. **Menores**: cliente reintenta certificate 409 como error (3 fetches + consola);
+   `verify-bundle.py` NO es standalone (necesita el venv — el guion dice "terminal
+   limpia"); guion dice "7/7" y el verificador ya es 8/8 (punto de replay A5); import
+   Nexus re-ejecutado no es byte-idéntico (formato prettier vs json.dumps — digests
+   canónicos intactos); certificado no sobrevive restart del api (`run_tickets`/
+   ContentStore in-memory, #13/#14 — límite operativo de demo conocido).
+
+### Tabla de interacciones (regla NUEVA #3)
+
+| Interfaz tocada                                    | Dominio afectado              | Estado del contrato                                                            |
+| -------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------ |
+| `docker/api.Dockerfile` (composición de la imagen) | infra ↔ TODOS (registry vivo) | FIX #95 — smoke paso 2.5 como gate ejecutable                                  |
+| `scripts/smoke_infra.sh` (`smoke.event` + asserts) | infra ↔ E (`GET /runs`)       | FIX #96 — runbook sincronizado                                                 |
+| `KNOWN_RUN_EVENT_TYPES` (`gatewayClient.ts`)       | D ↔ E (SSE)                   | FIX #97 — aditivo, espejo del vocabulario ya emitido                           |
+| `certificateBundleWireSchema` + `loadCertificate`  | D ↔ E (`GET /certificate`)    | FIX #98 — el cliente espeja el bundle real; spec sin cambio (el api no cambió) |
+| `docker/studio-nginx.conf` (cache headers)         | infra ↔ D                     | FIX #98 — index no-cache, assets immutable                                     |
+| Orden post-terminal de `plan.item_updated`         | A ↔ confianza                 | FLAG CONFIRMADO VIVO — análisis en discusión punto 2                           |
+| `status` wire de `RunSummary`                      | E ↔ D ↔ spec Fase 0           | DRIFT DE PRODUCTO — análisis en discusión punto 3                              |
