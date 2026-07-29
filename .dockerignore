@@ -3,7 +3,13 @@
 **/__pycache__/
 **/*.pyc
 .venv/
-node_modules/
+# node_modules/ a secas solo cubre la raíz — el de apps/studio/ entraba
+# entero al contexto (auditoría Fase 2: contexto de build de ~25GB).
+**/node_modules/
+# Worktrees de sesiones de Claude: copias COMPLETAS del repo — jamás
+# pertenecen al contexto de build.
+.claude/
+.playwright-mcp/
 secrets/
 .env
 .env.*

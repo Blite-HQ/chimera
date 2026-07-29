@@ -10,11 +10,14 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# Copia el repo completo (respeta .dockerignore) e instala SOLO chimera-api
-# + sus deps de workspace (chimera-engine -> psycopg, procrastinate, fastapi,
-# uvicorn). --no-dev mantiene la imagen liviana.
+# Copia el repo completo (respeta .dockerignore) e instala el workspace
+# COMPLETO con extras (--all-packages --all-extras): el registry del runtime
+# descubre capabilities por entry points instalados (ADR-008) — con
+# `--package chimera-api` la imagen quedaba SIN capabilities y todo run vivo
+# moría en resolve con KeyError (auditoría Fase 2, decisión #95). --no-dev
+# deja fuera solo el tooling (pytest/ruff/pyright).
 COPY . .
-RUN uv sync --locked --package chimera-api --no-dev
+RUN uv sync --locked --all-packages --all-extras --no-dev
 
 COPY docker/api-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
