@@ -1,4 +1,4 @@
-import { Download } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import React from 'react';
 
 import { RunStatusDot } from '@/components/runs/RunStatusDot';
@@ -25,6 +25,8 @@ import type { RunSummary } from './types';
 export interface RunDetailProps {
   readonly summary: RunSummary;
   readonly onDownloadBundle: () => void;
+  /** Vuelve a la lista de runs (directriz Dylan 2026-07-29: navegabilidad). */
+  readonly onBack?: () => void;
   readonly hilo: React.ReactNode;
   readonly timeline: React.ReactNode;
   readonly verificacion: React.ReactNode;
@@ -45,6 +47,7 @@ const SUB_TABS = [
 export default function RunDetail({
   summary,
   onDownloadBundle,
+  onBack,
   hilo,
   timeline,
   verificacion,
@@ -55,30 +58,39 @@ export default function RunDetail({
   const slots = { hilo, timeline, verificacion, red, ablacion, procedencia } as const;
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-4">
-        <RunStatusDot status={summary.status} />
-        <h1 className="font-mono text-2xl font-medium tracking-tight">{summary.runId}</h1>
-        <span className="inline-flex items-center rounded-4xl border px-2 py-0.5 text-xs text-muted-foreground">
-          {summary.status === 'completado' ? 'completado' : 'en curso'}
-        </span>
-        <AssuranceBadge
-          level={summary.titularLevel}
-          verdict={conclusionTone(summary.verdict)}
-          verifierClass={summary.titularClass}
-        />
-        <div className="ml-auto">
-          <Button variant="outline" size="sm" onClick={onDownloadBundle}>
-            <Download data-icon="inline-start" />
-            Descargar bundle
-          </Button>
+    // Aire (directriz Dylan 2026-07-29): header+meta agrupados con gap-2 (8),
+    // y gap-8 (32) hacia las tabs — potencias de 2.
+    <section className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-4">
+          {onBack !== undefined && (
+            <Button variant="ghost" size="icon" aria-label="Volver a runs" onClick={onBack}>
+              <ArrowLeft />
+            </Button>
+          )}
+          <RunStatusDot status={summary.status} />
+          <h1 className="font-mono text-2xl font-medium tracking-tight">{summary.runId}</h1>
+          <span className="inline-flex items-center rounded-4xl border px-2 py-0.5 text-xs text-muted-foreground">
+            {summary.status === 'completado' ? 'completado' : 'en curso'}
+          </span>
+          <AssuranceBadge
+            level={summary.titularLevel}
+            verdict={conclusionTone(summary.verdict)}
+            verifierClass={summary.titularClass}
+          />
+          <div className="ml-auto">
+            <Button variant="outline" size="sm" onClick={onDownloadBundle}>
+              <Download data-icon="inline-start" />
+              Descargar bundle
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <p className="text-xs text-muted-foreground">
-        <span className="font-mono">{summary.actor}</span> · {shortDate(summary.completedAt)} ·{' '}
-        {summary.eventsCount} eventos
-      </p>
+        <p className="text-xs text-muted-foreground">
+          <span className="font-mono">{summary.actor}</span> · {shortDate(summary.completedAt)} ·{' '}
+          {summary.eventsCount} eventos
+        </p>
+      </div>
 
       <Tabs defaultValue="hilo">
         <TabsList variant="line">

@@ -61,6 +61,26 @@ describe('AppShell (shell B)', () => {
     expect(crumb).toHaveTextContent('8f2c1a9b');
   });
 
+  test('el breadcrumb navega: los tramos previos son botones, el último es texto', async () => {
+    const user = userEvent.setup();
+    const onBreadcrumbNavigate = vi.fn();
+    renderShell({ breadcrumb: ['runs', '8f2c1a9b'], onBreadcrumbNavigate });
+
+    const crumb = screen.getByLabelText(/ruta actual/i);
+    const runsCrumb = screen.getByRole('button', { name: 'runs' });
+    await user.click(runsCrumb);
+
+    expect(onBreadcrumbNavigate).toHaveBeenCalledWith(0);
+    expect(crumb).toHaveTextContent('8f2c1a9b');
+    expect(screen.queryByRole('button', { name: '8f2c1a9b' })).not.toBeInTheDocument();
+  });
+
+  test('la pill del proyecto muestra solo el nombre, sin la palabra "proyecto"', () => {
+    renderShell();
+    expect(screen.queryByText('proyecto')).not.toBeInTheDocument();
+    expect(screen.getAllByText('islanding-ieee14').length).toBeGreaterThan(0);
+  });
+
   test('renderiza el contenido de la vista dentro de main', () => {
     renderShell();
     expect(screen.getByRole('main')).toHaveTextContent('contenido de la vista');

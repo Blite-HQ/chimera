@@ -13,9 +13,11 @@ export interface SectionHeaderProps {
 
 export function SectionHeader({ title, description }: SectionHeaderProps): React.ReactElement {
   return (
-    <div>
+    // Aire (directriz Dylan 2026-07-29): título→descripción mt-2 (8px) y
+    // margen inferior mb-8 (32px) hacia el contenido — potencias de 2.
+    <div className="mb-8">
       <h1 className="font-display text-2xl font-medium tracking-tight md:text-3xl">{title}</h1>
-      <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }

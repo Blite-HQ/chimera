@@ -15,6 +15,8 @@ import { ThemeToggle } from './ThemeToggle';
 export interface AppShellSection {
   readonly id: string;
   readonly label: string;
+  /** Icono opcional del ítem (lucide) — el shell no decide iconografía. */
+  readonly icon?: React.ReactNode;
 }
 
 export interface AppShellProps {
@@ -24,6 +26,12 @@ export interface AppShellProps {
   readonly onSectionChange: (sectionId: string) => void;
   /** Ruta actual bajo el proyecto, en orden (p. ej. ['runs', '8f2c1a9b']). */
   readonly breadcrumb: readonly string[];
+  /**
+   * Vuelve el breadcrumb un navegador real (directriz Dylan 2026-07-29):
+   * los tramos previos al último se renderizan como botones y notifican su
+   * índice. Sin la prop, el breadcrumb queda como contexto no interactivo.
+   */
+  readonly onBreadcrumbNavigate?: (index: number) => void;
   /**
    * Slot opcional al tope de la columna de contenido, por encima de
    * `<main>` (p. ej. ReplayBanner, D1). AppShell es capa visual pura: no
@@ -39,13 +47,16 @@ export function AppShell({
   activeSection,
   onSectionChange,
   breadcrumb,
+  onBreadcrumbNavigate,
   banner,
   children
 }: AppShellProps): React.ReactElement {
   return (
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-8 border-r border-border px-2 py-4">
-        <div className="flex items-baseline gap-2 px-2">
+      {/* Aire del sidebar (directriz Dylan 2026-07-29): padding y gaps en
+          potencias de 2 (px-4=16, py-8=32, gap-1=4, p-2=8). */}
+      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-8 border-r border-border px-4 py-8">
+        <div className="flex items-baseline gap-2">
           <BrandMark className="h-6 self-center" />
           <span className="font-display text-lg leading-none font-medium tracking-tight">
             Chimera
@@ -55,13 +66,14 @@ export function AppShell({
           </span>
         </div>
 
-        <div className="mx-2 flex items-center gap-2 rounded-lg border border-border px-2 py-1 text-sm">
-          <span className="text-muted-foreground">proyecto</span>
+        {/* Pill del proyecto: solo el nombre — la palabra "proyecto" era un
+            decorador redundante (el header de la nav ya dice Proyecto). */}
+        <div className="flex items-center rounded-lg border border-border px-4 py-2">
           <span className="truncate font-mono text-xs">{projectName}</span>
         </div>
 
-        <nav aria-label="Secciones del proyecto" className="flex flex-col gap-0.5">
-          <span className="px-2 pb-1 text-xs tracking-wider text-muted-foreground uppercase">
+        <nav aria-label="Secciones del proyecto" className="flex flex-col gap-1">
+          <span className="px-2 pb-2 text-xs tracking-wider text-muted-foreground uppercase">
             Proyecto
           </span>
           {sections.map(section => {
@@ -73,19 +85,20 @@ export function AppShell({
                 onClick={() => onSectionChange(section.id)}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'focus-ring rounded-lg px-2 py-1 text-left text-sm transition-colors',
+                  'focus-ring flex items-center gap-2 rounded-lg p-2 text-left text-sm transition-colors',
                   isActive
                     ? 'bg-foreground/5 text-foreground shadow-[inset_2px_0_0_var(--color-brand)]'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
+                {section.icon}
                 {section.label}
               </button>
             );
           })}
         </nav>
 
-        <div className="mt-auto flex items-center gap-2 px-2">
+        <div className="mt-auto flex items-center gap-2">
           <ThemeToggle />
         </div>
       </aside>
@@ -97,16 +110,26 @@ export function AppShell({
             className="flex h-12 items-center gap-2 px-4 text-xs text-muted-foreground md:px-8"
           >
             <span className="font-mono">{projectName}</span>
-            {breadcrumb.map((part, index) => (
-              <React.Fragment key={`${part}-${index}`}>
-                <span aria-hidden>/</span>
-                <span
-                  className={cn('font-mono', index === breadcrumb.length - 1 && 'text-foreground')}
-                >
-                  {part}
-                </span>
-              </React.Fragment>
-            ))}
+            {breadcrumb.map((part, index) => {
+              const isLast = index === breadcrumb.length - 1;
+              const isNavigable = !isLast && onBreadcrumbNavigate !== undefined;
+              return (
+                <React.Fragment key={`${part}-${index}`}>
+                  <span aria-hidden>/</span>
+                  {isNavigable ? (
+                    <button
+                      type="button"
+                      onClick={() => onBreadcrumbNavigate(index)}
+                      className="focus-ring rounded-sm font-mono transition-colors hover:text-foreground"
+                    >
+                      {part}
+                    </button>
+                  ) : (
+                    <span className={cn('font-mono', isLast && 'text-foreground')}>{part}</span>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </nav>
         </header>
         {banner}

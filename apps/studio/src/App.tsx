@@ -1,5 +1,17 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Braces, LayoutList, List, ListTree, Map, Network, Plus } from 'lucide-react';
+import {
+  BookOpen,
+  Braces,
+  FileText,
+  LayoutList,
+  List,
+  ListTree,
+  Map,
+  Network,
+  Package,
+  Play,
+  Plus
+} from 'lucide-react';
 import React, { useState } from 'react';
 
 import { AppShell } from '@/components/app-shell/AppShell';
@@ -55,11 +67,17 @@ import type { ProvenanceFilters } from './views/types';
 
 type SectionId = 'runs' | 'artifacts' | 'papers' | 'knowledge';
 
-const SECTIONS: readonly { readonly id: SectionId; readonly label: string }[] = [
-  { id: 'runs', label: 'Runs' },
-  { id: 'artifacts', label: 'Artifacts' },
-  { id: 'papers', label: 'Papers' },
-  { id: 'knowledge', label: 'Knowledge' }
+const SECTION_ICON = 'size-4 shrink-0';
+
+const SECTIONS: readonly {
+  readonly id: SectionId;
+  readonly label: string;
+  readonly icon: React.ReactNode;
+}[] = [
+  { id: 'runs', label: 'Runs', icon: <Play className={SECTION_ICON} aria-hidden /> },
+  { id: 'artifacts', label: 'Artifacts', icon: <Package className={SECTION_ICON} aria-hidden /> },
+  { id: 'papers', label: 'Papers', icon: <FileText className={SECTION_ICON} aria-hidden /> },
+  { id: 'knowledge', label: 'Knowledge', icon: <BookOpen className={SECTION_ICON} aria-hidden /> }
 ];
 
 const PROJECT_NAME = 'islanding-ieee14';
@@ -144,7 +162,13 @@ export function RedSlot(): React.ReactElement {
 }
 
 /** Vistas del run montadas como slots de RunDetail (queries + estado acá). */
-function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElement {
+function RunDetailScreen({
+  runId,
+  onBack
+}: {
+  readonly runId: string;
+  readonly onBack?: () => void;
+}): React.ReactElement {
   // No-op en modo fixtures/demo; en modo live alimenta el cache con el SSE
   // real (MVP task 1) — llamada incondicional, el hook decide adentro.
   useRunEventStream(runId);
@@ -324,6 +348,7 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
   return (
     <RunDetail
       summary={summary}
+      onBack={onBack}
       onDownloadBundle={() => {
         if (certificateQuery.data) {
           downloadJson('bundle.json', certificateQuery.data.wire);
@@ -451,11 +476,22 @@ function Studio(): React.ReactElement {
       activeSection={section}
       onSectionChange={goToSection}
       breadcrumb={breadcrumb}
+      onBreadcrumbNavigate={index => {
+        // Tramo 0 = la raíz de la sección actual (p. ej. 'runs' desde un
+        // run abierto) — navegar ahí es cerrar el detalle.
+        if (index === 0) {
+          goToSection(section);
+        }
+      }}
       banner={isLiveMode() ? undefined : <ReplayBanner />}
     >
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         {section === 'runs' &&
-          (runId ? <RunDetailScreen runId={runId} /> : <RunsScreen onSelectRun={openRun} />)}
+          (runId ? (
+            <RunDetailScreen runId={runId} onBack={() => setRunId(undefined)} />
+          ) : (
+            <RunsScreen onSelectRun={openRun} />
+          ))}
         {section === 'artifacts' && <ArtifactsScreen onOpenRun={openRun} />}
         {section === 'papers' && <PapersView />}
         {section === 'knowledge' && <KnowledgeScreen onOpenRun={openRun} />}

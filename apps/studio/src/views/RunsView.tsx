@@ -55,14 +55,19 @@ export default function RunsView({ runs, onSelectRun }: RunsViewProps): React.Re
           <TableBody>
             {runs.map(run => (
               <TableRow key={run.runId} className="hover:bg-foreground/5">
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <button
                     type="button"
                     onClick={() => onSelectRun(run.runId)}
+                    // El prefijo `run-` SÍ es parte del ID real (runs.py:
+                    // `run-{uuid4().hex}`) — acá se recorta SOLO en la celda
+                    // (es uniforme en toda fila y no aporta); el ID canónico
+                    // completo queda en `title` y en el heading del detalle.
+                    title={run.runId}
                     className="focus-ring flex items-center gap-2 rounded-lg font-mono text-foreground"
                   >
                     <RunStatusDot status={run.status} />
-                    {run.runId}
+                    {run.runId.replace(/^run-/, '')}
                   </button>
                 </TableCell>
                 <TableCell className="max-w-md">{run.conclusion}</TableCell>
@@ -77,8 +82,8 @@ export default function RunsView({ runs, onSelectRun }: RunsViewProps): React.Re
                   />
                 </TableCell>
                 <TableCell className="font-mono text-xs">{run.eventsCount}</TableCell>
-                <TableCell className="font-mono text-xs">{run.actor}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">
+                <TableCell className="font-mono text-xs whitespace-nowrap">{run.actor}</TableCell>
+                <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
                   {shortDate(run.completedAt)}
                 </TableCell>
               </TableRow>
