@@ -15,6 +15,7 @@ sondear ni dormir.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any, cast
 
@@ -55,8 +56,27 @@ class _EchoCapability:
         return {"echoed": inputs["x"]}
 
 
+class _MissionCapability:
+    """Capability hermética tolerante a inputs de misión (sin campos
+    requeridos) — doble etiquetado, mismo patrón que `_EchoCapability`."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return CapabilityManifest(
+            id="cap.mission-echo",
+            description="mission-tolerant test capability",
+            input_schema={"type": "object"},
+            output_schema={"type": "object"},
+        )
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        return {"echoed_mission": inputs.get("mission")}
+
+
 def _make_registry() -> EntryPointRegistry:
-    return EntryPointRegistry({"cap.echo": _EchoCapability()})
+    return EntryPointRegistry(
+        {"cap.echo": _EchoCapability(), "cap.mission-echo": _MissionCapability()}
+    )
 
 
 def _make_client(store: EventStore | None = None) -> TestClient:
@@ -257,6 +277,128 @@ class TestCapabilityDesconocida:
         run_id = response.json()["run_id"]
         frames = _events_of(client, run_id)
         assert frames[-1]["event"] == "run.failed"
+
+
+class TestModoMision:
+    """`POST /runs` modo misión — docs/specs/endpoints-studio.md
+    §"POST /runs — modo misión" (checkpoint 5, costura A↔E↔D).
+
+    Contrato: 202 + run_id; el plan viaja como eventos (`plan.created` /
+    `plan.item_updated`) en el stream; sin gate de verificación el run
+    termina `run.failed {error_kind: "exhausted"}` — jamás un
+    `run.completed` implícito; 422 SOLO si ni mission ni claim válidos.
+    """
+
+    def test_mission_arranca_202_y_emite_plan_created_en_el_stream(self) -> None:
+        # Arrange
+        client = _make_client()
+        mission = (
+            "particionar sintetica-4bus en islas controladas y certificar el corte"
+        )
+        body = {
+            "mission": mission,
+            "instance_id": "sintetica-4bus",
+            "capability_id": "cap.mission-echo",
+            "max_turns": 2,
+        }
+
+        # Act
+        response = _post(client, "/runs", json_body=body)
+
+        # Assert — 202 + run_id, mismo envelope que el modo claim-first
+        assert response.status_code == 202
+        run_id = response.json()["run_id"]
+        assert _RUN_ID_PATTERN.match(run_id)
+
+        frames = _events_of(client, run_id)
+        types = [f["event"] for f in frames]
+
+        # El plan es un artefacto del stream (harness-agentico.md §Contrato-2)
+        assert "plan.created" in types
+        plan_frame = next(f for f in frames if f["event"] == "plan.created")
+        plan_payload = json.loads(plan_frame["data"])["payload"]
+        assert plan_payload["run_id"] == run_id
+        # La misión queda journalizada como description del ítem fundacional
+        assert plan_payload["items"][0]["description"] == mission
+        assert "plan.item_updated" in types
+
+        # Gate ausente ⇒ exhausted honesto — jamás run.completed implícito
+        assert frames[-1]["event"] == "run.failed"
+        last_payload = json.loads(frames[-1]["data"])["payload"]
+        assert last_payload["error_kind"] == "exhausted"
+
+    def test_mission_sin_capability_usa_default_y_falla_dentro_del_stream(
+        self,
+    ) -> None:
+        # Arrange — el registry hermético NO registra la capability default:
+        # el arranque HTTP igual responde 202 y el fallo vive en el stream
+        # (fail-loud, mismo contrato que TestCapabilityDesconocida).
+        client = _make_client()
+
+        # Act
+        response = _post(
+            client, "/runs", json_body={"mission": "misión sin capability explícita"}
+        )
+
+        # Assert
+        assert response.status_code == 202
+        run_id = response.json()["run_id"]
+        frames = _events_of(client, run_id)
+        types = [f["event"] for f in frames]
+        assert "plan.created" in types
+        # FLAG (frontera Steven, no de este contrato): en el camino de error
+        # del turno agéntico, `plan.item_updated {failed}` se apendea DESPUÉS
+        # de `run.failed` (loop.py `_run_agentic_turn` — fail_run corre dentro
+        # de `_run_resolve_and_invoke`); por eso acá se asevera presencia del
+        # terminal fail-loud, no su posición final.
+        assert "run.failed" in types
+
+    def test_body_sin_mission_ni_claim_da_422(self) -> None:
+        # Arrange
+        store = create_event_store()
+        client = _make_client(store)
+
+        # Act
+        response = _post(client, "/runs", json_body={})
+
+        # Assert — ni se agenda, ni deja rastro
+        assert response.status_code == 422
+        assert store.read_all() == ()
+
+    def test_mission_vacia_da_422(self) -> None:
+        # Arrange
+        store = create_event_store()
+        client = _make_client(store)
+
+        # Act
+        response = _post(client, "/runs", json_body={"mission": ""})
+
+        # Assert
+        assert response.status_code == 422
+        assert store.read_all() == ()
+
+    def test_body_con_mission_y_claim_da_422(self) -> None:
+        # Arrange — `extra="forbid"` en AMBOS lados de la unión: un body con
+        # los dos discriminadores no valida contra ninguno.
+        store = create_event_store()
+        client = _make_client(store)
+        body = _run_body(
+            claim=_claim_body(
+                n_nodes=4,
+                edges=_EDGES_4BUS,
+                assignment=(0, 0, 1, 1),
+                canonical_statement=_STATEMENT_4BUS,
+                scope=_SCOPE_4BUS,
+            )
+        )
+        body["mission"] = "también una misión"
+
+        # Act
+        response = _post(client, "/runs", json_body=body)
+
+        # Assert
+        assert response.status_code == 422
+        assert store.read_all() == ()
 
 
 class TestEndpointsExistentesSiguenVerdes:

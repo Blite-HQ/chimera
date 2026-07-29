@@ -18,6 +18,16 @@ excepción de invocación no tumban el API — el runtime las registra como
 `run.failed` en el stream (freeze del loop, `execute_run`); el arranque HTTP
 solo falla por errores del REQUEST (claim de dominio inválido o
 fail-closed), nunca por lo que pase DENTRO del run.
+
+Modo misión (checkpoint 5, `docs/specs/endpoints-studio.md` §"POST /runs —
+modo misión"): el MISMO endpoint acepta un body alternativo `{mission, ...}`
+discriminado del claim-first por presencia de campo (ambos modelos con
+`extra="forbid"` ⇒ ni ambos ni ninguno validan → 422). El modo misión NO
+exige assignment ni claim — los claims los emiten los sub-runs/steps
+(frontera P4); arranca `execute_run` en modo agéntico con la misión
+journalizada como `description` del ítem fundacional del plan, y SIN gate de
+verificación termina `run.failed {error_kind: "exhausted"}` — jamás un
+`run.completed` implícito (harness-agentico.md §Contrato-3).
 """
 
 from __future__ import annotations
@@ -37,7 +47,14 @@ from blite.content import ContentStore
 from blite.events.store import EventStore
 from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.dispatch import Dispatcher, ProfileDispatcher
-from blite.runtime.loop import execute_run
+from blite.runtime.loop import (
+    ProposedStep,
+    Proposer,
+    RunBudget,
+    TurnContext,
+    execute_run,
+)
+from blite.runtime.plan import PlanItem
 from blite.runtime.registry import Registry, load_registry
 from blite.verification.exact_solver import MaxCutInstance, OptimalityClaim
 from blite.verification.orchestrator import ClaimDeclaration, make_verification_delegate
@@ -88,6 +105,45 @@ class CreateRunRequest(BaseModel):
     inputs: dict[str, Any]
     claim: ClaimRequest
     max_steps: int = Field(default=8, ge=1)
+
+
+_DEFAULT_MISSION_CAPABILITY = "blite.solvers.qubo"
+"""Capability meta cuando el body de misión no la trae — si el registry no
+la conoce, el run falla fail-loud DENTRO del stream (mismo contrato que una
+capability desconocida en modo claim-first), jamás el arranque HTTP."""
+
+_DEFAULT_MISSION_MAX_TURNS = 3
+"""Default conservador del modo misión (spec §"POST /runs — modo misión"):
+sin gate de verificación cableado, cada turno extra del proposer determinista
+es gasto sin información nueva — el 30 del loop llega con el agente real."""
+
+_STEPS_PER_TURN = 2
+"""Cada turno agéntico consume exactamente 2 `RunStep` (resolve+invoke) —
+`max_steps = max_turns * 2` garantiza `max_turns <= max_steps` (§Contrato-3,
+responsabilidad del caller)."""
+
+
+class MissionBudgetRequest(BaseModel):
+    """Espejo HTTP de `RunBudget` (harness-agentico.md §Contrato-3)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    tokens: int | None = Field(default=None, ge=0)
+    cost_usd: float | None = Field(default=None, ge=0)
+
+
+class MissionRequest(BaseModel):
+    """Body modo misión de `POST /runs` — discriminado del claim-first por
+    presencia de campo (`mission` vs `claim`); `extra="forbid"` en ambos
+    lados de la unión hace la discriminación excluyente."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    mission: str = Field(min_length=1)
+    instance_id: str | None = None
+    capability_id: str | None = None
+    max_turns: int = Field(default=_DEFAULT_MISSION_MAX_TURNS, ge=1)
+    budget: MissionBudgetRequest | None = None
 
 
 class CreateRunResponse(BaseModel):
@@ -166,6 +222,144 @@ def _build_domain_claim(claim_request: ClaimRequest) -> OptimalityClaim:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+def _make_goal_proposer(capability_id: str, inputs: dict[str, Any]) -> Proposer:
+    """Proposer determinista PLACEHOLDER (etiquetado — jamás "el agente"):
+    propone la capability meta con los mismos inputs en cada turno, hasta que
+    P4 cablee el agente real (`ModelServer` tras `ModelPort`, decisión #81)
+    por la MISMA costura `Proposer`. Sin llamada de modelo no hay gasto que
+    auto-reportar (`tokens`/`cost_usd` en `None` — honesto, no cero fingido)."""
+
+    def _propose(_ctx: TurnContext) -> ProposedStep:
+        return ProposedStep(capability_id=capability_id, inputs=inputs)
+
+    return _propose
+
+
+def _start_claim_run(
+    resources: RunResources, body: CreateRunRequest, background_tasks: BackgroundTasks
+) -> CreateRunResponse:
+    """Arranque claim-first (decisión #6) — INTACTO desde el MVP."""
+    claim = _build_domain_claim(body.claim)
+
+    instance_id = str(body.claim.scope.get("instancia", ""))
+    resolution = resolve_verifiers(
+        claim_type=body.claim.claim_type, instance_id=instance_id
+    )
+    if not resolution.verifiers:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "instancia sin verifiers — jamás un run sin verificación (fail-closed)"
+            ),
+        )
+
+    declaration = ClaimDeclaration(
+        claim=claim,
+        canonical_statement=body.claim.canonical_statement,
+        scope=body.claim.scope,
+        claim_type=body.claim.claim_type,
+        is_conclusion=True,
+    )
+    delegate = make_verification_delegate(
+        verifiers=resolution.verifiers, declarations=(declaration,)
+    )
+
+    run_id = f"run-{uuid4().hex}"
+    resources.run_tickets[run_id] = RunTicket(
+        conclusions=(
+            ConclusionDeclaration(
+                canonical_statement=body.claim.canonical_statement,
+                scope=body.claim.scope,
+                claim_type=body.claim.claim_type,
+            ),
+        ),
+        anchor_descriptors=resolution.anchor_descriptors,
+    )
+
+    # Agendado, jamás inline (decisión #11): el POST responde 202 en
+    # cuanto el claim y sus verifiers son válidos — el run corre después.
+    background_tasks.add_task(
+        execute_run,
+        resources.store,
+        resources.registry(),
+        resources.dispatcher,
+        resources.content,
+        run_id=run_id,
+        actor_id=_API_ACTOR,
+        domain_id=_DEFAULT_DOMAIN,
+        max_steps=body.max_steps,
+        policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
+        capability_id=body.capability_id,
+        inputs=body.inputs,
+        post_invoke=delegate,
+    )
+
+    return CreateRunResponse(run_id=run_id)
+
+
+def _start_mission_run(
+    resources: RunResources, body: MissionRequest, background_tasks: BackgroundTasks
+) -> CreateRunResponse:
+    """Arranque modo misión (spec §"POST /runs — modo misión"): agenda
+    `execute_run` en modo agéntico — el plan viaja como eventos y la misión
+    queda journalizada como `description` del ítem fundacional del plan
+    (dentro del `provenance_hash`, sin extender `run.created`).
+
+    Sin gate de verificación (`post_invoke` ausente A PROPÓSITO): `done` ⟺
+    el verifier pasa (§Contrato-3) — hoy no hay verifier del lado misión,
+    así que el run termina `run.failed {error_kind: "exhausted"}`; el gate
+    real llega con los claims de sub-runs/steps (frontera P4)."""
+    run_id = f"run-{uuid4().hex}"
+
+    # Ticket VACÍO: el modo misión no declara conclusiones — los claims los
+    # emiten los sub-runs/steps. `GET /runs/{id}/certificate` no responde
+    # 404 por desconocido; sin conclusiones no se fabrica certificado.
+    resources.run_tickets[run_id] = RunTicket(conclusions=(), anchor_descriptors=())
+
+    capability_id = (
+        body.capability_id
+        if body.capability_id is not None
+        else _DEFAULT_MISSION_CAPABILITY
+    )
+    inputs: dict[str, Any] = {"mission": body.mission}
+    if body.instance_id is not None:
+        inputs["instance_id"] = body.instance_id
+
+    budget = (
+        RunBudget(tokens=body.budget.tokens, cost_usd=body.budget.cost_usd)
+        if body.budget is not None
+        else None
+    )
+
+    background_tasks.add_task(
+        execute_run,
+        resources.store,
+        resources.registry(),
+        resources.dispatcher,
+        resources.content,
+        run_id=run_id,
+        actor_id=_API_ACTOR,
+        domain_id=_DEFAULT_DOMAIN,
+        max_steps=body.max_turns * _STEPS_PER_TURN,
+        policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
+        capability_id=capability_id,
+        inputs=inputs,
+        max_turns=body.max_turns,
+        budget=budget,
+        proposer=_make_goal_proposer(capability_id, inputs),
+        plan_items=(
+            PlanItem(
+                id="mission-1",
+                description=body.mission,
+                verification="delegate",
+                status="pending",
+            ),
+        ),
+    )
+
+    return CreateRunResponse(run_id=run_id)
+
+
 def create_runs_router(resources: RunResources) -> APIRouter:
     """Router de `/runs` cerrado sobre la infra de vida-de-app (§14) — un
     `RunResources` por app, compartido con el SSE vía el mismo `store`."""
@@ -173,64 +367,13 @@ def create_runs_router(resources: RunResources) -> APIRouter:
 
     @router.post("/runs", status_code=202)
     def start_run(
-        body: CreateRunRequest, background_tasks: BackgroundTasks
+        body: CreateRunRequest | MissionRequest, background_tasks: BackgroundTasks
     ) -> CreateRunResponse:
-        claim = _build_domain_claim(body.claim)
-
-        instance_id = str(body.claim.scope.get("instancia", ""))
-        resolution = resolve_verifiers(
-            claim_type=body.claim.claim_type, instance_id=instance_id
-        )
-        if not resolution.verifiers:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "instancia sin verifiers — jamás un run sin verificación "
-                    "(fail-closed)"
-                ),
-            )
-
-        declaration = ClaimDeclaration(
-            claim=claim,
-            canonical_statement=body.claim.canonical_statement,
-            scope=body.claim.scope,
-            claim_type=body.claim.claim_type,
-            is_conclusion=True,
-        )
-        delegate = make_verification_delegate(
-            verifiers=resolution.verifiers, declarations=(declaration,)
-        )
-
-        run_id = f"run-{uuid4().hex}"
-        resources.run_tickets[run_id] = RunTicket(
-            conclusions=(
-                ConclusionDeclaration(
-                    canonical_statement=body.claim.canonical_statement,
-                    scope=body.claim.scope,
-                    claim_type=body.claim.claim_type,
-                ),
-            ),
-            anchor_descriptors=resolution.anchor_descriptors,
-        )
-
-        # Agendado, jamás inline (decisión #11): el POST responde 202 en
-        # cuanto el claim y sus verifiers son válidos — el run corre después.
-        background_tasks.add_task(
-            execute_run,
-            resources.store,
-            resources.registry(),
-            resources.dispatcher,
-            resources.content,
-            run_id=run_id,
-            actor_id=_API_ACTOR,
-            domain_id=_DEFAULT_DOMAIN,
-            max_steps=body.max_steps,
-            policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
-            capability_id=body.capability_id,
-            inputs=body.inputs,
-            post_invoke=delegate,
-        )
-
-        return CreateRunResponse(run_id=run_id)
+        # Discriminación por presencia de campo (`mission` vs `claim`) —
+        # `extra="forbid"` en ambos modelos hace la unión excluyente: un
+        # body con ambos (o ninguno) no valida contra ningún lado → 422.
+        if isinstance(body, MissionRequest):
+            return _start_mission_run(resources, body, background_tasks)
+        return _start_claim_run(resources, body, background_tasks)
 
     return router
