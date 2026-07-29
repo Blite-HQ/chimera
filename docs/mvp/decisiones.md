@@ -419,3 +419,36 @@ stream, …}` → la vista Verificación explotaba en Zod con TODO certificado v
 | `docker/studio-nginx.conf` (cache headers)         | infra ↔ D                     | FIX #98 — index no-cache, assets immutable                                     |
 | Orden post-terminal de `plan.item_updated`         | A ↔ confianza                 | FLAG CONFIRMADO VIVO — análisis en discusión punto 2                           |
 | `status` wire de `RunSummary`                      | E ↔ D ↔ spec Fase 0           | DRIFT DE PRODUCTO — análisis en discusión punto 3                              |
+
+### #99 — pulido UI post-auditoría (directrices de Dylan, 2026-07-29)
+
+Sesión corta sobre la base auditada, con Dylan dictando las directrices en vivo
+(gobernanza #94: decisión discutida y tomada juntos). Implementado (TDD, gates
+210 studio + 18 assurance-ui + eslint + tsc):
+
+1. **Glifo de confianza simplificado** — supersede la variante de 5 barras de
+   DESIGN.md §4: TRES barras / CUATRO estados (nula=AL0 sin barra coloreada,
+   poca=AL1 baja, media=AL2 intermedia, alta=AL3/AL4 la más alta), color del
+   veredicto; el AL exacto sigue en la etiqueta accesible
+   (`confianza media (AL2 de AL4)`) y en el texto mono — el glifo simplifica,
+   el dato no.
+2. **Navegabilidad**: breadcrumb del topbar deja de ser decorador (tramos
+   previos = botones, `onBreadcrumbNavigate`) + botón "Volver a runs" en el
+   detalle del run.
+3. **Tabla de runs**: `whitespace-nowrap` en ID/actor/fecha; el prefijo `run-`
+   se recorta SOLO en la celda. **Corrección de premisa**: `run-` SÍ es parte
+   del ID real (`runs.py: run-{uuid4().hex}`), no un decorador del frontend —
+   el ID canónico completo queda en `title` y en el heading del detalle;
+   renombrar el ID en backend NO se hizo (rompería streams existentes).
+4. **Sidebar**: pill del proyecto sin la palabra "proyecto" (redundante),
+   iconos lucide en los ítems, aire en potencias de 2 (px-4/py-8/gap-1/p-2).
+5. **Aire general**: SectionHeader (mt-2 título→descripción, mb-8 al
+   contenido), RunDetail (header+meta gap-2, gap-8 hacia tabs) — regla: gaps/
+   margins/paddings en potencias de 2 (2/4/8/16/32/64px); tablas y topbar se
+   dejaron como estaban (directriz explícita).
+
+**Mapeado a Mejorado** (04-consolidacion §4): M15 sidebar completo
+(user/organization, multi-proyecto, colapsable), M16 branding/logo (brief
+destilado de las referencias de Dylan: marca geométrica mínima, línea
+topológica/nodos, mono + acento teal), M17 URLs reales + go-back en el resto
+de secciones. M14 (distribution root) ya venía de #95.
