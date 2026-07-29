@@ -24,6 +24,7 @@ function renderDetail() {
     <RunDetail
       summary={RUN}
       onDownloadBundle={onDownloadBundle}
+      hilo={<p>vista hilo</p>}
       timeline={<p>vista timeline</p>}
       verificacion={<p>vista verificación</p>}
       red={<p>vista red</p>}
@@ -47,12 +48,16 @@ describe('RunDetail', () => {
     expect(onDownloadBundle).toHaveBeenCalled();
   });
 
-  test('abre en Timeline y cambia de vista con las sub-tabs', async () => {
+  test('abre en Hilo (D6, directriz #69) y cambia de vista con las sub-tabs', async () => {
     const user = userEvent.setup();
     renderDetail();
 
+    expect(screen.getByText('vista hilo')).toBeInTheDocument();
+    expect(screen.queryByText('vista timeline')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Timeline' }));
     expect(screen.getByText('vista timeline')).toBeInTheDocument();
-    expect(screen.queryByText('vista verificación')).not.toBeInTheDocument();
+    expect(screen.queryByText('vista hilo')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Verificación' }));
     expect(screen.getByText('vista verificación')).toBeInTheDocument();

@@ -251,6 +251,11 @@ const KNOWN_RUN_EVENT_TYPES = [
   'capability.job.completed',
   'verification.completed',
   'claim.emitted',
+  // D6 (checkpoint 5) — el plan como artefacto del stream (harness-agentico.md
+  // §Contrato-2): sin estos listeners el SSE real nunca entrega el checklist
+  // del hilo conversacional (mismo fallo silencioso que el pin de .submitted).
+  'plan.created',
+  'plan.item_updated',
   'run.completed',
   'run.failed',
   'run.cancelled'

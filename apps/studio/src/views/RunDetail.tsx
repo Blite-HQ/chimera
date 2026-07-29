@@ -15,11 +15,17 @@ import type { RunSummary } from './types';
  * estado + AL titular + acciones, siempre visibles (nota 07 §1.3) — y las
  * vistas del run como sub-tabs. Las vistas llegan como slots ya cableados
  * (App conserva queries y estado, este componente es layout).
+ *
+ * D6 (checkpoint 5, directriz #69/product-model.md): la entrada
+ * conversacional es la presentación por defecto — la tab "Hilo" abre
+ * primero (misión → plan → veredicto como turnos); el resto de vistas
+ * quedan intactas como sub-tabs.
  */
 
 export interface RunDetailProps {
   readonly summary: RunSummary;
   readonly onDownloadBundle: () => void;
+  readonly hilo: React.ReactNode;
   readonly timeline: React.ReactNode;
   readonly verificacion: React.ReactNode;
   readonly red: React.ReactNode;
@@ -28,6 +34,7 @@ export interface RunDetailProps {
 }
 
 const SUB_TABS = [
+  { id: 'hilo', label: 'Hilo' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'verificacion', label: 'Verificación' },
   { id: 'red', label: 'Red' },
@@ -38,13 +45,14 @@ const SUB_TABS = [
 export default function RunDetail({
   summary,
   onDownloadBundle,
+  hilo,
   timeline,
   verificacion,
   red,
   ablacion,
   procedencia
 }: RunDetailProps): React.ReactElement {
-  const slots = { timeline, verificacion, red, ablacion, procedencia } as const;
+  const slots = { hilo, timeline, verificacion, red, ablacion, procedencia } as const;
 
   return (
     <section className="flex flex-col gap-4">
@@ -72,7 +80,7 @@ export default function RunDetail({
         {summary.eventsCount} eventos
       </p>
 
-      <Tabs defaultValue="timeline">
+      <Tabs defaultValue="hilo">
         <TabsList variant="line">
           {SUB_TABS.map(tab => (
             <TabsTrigger key={tab.id} value={tab.id} className="px-2">

@@ -68,7 +68,10 @@ export const projectedEventSchema = z.object({
   // MVP task 4 — sin esto Zod lo strippea silenciosamente en
   // `z.array(projectedEventSchema).parse(RUN_EVENTS)` (queries.ts) y el
   // AssuranceBadge nunca se muestra en fixtures/demo mode.
-  assurance: z.object({ verifierClass: z.string().min(1), level: assuranceLevelSchema }).optional()
+  assurance: z.object({ verifierClass: z.string().min(1), level: assuranceLevelSchema }).optional(),
+  // D6 (checkpoint 5) — mismo motivo que assurance: sin declararlo, Zod lo
+  // strippea y RunThread nunca ve los payloads de plan.* en fixtures.
+  payload: z.record(z.string(), z.unknown()).optional()
 });
 
 /**
@@ -130,9 +133,46 @@ export function toProjectedEvent(wire: SseProjectedEvent): ProjectedEvent {
     ...(wire.step_id !== undefined && { stepId: wire.step_id }),
     resumen: wire.resumen,
     ...(verdict.success && { verdict: verdict.data }),
-    ...(assurance && { assurance })
+    ...(assurance && { assurance }),
+    // D6 — el payload íntegro viaja con el evento proyectado (freeze §9:
+    // la proyección no recorta); RunThread parsea plan.* desde acá.
+    payload: wire.payload
   };
 }
+
+/**
+ * D6 (checkpoint 5) — Zod espejo de `blite.runtime.plan` (superficie-visual.md
+ * §7, declarado en prosa por la spec; materializado acá). El contrato es el
+ * par [fixture generado desde Pydantic + este espejo a mano]:
+ * `src/fixtures/contract/harness/plan-created.json` / `plan-item-updated.json`
+ * (validado en schemas.test.ts) — jamás codegen Pydantic→Zod.
+ */
+export const planItemStatusSchema = z.enum(['pending', 'running', 'ok', 'failed']);
+
+export const planItemSchema = z.object({
+  id: z.string().min(1),
+  description: z.string().min(1),
+  verification: z.string().min(1),
+  status: planItemStatusSchema
+});
+
+export const planCreatedSchema = z.object({
+  plan_id: z.string().min(1),
+  run_id: z.string().min(1),
+  items: z.array(planItemSchema)
+});
+
+export const planItemUpdatedSchema = z.object({
+  plan_id: z.string().min(1),
+  run_id: z.string().min(1),
+  item_id: z.string().min(1),
+  status: planItemStatusSchema,
+  cause: z.string().optional()
+});
+
+export type PlanItemStatus = z.infer<typeof planItemStatusSchema>;
+export type PlanCreated = z.infer<typeof planCreatedSchema>;
+export type PlanItemUpdated = z.infer<typeof planItemUpdatedSchema>;
 
 /** nota 18 §2.2 — attestation de un paso, en clase+AL (freeze §4). */
 export const attestationSchema = z.object({

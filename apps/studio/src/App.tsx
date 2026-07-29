@@ -34,6 +34,7 @@ import PapersView from './views/PapersView';
 import ProvenanceExplorer from './views/ProvenanceExplorer';
 import RunDetail from './views/RunDetail';
 import RunsView from './views/RunsView';
+import RunThread from './views/RunThread';
 import RunTimeline from './views/RunTimeline';
 import RvsPChart from './views/RvsPChart';
 import StepInspector from './views/StepInspector';
@@ -177,6 +178,17 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
     ? (stepsQuery.data?.[selectedEvent.stepId] ?? null)
     : null;
 
+  // D6 (checkpoint 5) — el hilo conversacional es un layout sobre los MISMOS
+  // eventos del run (misión → plan checklist → cierre); mismos estados de
+  // carga/error que el timeline, misma fuente (`runEvents`), cero query nueva.
+  const hilo = eventsQuery.isPending ? (
+    <LoadingState label="Cargando el hilo del run" />
+  ) : eventsQuery.isError ? (
+    <ErrorState message={eventsQuery.error.message} onRetry={() => void eventsQuery.refetch()} />
+  ) : (
+    <RunThread summary={summary} events={runEvents} />
+  );
+
   const timeline = eventsQuery.isPending ? (
     <LoadingState label="Cargando los eventos del run" />
   ) : eventsQuery.isError ? (
@@ -317,6 +329,7 @@ function RunDetailScreen({ runId }: { readonly runId: string }): React.ReactElem
           downloadJson('bundle.json', certificateQuery.data.wire);
         }
       }}
+      hilo={hilo}
       timeline={timeline}
       verificacion={verificacion}
       red={<RedSlot />}

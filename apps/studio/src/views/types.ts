@@ -42,6 +42,13 @@ export interface ProjectedEvent {
   readonly resumen: string;
   readonly verdict?: Verdict; // presente si el evento representa un resultado
   readonly assurance?: EventAssurance; // MVP task 4 — solo verification.completed
+  /**
+   * D6 (checkpoint 5) — el payload ÍNTEGRO del wire SSE (freeze §9: la
+   * proyección no recorta lo que el emisor estampó). Opcional y aditivo
+   * (nota 18 §5, capa UI adaptable): los fixtures previos a D6 no lo traen.
+   * RunThread lo parsea con los Zod de plan.* (schemas.ts) — jamás a mano.
+   */
+  readonly payload?: Readonly<Record<string, unknown>>;
 }
 
 /** nota 18 §2.1 — fixture/demo-only playback simulation for RunTimeline. */

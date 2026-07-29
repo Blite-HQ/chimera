@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
+import PLAN_CREATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-created.json';
+import PLAN_ITEM_UPDATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-item-updated.json';
 import { RUN_EVENTS } from '../fixtures/runEvents';
 import { RVSP_EXPERIMENT } from '../fixtures/rvsp';
 import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
@@ -9,6 +11,8 @@ import {
   ablationMetricSchema,
   ablationWireSchema,
   knowledgeClaimWireSchema,
+  planCreatedSchema,
+  planItemUpdatedSchema,
   projectArtifactWireSchema,
   projectedEventSchema,
   runSummaryWireSchema,
@@ -71,7 +75,9 @@ describe('schemas de la frontera (F3)', () => {
     expect(projected.actorId).toBe('service:verifier');
     expect(projected.verdict).toBe('pass');
     expect(projected.assurance).toEqual({ verifierClass: 'formal_exact', level: 'AL3' });
-    expect('payload' in projected).toBe(false);
+    // D6 (checkpoint 5) — el payload ahora viaja ÍNTEGRO con el evento
+    // proyectado (freeze §9: la proyección no recorta); antes se descartaba.
+    expect(projected.payload).toEqual(wire.payload);
   });
 
   it('un evento claim.emitted no trae verdict ni assurance (el wire no los incluye)', () => {
@@ -342,5 +348,39 @@ describe('stepDetailWireSchema / toStepDetail (D3 — GET /runs/{id}/steps/{id}/
       attestations: [{ some: 'payload sin forma de attestation' }]
     });
     expect(toStepDetail(wire).attestations).toEqual([]);
+  });
+});
+
+describe('Zod espejo de plan.* contra los fixtures de costura (D6, contrato D↔A)', () => {
+  // superficie-visual.md §7: el contrato es el par [fixture generado desde
+  // Pydantic (gen-contract-fixtures-harness.py) + Zod espejo a mano]. Si el
+  // engine cambia la forma, el fixture regenerado rompe ESTOS parses.
+  it('plan-created.json valida contra planCreatedSchema', () => {
+    const parsed = planCreatedSchema.parse(PLAN_CREATED_CONTRACT_FIXTURE);
+    expect(parsed.items[0].status).toBe('pending');
+  });
+
+  it('plan-item-updated.json valida contra planItemUpdatedSchema (con cause)', () => {
+    const parsed = planItemUpdatedSchema.parse(PLAN_ITEM_UPDATED_CONTRACT_FIXTURE);
+    expect(parsed.status).toBe('failed');
+    expect(parsed.cause).toBe('capability.job.failed');
+  });
+
+  it('un status fuera del conjunto cerrado explota (misma disciplina que RunStep.status)', () => {
+    expect(() =>
+      planItemUpdatedSchema.parse({ ...PLAN_ITEM_UPDATED_CONTRACT_FIXTURE, status: 'bogus' })
+    ).toThrow();
+  });
+
+  it('toProjectedEvent conserva el payload íntegro (freeze §9 — la proyección no recorta)', () => {
+    const projected = toProjectedEvent({
+      global_seq: 3,
+      type: 'plan.created',
+      actor_id: 'service:runtime',
+      occurred_at: '2026-07-29T12:00:00Z',
+      resumen: 'plan.created',
+      payload: PLAN_CREATED_CONTRACT_FIXTURE
+    });
+    expect(projected.payload).toEqual(PLAN_CREATED_CONTRACT_FIXTURE);
   });
 });
