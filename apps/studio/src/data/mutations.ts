@@ -1,14 +1,15 @@
 /**
- * MVP task 2 (S10, plan §03-frontend-studio) — puente de datos para
- * "Nuevo run": la vista (NewRunView) solo llama a `useCreateRun`/`createRun`,
- * jamás a `postRun`/`gatewayClient` directo (F3). El `POST /runs` real
- * todavía no existe en chimera_api (es dominio runtime-api) — modo demo
- * corta a `DEMO_RUN_ID` sin red; modo live arma el body del contrato
- * plan-01 y lo manda por `postRun` (INV-1: el fetch vive solo ahí).
+ * Puente de datos para "Nuevo run": la vista (NewRunView) solo llama a
+ * `useCreateRun`/`createRun`, jamás a `postRun`/`gatewayClient` directo
+ * (F3). Modo demo corta a `DEMO_RUN_ID` sin red; modo live arma el body
+ * MISIÓN-FIRST del contrato (checkpoint 5, endpoints-studio.md §"POST /runs
+ * — modo misión") y lo manda por `postRun` (INV-1: el fetch vive solo ahí).
  *
- * `capability_id`/`claim` son PROVISIONALES — el shape exacto se ratifica
- * cuando aterriza runtime-api (decisiones.md). El flip fixtures→live es
- * este archivo + gatewayClient.postRun, ya escritos y testeados.
+ * El body claim-first del MVP (instance+assignment) exigía un claim que el
+ * form no puede armar — era el 422 vivo del checkpoint 2. El contrato de
+ * misión lo cierra: el fixture de costura single-origin
+ * (`src/fixtures/contract/endpoints/post-runs-mission.json`, generado desde
+ * el Pydantic `MissionRequest`) fija este body en ambos lados.
  */
 
 import { useMutation } from '@tanstack/react-query';
@@ -17,13 +18,13 @@ import { postRun } from '../gatewayClient';
 import { isLiveMode } from './env';
 import { DEMO_RUN_ID } from './queries';
 
-import type { CreateRunBody } from '../gatewayClient';
+import type { CreateRunMissionBody } from '../gatewayClient';
 import type { NewRunInput } from '../views/types';
 import type { UseMutationResult } from '@tanstack/react-query';
 
 export type { NewRunInput };
 
-/** Proposer del form → capability_id del contrato plan-01 (provisional). */
+/** Proposer del form → capability meta del arranque de misión. */
 const PROPOSER_CAPABILITY: Readonly<Record<string, string>> = {
   qaoa: 'blite.solvers.qaoa',
   gw: 'blite.solvers.goemans_williamson',
@@ -34,16 +35,16 @@ export interface CreateRunResult {
   readonly runId: string;
 }
 
-/** Mapper puro: NewRunInput (form) → CreateRunBody (contrato plan-01). */
-export function toCreateRunBody(input: NewRunInput): CreateRunBody {
+/**
+ * Mapper puro: NewRunInput (form) → CreateRunMissionBody (modo misión).
+ * La misión es el encargo conversacional (product-model.md, D6) — el server
+ * la journaliza como description del ítem fundacional del plan.
+ */
+export function toCreateRunBody(input: NewRunInput): CreateRunMissionBody {
   return {
-    capability_id: PROPOSER_CAPABILITY[input.proposer] ?? input.proposer,
-    inputs: { instance: input.instance },
-    claim: {
-      canonical_statement: `Partición controlada óptima de ${input.instance}`,
-      scope: { instance: input.instance },
-      claim_type: 'optimality'
-    }
+    mission: `Particionar la red ${input.instance} en islas controladas y certificar la optimalidad del corte`,
+    instance_id: input.instance,
+    capability_id: PROPOSER_CAPABILITY[input.proposer] ?? input.proposer
   };
 }
 

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import MISSION_CONTRACT_FIXTURE from '../fixtures/contract/endpoints/post-runs-mission.json';
 import * as gatewayClient from '../gatewayClient';
 import { createRun, toCreateRunBody } from './mutations';
 import { DEMO_RUN_ID } from './queries';
@@ -10,8 +11,8 @@ vi.mock('../gatewayClient', () => ({
   postRun: vi.fn()
 }));
 
-describe('toCreateRunBody (MVP task 2 — mapper hacia el contrato plan-01)', () => {
-  it('mapea instancia + proposer al body de POST /runs', () => {
+describe('toCreateRunBody (checkpoint 5 — modo misión, endpoints-studio.md)', () => {
+  it('mapea instancia + proposer al body misión-first de POST /runs', () => {
     // Arrange
     const input: NewRunInput = { instance: 'ieee14', proposer: 'qaoa' };
 
@@ -20,14 +21,20 @@ describe('toCreateRunBody (MVP task 2 — mapper hacia el contrato plan-01)', ()
 
     // Assert
     expect(body).toEqual({
-      capability_id: 'blite.solvers.qaoa',
-      inputs: { instance: 'ieee14' },
-      claim: {
-        canonical_statement: 'Partición controlada óptima de ieee14',
-        scope: { instance: 'ieee14' },
-        claim_type: 'optimality'
-      }
+      mission:
+        'Particionar la red ieee14 en islas controladas y certificar la optimalidad del corte',
+      instance_id: 'ieee14',
+      capability_id: 'blite.solvers.qaoa'
     });
+  });
+
+  it('produce EXACTAMENTE el body del fixture de costura (contrato E↔D, un solo origen)', () => {
+    // Arrange — el fixture lo genera scripts/gen-contract-fixtures-endpoints.py
+    // desde MissionRequest (Pydantic); el API prueba que ese body responde 202.
+    const input: NewRunInput = { instance: 'ieee14', proposer: 'qaoa' };
+
+    // Act & Assert — el 422 vivo del checkpoint 2 muere por contrato
+    expect(toCreateRunBody(input)).toEqual(MISSION_CONTRACT_FIXTURE);
   });
 
   it('resuelve gw y greedy contra su capability_id', () => {

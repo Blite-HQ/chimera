@@ -65,10 +65,10 @@ export async function invokeCapability<T = unknown>(
 }
 
 /**
- * MVP task 2 (S10) — contrato provisional de `POST /runs` (plan-01,
- * decisión pendiente de ratificar cuando aterrice runtime-api). El shape
- * exacto de `claim`/`inputs` puede cambiar; el chokepoint (INV-1) y el
- * envelope de error no.
+ * Contrato claim-first de `POST /runs` (plan-01, decisión #6) — INTACTO:
+ * exige el claim completo (instance+assignment) en el request. El Studio ya
+ * no lo emite desde el form (ver CreateRunMissionBody), pero el tipo se
+ * conserva porque el endpoint sigue aceptándolo (compat MVP total).
  */
 export interface CreateRunBody {
   readonly capability_id: string;
@@ -82,11 +82,33 @@ export interface CreateRunBody {
 }
 
 /**
- * Crea un run vía `POST {VITE_API_URL}/runs` (plan-01). Mismo envelope de
- * error que invokeCapability (network error / non-OK / ok) — único lugar
- * del Studio que hace este POST (INV-1).
+ * Checkpoint 5 — body misión-first de `POST /runs` (endpoints-studio.md
+ * §"POST /runs — modo misión"): alternativa discriminada por presencia de
+ * campo (`mission` vs `claim`). Sin instance/assignment — los claims los
+ * emiten los sub-runs/steps del harness. Espejo del Pydantic
+ * `MissionRequest` (chimera_api.runs); el fixture de costura vive en
+ * src/fixtures/contract/endpoints/post-runs-mission.json.
  */
-export async function postRun(body: CreateRunBody): Promise<GatewayResponse<{ run_id: string }>> {
+export interface CreateRunMissionBody {
+  readonly mission: string;
+  readonly instance_id?: string;
+  readonly capability_id?: string;
+  readonly max_turns?: number;
+  readonly budget?: {
+    readonly tokens?: number;
+    readonly cost_usd?: number;
+  };
+}
+
+/**
+ * Crea un run vía `POST {VITE_API_URL}/runs` — acepta cualquiera de los dos
+ * bodies del contrato (claim-first o misión-first). Mismo envelope de error
+ * que invokeCapability (network error / non-OK / ok) — único lugar del
+ * Studio que hace este POST (INV-1).
+ */
+export async function postRun(
+  body: CreateRunBody | CreateRunMissionBody
+): Promise<GatewayResponse<{ run_id: string }>> {
   let response: Response;
 
   try {

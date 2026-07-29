@@ -401,6 +401,38 @@ class TestModoMision:
         assert store.read_all() == ()
 
 
+class TestContratoFixtureStudio:
+    """El body EXACTO que el Studio produce (fixture de costura single-origin,
+    `tests/fixtures/contract/endpoints/post-runs-mission.json`) responde 202 —
+    el 422 vivo del checkpoint 2 está muerto por contrato, no por casualidad."""
+
+    def test_el_body_del_fixture_responde_202_y_emite_plan_created(self) -> None:
+        # Arrange
+        from pathlib import Path
+
+        fixture_path = (
+            Path(__file__).resolve().parents[3]
+            / "tests"
+            / "fixtures"
+            / "contract"
+            / "endpoints"
+            / "post-runs-mission.json"
+        )
+        body = cast(dict[str, Any], json.loads(fixture_path.read_text("utf-8")))
+        client = _make_client()
+
+        # Act
+        response = _post(client, "/runs", json_body=body)
+
+        # Assert — 202 aunque el registry hermético no conozca la capability
+        # (blite.solvers.qaoa): el arranque HTTP solo falla por errores del
+        # REQUEST; lo demás vive fail-loud en el stream.
+        assert response.status_code == 202
+        run_id = response.json()["run_id"]
+        frames = _events_of(client, run_id)
+        assert "plan.created" in [f["event"] for f in frames]
+
+
 class TestEndpointsExistentesSiguenVerdes:
     def test_health_sigue_respondiendo_ok(self) -> None:
         client = _make_client()
