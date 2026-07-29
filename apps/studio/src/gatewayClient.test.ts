@@ -621,6 +621,48 @@ describe('openRunEventStream', () => {
     expect(events[0]?.type).toBe('capability.job.submitted');
   });
 
+  /**
+   * Auditoría Fase 2 (vivo, 2026-07-29): `execute_run` emite `run.created`,
+   * `run.step.*` y `capability.job.failed` en el stream real — sin listener,
+   * el timeline en vivo mostraba 2 de 5 eventos de un run fallido mientras
+   * el header decía "5 eventos" (pérdida silenciosa; la demo narra "cero
+   * eventos perdidos"). `replay.divergence` (A5) entra por el mismo motivo:
+   * es parte del vocabulario emitido del loop.
+   */
+  it('escucha el vocabulario completo que execute_run emite (run.created, run.step.*, job.failed, replay.divergence)', () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const events: ProjectedEvent[] = [];
+    const emitted = [
+      'run.created',
+      'run.step.started',
+      'run.step.completed',
+      'run.step.failed',
+      'capability.job.failed',
+      'replay.divergence'
+    ];
+
+    // Act
+    openRunEventStream('8f2c1a9b', { onEvent: e => events.push(e) });
+    const source = FakeEventSource.instances[0];
+    emitted.forEach((type, i) => {
+      source?.dispatch(
+        type,
+        JSON.stringify({
+          global_seq: i + 1,
+          type,
+          actor_id: 'service:runtime',
+          occurred_at: `2026-07-29T12:00:0${i}.000000Z`,
+          resumen: type,
+          payload: {}
+        })
+      );
+    });
+
+    // Assert — cada tipo emitido llega proyectado, ninguno se pierde.
+    expect(events.map(e => e.type)).toEqual(emitted);
+  });
+
   it('encodea el runId en la url', () => {
     vi.stubEnv('VITE_API_URL', 'http://api.test');
 

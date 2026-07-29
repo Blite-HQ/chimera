@@ -246,11 +246,21 @@ export async function getAblation(runId: string): Promise<GatewayResponse<unknow
  * stream sigue funcionando.
  */
 const KNOWN_RUN_EVENT_TYPES = [
+  // Auditoría Fase 2 (2026-07-29): el vocabulario COMPLETO que execute_run
+  // emite — run.created, run.step.* y capability.job.failed faltaban y el
+  // timeline en vivo perdía esos frames en silencio (mostraba 2 de 5
+  // eventos de un run fallido). replay.divergence (A5) entra por lo mismo.
+  'run.created',
   'run.started',
+  'run.step.started',
+  'run.step.completed',
+  'run.step.failed',
   'capability.job.submitted',
   'capability.job.completed',
+  'capability.job.failed',
   'verification.completed',
   'claim.emitted',
+  'replay.divergence',
   // D6 (checkpoint 5) — el plan como artefacto del stream (harness-agentico.md
   // §Contrato-2): sin estos listeners el SSE real nunca entrega el checklist
   // del hilo conversacional (mismo fallo silencioso que el pin de .submitted).
