@@ -54,7 +54,7 @@ describe('CertificateView — refutación (misma dignidad que un pass)', () => {
   test('renderiza un AssuranceBadge con el tono fail (refutación) — misma pieza visual que un pass', () => {
     render(<CertificateView envelope={REFUTED_CERTIFICATE} onDownload={vi.fn()} />);
 
-    const scale = screen.getByRole('img', { name: 'nivel AL0 de AL4' });
+    const scale = screen.getByRole('img', { name: 'confianza nula (AL0 de AL4)' });
     const pill = scale.closest('span');
     expect(pill).not.toBeNull();
     expect(pill).toHaveClass('text-verdict-fail');

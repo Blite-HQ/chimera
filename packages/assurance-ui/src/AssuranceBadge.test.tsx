@@ -10,9 +10,9 @@ describe('AssuranceBadge', () => {
     expect(screen.getByText('AL3')).toBeTruthy();
   });
 
-  it('expone el glifo de la escala con etiqueta accesible', () => {
+  it('expone el glifo de la escala con etiqueta accesible de confianza', () => {
     render(<AssuranceBadge level="AL2" verdict="pass" verifierClass="property_rule" />);
-    expect(screen.getByRole('img', { name: 'nivel AL2 de AL4' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'confianza media (AL2 de AL4)' })).toBeTruthy();
   });
 
   it('reemplaza la etiqueta de clase cuando recibe detail', () => {
