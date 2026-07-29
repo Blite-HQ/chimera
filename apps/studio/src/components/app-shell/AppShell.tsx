@@ -55,7 +55,7 @@ export function AppShell({
     <div className="flex min-h-screen">
       {/* Aire del sidebar (directriz Dylan 2026-07-29): padding y gaps en
           potencias de 2 (px-4=16, py-8=32, gap-1=4, p-2=8). */}
-      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-8 border-r border-border px-4 py-8">
+      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-8 border-r border-border p-4">
         <div className="flex items-baseline gap-2">
           <BrandMark className="h-6 self-center" />
           <span className="font-display text-lg leading-none font-medium tracking-tight">

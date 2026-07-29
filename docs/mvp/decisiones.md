@@ -435,17 +435,23 @@ Sesión corta sobre la base auditada, con Dylan dictando las directrices en vivo
 2. **Navegabilidad**: breadcrumb del topbar deja de ser decorador (tramos
    previos = botones, `onBreadcrumbNavigate`) + botón "Volver a runs" en el
    detalle del run.
-3. **Tabla de runs**: `whitespace-nowrap` en ID/actor/fecha; el prefijo `run-`
-   se recorta SOLO en la celda. **Corrección de premisa**: `run-` SÍ es parte
-   del ID real (`runs.py: run-{uuid4().hex}`), no un decorador del frontend —
-   el ID canónico completo queda en `title` y en el heading del detalle;
-   renombrar el ID en backend NO se hizo (rompería streams existentes).
+3. **Tabla de runs**: `whitespace-nowrap` en ID/actor/fecha. **ROLLBACK del
+   recorte de `run-`** (misma sesión, corrección de Dylan): la instrucción era
+   condicional — recortar SOLO si el prefijo era decorador del frontend; se
+   verificó que `run-` SÍ es parte del ID real (`runs.py: run-{uuid4().hex}`,
+   así viaja en DB/streams), así que la celda muestra el ID COMPLETO (con
+   `hover:underline` como affordance de click).
 4. **Sidebar**: pill del proyecto sin la palabra "proyecto" (redundante),
    iconos lucide en los ítems, aire en potencias de 2 (px-4/py-8/gap-1/p-2).
 5. **Aire general**: SectionHeader (mt-2 título→descripción, mb-8 al
    contenido), RunDetail (header+meta gap-2, gap-8 hacia tabs) — regla: gaps/
    margins/paddings en potencias de 2 (2/4/8/16/32/64px); tablas y topbar se
    dejaron como estaban (directriz explícita).
+6. **Cursores** (addendum, misma sesión): regla base en `index.css` — el
+   preflight de Tailwind v4 deja `cursor: default` en botones; todo botón/
+   control habilitado (`button`, `[role=button|tab]`, `a[href]`) recupera
+   `cursor: pointer`, + `hover:underline` en el ID de la tabla como
+   affordance de click.
 
 **Mapeado a Mejorado** (04-consolidacion §4): M15 sidebar completo
 (user/organization, multi-proyecto, colapsable), M16 branding/logo (brief

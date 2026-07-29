@@ -59,15 +59,13 @@ export default function RunsView({ runs, onSelectRun }: RunsViewProps): React.Re
                   <button
                     type="button"
                     onClick={() => onSelectRun(run.runId)}
-                    // El prefijo `run-` SÍ es parte del ID real (runs.py:
-                    // `run-{uuid4().hex}`) — acá se recorta SOLO en la celda
-                    // (es uniforme en toda fila y no aporta); el ID canónico
-                    // completo queda en `title` y en el heading del detalle.
-                    title={run.runId}
-                    className="focus-ring flex items-center gap-2 rounded-lg font-mono text-foreground"
+                    // El ID se muestra COMPLETO: `run-` es parte del ID real
+                    // (runs.py: `run-{uuid4().hex}`) — directriz Dylan: solo
+                    // se recortaba si era decorador del frontend, y no lo es.
+                    className="focus-ring flex items-center gap-2 rounded-lg font-mono text-foreground hover:underline"
                   >
                     <RunStatusDot status={run.status} />
-                    {run.runId.replace(/^run-/, '')}
+                    {run.runId}
                   </button>
                 </TableCell>
                 <TableCell className="max-w-md">{run.conclusion}</TableCell>

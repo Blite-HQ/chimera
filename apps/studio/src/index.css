@@ -206,6 +206,16 @@
     @apply bg-background font-sans text-foreground antialiased;
   }
 
+  /* Directriz Dylan 2026-07-29: todo lo clickeable lo parece. El preflight
+     de Tailwind v4 dejó los botones con `cursor: default`; esta regla base
+     restaura el pointer para botones y controles habilitados. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='tab']:not([aria-disabled='true']),
+  a[href] {
+    cursor: pointer;
+  }
+
   /* Piso de calidad (DESIGN.md §9): movimiento respetuoso, sin excepciones. */
   @media (prefers-reduced-motion: reduce) {
     *,
