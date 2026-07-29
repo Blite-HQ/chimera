@@ -80,21 +80,35 @@ describe('loadCertificate (rama demo/live)', () => {
     expect(resource.envelope.payload.predicate.runId).toBe('8f2c1a9b');
   });
 
-  it('modo live: llama a getCertificate y decodifica el wire devuelto', async () => {
-    // Arrange
+  it('modo live: acepta el BUNDLE real del api ({envelope, stream, …}) y conserva el bundle íntegro como wire', async () => {
+    // Arrange — auditoría Fase 2 (vivo, 2026-07-29): GET /certificate
+    // devuelve el bundle COMPLETO (envelope + public_key + stream + …), no
+    // el envelope pelado; parsearlo con wireEnvelopeSchema explotaba la
+    // vista Verificación en vivo, y descargar solo el envelope rompería
+    // `scripts/verify-bundle.py` (necesita el bundle entero).
     vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const liveBundle = {
+      envelope: EXAMPLE_CERTIFICATE_WIRE,
+      public_key: 'a'.repeat(64),
+      stream: [{ type: 'run.created' }],
+      anchor_descriptors: [],
+      verifier_descriptors: [],
+      policy_yaml_b64: 'cG9saWN5',
+      deliverable_contents: {}
+    };
     vi.mocked(gatewayClient.getCertificate).mockResolvedValueOnce({
       success: true,
-      data: EXAMPLE_CERTIFICATE_WIRE,
+      data: liveBundle,
       error: null
     });
 
     // Act
     const resource = await loadCertificate('run-live-1');
 
-    // Assert
+    // Assert — wire = el bundle entero (descargable y verificable offline);
+    // envelope = el DSSE decodificado para la vista.
     expect(gatewayClient.getCertificate).toHaveBeenCalledWith('run-live-1');
-    expect(resource.wire).toEqual(EXAMPLE_CERTIFICATE_WIRE);
+    expect(resource.wire).toEqual(liveBundle);
     expect(resource.envelope.payload.predicate.runId).toBe('8f2c1a9b');
   });
 

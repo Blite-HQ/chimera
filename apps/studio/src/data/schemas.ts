@@ -245,6 +245,18 @@ export const wireEnvelopeSchema = z.object({
 });
 
 /**
+ * Wire real de `GET /runs/{id}/certificate` (auditoría Fase 2, 2026-07-29):
+ * el api devuelve el BUNDLE completo (`{envelope, public_key, stream, …}`),
+ * no el envelope pelado. Solo se tipa `envelope` (lo que la vista decodifica);
+ * el resto pasa ÍNTEGRO (loose) porque el bundle entero es lo que se descarga
+ * y lo que `scripts/verify-bundle.py` verifica offline — tiparlo de más acá
+ * solo agregaría un espejo frágil de campos que el cliente no interpreta.
+ */
+export const certificateBundleWireSchema = z.looseObject({
+  envelope: wireEnvelopeSchema
+});
+
+/**
  * D3 (`docs/specs/endpoints-studio.md` §"Contrato Zod") — los wire schemas
  * de las 6 rutas de lectura de `chimera_api` (E1) + sus mappers wire→UI,
  * mismo patrón que `toProjectedEvent`: se valida el wire snake_case

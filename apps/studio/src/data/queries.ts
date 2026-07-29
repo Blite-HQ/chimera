@@ -29,6 +29,7 @@ import { deriveArtifacts, deriveKnowledge, deriveRunSummary } from './projection
 import {
   ablationMetricSchema,
   ablationWireSchema,
+  certificateBundleWireSchema,
   knowledgeClaimWireSchema,
   projectArtifactWireSchema,
   projectedEventSchema,
@@ -206,17 +207,23 @@ export function stepEvidenceQueryOptions(runId: string, stepIds: readonly string
 export interface CertificateResource {
   /** Decodificado y mapeado para la UI (nota 18 §2.3). */
   readonly envelope: DsseEnvelope;
-  /** El wire tal cual (base64+firma) — lo único descargable/verificable offline. */
-  readonly wire: z.infer<typeof wireEnvelopeSchema>;
+  /**
+   * El wire tal cual — lo único descargable/verificable offline. En vivo es
+   * el BUNDLE completo del api (envelope + stream + …, lo que
+   * `scripts/verify-bundle.py` exige); en demo, el envelope del fixture.
+   */
+  readonly wire: z.infer<typeof wireEnvelopeSchema> | z.infer<typeof certificateBundleWireSchema>;
 }
 
 /**
  * Rama demo/live (task 3, S10): demo sirve el fixture (sin red); live pide
  * `GET /runs/{id}/certificate` vía gatewayClient.getCertificate — el wire
  * de la respuesta es EXTERNO/untrusted, así que se valida con
- * `wireEnvelopeSchema` antes de decodificarlo (decodeEnvelope ya lo hace,
- * pero se valida acá también para levantar el error de "no se pudo
- * obtener" antes de intentar decodificar un `data` inesperado).
+ * `certificateBundleWireSchema` (auditoría Fase 2: el api devuelve el
+ * bundle COMPLETO `{envelope, public_key, stream, …}`, jamás el envelope
+ * pelado — parsearlo como envelope explotaba la vista Verificación en
+ * vivo). El bundle pasa ÍNTEGRO como `wire` (descarga/verify offline); la
+ * vista decodifica solo `envelope`.
  * Exportada (no inlined en el queryFn) para poder testear la selección de
  * rama mockeando `../gatewayClient` sin tener que fabricar un
  * QueryFunctionContext.
@@ -233,8 +240,8 @@ export async function loadCertificate(runId: string): Promise<CertificateResourc
   if (!res.success || res.data === null) {
     throw new Error(res.error ?? 'No se pudo obtener el certificado');
   }
-  const wire = wireEnvelopeSchema.parse(res.data);
-  return { envelope: decodeEnvelope(wire), wire };
+  const bundle = certificateBundleWireSchema.parse(res.data);
+  return { envelope: decodeEnvelope(bundle.envelope), wire: bundle };
 }
 
 export function certificateQueryOptions(runId: string) {
