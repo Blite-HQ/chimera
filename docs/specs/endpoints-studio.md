@@ -21,14 +21,14 @@ Mismo JWT en cookie (freeze §9 P1-9, decidido, no se reinventa acá). El wire e
 `apps/studio/src/views/types.ts` — el Studio lo parsea con su schema Zod espejo
 (`apps/studio/src/data/schemas.ts`, a escribir en Fase 1; declarado en prosa abajo).
 
-| Ruta                                                  | Devuelve (TS, `views/types.ts`) | Wire (snake_case)                                                                                  | Fuente de la proyección                                                                                                                      |
-| ------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /runs`                                           | `RunSummary[]`                   | `{run_id, status, conclusion, verdict, titular_level, titular_class, events_count, actor, completed_at?}` | `blite.runtime.projection.project_runs` (freeze §2 [ejecución], YA VERDE) para `run_id/status/actor`, + certificado emitido (si existe, freeze §7) para `conclusion/verdict/titular_level/titular_class` — MISMA lógica que hoy vive client-side en `deriveRunSummary` (`apps/studio/src/data/projections.ts`), portada server-side |
-| `GET /runs/{run_id}/artifacts`                        | `ProjectArtifact[]`              | `{artifact_ref, digest, run_id, titular_level, titular_class, verdict, issued_at}`                     | `certificate.predicate.deliverables` (freeze §7) — misma lógica que `deriveArtifacts`                                                          |
-| `GET /runs/{run_id}/knowledge`                        | `KnowledgeClaim[]`               | `{statement, scope, verdict, level, titular_class, run_id, valid_as_of}`                               | `certificate.predicate.conclusions` (freeze §7) — misma lógica que `deriveKnowledge`                                                           |
-| `GET /runs/{run_id}/steps/{step_id}/evidence`         | `StepDetail`                     | `{step_id, capability_id, input_digest, output_digest, attestations: [...]}`                            | proyección del stream del run filtrada por `step_id` sobre `run.step.*`/`capability.job.*`/`verification.completed` (trust/07 §1.3 fila "Inspector de paso") |
-| `GET /runs/{run_id}/ablation`                         | `AblationMetric[]`               | `{variant, cut_cost, wall_ms, verification_latency_ms}[]`                                              | `run.metrics.recorded` (freeze §3 [S-F]) por variante (quantum/classical) — trust/07 §1.3 fila "Ablación"                                       |
-| `GET /runs/{run_id}/topology`                         | payload de mapa (`superficie-visual.md` §4) | `{topology_ref, islands: [{id, name, bus_ids, verification}], cut_branch_ids, cut_cost}`               | resultado de partición embebido en `verification.completed` — MISMA forma que trust/07 §1.3 fila "Visualizador de red" / spike `apps/studio/src/spike/ieee14.ts` `PartitionView`; `verification` **POR ISLA** (regla §9, sin excepción) |
+| Ruta                                          | Devuelve (TS, `views/types.ts`)             | Wire (snake_case)                                                                                         | Fuente de la proyección                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /runs`                                   | `RunSummary[]`                              | `{run_id, status, conclusion, verdict, titular_level, titular_class, events_count, actor, completed_at?}` | `blite.runtime.projection.project_runs` (freeze §2 [ejecución], YA VERDE) para `run_id/status/actor`, + certificado emitido (si existe, freeze §7) para `conclusion/verdict/titular_level/titular_class` — MISMA lógica que hoy vive client-side en `deriveRunSummary` (`apps/studio/src/data/projections.ts`), portada server-side |
+| `GET /runs/{run_id}/artifacts`                | `ProjectArtifact[]`                         | `{artifact_ref, digest, run_id, titular_level, titular_class, verdict, issued_at}`                        | `certificate.predicate.deliverables` (freeze §7) — misma lógica que `deriveArtifacts`                                                                                                                                                                                                                                               |
+| `GET /runs/{run_id}/knowledge`                | `KnowledgeClaim[]`                          | `{statement, scope, verdict, level, titular_class, run_id, valid_as_of}`                                  | `certificate.predicate.conclusions` (freeze §7) — misma lógica que `deriveKnowledge`                                                                                                                                                                                                                                                |
+| `GET /runs/{run_id}/steps/{step_id}/evidence` | `StepDetail`                                | `{step_id, capability_id, input_digest, output_digest, attestations: [...]}`                              | proyección del stream del run filtrada por `step_id` sobre `run.step.*`/`capability.job.*`/`verification.completed` (trust/07 §1.3 fila "Inspector de paso")                                                                                                                                                                        |
+| `GET /runs/{run_id}/ablation`                 | `AblationMetric[]`                          | `{variant, cut_cost, wall_ms, verification_latency_ms}[]`                                                 | `run.metrics.recorded` (freeze §3 [S-F]) por variante (quantum/classical) — trust/07 §1.3 fila "Ablación"                                                                                                                                                                                                                           |
+| `GET /runs/{run_id}/topology`                 | payload de mapa (`superficie-visual.md` §4) | `{topology_ref, islands: [{id, name, bus_ids, verification}], cut_branch_ids, cut_cost}`                  | resultado de partición embebido en `verification.completed` — MISMA forma que trust/07 §1.3 fila "Visualizador de red" / spike `apps/studio/src/spike/ieee14.ts` `PartitionView`; `verification` **POR ISLA** (regla §9, sin excepción)                                                                                             |
 
 **Errores:** `404` si `run_id` (o `step_id`) no existe — mismo patrón que
 `chimera_api/certificate.py::get_certificate` (`HTTPException(404, "run desconocido")`); jamás
@@ -37,6 +37,77 @@ un 200 con datos fabricados. Un run vivo (sin certificado emitido todavía) no e
 conclusiones que mostrar, y eso es honestidad, no una falla del endpoint. `GET
 /runs/{id}/steps/{step_id}/evidence` sobre un `step_id` sin `verification.completed` todavía
 responde con `attestations: []` (paso corrió pero aún no lo verificaron) por el mismo principio.
+
+## POST /runs — modo misión (extensión ADITIVA, checkpoint 5, 2026-07-29)
+
+**Hueco de spec que esta sección cierra:** la Fase 0 fijó las rutas GET pero NUNCA definió el
+contrato de arranque conversacional — `POST /runs` quedó solo con el body claim-first del MVP
+(decisión #6: claim completo con `instance`+`assignment` en el request), mientras el Studio
+(`apps/studio/src/data/mutations.ts::toCreateRunBody`) mandaba misión-first sin
+instance/assignment → 422 vivo. No era solo un bug del mapper: era un contrato sin escribir.
+
+### Contrato
+
+`POST /runs` acepta **dos bodies alternativos**, discriminados por presencia de campo —
+`mission` vs `claim` (ambos modelos Pydantic con `extra="forbid"`, así que un body con AMBOS
+campos, o con ninguno, falla la validación de los dos lados de la unión → `422`):
+
+1. **Body claim-first (MVP, INTACTO):** `{capability_id, inputs, claim: {...}, max_steps?}` —
+   compat total, cero cambios; sigue gobernado por `docs/mvp/01-runtime-api.md` §1 y las
+   decisiones #6/#7/#11.
+2. **Body modo misión (NUEVO):**
+
+   ```
+   {
+     mission: str,           // no vacía — el encargo conversacional (product-model.md, D6)
+     instance_id?: str,      // instancia sobre la que versa la misión (scope, no claim)
+     capability_id?: str,    // capability meta del arranque; default del server si falta
+     max_turns?: int,        // default del server: 3 (ver "Gate ausente" abajo)
+     budget?: { tokens?: int, cost_usd?: float }   // misma forma que RunBudget (harness-agentico.md)
+   }
+   ```
+
+**Respuesta:** `202 {run_id}` — idéntica al modo claim-first; el resultado vive en el stream,
+jamás en la respuesta HTTP.
+
+### Semántica del arranque (costura A↔E)
+
+- El modo misión agenda `execute_run` en **modo agéntico** (`proposer` inyectado —
+  `harness-agentico.md` §Contrato-1): el plan viaja como eventos `plan.created`/
+  `plan.item_updated` YA existentes (freeze §14, decisión #84). Cero evento nuevo.
+- **La misión queda journalizada como `description` del ítem fundacional del plan** (el
+  `plan_items` sembrado por el API): entra al alcance del `provenance_hash` del certificado
+  (freeze §2) SIN extender la forma congelada de `run.created` (§3) — cero supersesión.
+- El modo misión **NO exige assignment ni claim**: los claims los emiten los sub-runs/steps
+  (`●ClaimEmitted {sub_run_id, ...}`, §Contrato-4 de `harness-agentico.md`) cuando el agente
+  real los produzca — frontera P4, no de este endpoint.
+- **Proposer placeholder (etiquetado):** hasta que P4 cablee el agente real (`ModelServer`
+  tras `ModelPort`, decisión #81), `chimera_api` inyecta un proposer determinista que propone
+  la capability meta en cada turno. Es la MISMA costura `Proposer` que el agente real ocupará
+  — un seam, no "el agente" (el mapeo determinista como agente está RECHAZADO, decisión de
+  producto Planeado). Reemplazarlo = swap del inyectable, cero cambio de contrato HTTP.
+- **Gate ausente (honestidad):** sin verificación cableada no hay `done` — la doctrina
+  (`harness-agentico.md` §Contrato-3) manda: `done` ⟺ el verifier pasa, JAMÁS un
+  `run.completed` implícito. Un run de misión de hoy termina por `max_turns`/`budget` con
+  `run.failed {error_kind: "exhausted"}` — eso es lo honesto, no un defecto. Por eso el
+  default de `max_turns` del modo misión es **3** (conservador: cada turno extra del proposer
+  determinista es gasto sin información nueva), no el 30 del loop con agente real; el caller
+  lo sube vía `max_turns` cuando el gate exista.
+- **Fail-loud intacto:** capability desconocida ⇒ `202` + `run.failed` DENTRO del stream
+  (mismo contrato que el modo claim-first — el arranque HTTP solo falla por errores del
+  REQUEST). El `run_ticket` del modo misión se registra VACÍO (sin conclusiones declaradas):
+  `GET /runs/{id}/certificate` no da 404 por desconocido, y sin conclusiones no se fabrica
+  certificado — honestidad, no error.
+
+### Contrato con el Studio (costura E↔D)
+
+`toCreateRunBody` (Studio) emite el body de misión desde el form actual
+(instancia+proposer): `{mission, instance_id, capability_id}`. El fixture de costura
+single-origin es `tests/fixtures/contract/endpoints/post-runs-mission.json` (validado contra
+`MissionRequest` — el modelo Pydantic origen — por el test de contrato del API) espejado
+byte-idéntico a `apps/studio/src/fixtures/contract/endpoints/post-runs-mission.json` (el test
+del Studio fija que `toCreateRunBody` produce exactamente ese body). Misma convención que
+`contract/harness/` (README de specs, "Fixtures de costura — un solo origen").
 
 ## Discrepancia de vocabulario a flaggear (costura E↔D) — bloqueante para D3, no para esta spec
 
@@ -138,11 +209,11 @@ patrón de mapper que `toProjectedEvent`.
 
 ## Interfaces con otros dominios
 
-| Interfaz                                                              | Dominio afectado | Estado                                                                          |
-| ------------------------------------------------------------------------ | ------------------- | ----------------------------------------------------------------------------------- |
-| D3 (egress de `queries.ts`) contra estas 6 rutas                        | E↔D              | SPEC — pin de nombres de ruta y forma; implementación Fase 1                        |
-| E proyecta los eventos que A emite (`capability.job.submitted`, `claim.emitted`, `verification.completed`) | E↔A | Proyección genérica VERDE (`confianza-api-sse.md`); PIN de nombres = freeze §3/§14 (ver discrepancia arriba) |
-| Payload de topología consumido por `superficie-visual.md`                | E↔D              | forma pinneada en ambos documentos, sin duplicar la fuente de verdad                |
+| Interfaz                                                                                                   | Dominio afectado | Estado                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| D3 (egress de `queries.ts`) contra estas 6 rutas                                                           | E↔D              | SPEC — pin de nombres de ruta y forma; implementación Fase 1                                                 |
+| E proyecta los eventos que A emite (`capability.job.submitted`, `claim.emitted`, `verification.completed`) | E↔A              | Proyección genérica VERDE (`confianza-api-sse.md`); PIN de nombres = freeze §3/§14 (ver discrepancia arriba) |
+| Payload de topología consumido por `superficie-visual.md`                                                  | E↔D              | forma pinneada en ambos documentos, sin duplicar la fuente de verdad                                         |
 
 ## Eventos/payloads nuevos
 

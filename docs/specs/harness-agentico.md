@@ -41,6 +41,11 @@ del loop) SOLO emite estos dos eventos — nunca reescribe el plan in-place (INV
 append-only). La historia completa del plan queda dentro del alcance del `provenance_hash`
 del certificado (freeze §2: cubre el stream del run raíz desde `run.created` hasta el
 terminal) — el certificado reconstruye "qué se planeó vs qué se ejecutó" sin almacén nuevo.
+**Arranque HTTP (costura A↔E, checkpoint 5):** el body misión-first de `POST /runs`
+(`{mission, instance_id?, capability_id?, max_turns?, budget?}`, discriminado del claim-first
+por presencia de campo) vive en `endpoints-studio.md` §"POST /runs — modo misión" — arranca
+ESTE contrato (plan como eventos) sembrando la misión como `description` del ítem fundacional
+del plan; esta spec no lo duplica, solo lo referencia.
 
 **3 · Terminación triple — y su relación con `max_steps`.** Tres condiciones; la primera en
 dispararse termina el run: **(a)** `max_turns` (default `30`, patrón OpenAI Agents SDK
@@ -104,7 +109,7 @@ estos MISMOS nombres de wire — no hay traducción intermedia.
 
 - **`plan.created`** ↔ `●PlanCreated` (ya en el catálogo §14 — primera materialización en
   código, no supersesión). Payload: `{plan_id, run_id, items: [{id, description,
-  verification, status}]}`; `status ∈ {pending, running, ok, failed}` (conjunto cerrado,
+verification, status}]}`; `status ∈ {pending, running, ok, failed}` (conjunto cerrado,
   misma disciplina que `RunStep.status`). Módulo propuesto: `blite.runtime.plan`
   (`PlanItem`, `PlanCreatedPayload`) — mismo home conceptual que `RunStep` en
   `runtime/loop.py`.
@@ -113,7 +118,7 @@ estos MISMOS nombres de wire — no hay traducción intermedia.
   `blite.runtime.plan` (`PlanItemUpdatedPayload`).
 - **`replay.divergence`** ↔ `●ReplayDivergenceDetected` (**nuevo en catálogo §14 —
   PENDIENTE-Steven**). Payload: `{run_id, effect_kind: "model_call"|"capability_job",
-  request_digest, expected_response_digest, actual_response_digest, step_id?}`. Módulo:
+request_digest, expected_response_digest, actual_response_digest, step_id?}`. Módulo:
   `blite.runtime.replay` (`ReplayDivergencePayload`, `EffectKind`).
 - **`approval.requested`** ↔ `●ApprovalRequested` (**nuevo en catálogo §14 —
   PENDIENTE-Steven**). Payload: `{run_id, approval_id, json_schema, prompt, step_id?}`.
@@ -132,13 +137,14 @@ estos MISMOS nombres de wire — no hay traducción intermedia.
 
 ## Interfaces con otros dominios
 
-| Interfaz                                     | Dominio                                                     | Estado                                          |
-| --------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
-| `plan.created` / `plan.item_updated`         | D (Studio · timeline) + E (endpoint SSE · proyección)       | SPEC                                             |
-| `approval.requested` / `approval.responded`  | D (Studio · card inline bloqueante) + E (endpoint SSE)       | SPEC                                             |
-| `replay.divergence`                          | E (SSE) + confianza (certificado — `check_bundle` punto 8)  | SPEC                                             |
-| `●ClaimEmitted` + campo `sub_run_id`         | confianza (predicate §7 / bundle)                             | PENDIENTE (campo a añadir — no es supersesión)   |
-| `ModelServer` + backends `replay`/`record`   | frontera Dylan + Steven (§15.7)                               | SPEC (puerto listo, adapter no)                  |
+| Interfaz                                     | Dominio                                                     | Estado                                         |
+| -------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------- |
+| `plan.created` / `plan.item_updated`         | D (Studio · timeline) + E (endpoint SSE · proyección)       | SPEC                                           |
+| `approval.requested` / `approval.responded`  | D (Studio · card inline bloqueante) + E (endpoint SSE)      | SPEC                                           |
+| `replay.divergence`                          | E (SSE) + confianza (certificado — `check_bundle` punto 8)  | SPEC                                           |
+| `●ClaimEmitted` + campo `sub_run_id`         | confianza (predicate §7 / bundle)                           | PENDIENTE (campo a añadir — no es supersesión) |
+| `ModelServer` + backends `replay`/`record`   | frontera Dylan + Steven (§15.7)                             | SPEC (puerto listo, adapter no)                |
+| `POST /runs` modo misión (arranque del loop) | E (`endpoints-studio.md` §"POST /runs — modo misión") ↔ A↔D | CONTRATO (checkpoint 5, 2026-07-29)            |
 
 ## Fronteras (qué NO decide esta spec)
 
