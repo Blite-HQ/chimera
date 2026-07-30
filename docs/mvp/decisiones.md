@@ -540,3 +540,56 @@ Mejorado los M18–M20 propuestos, el punto 4 del análisis (proyección fail-lo
 - **Fase siguiente parqueada** (NO entra a Mejorado): 3 ideas ganadoras corriendo en
   la plataforma, retos vs resultado de hackathon, research de competencia.
 - Doc: `docs/mejorado/01-criterio.md`. Docs-only: ninguna interfaz de código tocada.
+
+## Sesión control Mejorado — Etapas 1-3 · cobertura + research + consolidación (rama `planeado/base`, 2026-07-30)
+
+Gates baseline verificados VIVOS al abrir la fase (no de fe): 804 pytest (90.96%) ·
+13 contratos lint-imports · ruff 0 · pyright 0 · 221 studio · eslint 0. Etapas 1-2 en
+paralelo (5 exploraciones de cobertura + 3 frentes de research con web) →
+`docs/mejorado/02-cobertura.md` y `03-research.md`. Etapa 3 con Dylan →
+`docs/mejorado/04-consolidacion.md` (backlog operativo G/P/C/V/O + ítems M21-M32).
+
+### #102 — supersede [MEJORADO] del freeze §13
+
+El freeze §13 gana supersede explícito con causa: el loop agéntico (ceremonia #66,
+`harness-agentico.md`) reemplaza la letra «pipeline fijo Fase 1» + set hardcodeado;
+el catálogo §14 gana los eventos de #68. El freeze sigue siendo LA autoridad única.
+Cierra el conflicto C-1 de `02-cobertura.md` §5 (la regla del índice de specs estaba
+siendo violada). Ejecución: ola 0.
+
+### #103 — M3 por la ruta formal_exact + proof
+
+`RuleBackend` se diseña con salida de certificado de prueba (cvc5→Alethe→checker
+Carcara empaquetado en el bundle: AL4 verificable offline, freeze §4-iii literal); la
+v1 con Z3 emite `property_rule` AL2 honesto con `rlimit` (jamás timeout wall-clock —
+determinismo del replay). Cero techos rotos. trust/11 se traduce a clase+AL (muere
+`rung`). Cierra C-2.
+
+### #104 — skip honesto en GET /runs (supersede parcial de la letra de lectura §3)
+
+La ruta de LECTURA descarta streams envenenados y expone `discarded_streams`
+(extensión aditiva del wire E↔D + Zod + fixture + test con la píldora #96). Línea
+roja: escritura/certificados/provenance siguen fail-loud («explota, no rellena»
+intacto donde importa). Cierra el punto 4 de la auditoría Fase 2. Cierra C-3.
+
+### #105 — Rekor re-entra como pieza 5 de M8
+
+Supersede del descarte ×2 (freeze §7 / 03-research Planeado): el fundamento era la
+emisión keyless con Fulcio; Rekor v2 GA con backend POSIX + stapled inclusion proof
+mantiene la verificación 100% offline. Orden incremental de M8 fijado: hash-chain →
+DSSE/VSA → StatusList → OpenBao → Rekor witness opcional. SPIFFE queda FUERA de M8
+(gate = despliegue multi-nodo, no fase). Cierra C-7.
+
+### #106 — bloque de resoluciones C-4…C-15 + orden global ratificados
+
+Las 11 resoluciones de `04-consolidacion.md` §3 quedan decididas tal como están
+escritas (C-4 payload de métricas extendido + dos brazos como sub-runs; C-5
+GatewayContext aditivo + un cruce por invocación; C-6 verify_all() +
+independence_group compartido por corrida; C-8 branch-ids híbrida; C-9 rvsp por run;
+C-10 estampar -voltaje@v1; C-11 proyector standalone; C-12 manifest envolvente MCP;
+C-13 dualidad de digests; C-14 EXACT_DIAGONALIZATION + tolerancia; C-15 baselines
+coordinado). Orden entre dominios confirmado: G → P → C (manifest-v2 adelantado) →
+V → O, con ola 0 documental inmediata. Ajustes posteriores = supersede individual.
+
+Sin interfaces de código tocadas en estas etapas (docs-only); la tabla de
+interacciones nace con la ola 0 y las sesiones de Fase 1.
