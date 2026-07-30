@@ -458,3 +458,60 @@ Sesión corta sobre la base auditada, con Dylan dictando las directrices en vivo
 destilado de las referencias de Dylan: marca geométrica mínima, línea
 topológica/nodos, mono + acento teal), M17 URLs reales + go-back en el resto
 de secciones. M14 (distribution root) ya venía de #95.
+
+## Sesión cierre de Planeado — "Fable valida, Sonnet hace" (rama `planeado/base`, 2026-07-29/30)
+
+**Estado: PLANEADO CERRADO en lo ejecutable.** Cuatro carriles delegados a agentes
+Sonnet (TDD, sin commits — el validador commiteó) + auditoría final en vivo. Gates al
+cierre: **804 pytest (90.96%) · 13 contratos · ruff 0 · pyright 0 · 221 studio ·
+eslint 0 · tsc 0**. Commits: `bef0ad3` (orden post-terminal), `fb9f494` (misión
+instancia→inputs reales + guard anti-traversal), `cfc69b4` (proposer real vía
+ModelServer), `feec573` (status fallido/cancelado + menores).
+
+### #100 — cierre ejecutado, con evidencia viva (stack compose reconstruido)
+
+1. **Orden post-terminal RESUELTO** (flag #91): `_run_resolve_and_invoke` devuelve el
+   error y cada caller journaliza su terminal — `plan.item_updated {failed}` entra
+   ANTES de `run.failed` (dentro del corte del provenance_hash); pipeline fijo intacto.
+2. **La misión viva PROGRESA** (cierra "Análisis para discusión" punto 1, opción a):
+   POST misión `cr6-uniforme` en compose → 3 turnos reales (QUBO real, 3×
+   `capability.job.completed`) → cierre `run.failed {exhausted}` como ÚLTIMO evento.
+   `PROPOSER_CAPABILITY` en IDs reales; guard anti path-traversal en `instance_id`.
+3. **Proposer real cableado por el seam** (#92 → P4): adapter Proposer←ModelServer en
+   el api (`model_proposer.py`, protocolo JSON estricto = `ProposedStep`), sesiones
+   grabadas content-addressed (`model_session.py`, `SessionCorruptError` fail-loud),
+   flip `CHIMERA_MODEL_BACKEND=replay|record|live` (ausente ⇒ placeholder intacto),
+   `scripts/record_session.py` para grabar la sesión REAL (pendiente: correrlo con la
+   key de Dylan — cero llamadas LLM en esta sesión). Frontera anotada para Steven:
+   envolver la llamada al proposer en `loop.py` (hoy el adapter degrada fallas a un
+   ProposedStep centinela → run.failed{KeyError}, contrato de capability desconocida).
+4. **Status wire `fallido|cancelado`** (cierra punto 3): extensión aditiva en spec +
+   server + client espejo; verificado vivo — los 4 runs fallidos del store muestran
+   `fallido` (muere el "en curso" eterno), 3 completados intactos.
+5. **Menores**: 409 de certificate sin retry (4xx corta), copy honesto del tab Red,
+   guion actualizado a 8/8.
+
+### Fuera del cierre — bloqueado por DEFINICIÓN, no por código (pasa a Mejorado)
+
+- **Partición sobre el mapa** (M18 propuesto): falta una convención VERSIONADA de
+  branch-ids — el modelo eléctrico (4bus/ieee14/ICE-70) solo tiene pares (from,to);
+  la #88 ya lo había diferido. Tres campos de 4 del payload son derivables hoy.
+- **Ablación `run.metrics.recorded`** (M19 propuesto): ninguna spec define productor,
+  campos científicos ni el pipeline de dos brazos (quantum/classical).
+- **`GET /rvsp`** (M20 propuesto): `results/extrapolation/extrapolation.json` tiene
+  r_greedy/r_gw/ratio_best/ratio_mean REALES de las 5 instancias Nexus, pero
+  `rEsperadoMean` (⟨C⟩ exacto, campo obligatorio del schema D5) no existe para ellas —
+  llenarlo = simulación clásica nueva (ciencia, no plomería).
+- **Grabar la sesión agéntica real** (bloquea el replay de escena del Acto 1): un
+  comando de Dylan con su key (`scripts/record_session.py`), luego
+  `CHIMERA_MODEL_BACKEND=replay` en compose (comentado, listo).
+
+### Tabla de interacciones (regla NUEVA #3)
+
+| Interfaz tocada                                                               | Dominio afectado    | Estado del contrato                                                        |
+| ----------------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------- |
+| Orden de eventos del turno agéntico (`loop.py`)                               | A ↔ confianza       | RESUELTO — terminal siempre último; provenance cubre el plan               |
+| Misión instancia→inputs (`runs.py` + `mutations.ts` + fixture)                | E ↔ D ↔ corpus      | VERDE VIVO — spec §misión actualizada aditiva                              |
+| Proposer←ModelServer (`model_proposer.py` + protocolo en harness-agentico.md) | E ↔ A ↔ protocols   | IMPLEMENTADO — flip por env, default placeholder; frontera loop.py anotada |
+| `status` wire `RunSummary` (spec + reads.py + client)                         | E ↔ D ↔ spec Fase 0 | EXTENSIÓN ADITIVA VERDE VIVO                                               |
+| `compose.yaml` env api (`CHIMERA_MODEL_BACKEND`)                              | infra ↔ E           | DOCUMENTADO comentado — se activa al existir la sesión grabada             |
