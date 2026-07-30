@@ -24,7 +24,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "hypothesis>=6.156.4",
+    "hypothesis>=6.156.9",
 ]
 
 [build-system]
