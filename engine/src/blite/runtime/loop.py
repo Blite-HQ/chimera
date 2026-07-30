@@ -182,9 +182,20 @@ tests, un fake determinista local; jamás litellm/red importado aquí
 
 
 class _TurnOutcome(BaseModel):
-    """Resultado interno de un par resolve→invoke — `error_kind` no-`None`
-    ⇒ el run YA quedó terminal (el helper ya llamó `fail_run`), el caller
-    solo debe cortar y retornar la fila proyectada."""
+    """Resultado interno de un par resolve→invoke.
+
+    `error_kind is None` ⇒ el turno resolvió e invocó sin errores propios.
+
+    `error_kind is not None` y `step_id is None` ⇒ `start_step` cortó por
+    `max_steps` agotado — ESE camino ya journalizó su propio `run.failed`
+    (dentro de `_start_step`); el caller SOLO corta, no vuelve a journalizar.
+
+    `error_kind is not None` y `step_id is not None` ⇒ el turno falló
+    (KeyError del registry o excepción del invoke) pero el run TODAVÍA NO
+    es terminal — el CALLER es responsable de journalizar `fail_run`, en el
+    orden que le corresponda (pipeline fijo: inmediato; loop agéntico:
+    después de `plan.item_updated` — decisión #91/#95-#98, el bug
+    post-terminal confirmado en vivo era el orden inverso)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -248,9 +259,18 @@ def _run_resolve_and_invoke(
     el pipeline fijo (un solo turno) y el loop agéntico (N turnos, cada uno
     con SUS propios `run.step.*` apendeados, jamás reutilizando step_ids).
 
-    `error_kind` no-`None` en el resultado ⇒ el run YA quedó terminal
-    (`fail_run` ya corrió dentro de este helper o de `start_step`) — el
-    caller solo debe cortar."""
+    Este helper YA NO journaliza `run.failed` en sus dos caminos de error
+    propios (KeyError del registry, excepción del invoke) — devuelve el
+    `error_kind` y le deja la journalización del terminal al CALLER, en el
+    orden que le corresponda (decisión #91/#95-#98: el bug post-terminal
+    confirmado en vivo era `plan.item_updated` apendeado DESPUÉS de
+    `run.failed`, fuera del corte de `provenance_slice`, freeze §2).
+
+    Única excepción: si `start_step` devuelve `None` (max_steps agotado),
+    ESE camino ya journalizó su propio `run.failed` dentro de `_start_step`
+    — señalizado acá con `step_id is None` en el `_TurnOutcome` retornado;
+    el caller reconoce este caso por `step_id is None` y NO debe volver a
+    llamar `fail_run` (evita un `run.failed` doble)."""
     # ── step "resolve": elegir la capability vía Registry (ADR-008) ──
     resolve_step = start_step(
         "resolve", recorder.digest_of({"capability_id": capability_id})
@@ -265,7 +285,6 @@ def _run_resolve_and_invoke(
         recorder.step_event(
             "failed", resolve_step.model_copy(update={"status": "failed"})
         )
-        recorder.fail_run(type(exc).__name__)
         return _TurnOutcome(
             output_digest=None,
             error_kind=type(exc).__name__,
@@ -316,7 +335,6 @@ def _run_resolve_and_invoke(
         recorder.step_event(
             "failed", invoke_step.model_copy(update={"status": "failed"})
         )
-        recorder.fail_run(error_kind)
         return _TurnOutcome(
             output_digest=None, error_kind=error_kind, step_id=invoke_step.step_id
         )
@@ -496,6 +514,12 @@ def _execute_single_turn(
         inputs=inputs,
     )
     if outcome.error_kind is not None:
+        # `step_id is None` ⇒ `start_step` ya journalizó (max_steps) — no
+        # journalizar de nuevo. Cualquier otro caso es responsabilidad de
+        # ESTE caller, inmediato (mismo orden observable que antes: nada
+        # más se emite entre el error y `run.failed`).
+        if outcome.step_id is not None:
+            recorder.fail_run(outcome.error_kind)
         return projected_row()
 
     # Costura post-invoke, ANTES del terminal: lo que el delegate emita entra
@@ -635,6 +659,10 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
         inputs=proposal.inputs,
     )
     if outcome.error_kind is not None:
+        # Orden corregido (decisión #91/#95-#98): `plan.item_updated` viaja
+        # ANTES del terminal — jamás post-terminal, fuera del corte de
+        # `provenance_slice` (freeze §2). `step_id is None` ⇒ `start_step`
+        # ya journalizó `run.failed` (max_steps) — no journalizar de nuevo.
         _emit_plan_item_update(
             recorder,
             plan_item,
@@ -643,6 +671,8 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
             status="failed",
             cause=outcome.error_kind,
         )
+        if outcome.step_id is not None:
+            recorder.fail_run(outcome.error_kind)
         return _TurnResult(
             terminal=True,
             done=False,

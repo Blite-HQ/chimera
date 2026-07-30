@@ -26,6 +26,7 @@ from blite.runtime.loop import (
 )
 from blite.runtime.plan import PlanItem
 from blite.runtime.registry import EntryPointRegistry
+from blite_capability.capability import Capability
 from blite_capability.manifest import CapabilityManifest
 
 
@@ -109,7 +110,29 @@ class _NeverDoneGate:
         return False
 
 
-def _registry(*capabilities: _EchoCapability) -> EntryPointRegistry:
+class _ExplodingCapability:
+    """Doble genérico (ADR-029) — siempre explota al invocar (nunca al
+    resolver) para ejercitar el camino de excepción del invoke dentro de
+    `_run_resolve_and_invoke` en modo agéntico."""
+
+    def __init__(self, capability_id: str = "cap.explode") -> None:
+        self._id = capability_id
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return CapabilityManifest(
+            id=self._id,
+            description="generic test capability that always fails",
+            input_schema={"type": "object"},
+            output_schema={"type": "object"},
+        )
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        msg = "simulated capability failure"
+        raise RuntimeError(msg)
+
+
+def _registry(*capabilities: Capability) -> EntryPointRegistry:
     return EntryPointRegistry({cap.manifest.id: cap for cap in capabilities})
 
 
@@ -240,6 +263,55 @@ def test_plan_created_and_item_updated_emitted_in_correct_order() -> None:
     ]
     assert [u.payload["status"] for u in item_updates] == ["running", "ok"]
     assert all(u.payload["item_id"] == "item-1" for u in item_updates)
+
+
+def test_capability_failure_in_agentic_mode_emits_plan_item_updated_before_run_failed() -> (
+    None
+):
+    """Bug confirmado en vivo (flag decisión #91, análisis #95-#98): el orden
+    viejo apendeaba `plan.item_updated {failed}` DESPUÉS de `run.failed` —
+    post-terminal, fuera del corte de `provenance_slice` (freeze §2). El
+    orden corregido journaliza el plan ANTES del terminal; el terminal es
+    SIEMPRE el último evento del stream, cero `run.failed` dobles."""
+    item = PlanItem(
+        id="item-1",
+        description="turno que falla",
+        verification="delegate",
+        status="pending",
+    )
+    row, store = _run(
+        proposer=_FixedProposer(capability_id="cap.explode"),
+        post_invoke=_NeverDoneGate(),
+        plan_items=(item,),
+        registry=_registry(_ExplodingCapability()),
+    )
+
+    assert row.status == "failed"
+    assert row.error_kind == "RuntimeError"
+    events = store.read_stream("run-agentic")
+    types = [e.type for e in events]
+    assert types == [
+        "run.created",
+        "run.started",
+        "plan.created",
+        "plan.item_updated",
+        "run.step.started",
+        "run.step.completed",
+        "run.step.started",
+        "capability.job.submitted",
+        "capability.job.failed",
+        "run.step.failed",
+        "plan.item_updated",
+        "run.failed",
+    ]
+    # El terminal SIEMPRE de último — jamás post-terminal (freeze §2).
+    assert types[-1] == "run.failed"
+    assert types[-2] == "plan.item_updated"
+
+    failed_update = events[-2]
+    assert failed_update.payload["item_id"] == "item-1"
+    assert failed_update.payload["status"] == "failed"
+    assert failed_update.payload["cause"] == "RuntimeError"
 
 
 def test_replan_appends_new_steps_never_reuses_a_step_in_progress() -> None:
