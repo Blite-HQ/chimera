@@ -48,6 +48,49 @@ describe('RunDetail', () => {
     expect(onDownloadBundle).toHaveBeenCalled();
   });
 
+  /**
+   * Auditoría Fase 2 (`docs/mvp/decisiones.md` §"Análisis para discusión"
+   * punto 3, extensión aditiva): fallido/cancelado muestran su propio
+   * estado (no "en curso" para siempre) con el tono correcto (fail/neutral).
+   */
+  test('muestra fallido con tono fail', () => {
+    render(
+      <RunDetail
+        summary={{ ...RUN, status: 'fallido' }}
+        onDownloadBundle={vi.fn()}
+        hilo={<p>vista hilo</p>}
+        timeline={<p>vista timeline</p>}
+        verificacion={<p>vista verificación</p>}
+        red={<p>vista red</p>}
+        ablacion={<p>vista ablación</p>}
+        procedencia={<p>vista procedencia</p>}
+      />
+    );
+
+    const label = screen.getByText('fallido');
+    expect(label).toBeInTheDocument();
+    expect(label.className).toContain('text-verdict-fail');
+  });
+
+  test('muestra cancelado con tono neutral', () => {
+    render(
+      <RunDetail
+        summary={{ ...RUN, status: 'cancelado' }}
+        onDownloadBundle={vi.fn()}
+        hilo={<p>vista hilo</p>}
+        timeline={<p>vista timeline</p>}
+        verificacion={<p>vista verificación</p>}
+        red={<p>vista red</p>}
+        ablacion={<p>vista ablación</p>}
+        procedencia={<p>vista procedencia</p>}
+      />
+    );
+
+    const label = screen.getByText('cancelado');
+    expect(label).toBeInTheDocument();
+    expect(label.className).toContain('text-verdict-neutral');
+  });
+
   test('abre en Hilo (D6, directriz #69) y cambia de vista con las sub-tabs', async () => {
     const user = userEvent.setup();
     renderDetail();

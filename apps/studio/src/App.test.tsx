@@ -52,7 +52,7 @@ describe('RedSlot (D1 task 4 — mata el spike como vista "Red" en vivo)', () =>
     vi.unstubAllEnvs();
   });
 
-  test('en vivo: pendiente de D3/D4, nunca el spike IEEE-14 fabricado', () => {
+  test('en vivo: pendiente (falta productor de partición, decisión #88), nunca el spike IEEE-14 fabricado', () => {
     vi.stubEnv('VITE_API_URL', 'http://api.test');
     render(<RedSlot />);
 

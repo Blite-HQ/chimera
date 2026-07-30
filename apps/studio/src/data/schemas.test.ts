@@ -214,8 +214,18 @@ describe('runSummaryWireSchema / toRunSummary (D3 — GET /runs)', () => {
     });
   });
 
-  it('rechaza un status fuera del vocabulario en_curso/completado', () => {
+  it('rechaza un status fuera del vocabulario en_curso/completado/fallido/cancelado', () => {
     expect(() => runSummaryWireSchema.parse({ ...WIRE, status: 'pendiente' })).toThrow();
+  });
+
+  /**
+   * Auditoría Fase 2 (`docs/mvp/decisiones.md` §"Análisis para discusión"
+   * punto 3, extensión aditiva) — antes un run terminado en
+   * `run.failed`/`run.cancelled` quedaba "en_curso" para siempre.
+   */
+  it.each(['fallido', 'cancelado'] as const)('acepta status=%s (extensión aditiva)', status => {
+    const wire = runSummaryWireSchema.parse({ ...WIRE, status });
+    expect(toRunSummary(wire)).toMatchObject({ status });
   });
 });
 

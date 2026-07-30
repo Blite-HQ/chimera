@@ -1,10 +1,15 @@
 import { ArrowLeft, Download } from 'lucide-react';
 import React from 'react';
 
-import { RunStatusDot } from '@/components/runs/RunStatusDot';
+import {
+  RUN_STATUS_LABELS,
+  RUN_STATUS_TEXT_CLASS,
+  RunStatusDot
+} from '@/components/runs/RunStatusDot';
 import { AssuranceBadge, conclusionTone } from '@chimera/assurance-ui';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 import { shortDate } from './format';
 
@@ -70,8 +75,13 @@ export default function RunDetail({
           )}
           <RunStatusDot status={summary.status} />
           <h1 className="font-mono text-2xl font-medium tracking-tight">{summary.runId}</h1>
-          <span className="inline-flex items-center rounded-4xl border px-2 py-0.5 text-xs text-muted-foreground">
-            {summary.status === 'completado' ? 'completado' : 'en curso'}
+          <span
+            className={cn(
+              'inline-flex items-center rounded-4xl border px-2 py-0.5 text-xs',
+              RUN_STATUS_TEXT_CLASS[summary.status]
+            )}
+          >
+            {RUN_STATUS_LABELS[summary.status]}
           </span>
           <AssuranceBadge
             level={summary.titularLevel}

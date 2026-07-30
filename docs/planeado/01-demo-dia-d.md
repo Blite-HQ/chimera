@@ -76,8 +76,8 @@ Chimera **ensambla el informe**: PDF ≤8 páginas donde cada figura y cifra ref
 certificado (r vs p con barras de error, baselines, escalado cr6→ieee30→red ICE completa
 clásica con extrapolación honesta del límite de 26 qubits, limitaciones honestas).
 Descarga del bundle → en una terminal limpia: `python scripts/verify-bundle.py
-bundle.json` → **7/7 offline**. Beat final: _"la rúbrica pide honestidad; nosotros la
-volvimos infraestructura."_
+bundle.json` → **8/8 offline** (A5 sumó el punto 8 — fidelidad de replay, decisión #82).
+Beat final: _"la rúbrica pide honestidad; nosotros la volvimos infraestructura."_
 
 ### Corte a 5' (presentación oficial)
 
@@ -92,7 +92,7 @@ conversación del acto 1 ya lanzada. El acto 0 se cuenta con una captura.
 | 1    | P4 (agente real + replay de sesión real)                                              |
 | 2    | P5 (paridad generativa: GeoJSON→grafo, QAOA, baselines, patas Nexus) + P3 + P7 (mapa) |
 | 3    | verificadores (ya, MVP) + falla sembrada §15.5 (ya) + P7 (badges sobre mapa)          |
-| 4    | P6 (informe ensamblado) + P8 (escalado) + `verify-bundle` (ya, 7/7)                   |
+| 4    | P6 (informe ensamblado) + P8 (escalado) + `verify-bundle` (ya, 8/8)                   |
 
 ## Fallbacks (en orden)
 

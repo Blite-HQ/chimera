@@ -172,8 +172,14 @@ export interface DsseEnvelope {
   readonly signatures: readonly { readonly keyid: string; readonly sig: string }[];
 }
 
-/** carril 2 F2 — estado de un run en la lista del proyecto. */
-export type RunStatus = 'en_curso' | 'completado';
+/**
+ * carril 2 F2 — estado de un run en la lista del proyecto. Extensión ADITIVA
+ * `fallido`/`cancelado` (auditoría Fase 2, `docs/mvp/decisiones.md`
+ * §"Análisis para discusión" punto 3): antes de esto un run terminado en
+ * `run.failed`/`run.cancelled` quedaba "en_curso" para siempre en la lista
+ * (verificado vivo) — `en_curso`/`completado` conservan su cómputo previo.
+ */
+export type RunStatus = 'en_curso' | 'completado' | 'fallido' | 'cancelado';
 
 /**
  * carril 2 F2 — fila de la lista de Runs (proyección del certificado + los

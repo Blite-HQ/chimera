@@ -59,6 +59,34 @@ describe('certificateQueryOptions', () => {
     const options = certificateQueryOptions('run-42');
     expect(options.queryKey).toEqual(['runs', 'run-42', 'certificate']);
   });
+
+  /**
+   * Auditoría Fase 2 (2026-07-29, verificado vivo): antes de esto, un 409
+   * ("claim aún no emitido", `chimera_api/certificate.py`) se reintentaba
+   * 3 veces (default de TanStack Query) como si fuera transitorio — 3
+   * fetches + consola roja para un estado que un retry inmediato no
+   * cambia. Mismo criterio para 404 (run desconocido). Un error de red/5xx
+   * SÍ sigue reintentando (hasta 3 veces, default previo).
+   */
+  it('no reintenta un 409 (claim aún no emitido) — el error se muestra una vez', () => {
+    const options = certificateQueryOptions('run-42');
+    const retry = options.retry as (failureCount: number, error: unknown) => boolean;
+    expect(retry(0, new Error('Gateway error: 409 Conflict'))).toBe(false);
+  });
+
+  it('no reintenta un 404 (run desconocido)', () => {
+    const options = certificateQueryOptions('run-42');
+    const retry = options.retry as (failureCount: number, error: unknown) => boolean;
+    expect(retry(0, new Error('Gateway error: 404 Not Found'))).toBe(false);
+  });
+
+  it('sí reintenta un error transitorio (red) hasta 3 veces', () => {
+    const options = certificateQueryOptions('run-42');
+    const retry = options.retry as (failureCount: number, error: unknown) => boolean;
+    expect(retry(0, new Error('Network error: fetch failed'))).toBe(true);
+    expect(retry(2, new Error('Network error: fetch failed'))).toBe(true);
+    expect(retry(3, new Error('Network error: fetch failed'))).toBe(false);
+  });
 });
 
 describe('loadCertificate (rama demo/live)', () => {

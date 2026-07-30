@@ -12,6 +12,7 @@ import type {
   KnowledgeClaim,
   ProjectArtifact,
   ProjectedEvent,
+  RunStatus,
   RunSummary,
   TrustCertificateStatement
 } from '../views/types';
@@ -30,6 +31,31 @@ function titularClassFor(predicate: Predicate, claimDigest: string): string {
   return strongest?.verifierClass ?? 'formal_exact';
 }
 
+/**
+ * Auditoría Fase 2 (`docs/mvp/decisiones.md` §"Análisis para discusión"
+ * punto 3, extensión aditiva) — mirror EXACTO de
+ * `api/src/chimera_api/reads.py::_run_status`: el PRIMER evento terminal
+ * (`run.completed`/`run.failed`/`run.cancelled`, freeze §2
+ * `TERMINAL_RUN_EVENTS`) que aparece en el stream decide el status; sin
+ * ninguno todavía, `en_curso`. `run.completed` conserva su cómputo previo
+ * (sin cambio de comportamiento para el camino ya congelado).
+ */
+const STATUS_BY_TERMINAL_EVENT_TYPE: Readonly<Record<string, RunStatus>> = {
+  'run.completed': 'completado',
+  'run.failed': 'fallido',
+  'run.cancelled': 'cancelado'
+};
+
+function deriveStatus(events: readonly ProjectedEvent[]): RunStatus {
+  for (const event of events) {
+    const status = STATUS_BY_TERMINAL_EVENT_TYPE[event.type];
+    if (status !== undefined) {
+      return status;
+    }
+  }
+  return 'en_curso';
+}
+
 export function deriveRunSummary(
   envelope: DsseEnvelope,
   events: readonly ProjectedEvent[]
@@ -37,18 +63,19 @@ export function deriveRunSummary(
   const { predicate } = envelope.payload;
   const conclusion = predicate.conclusions[0];
   const lastEvent = events[events.length - 1];
-  const isCompleted = events.some(event => event.type === 'run.completed');
+  const status = deriveStatus(events);
+  const isTerminal = status !== 'en_curso';
 
   return {
     runId: predicate.runId,
-    status: isCompleted ? 'completado' : 'en_curso',
+    status,
     conclusion: conclusion?.canonicalStatement ?? 'Sin conclusión registrada',
     verdict: conclusion?.verdict ?? 'inconclusive',
     titularLevel: predicate.titularLevel,
     titularClass: conclusion ? titularClassFor(predicate, conclusion.claimDigest) : 'formal_exact',
     eventsCount: events.length,
     actor: predicate.actor,
-    completedAt: isCompleted ? lastEvent?.occurredAt : undefined
+    completedAt: isTerminal ? lastEvent?.occurredAt : undefined
   };
 }
 

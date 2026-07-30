@@ -244,10 +244,36 @@ export async function loadCertificate(runId: string): Promise<CertificateResourc
   return { envelope: decodeEnvelope(bundle.envelope), wire: bundle };
 }
 
+/**
+ * Auditoría Fase 2 (2026-07-29, verificado vivo) — un 409 de
+ * `GET /certificate` ("claim aún no emitido", `chimera_api/certificate.py`)
+ * o un 404 (run desconocido) NO son transitorios: reintentarlos de
+ * inmediato (default de TanStack Query: 3 intentos) solo repetía el mismo
+ * error 3 veces y ensuciaba la consola. `loadCertificate` no expone un
+ * status estructurado (`gatewayClient.ts::fetchWireGet` solo arma un
+ * mensaje `Gateway error: {status} {statusText}`) — este helper LEE el
+ * status de ese mensaje ya formateado en vez de reinventar el envelope de
+ * gatewayClient para un solo consumidor.
+ */
+function isClientErrorMessage(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const match = /^Gateway error: (\d{3})\b/.exec(error.message);
+  if (match === null) {
+    return false;
+  }
+  const status = Number(match[1]);
+  return status >= 400 && status < 500;
+}
+
 export function certificateQueryOptions(runId: string) {
   return queryOptions({
     queryKey: ['runs', runId, 'certificate'] as const,
-    queryFn: () => loadCertificate(runId)
+    queryFn: () => loadCertificate(runId),
+    // 4xx se muestra una vez (honesto, no transitorio); todo lo demás
+    // (red, 5xx) conserva el default previo de 3 reintentos.
+    retry: (failureCount, error) => !isClientErrorMessage(error) && failureCount < 3
   });
 }
 

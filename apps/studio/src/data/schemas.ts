@@ -268,8 +268,13 @@ export const certificateBundleWireSchema = z.looseObject({
  * `'inconclusive'`, `'formal_exact'`) en vez de fabricar una respuesta.
  */
 
-/** `GET /runs` — `RunStatus` wire (views/types.ts lo reusa 1:1). */
-const runStatusWireSchema = z.enum(['en_curso', 'completado']);
+/**
+ * `GET /runs` — `RunStatus` wire (views/types.ts lo reusa 1:1). Extensión
+ * ADITIVA `fallido`/`cancelado` (auditoría Fase 2, `docs/mvp/decisiones.md`
+ * §"Análisis para discusión" punto 3): antes de esto un run terminado en
+ * `run.failed`/`run.cancelled` quedaba "en_curso" para siempre en la lista.
+ */
+const runStatusWireSchema = z.enum(['en_curso', 'completado', 'fallido', 'cancelado']);
 
 const DEFAULT_CONCLUSION = 'Sin conclusión registrada';
 const DEFAULT_VERDICT = 'inconclusive' as const;

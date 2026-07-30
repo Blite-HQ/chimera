@@ -24,4 +24,19 @@ describe('RunStatusDot', () => {
     render(<RunStatusDot status="en_curso" />);
     expect(screen.getByLabelText('en curso')).toBeInTheDocument();
   });
+
+  /**
+   * Auditoría Fase 2 (`docs/mvp/decisiones.md` §"Análisis para discusión"
+   * punto 3, extensión aditiva): fallido/cancelado ya no colapsan a
+   * en_curso — cada uno nombra su propio estado accesiblemente.
+   */
+  test('nombra fallido', () => {
+    render(<RunStatusDot status="fallido" />);
+    expect(screen.getByLabelText('fallido')).toBeInTheDocument();
+  });
+
+  test('nombra cancelado', () => {
+    render(<RunStatusDot status="cancelado" />);
+    expect(screen.getByLabelText('cancelado')).toBeInTheDocument();
+  });
 });

@@ -240,7 +240,7 @@ composición sobre los schemas ya existentes donde el shape coincide (p. ej. `ab
 ya existe y es el mismo shape que devuelve `GET /runs/{id}/ablation` salvo casing — el mapper
 wire→UI sigue el mismo patrón que `toProjectedEvent`). Los tres schemas nuevos que Fase 1 agrega:
 
-- `runSummaryWireSchema`: `{run_id, status: enum(en_curso|completado), conclusion, verdict: enum(pass|fail|inconclusive), titular_level: assuranceLevelSchema, titular_class: string, events_count: number, actor: string, completed_at: string.optional()}`.
+- `runSummaryWireSchema`: `{run_id, status: enum(en_curso|completado|fallido|cancelado), conclusion, verdict: enum(pass|fail|inconclusive), titular_level: assuranceLevelSchema, titular_class: string, events_count: number, actor: string, completed_at: string.optional()}`.
 - `projectArtifactWireSchema`: `{artifact_ref, digest, run_id, titular_level: assuranceLevelSchema, titular_class, verdict, issued_at}`.
 - `knowledgeClaimWireSchema`: `{statement, scope: record(string, string), verdict, level: assuranceLevelSchema, titular_class, run_id, valid_as_of}`.
 
@@ -248,6 +248,29 @@ wire→UI sigue el mismo patrón que `toProjectedEvent`). Los tres schemas nuevo
 cual para `GET /runs/{id}/steps/{id}/evidence` y `GET /runs/{id}/ablation` — sus shapes ya
 coinciden con la tabla de arriba salvo el envoltorio de wire (snake_case), que sigue el mismo
 patrón de mapper que `toProjectedEvent`.
+
+### `status` wire — extensión ADITIVA `fallido`/`cancelado` (auditoría Fase 2, 2026-07-29)
+
+**Hueco que cierra:** la decisión #69 (checkpoint 2) congeló el enum `en_curso|completado` a
+propósito ("el enum wire congelado no distingue failed/cancelled → `en_curso`"), pero eso
+significaba que un run cuyo stream terminaba en `run.failed`/`run.cancelled` quedaba listado
+"en curso" PARA SIEMPRE en `GET /runs` — verificado vivo (el Studio no tiene forma de distinguir
+un run fallido de uno todavía corriendo). Esta sección extiende el enum, no lo reemplaza: los dos
+valores previos (`en_curso`/`completado`) conservan exactamente su cómputo anterior.
+
+**Contrato:** `status` gana dos miembros — `fallido` (el stream terminó en `run.failed`) y
+`cancelado` (terminó en `run.cancelled`) — espejando 1:1 `TERMINAL_RUN_EVENTS` (freeze §2:
+`run.completed`/`run.failed`/`run.cancelled`). El cómputo server-side (`reads.py::_run_status`)
+recorre el stream en orden y el PRIMER evento terminal que aparece decide el status; como un
+stream solo puede tener un evento terminal (post-terminal de `run.step.*`/`capability.job.*` se
+rechaza, freeze §2 [stress-final], y el runtime nunca journaliza dos terminales del mismo run),
+en la práctica esto es "el único terminal del stream", no una prioridad entre varios. El cliente
+(`apps/studio/src/data/projections.ts::deriveRunSummary`) porta el MISMO recorrido sobre
+`events` — mirror obligatorio, letra de la spec.
+
+**Presentación (Studio):** `RunStatusDot`/`RunDetail` muestran el estado real con su propio tono
+— `completado` = pass (verde), `en_curso` = warning (ámbar, sin cambio), `fallido` = fail (rojo),
+`cancelado` = neutral (gris) — nunca colapsan a "en curso" o "completado" por falta de vocabulario.
 
 ## Fronteras (qué NO decide esta spec)
 

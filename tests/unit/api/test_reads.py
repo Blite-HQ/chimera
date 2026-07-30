@@ -91,10 +91,17 @@ def _create_golden_run(client: TestClient) -> str:
     return run_id
 
 
-def _seed_bare_run(store: EventStore, run_id: str) -> None:
+def _seed_bare_run(
+    store: EventStore, run_id: str, *, terminal_type: str = "run.completed"
+) -> None:
     """Un run mínimo terminado SIN ticket (nunca pasó por `POST /runs`) —
     conocido por la proyección, pero sin certificado asamblable: la rama
-    honest-empty de `GET /runs`, `.../artifacts` y `.../knowledge`."""
+    honest-empty de `GET /runs`, `.../artifacts` y `.../knowledge`.
+
+    `terminal_type` (auditoría Fase 2, `docs/mvp/decisiones.md`
+    §"Análisis para discusión" punto 3, extensión aditiva): además de
+    `run.completed`, acepta `run.failed`/`run.cancelled` — los tres son
+    `TERMINAL_RUN_EVENTS` (freeze §2) y `_run_status` debe distinguirlos."""
     store.append(
         stream_id=run_id,
         type="run.created",
@@ -104,7 +111,7 @@ def _seed_bare_run(store: EventStore, run_id: str) -> None:
     )
     store.append(
         stream_id=run_id,
-        type="run.completed",
+        type=terminal_type,
         actor_id="service:runtime",
         domain_id="d-default",
         payload={},
@@ -159,6 +166,40 @@ class TestGetRuns:
         response = _get(client, "/runs")
         assert response.status_code == 200
         assert response.json() == []
+
+    def test_run_terminado_en_failed_lista_fallido_no_en_curso_para_siempre(
+        self,
+    ) -> None:
+        """Auditoría Fase 2 (verificado vivo, `docs/mvp/decisiones.md`
+        §"Análisis para discusión" punto 3): antes de esta extensión aditiva,
+        un run que cerró con `run.failed` quedaba "en_curso" PARA SIEMPRE en
+        `GET /runs` (el enum wire no tenía `fallido`)."""
+        # Arrange
+        store = create_event_store()
+        _seed_bare_run(store, "r1", terminal_type="run.failed")
+        client = _make_client(store)
+
+        # Act
+        response = _get(client, "/runs")
+
+        # Assert
+        assert response.status_code == 200
+        row = response.json()[0]
+        assert row["status"] == "fallido"
+
+    def test_run_terminado_en_cancelled_lista_cancelado(self) -> None:
+        # Arrange
+        store = create_event_store()
+        _seed_bare_run(store, "r1", terminal_type="run.cancelled")
+        client = _make_client(store)
+
+        # Act
+        response = _get(client, "/runs")
+
+        # Assert
+        assert response.status_code == 200
+        row = response.json()[0]
+        assert row["status"] == "cancelado"
 
 
 class TestGetRunArtifacts:

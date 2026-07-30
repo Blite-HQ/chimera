@@ -42,7 +42,7 @@ from blite.events.rules import TERMINAL_RUN_EVENTS
 from blite.runtime.projection import project_runs
 from chimera_api.runs import RunResources
 
-RunStatusWire = Literal["en_curso", "completado"]
+RunStatusWire = Literal["en_curso", "completado", "fallido", "cancelado"]
 
 # freeze §4/predicate.py: orden de fuerza de un AssuranceLevel — mismo mínimo
 # local que `deriveRunSummary`/`titularClassFor` (apps/studio/src/data/projections.ts),
@@ -202,13 +202,28 @@ def _titular_class_for(predicate: dict[str, Any], claim_digest: str) -> str:
     return str(strongest["verifier_class"])
 
 
+_STATUS_BY_TERMINAL_EVENT: dict[str, RunStatusWire] = {
+    "run.completed": "completado",
+    "run.failed": "fallido",
+    "run.cancelled": "cancelado",
+}
+
+
 def _run_status(stream: tuple[Event, ...]) -> RunStatusWire:
-    """Mismo cómputo que `deriveRunSummary` (client): `completado` exige el
-    evento `run.completed` explícito, no cualquier terminal — mirror
-    deliberado de la lógica cliente (letra de la spec), no una
-    generalización propia."""
-    if any(event.type == "run.completed" for event in stream):
-        return "completado"
+    """Mismo cómputo que `deriveRunSummary` (client): el PRIMER evento
+    terminal (`TERMINAL_RUN_EVENTS`, freeze §2) que aparece en el stream
+    manda su status; sin ninguno todavía, `en_curso`.
+
+    Extensión ADITIVA (auditoría Fase 2, `docs/mvp/decisiones.md`
+    §"Análisis para discusión" punto 3): antes esta función solo miraba
+    `run.completed`, así que un run terminado por `run.failed`/
+    `run.cancelled` quedaba "en_curso" PARA SIEMPRE en `GET /runs`
+    (verificado vivo). `run.completed` conserva su cómputo exacto anterior
+    (sin cambio de comportamiento para el camino ya congelado)."""
+    for event in stream:
+        status = _STATUS_BY_TERMINAL_EVENT.get(event.type)
+        if status is not None:
+            return status
     return "en_curso"
 
 

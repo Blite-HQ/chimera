@@ -121,12 +121,15 @@ type RedViewMode = 'diagrama' | 'mapa';
  * complementa (honestidad: no hay todavía un mapeo determinista entre la
  * instancia benchmark y el grid real, ver GridMap.tsx).
  *
- * En vivo no existe todavía un endpoint que devuelva la topología real del
- * run, así que anuncia "pendiente" en vez de mostrar cualquiera de las dos
- * vistas — el toggle tampoco aparece. Nombrada aparte (no inline en el
- * JSX) para poder testearla sin depender de `runSummariesQueryOptions` (que
- * en vivo devuelve `[]` hasta que exista `GET /runs` — D3/D4 — y
- * bloquearía la navegación a RunDetailScreen).
+ * Auditoría Fase 2 (2026-07-29): D3/D4 YA mergearon (`GET /runs` vive en
+ * vivo y el mapa ICE-70 real está wireado) — lo que sigue faltando es el
+ * productor real de partición (`verification.completed` con `partition`
+ * por isla) sobre esa red, bloqueado hasta que exista (decisión #88). En
+ * vivo el Studio tampoco tiene todavía una query cableada contra
+ * `GET /runs/{id}/topology` (E1 expone la ruta; D3 no llegó a topología) —
+ * doble motivo para anunciar "pendiente" en vez de mostrar cualquiera de
+ * las dos vistas; el toggle tampoco aparece. Nombrada aparte (no inline en
+ * el JSX) para poder testearla sin depender de las demás queries del screen.
  */
 export function RedSlot(): React.ReactElement {
   const [viewMode, setViewMode] = useState<RedViewMode>('diagrama');
@@ -135,7 +138,7 @@ export function RedSlot(): React.ReactElement {
     return (
       <EmptyState
         title="Topología en vivo — pendiente"
-        hint="La vista de red contra el payload real del run llega con D3/D4 (rutas + mapa)."
+        hint="D3/D4 ya mergearon (mapa ICE-70 real + rutas de lectura) — falta el productor real de partición sobre esa red (decisión #88), sin fecha prometida."
       />
     );
   }
