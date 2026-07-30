@@ -159,6 +159,44 @@ def test_replay_key_is_deterministic_for_the_same_request_shape() -> None:
     assert replay_key_digest(first) == replay_key_digest(second)
 
 
+def test_in_memory_replay_manifest_items_enumerates_every_recorded_entry() -> None:
+    """`.items()` — respaldo de sesión (P4, `chimera_api.model_session`): dumpear
+    un `InMemoryReplayManifest` a disco exige enumerar TODAS las entradas
+    grabadas, algo que `lookup`/`record` (el `ReplayManifest` Protocol) no
+    ofrecen a propósito (son API de puerto, no de introspección). Método
+    aditivo solo en el respaldo concreto — el Protocol no cambia."""
+    store = InMemoryContentStore()
+    manifest = InMemoryReplayManifest()
+    recorder = ModelServer(
+        mode="record",
+        content_store=store,
+        ctx=_CTX,
+        manifest=manifest,
+        live_caller=_fake_caller(b"primera respuesta"),  # type: ignore[arg-type]
+    )
+    second_recorder = ModelServer(
+        mode="record",
+        content_store=store,
+        ctx=_CTX,
+        manifest=manifest,
+        live_caller=_fake_caller(b"segunda respuesta"),  # type: ignore[arg-type]
+    )
+
+    assert manifest.items() == ()
+
+    first = recorder.call(_request(prompt_digest="a" * 64))
+    second = second_recorder.call(_request(prompt_digest="b" * 64))
+
+    entries = dict(manifest.items())
+    assert len(entries) == 2
+    assert entries[replay_key_digest(_request(prompt_digest="a" * 64))] == (
+        first.response_digest
+    )
+    assert entries[replay_key_digest(_request(prompt_digest="b" * 64))] == (
+        second.response_digest
+    )
+
+
 def test_replay_miss_for_an_unseen_backend_even_if_another_backend_was_recorded() -> (
     None
 ):

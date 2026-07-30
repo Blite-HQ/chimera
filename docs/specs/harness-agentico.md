@@ -183,3 +183,136 @@ request_digest, expected_response_digest, actual_response_digest, step_id?}`. M�
   bundle ante cualquier `replay.divergence` en el stream. **SEED, xfail(strict=False)** —
   verde cuando Dylan implemente el punto 8 y Steven journalice el request/response digest de
   cada efecto.
+
+## Wiring del proposer real (carril P4, mandato Dylan 2026-07-29 — sección ADITIVA)
+
+Decisión #92 ratificada: el agente real entra por el MISMO seam `Proposer` de `loop.py`
+(`Callable[[TurnContext], ProposedStep]`) — cero cambio de contrato HTTP. Esta sección
+documenta el diseño de P4: `api/src/chimera_api/model_proposer.py` (adapter
+`Proposer ← ModelServer`), `api/src/chimera_api/model_session.py` (persistencia de sesión),
+y el flip por entorno en `_start_mission_run`.
+
+### Protocolo de mensaje del proposer real
+
+**Request (prompt) — determinista por construcción.** Por turno, el adapter arma una vista
+JSON PURA de `TurnContext` + `Registry.list()` (protocolo `chimera/mission-proposer-prompt/v1`):
+
+```json
+{
+  "protocol": "chimera/mission-proposer-prompt/v1",
+  "domain_id": "domain-default",
+  "turn": 1,
+  "goal_capability_id": "blite.solvers.qubo",
+  "goal_inputs": { "...": "..." },
+  "plan_item_id": "mission-1",
+  "previous_output_digest": null,
+  "capabilities": [
+    { "id": "blite.solvers.qubo", "description": "...", "input_schema": { "...": "..." } }
+  ]
+}
+```
+
+`run_id` se EXCLUYE a propósito: `POST /runs` mintea un `uuid4` fresco por request — si
+viajara en la vista, la clave de replay (`replay_key_digest`, freeze §15.7 punto 2, sobre
+`{backend_id, local, prompt_digest}`) jamás repetiría entre la sesión grabada y su
+reproducción (cada `docker compose up` arranca un run_id nuevo), lo que volvería inútil el
+backend `replay` para su propósito real (reproducir la MISMA sesión en cada puesta en
+escena). La vista se canonicaliza (`blite.certificate.canonical.canonicalize`, la única
+puerta de canonicalización del proyecto) y se `put()`ea en el `ContentStore` — el
+`ModelPort` viaja por digest (`ModelRequest{backend_id, local, prompt_digest}`, freeze §3),
+nunca el prompt en claro.
+
+**Response — protocolo JSON ESTRICTO, reusa `ProposedStep` como wire.** La respuesta del
+modelo ES, literalmente, un `ProposedStep` serializado (`{capability_id, inputs, tokens?,
+cost_usd?}`, `extra="forbid"` — mismo tipo que `loop.py` ya declara, sin una segunda forma
+paralela):
+
+```json
+{
+  "capability_id": "blite.solvers.qubo",
+  "inputs": {
+    "matrix": [
+      [0, -1],
+      [-1, 0]
+    ]
+  },
+  "tokens": 512,
+  "cost_usd": 0.0031
+}
+```
+
+JSON malformado, campo requerido ausente, o campo extra ⇒ `ModelResponseProtocolError`
+(`chimera_api.model_proposer.parse_proposed_step`) — causa clara, nunca tolerancia
+silenciosa.
+
+### Frontera declarada contra `loop.py` — el seam del proposer no es fail-loud por sí solo
+
+Verificado empíricamente (no es una suposición): `_run_agentic_turn` (`engine/src/blite/
+runtime/loop.py`, fuera del carril P4) llama `proposer(TurnContext(...))` SIN try/except —
+un `raise` ahí propaga la excepción cruda fuera de `execute_run` (agendado vía
+`BackgroundTasks`, que tampoco atrapa nada — `starlette.background.BackgroundTask.__call__`
+no tiene try/except) ANTES de journalizar cualquier evento; el run queda colgado en el
+stream (sin `run.failed`) en vez de cerrar honesto. El único paso del loop agéntico que SÍ
+es fail-loud por contrato es `_run_resolve_and_invoke` (`registry.get`/`dispatcher.execute`,
+ambos con try/except propio).
+
+`chimera_api.model_proposer.make_model_proposer` NUNCA deja escapar una excepción cruda de
+la función que satisface `Proposer`: toda falla del seam modelo (`ReplayMissError`,
+`ModelResponseProtocolError`, digest no visible en el `ContentStore`) se traduce a un
+`ProposedStep` centinela —`capability_id = PROTOCOL_VIOLATION_CAPABILITY_ID =
+"chimera.model_proposer.protocol_violation"` (jamás registrada por ningún `Registry` real,
+no es reverse-domain de ningún dominio de cómputo, ADR-029) — de modo que el turno sigue su
+curso normal por el paso YA protegido y el run cierra `run.failed {error_kind: "KeyError"}`,
+MISMO contrato que una capability desconocida cualquiera (`TestCapabilityDesconocida`,
+`tests/unit/api/test_runs.py`). Esto NO es tolerancia: el parser en sí (`parse_proposed_step`)
+sigue siendo estricto y levanta con causa clara — lo que cambia es que el WRAPPER canaliza
+esa excepción por el único camino del loop que ya es fail-loud, en vez de dejarla escapar
+hacia uno que hoy no journaliza nada. **Frontera para Steven** (dueño de `loop.py`): envolver
+la llamada al `proposer` en `_run_agentic_turn` con el mismo try/except que ya protege
+resolve/invoke (journalizando `run.failed {error_kind: type(exc).__name__}` antes de cortar)
+cerraría este gap en la raíz y volvería innecesaria la traducción a capability centinela —
+cambio fuera del carril P4 (`engine/src/blite/runtime/loop.py` no es uno de mis archivos).
+
+### Formato de sesión en disco
+
+`chimera_api.model_session` (`write_session`/`load_session`):
+
+```
+<session_dir>/manifest.json           — SessionManifest {backend_id, local, mission?, entries}
+<session_dir>/responses/<digest>.json — bytes EXACTOS de cada respuesta grabada
+```
+
+`entries: [{replay_key, response_digest}]` es el MISMO par que `ReplayManifest.record`
+(freeze §15.7 punto 4) — `manifest.json` completa `backend_id`/`local`, los dos campos que
+faltan para reconstruir el `ModelRequest` exacto (`replay_key_digest` incluye `backend_id`,
+freeze §15.7 punto 2: dos backends nunca colisionan). Integridad: `load_session` NO confía
+ciegamente en el `response_digest` declarado — recalcula el digest real vía
+`content_store.put()` (el mismo puerto que graba, freeze §12; agnóstico al algoritmo
+concreto) y compara; una divergencia (archivo editado a mano, sesión a medio copiar) es
+`SessionCorruptError`, fail-loud.
+
+### Config por entorno (`_start_mission_run`, `chimera_api.runs`)
+
+| Variable                    | Valores                | Efecto                                                                                                                                                                                     |
+| --------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CHIMERA_MODEL_BACKEND`     | `replay\|record\|live` | Ausente (default) ⇒ `_make_goal_proposer` placeholder, comportamiento INTACTO.                                                                                                             |
+| `CHIMERA_MODEL_SESSION_DIR` | ruta                   | Exigida SOLO si `backend=replay` — directorio `chimera_api.model_session.load_session`.                                                                                                    |
+| `CHIMERA_MODEL_ID`          | string litellm         | Solo `record`/`live` (identifica el modelo ante litellm); `replay` usa el `backend_id` del `manifest.json` de la sesión, NUNCA esta env var (tiene que ser el mismo que se usó al grabar). |
+
+Un `CHIMERA_MODEL_BACKEND` inválido, o `replay` sin `CHIMERA_MODEL_SESSION_DIR`, es un error
+de CONFIGURACIÓN — `ValueError` al construir `RunResources` (arranque de la app), nunca a
+mitad de un run. `live_caller` real (record/live) vive en `blite.protocols.model_server.
+_default_live_caller` (A2, AX3-b: única casa legítima de litellm) — `chimera_api` jamás
+importa litellm directo.
+
+### `scripts/record_session.py` — runbook de grabación
+
+Corre UNA misión completa (`execute_run` en modo agéntico) con el proposer real detrás de un
+`ModelServer(mode="record")`, y dumpea la sesión resultante vía `write_session`. Uso real
+(Dylan, con su propia key — env estándar de litellm, nunca en este repo):
+`uv run python scripts/record_session.py --session-dir knowledge/sessions/<nombre> --mission
+"..." --instance-id cr8-uniforme --model-id anthropic/claude-sonnet-4-5 --max-turns 3`.
+`--fake` reemplaza litellm/los entry points reales por un `live_caller`+registry
+deterministas locales (dry-run de CI, sin red ni API key) — el único modo ejercitado por
+`tests/unit/api/test_record_session.py` en esta sesión de trabajo (invocar un LLM externo
+estuvo PROHIBIDO).

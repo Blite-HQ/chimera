@@ -41,6 +41,17 @@ services:
     environment:
       # *_FILE únicamente — el valor real nunca vive en este YAML (EG-3).
       CHIMERA_DB_PASSWORD_FILE: /run/secrets/postgres_password
+      # Flip del agente real (carril P4, decisión #92 · docs/planeado/01-demo-
+      # dia-d.md: "el agente es real... en escena corre por defecto en
+      # replay — reproducción determinista de una sesión agéntica real
+      # grabada"). SIN activar por default — ausente ⇒ el proposer
+      # placeholder determinista actual (comportamiento intacto). Descomentar
+      # ambas líneas SOLO cuando exista una sesión grabada de verdad en
+      # `knowledge/sessions/<nombre>/` (`scripts/record_session.py`, runbook
+      # de Dylan con su propia key — nunca en este YAML/CI):
+      #
+      # CHIMERA_MODEL_BACKEND: replay
+      # CHIMERA_MODEL_SESSION_DIR: /app/knowledge/sessions/<nombre>
     secrets:
       - postgres_password
     ports:

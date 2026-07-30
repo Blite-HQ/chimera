@@ -111,6 +111,13 @@ class InMemoryReplayManifest:
     def record(self, replay_key: str, response_digest: str) -> None:
         self._entries[replay_key] = response_digest
 
+    def items(self) -> tuple[tuple[str, str], ...]:
+        """Enumera TODAS las entradas grabadas — método aditivo del respaldo
+        concreto (el `ReplayManifest` Protocol NO lo gana: es introspección
+        para dumpear la sesión a disco, `chimera_api.model_session`, no parte
+        del puerto que `ModelServer` consume)."""
+        return tuple(self._entries.items())
+
 
 def _default_live_caller(content_store: ContentStore, ctx: object) -> LiveModelCaller:
     """El caller de producción — envuelve `litellm.completion`. El `import

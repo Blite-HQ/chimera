@@ -17,15 +17,21 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import Any, cast
 
 import httpx
 import pytest
 from chimera_api.app import create_app
+from chimera_api.model_proposer import make_model_proposer
+from chimera_api.model_session import write_session
 from fastapi.testclient import TestClient
 
 from blite.events import create_event_store
 from blite.events.store import EventStore
+from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
+from blite.runtime.content_store import InMemoryContentStore
+from blite.runtime.loop import TurnContext
 from blite.runtime.registry import EntryPointRegistry
 from blite_capability.manifest import CapabilityManifest
 
@@ -400,6 +406,177 @@ class TestModoMision:
         # Assert
         assert response.status_code == 422
         assert store.read_all() == ()
+
+
+_MODEL_CTX = {"domain_id": "domain-default"}
+_MODEL_BACKEND_ID = "anthropic/claude-sonnet-test"
+
+
+def _write_fake_session(
+    session_dir: Path,
+    *,
+    turn_contexts_and_responses: list[tuple[TurnContext, bytes]],
+) -> None:
+    """Graba una sesión fake — mismo camino de producción (`make_model_proposer`
+    sobre un `ModelServer(mode="record")`) que `scripts/record_session.py`
+    usaría de verdad, solo que con un `live_caller` fake determinista en vez
+    de litellm (freeze §15.7: testeable sin red/API key)."""
+    store = InMemoryContentStore()
+    manifest = InMemoryReplayManifest()
+
+    # Un `ModelServer(mode="record")` nuevo por turno (mismo manifest/
+    # content_store compartido) — cada uno con el `live_caller` fake que le
+    # corresponde a ESE turno.
+    for turn_ctx, response_bytes in turn_contexts_and_responses:
+        recorder = ModelServer(
+            mode="record",
+            content_store=store,
+            ctx=_MODEL_CTX,
+            manifest=manifest,
+            live_caller=lambda _req, _b=response_bytes: _b,
+        )
+        proposer = make_model_proposer(
+            model_server=recorder,
+            registry=_make_registry(),
+            content_store=store,
+            ctx=_MODEL_CTX,
+            backend_id=_MODEL_BACKEND_ID,
+        )
+        proposer(turn_ctx)
+
+    write_session(
+        session_dir,
+        backend_id=_MODEL_BACKEND_ID,
+        local=False,
+        manifest=manifest,
+        content_store=store,
+        ctx=_MODEL_CTX,
+    )
+
+
+class TestModoMisionProposerReal:
+    """`CHIMERA_MODEL_BACKEND`/`CHIMERA_MODEL_SESSION_DIR` — el agente real
+    (P4, decisión #92) entra por el MISMO seam `Proposer`; ausente ⇒ el
+    placeholder determinista actual, default INTACTO (cubierto por
+    `TestModoMision` de arriba, que no toca estas env vars)."""
+
+    def test_replay_progresa_con_la_capability_que_dicta_la_sesion(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange — el goal_capability_id del body ("cap.goal-no-registrada")
+        # NO existe en el registry hermético: si el placeholder determinista
+        # corriera (regresión), el turno propondría ESE id verbatim y el run
+        # fallaría KeyError en el turno 1. La sesión grabada dicta OTRA
+        # capability (real, registrada) — solo el proposer real puede llegar
+        # a `capability.job.completed`.
+        mission = "particionar la red y certificar el corte"
+        goal_inputs = {"mission": mission}
+        turn_ctx = TurnContext(
+            run_id="run-precomputo-no-viaja-en-la-vista",
+            domain_id="domain-default",
+            turn=1,
+            goal_capability_id="cap.goal-no-registrada",
+            goal_inputs=goal_inputs,
+            plan_item_id="mission-1",
+            previous_output_digest=None,
+        )
+        session_dir = tmp_path / "sesion-fake"
+        _write_fake_session(
+            session_dir,
+            turn_contexts_and_responses=[
+                (
+                    turn_ctx,
+                    b'{"capability_id": "cap.mission-echo", '
+                    b'"inputs": {"mission": "dictado por la sesion"}}',
+                )
+            ],
+        )
+        monkeypatch.setenv("CHIMERA_MODEL_BACKEND", "replay")
+        monkeypatch.setenv("CHIMERA_MODEL_SESSION_DIR", str(session_dir))
+        client = _make_client()
+
+        # Act
+        response = _post(
+            client,
+            "/runs",
+            json_body={
+                "mission": mission,
+                "capability_id": "cap.goal-no-registrada",
+                "max_turns": 1,
+            },
+        )
+
+        # Assert — 202 + progresa de VERDAD (la sesión decidió, no el goal).
+        assert response.status_code == 202
+        run_id = response.json()["run_id"]
+        frames = _events_of(client, run_id)
+        types = [f["event"] for f in frames]
+        assert types.count("capability.job.completed") == 1
+        assert "capability.job.failed" not in types
+        # Sin gate de verificación cableado, max_turns=1 agotado cierra
+        # exhausted — jamás completed implícito (mismo contrato que siempre).
+        assert frames[-1]["event"] == "run.failed"
+        assert json.loads(frames[-1]["data"])["payload"]["error_kind"] == "exhausted"
+
+    def test_replay_miss_falla_fail_loud_en_el_primer_turno(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange — sesión VACÍA (sin entradas): cualquier request es un miss.
+        # `capability_id="cap.mission-echo"` SÍ está registrada a propósito:
+        # si el placeholder determinista corriera (regresión — sin wiring
+        # real), completaría los 5 turnos sin fallar, agotando `max_turns`
+        # SOLO tras 5 turnos (>=5 `run.step.started`). El proposer real debe
+        # fallar YA en el turno 1 (1 solo `run.step.started`, el resolve de
+        # la capability centinela) — esto es lo que discrimina el test.
+        session_dir = tmp_path / "sesion-vacia"
+        write_session(
+            session_dir,
+            backend_id=_MODEL_BACKEND_ID,
+            local=False,
+            manifest=InMemoryReplayManifest(),
+            content_store=InMemoryContentStore(),
+            ctx=_MODEL_CTX,
+        )
+        monkeypatch.setenv("CHIMERA_MODEL_BACKEND", "replay")
+        monkeypatch.setenv("CHIMERA_MODEL_SESSION_DIR", str(session_dir))
+        client = _make_client()
+
+        # Act
+        response = _post(
+            client,
+            "/runs",
+            json_body={
+                "mission": "una misión cualquiera",
+                "capability_id": "cap.mission-echo",
+                "max_turns": 5,
+            },
+        )
+
+        # Assert — falla YA en el turno 1 (nunca agota los 5 turnos): la
+        # capability centinela nunca está registrada ⇒ KeyError fail-loud,
+        # MISMO contrato que `TestCapabilityDesconocida`.
+        assert response.status_code == 202
+        run_id = response.json()["run_id"]
+        frames = _events_of(client, run_id)
+        types = [f["event"] for f in frames]
+        assert types.count("run.step.started") == 1
+        assert frames[-1]["event"] == "run.failed"
+        assert json.loads(frames[-1]["data"])["payload"]["error_kind"] == "KeyError"
+
+    def test_backend_invalido_levanta_value_error_al_construir_la_app(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("CHIMERA_MODEL_BACKEND", "no-es-un-backend-valido")
+        with pytest.raises(ValueError, match="CHIMERA_MODEL_BACKEND"):
+            _make_client()
+
+    def test_replay_sin_session_dir_levanta_value_error_al_construir_la_app(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("CHIMERA_MODEL_BACKEND", "replay")
+        monkeypatch.delenv("CHIMERA_MODEL_SESSION_DIR", raising=False)
+        with pytest.raises(ValueError, match="CHIMERA_MODEL_SESSION_DIR"):
+            _make_client()
 
 
 class TestContratoFixtureStudio:

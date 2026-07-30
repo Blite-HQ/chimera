@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,6 +48,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from blite.certificate.assemble import ConclusionDeclaration
 from blite.content import ContentStore
 from blite.events.store import EventStore
+from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
 from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.dispatch import Dispatcher, ProfileDispatcher
 from blite.runtime.loop import (
@@ -58,15 +60,32 @@ from blite.runtime.loop import (
 )
 from blite.runtime.plan import PlanItem
 from blite.runtime.registry import Registry, load_registry
+from blite.serving.model_port import ModelPort
 from blite.verification.exact_solver import MaxCutInstance, OptimalityClaim
 from blite.verification.orchestrator import ClaimDeclaration, make_verification_delegate
 from chimera_api.instance_verifiers import resolve_verifiers
+from chimera_api.model_proposer import make_model_proposer
+from chimera_api.model_session import load_session
 
 # Sin auth aún — la sesión de seguridad del API (carril Steven) fija el actor
 # real; este placeholder es explícito para no fingir identidad (Planeado §7).
 _API_ACTOR = "user:api"
 _DEFAULT_DOMAIN = "domain-default"
 _KEYID = "certificate:api-ephemeral"
+_MODEL_CTX: dict[str, str] = {"domain_id": _DEFAULT_DOMAIN}
+
+# Flip del agente real (carril P4, decisión #92 · docs/planeado/01-demo-dia-d.md
+# "el agente es real... en escena corre por defecto en replay"). Env AUSENTE
+# (default) ⇒ `_make_goal_proposer` placeholder, comportamiento intacto.
+_MODEL_BACKEND_ENV = "CHIMERA_MODEL_BACKEND"
+_MODEL_SESSION_DIR_ENV = "CHIMERA_MODEL_SESSION_DIR"
+_MODEL_ID_ENV = "CHIMERA_MODEL_ID"
+_VALID_MODEL_BACKENDS = ("replay", "record", "live")
+_DEFAULT_MODEL_ID = "anthropic/claude-sonnet-4-5"
+"""Solo importa para `record`/`live` (identifica el modelo ante litellm); en
+`replay` el `backend_id` real viene del propio `manifest.json` de la sesión
+grabada (`chimera_api.model_session.load_session`) — el que se usó al
+grabar, no un default reconfigurable por accidente."""
 
 # api/src/chimera_api/runs.py -> parents[3] es la raíz del repo (mismo
 # cómputo que REPO en test_assemble.py, tres niveles menos porque este
@@ -166,6 +185,70 @@ class RunTicket:
     anchor_descriptors: tuple[dict[str, Any], ...]
 
 
+@dataclass(frozen=True)
+class ModelBackendConfig:
+    """El agente real ya construido — `server` despacha por `mode` (A2,
+    `ModelServer`); `backend_id`/`local` completan el `ModelRequest` que
+    `chimera_api.model_proposer.make_model_proposer` arma por turno.
+    `None` en `RunResources.model_backend` ⇒ placeholder determinista
+    (default intacto, decisión #92)."""
+
+    server: ModelPort
+    backend_id: str
+    local: bool = False
+
+
+def _build_model_backend(content: ContentStore) -> ModelBackendConfig | None:
+    """Lee `CHIMERA_MODEL_BACKEND`/`CHIMERA_MODEL_SESSION_DIR`/`CHIMERA_MODEL_ID`
+    UNA sola vez, al construir `RunResources` (arranque de la app, nunca por
+    request) — mismo espíritu que `registry()` perezoso, pero acá la lectura
+    de env + (en replay) el `load_session` de disco son baratos una única vez
+    y estables durante la vida del proceso.
+
+    Env AUSENTE ⇒ `None` (placeholder intacto). Un valor de backend inválido,
+    o `replay` sin `CHIMERA_MODEL_SESSION_DIR`, es un error de CONFIGURACIÓN
+    del servicio — falla RÁPIDO acá (al construir la app), nunca a mitad de
+    un run."""
+    backend = os.environ.get(_MODEL_BACKEND_ENV)
+    if backend is None:
+        return None
+    if backend not in _VALID_MODEL_BACKENDS:
+        msg = (
+            f"{_MODEL_BACKEND_ENV} inválido: {backend!r} "
+            f"(válidos: {', '.join(_VALID_MODEL_BACKENDS)})"
+        )
+        raise ValueError(msg)
+
+    if backend == "replay":
+        session_dir_raw = os.environ.get(_MODEL_SESSION_DIR_ENV)
+        if session_dir_raw is None:
+            msg = (
+                f"{_MODEL_BACKEND_ENV}=replay exige {_MODEL_SESSION_DIR_ENV} "
+                "(directorio de la sesión grabada — manifest.json + responses/)"
+            )
+            raise ValueError(msg)
+        manifest, backend_id, local = load_session(
+            Path(session_dir_raw), content, _MODEL_CTX
+        )
+        server: ModelPort = ModelServer(
+            mode="replay", content_store=content, ctx=_MODEL_CTX, manifest=manifest
+        )
+        return ModelBackendConfig(server=server, backend_id=backend_id, local=local)
+
+    # record/live: backend_id configurable (identifica el modelo ante
+    # litellm, `blite.protocols.model_server._default_live_caller`); manifest
+    # en memoria — `record` lo llena por request, `scripts/record_session.py`
+    # es quien lo dumpea a disco al terminar la corrida (no la API viva).
+    backend_id = os.environ.get(_MODEL_ID_ENV, _DEFAULT_MODEL_ID)
+    server = ModelServer(
+        mode=backend,
+        content_store=content,
+        ctx=_MODEL_CTX,
+        manifest=InMemoryReplayManifest(),
+    )
+    return ModelBackendConfig(server=server, backend_id=backend_id)
+
+
 @dataclass
 class RunResources:
     """Infra de vida-de-app (decisiones #13/#14) — NO frozen: cachea el
@@ -180,6 +263,7 @@ class RunResources:
     keyid: str
     run_tickets: dict[str, RunTicket]
     _registry: Registry | None = None
+    model_backend: ModelBackendConfig | None = None
 
     def registry(self) -> Registry:
         """Registry perezoso: `load_registry` corre SOLO al primer uso real,
@@ -195,15 +279,17 @@ def build_run_resources(
 ) -> RunResources:
     """Construye la infra de vida-de-app de `/runs` sobre el `store` del
     caller — el mismo que sirve el SSE (un solo EventStore por app)."""
+    content = InMemoryContentStore()
     return RunResources(
         store=store,
         dispatcher=ProfileDispatcher(),
-        content=InMemoryContentStore(),
+        content=content,
         policy_bytes=_DEFAULT_POLICY_PATH.read_bytes(),
         signing_key=ed25519.Ed25519PrivateKey.generate(),
         keyid=_KEYID,
         run_tickets={},
         _registry=registry,
+        model_backend=_build_model_backend(content),
     )
 
 
@@ -306,6 +392,25 @@ def _make_goal_proposer(capability_id: str, inputs: dict[str, Any]) -> Proposer:
         return ProposedStep(capability_id=capability_id, inputs=inputs)
 
     return _propose
+
+
+def _resolve_proposer(
+    resources: RunResources, capability_id: str, inputs: dict[str, Any]
+) -> Proposer:
+    """Selecciona el proposer del turno — el agente real (P4, `ModelServer`
+    tras `ModelPort`) si `CHIMERA_MODEL_BACKEND` está configurado, si no el
+    placeholder determinista etiquetado (default INTACTO, decisión #92).
+    MISMO seam `Proposer` en ambos casos — cero cambio de contrato HTTP."""
+    if resources.model_backend is None:
+        return _make_goal_proposer(capability_id, inputs)
+    return make_model_proposer(
+        model_server=resources.model_backend.server,
+        registry=resources.registry(),
+        content_store=resources.content,
+        ctx=_MODEL_CTX,
+        backend_id=resources.model_backend.backend_id,
+        local=resources.model_backend.local,
+    )
 
 
 def _start_claim_run(
@@ -417,7 +522,7 @@ def _start_mission_run(
         inputs=inputs,
         max_turns=body.max_turns,
         budget=budget,
-        proposer=_make_goal_proposer(capability_id, inputs),
+        proposer=_resolve_proposer(resources, capability_id, inputs),
         plan_items=(
             PlanItem(
                 id="mission-1",
