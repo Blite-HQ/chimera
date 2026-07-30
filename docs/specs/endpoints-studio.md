@@ -99,6 +99,61 @@ jamás en la respuesta HTTP.
   `GET /runs/{id}/certificate` no da 404 por desconocido, y sin conclusiones no se fabrica
   certificado — honestidad, no error.
 
+### Resolución instancia→inputs (capabilities reales, cierra "Análisis para discusión" #1)
+
+**Hueco que cierra** (auditoría Fase 2, `docs/mvp/decisiones.md` §"Análisis para discusión con
+Dylan" punto 1, opción (a)): el proposer placeholder proponía `{mission, instance_id}` como
+inputs de la capability meta, y el Studio mapeaba los proposers a IDs inventados
+(`blite.solvers.qaoa|goemans_williamson|greedy`) que NO existen como entry points
+`blite.capabilities` instalados — cualquier misión viva moría `run.failed {KeyError}` (o
+`{ValueError}` con el default) en el primer turno, nunca el `exhausted` honesto que la sección
+anterior documenta. Los unit tests previos usaban `cap.mission-echo` (capability hermética
+tolerante) — un mundo más amable que el vivo.
+
+**Mapa proposer→capability real** (`apps/studio/src/data/mutations.ts::PROPOSER_CAPABILITY`,
+verificado contra los manifests instalados en `capabilities/*/src/*/tool.py`, nunca inventado):
+
+| Proposer (form) | `capability_id` real  | Manifest (`capabilities/*/src/*/tool.py`)                                         |
+| --------------- | --------------------- | --------------------------------------------------------------------------------- |
+| `qaoa`          | `blite.quantum.qaoa`  | `capabilities/quantum` — `{matrix, layers?, backend?, seed?, reference_optimum?}` |
+| `gw`            | `blite.graphs.maxcut` | `capabilities/graphs` — única capability real de max-cut clásico; método `"gw"`   |
+| `greedy`        | `blite.graphs.maxcut` | `capabilities/graphs` — MISMO manifest; método `"greedy"` (default del manifest)  |
+
+`blite.solvers.qubo` sigue siendo el default del server (`_DEFAULT_MISSION_CAPABILITY`) cuando
+el body de misión no manda `capability_id` explícito.
+
+**Resolución instancia→inputs** (`chimera_api.runs._resolve_mission_inputs` /
+`_load_corpus_matrix`): si `instance_id` resuelve a un registro real del corpus
+(`knowledge/islanding/corpus/<instance_id>.json`), el arranque construye `inputs =
+{"matrix": <QUBO simétrica>}` con el MISMO transform canónico grafo→QUBO que
+`scripts/exp_r_vs_p.py::load_instance` (Q simétrica, se MAXIMIZA xᵀQx) — replicado en vez de
+importado porque `scripts/` no es un paquete instalable (no está en `tool.uv.workspace` ni en
+el `include` de pyright); replicar esta aritmética mecánica no duplica ciencia, la ciencia
+(QAOA/CP-SAT/max-cut) sigue viviendo únicamente en las capabilities. `instance_id` ausente,
+desconocido, o con datos de corpus malformados cae al body previo (`{"mission",
+"instance_id"?}`) — el MISMO que ya fallaba fail-loud dentro del stream (una capability real
+rechaza `matrix` ausente, p.ej. `QuboSolver._validate_matrix`): jamás un `4xx` nuevo del
+arranque HTTP, ni una excepción sin capturar escapando del proposer (el harness NO envuelve la
+llamada al proposer en try/except — solo el paso resolve→invoke que sigue).
+
+**Resultado en vivo** (validado con `cr6-uniforme`, óptimo congelado 5): cada turno resuelve e
+invoca de verdad (`capability.job.completed`, jamás `.failed`) contra el registry REAL — sin
+gate de verificación cableado, `done` nunca se cumple, así que el run cierra `run.failed
+{error_kind: "exhausted"}` tras agotar `max_turns` (nunca `run.completed` implícito,
+§Contrato-3): el vivo YA NO diverge de la sección anterior.
+
+**Fronteras que quedan abiertas (no las cierra esta spec):**
+
+- El mapa proposer→capability_id no distingue `gw` de `greedy` a nivel de `inputs.method` —
+  ambos apuntan a `blite.graphs.maxcut` con el `method` default del manifest ("greedy"); cablear
+  ese distingo (un campo `method` explícito en `MissionRequest`, o inputs por-proposer) es una
+  decisión de producto posterior, no inventada acá.
+- Las opciones de instancia del form (`apps/studio/src/views/NewRunView.tsx::INSTANCE_OPTIONS`
+  — `ieee9`/`ieee14`/`ieee30`, sin sufijo) no coinciden con los nombres de archivo reales del
+  corpus (`ieee9-flujo`/`ieee9-uniforme`, etc.) — el `instance_id` que el form produce hoy NO
+  resuelve contra el corpus real (cae al fallback fail-loud de arriba); qué sufijo elegir por
+  default es una decisión de UI/producto fuera del alcance de esta costura.
+
 ### Contrato con el Studio (costura E↔D)
 
 `toCreateRunBody` (Studio) emite el body de misión desde el form actual

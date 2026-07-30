@@ -39,7 +39,12 @@ def _cases() -> dict[str, MissionRequest]:
                 "y certificar la optimalidad del corte"
             ),
             instance_id="ieee14",
-            capability_id="blite.solvers.qaoa",
+            # Capability REAL (`blite.quantum.qaoa`, capabilities/quantum) —
+            # `blite.solvers.qaoa` no existe en ningún manifest instalado
+            # (decisiones #95-#98, `docs/mvp/decisiones.md` §"Análisis para
+            # discusión" punto 1); mismo mapeo que
+            # `apps/studio/src/data/mutations.ts::PROPOSER_CAPABILITY`.
+            capability_id="blite.quantum.qaoa",
         ),
     }
 

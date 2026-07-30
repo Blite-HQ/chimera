@@ -24,7 +24,7 @@ describe('toCreateRunBody (checkpoint 5 — modo misión, endpoints-studio.md)',
       mission:
         'Particionar la red ieee14 en islas controladas y certificar la optimalidad del corte',
       instance_id: 'ieee14',
-      capability_id: 'blite.solvers.qaoa'
+      capability_id: 'blite.quantum.qaoa'
     });
   });
 
@@ -37,12 +37,17 @@ describe('toCreateRunBody (checkpoint 5 — modo misión, endpoints-studio.md)',
     expect(toCreateRunBody(input)).toEqual(MISSION_CONTRACT_FIXTURE);
   });
 
-  it('resuelve gw y greedy contra su capability_id', () => {
+  it('resuelve gw y greedy contra blite.graphs.maxcut (mismo manifest, method distingue)', () => {
+    // `blite.graphs.maxcut` (capabilities/graphs/src/blite_cap_graphs/tool.py)
+    // es la ÚNICA capability real de max-cut clásico instalada — cubre
+    // ambos métodos (`method: "gw" | "greedy"`, default "greedy") bajo un
+    // solo capability_id; no existen `blite.solvers.goemans_williamson` ni
+    // `blite.solvers.greedy` en el registry (decisiones #95-#98).
     expect(toCreateRunBody({ instance: 'ieee9', proposer: 'gw' }).capability_id).toBe(
-      'blite.solvers.goemans_williamson'
+      'blite.graphs.maxcut'
     );
     expect(toCreateRunBody({ instance: 'ieee30', proposer: 'greedy' }).capability_id).toBe(
-      'blite.solvers.greedy'
+      'blite.graphs.maxcut'
     );
   });
 });

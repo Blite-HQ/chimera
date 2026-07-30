@@ -1,5 +1,5 @@
 {
-  "capability_id": "blite.solvers.qaoa",
+  "capability_id": "blite.quantum.qaoa",
   "instance_id": "ieee14",
   "mission": "Particionar la red ieee14 en islas controladas y certificar la optimalidad del corte"
 }

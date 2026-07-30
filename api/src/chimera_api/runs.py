@@ -33,6 +33,8 @@ verificación termina `run.failed {error_kind: "exhausted"}` — jamás un
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -73,6 +75,7 @@ _REPO_ROOT = Path(__file__).parents[3]
 _DEFAULT_POLICY_PATH = (
     _REPO_ROOT / "distributions" / "chimera" / "policies" / "verification-default.yaml"
 )
+_ISLANDING_CORPUS_DIR = _REPO_ROOT / "knowledge" / "islanding" / "corpus"
 
 
 class InstanceRequest(BaseModel):
@@ -222,6 +225,76 @@ def _build_domain_claim(claim_request: ClaimRequest) -> OptimalityClaim:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+_MISSION_INSTANCE_ERRORS: tuple[type[Exception], ...] = (
+    OSError,
+    KeyError,
+    ValueError,
+    TypeError,
+    IndexError,
+)
+"""Excepciones que `_load_corpus_matrix` puede levantar sobre un
+`instance_id` desconocido o un registro de corpus malformado — TODAS caen al
+fallback de `_resolve_mission_inputs` (jamás propagan)."""
+
+
+def _load_corpus_matrix(instance_id: str) -> list[list[int]]:
+    """Transform canónico grafo→QUBO sobre `<instance_id>.json` del corpus
+    de islanding (`knowledge/islanding/corpus/`) — MISMA aritmética que
+    `scripts/exp_r_vs_p.py::load_instance` (Q simétrica, se MAXIMIZA
+    xᵀQx). No se importa desde ahí: `scripts/` no es un paquete instalable
+    (no está en `tool.uv.workspace` ni en el `include` de pyright — mismo
+    comentario que `tests/unit/experiment/test_exp_r_vs_p.py`); replicar
+    esta aritmética mecánica no duplica ciencia — la ciencia (QAOA, CP-SAT,
+    max-cut) sigue viviendo únicamente en las capabilities.
+
+    Desconocido o malformado ⇒ deja que la excepción suba — el caller
+    (`_resolve_mission_inputs`) decide el fallback fail-loud."""
+    # `instance_id` viene del body HTTP: solo slugs del corpus — jamás se
+    # interpola una forma de traversal en la ruta (validación en frontera).
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", instance_id):
+        msg = f"instance_id fuera del espacio de slugs del corpus: {instance_id!r}"
+        raise ValueError(msg)
+    record: dict[str, Any] = json.loads(
+        (_ISLANDING_CORPUS_DIR / f"{instance_id}.json").read_text(encoding="utf-8")
+    )
+    edges = [(int(u), int(v), int(w)) for u, v, w in record["aristas"]]
+    n = int(record["n_nodos"])
+    matrix = [[0] * n for _ in range(n)]
+    for u, v, w in edges:
+        matrix[u][u] += w
+        matrix[v][v] += w
+        matrix[u][v] -= w
+        matrix[v][u] -= w
+    return matrix
+
+
+def _resolve_mission_inputs(mission: str, instance_id: str | None) -> dict[str, Any]:
+    """Inputs del proposer determinista de arranque de misión (decisiones
+    #95-#98, `docs/mvp/decisiones.md` §"Análisis para discusión" punto 1).
+
+    `instance_id` conocido en el corpus ⇒ `{"matrix": <QUBO simétrica>}` —
+    lo único que las capabilities meta de este modo (`blite.solvers.qubo`,
+    `blite.quantum.qaoa`, `blite.graphs.maxcut`) requieren de verdad.
+
+    `instance_id` ausente, desconocido, o con datos malformados ⇒ cae al
+    body previo (`{"mission", "instance_id"?}`) — el MISMO que ya fallaba
+    fail-loud DENTRO del stream (una capability real rechaza `matrix`
+    ausente, p.ej. `QuboSolver._validate_matrix`): jamás un 4xx nuevo del
+    arranque HTTP, y jamás una excepción sin capturar escapando del
+    proposer (`_run_agentic_turn` no envuelve la llamada al proposer en
+    try/except — un raise ahí tumbaría el turno entero antes de journalizar
+    nada, no solo el paso resolve→invoke que SÍ está protegido)."""
+    fallback: dict[str, Any] = {"mission": mission}
+    if instance_id is None:
+        return fallback
+    fallback["instance_id"] = instance_id
+    try:
+        matrix = _load_corpus_matrix(instance_id)
+    except _MISSION_INSTANCE_ERRORS:
+        return fallback
+    return {"matrix": matrix}
+
+
 def _make_goal_proposer(capability_id: str, inputs: dict[str, Any]) -> Proposer:
     """Proposer determinista PLACEHOLDER (etiquetado — jamás "el agente"):
     propone la capability meta con los mismos inputs en cada turno, hasta que
@@ -321,9 +394,7 @@ def _start_mission_run(
         if body.capability_id is not None
         else _DEFAULT_MISSION_CAPABILITY
     )
-    inputs: dict[str, Any] = {"mission": body.mission}
-    if body.instance_id is not None:
-        inputs["instance_id"] = body.instance_id
+    inputs = _resolve_mission_inputs(body.mission, body.instance_id)
 
     budget = (
         RunBudget(tokens=body.budget.tokens, cost_usd=body.budget.cost_usd)

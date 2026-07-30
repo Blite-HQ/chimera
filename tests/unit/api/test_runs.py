@@ -20,6 +20,7 @@ import re
 from typing import Any, cast
 
 import httpx
+import pytest
 from chimera_api.app import create_app
 from fastapi.testclient import TestClient
 
@@ -433,9 +434,78 @@ class TestContratoFixtureStudio:
         assert "plan.created" in [f["event"] for f in frames]
 
 
+class TestModoMisionInstanciaReal:
+    """`POST /runs` modo misión sobre el registry REAL (`load_registry`,
+    entry points instalados del venv — decisiones #95-#98,
+    `docs/mvp/decisiones.md` §"Análisis para discusión" punto 1): una misión
+    con `instance_id` del corpus real progresa de VERDAD contra
+    `blite.solvers.qubo` (default), no la capability tolerante inventada
+    `cap.mission-echo` que usan los demás tests de esta clase.
+
+    `cr6-uniforme` (`knowledge/islanding/corpus/cr6-uniforme.json`, óptimo
+    congelado 5) resuelve a una QUBO 6×6 simétrica que CP-SAT resuelve en
+    milisegundos — cada turno completa resolve+invoke de verdad (2 jobs por
+    turno, `max_turns=2` ⇒ 4 steps); sin gate de verificación cableado el
+    run SIEMPRE cierra `run.failed {error_kind: "exhausted"}` tras agotar
+    `max_turns` — nunca un `run.completed` implícito (§Contrato-3)."""
+
+    def test_cr6_uniforme_completa_turnos_reales_y_cierra_exhausted(self) -> None:
+        # Arrange — SIN override de registry: `RunResources.registry()` carga
+        # perezosamente `load_registry(store)` sobre los entry points
+        # REALES `blite.capabilities` instalados en el venv (no un doble).
+        store = create_event_store()
+        client = TestClient(create_app(store))
+        body = {
+            "mission": "particionar cr6-uniforme y certificar el corte",
+            "instance_id": "cr6-uniforme",
+            "max_turns": 2,
+        }
+
+        # Act
+        response = _post(client, "/runs", json_body=body)
+
+        # Assert — arranque HTTP intacto
+        assert response.status_code == 202
+        run_id = response.json()["run_id"]
+
+        frames = _events_of(client, run_id)
+        types = [f["event"] for f in frames]
+
+        # El plan viaja como eventos, mismo contrato que el resto de la clase
+        assert "plan.created" in types
+
+        # Cada turno resolvió e invocó de verdad — CERO fallo de capability:
+        # `blite.solvers.qubo` recibe una matrix real (nunca placeholder
+        # {mission, instance_id} que el solver rechaza fail-loud).
+        assert types.count("capability.job.completed") == 2
+        assert "capability.job.failed" not in types
+
+        # Sin gate de verificación cableado, `max_turns` agotado cierra
+        # exhausted — jamás completed implícito.
+        assert frames[-1]["event"] == "run.failed"
+        last_payload = json.loads(frames[-1]["data"])["payload"]
+        assert last_payload["error_kind"] == "exhausted"
+
+
 class TestEndpointsExistentesSiguenVerdes:
     def test_health_sigue_respondiendo_ok(self) -> None:
         client = _make_client()
         response = _get(client, "/health")
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
+
+
+class TestMissionInstancePathGuard:
+    """`instance_id` viaja en el body HTTP y se interpola en una ruta de
+    archivo — un id con forma de traversal jamás debe llegar al filesystem
+    (validación en la frontera, no solo el fallback benigno)."""
+
+    def test_instance_id_con_traversal_levanta_value_error_sin_tocar_disco(
+        self,
+    ) -> None:
+        from chimera_api.runs import (
+            _load_corpus_matrix,  # pyright: ignore[reportPrivateUsage] — el guard es interno a propósito; el test lo ejercita directo
+        )
+
+        with pytest.raises(ValueError, match="instance_id"):
+            _load_corpus_matrix("../cr6-uniforme")

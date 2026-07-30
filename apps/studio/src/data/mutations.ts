@@ -24,11 +24,21 @@ import type { UseMutationResult } from '@tanstack/react-query';
 
 export type { NewRunInput };
 
-/** Proposer del form → capability meta del arranque de misión. */
+/**
+ * Proposer del form → capability meta REAL del arranque de misión
+ * (decisiones #95-#98, `docs/mvp/decisiones.md` §"Análisis para discusión"
+ * punto 1) — IDs verificados contra los manifests instalados
+ * (`capabilities/*\/src/*\/tool.py`), nunca inventados:
+ *  - `qaoa` → `blite.quantum.qaoa` (capabilities/quantum).
+ *  - `gw`/`greedy` → `blite.graphs.maxcut` (capabilities/graphs): la ÚNICA
+ *    capability real de max-cut clásico instalada, cubre ambos métodos vía
+ *    `inputs.method` ("gw" | "greedy", default "greedy") — no existen
+ *    `blite.solvers.goemans_williamson` ni `blite.solvers.greedy`.
+ */
 const PROPOSER_CAPABILITY: Readonly<Record<string, string>> = {
-  qaoa: 'blite.solvers.qaoa',
-  gw: 'blite.solvers.goemans_williamson',
-  greedy: 'blite.solvers.greedy'
+  qaoa: 'blite.quantum.qaoa',
+  gw: 'blite.graphs.maxcut',
+  greedy: 'blite.graphs.maxcut'
 };
 
 export interface CreateRunResult {
