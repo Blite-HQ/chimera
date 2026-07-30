@@ -618,3 +618,125 @@ interacciones nace con la ola 0 y las sesiones de Fase 1.
   backlog G/P/C/V/O (no se hacen dos veces).
 - Docs: `docs/mejorado/06-saneamiento.md` (plan + prompts S1/S3); salida S1 será
   `07-censo-documental.md`. Docs-only: ninguna interfaz de código tocada.
+
+## Sesión S2 — diseño del orden del saneamiento (rama `mejorado/base`, 2026-07-30)
+
+Insumo: `docs/mejorado/07-censo-documental.md` (censo S1 @ `9733f2b`, con las tres
+extensiones de mandato: terminología era-hackathon, research huérfana, validación
+de diseño). Método: opciones analizadas + AskUserQuestion con Dylan, 3 rondas.
+Las decisiones (h)/(i)/(j) responden a la agenda extendida commiteada en
+`f54a051`.
+
+### #108 — jerarquía de autoridad documental ÚNICA (con desempates)
+
+Cadena: constitución (`invariants` + `base-logica-formal` + `contract-freeze` +
+anexo) → specs de costura → docs de fase → knowledge = INSUMO, jamás autoridad →
+archivo. MÁS los 4 desempates que el censo exigió (07-censo §5): (1) el freeze
+manda y `spec-confianza-v3-2` es su vocabulario DELEGADO — la regla se escribe;
+(2) mapa sección→doc único para las 3 arquitecturas en `docs/README.md`; (3)
+trust/10-12 se reconocen como «diseño interno citado por código» con nota de
+rango (promoción a spec = Fase 0 si hace falta); (4) `planeado/03-research` se
+anuncia como co-autoridad de las specs de costura. El ledger figura en el índice
+como autoridad global VIGENTE. Reversión: supersede con causa.
+
+### #109 — política de estados obligatoria en header
+
+TODO doc de `docs/` y `knowledge/` lleva `Estado: {VIGENTE | VIGENTE-CON-DRIFT
+(+nota) | SUPERSEDIDO-POR-<x> | HISTÓRICO} (fecha)`. Reglas: el supersede marca
+al doc VIEJO, no solo al ledger; los sellos de verificación llevan
+fecha-de-validez y se corrigen con nota fechada nueva (jamás borrando el sello
+erróneo — caso `islanding/01` §1.8); `docs/README.md` refleja el estado de cada
+doc.
+
+### #110 — destino del freeze: mono-doc + supersedes + índice-mapa
+
+Opción (a)+(c) de `06-saneamiento.md` §5: el freeze queda ÚNICO; S3 aplica los 8
+frentes de supersede con decisión registrada (07-censo §1.7-B) con marcas
+`[MEJORADO]` + causa; se crea un índice-mapa por plano que apunta a las secciones
+(cero referencias `freeze §N` rotas). La modularización (b) queda descartada CON
+causa: re-escribir la constitución a mitad de fase multiplica el drift y rompe
+cientos de refs, incluidas las de docstrings del engine.
+
+### #111 — el ledger se MUEVE a `docs/decisiones.md`
+
+`git mv docs/mvp/decisiones.md docs/decisiones.md` (la historia se conserva) +
+encabezado nuevo que lo declara «Registro GLOBAL de decisiones
+(MVP→Planeado→Mejorado→…), solo-anexar, autoridad vigente». S3 actualiza las ~54
+referencias repo-wide (docs, docstrings, compose, scripts) — ese barrido de
+docstrings queda amparado por #115. El CONTENIDO sigue intocable (línea roja).
+Nota de la sesión: la alternativa quedarse-en-sitio era más barata; Dylan eligió
+la ubicación honesta — el costo de refs se paga una vez y coincide con el barrido
+quirúrgico ya aprobado.
+
+### #112 — cimientos de proceso muertos: archivar con marca + rescates ANTES
+
+Los históricos van por `git mv` a la carpeta de archivo que S3 proponga (header
+HISTÓRICO; jamás rm): ratificaciones/ ×5, decisiones-delegadas,
+guia-ratificacion, demo-dia-d, contratos TS v1, esquema v1, mockup HTML,
+planeado/{01,02,04,05}, research de proceso ×4. PRECONDICIÓN: ejecutar los 4
+rescates de 07-censo §6 (registro ADR-001-027 de arc42 §12 → `docs/adr/`; tabla
+invariante→componente de arc42 §6; pesos QUBO de reconciliada §4 →
+`islanding/01`; concepto `local: boolean` de contratos-v1 §7 → nota).
+`CODEOWNERS` y `GOVERNANCE.md` se REESCRIBEN alineados a #94 (config activa, no
+histórico); `promote-demo.yml` sale de CI (queda en historia git).
+
+### #113 — el vendorizado quantathon SE QUEDA como insumo de trabajo próximo
+
+Decisión de Dylan (corrige la recomendación de desvendorizar): el árbol
+`knowledge/quantum/quantathon/` es el material completo dado durante la
+hackathon; el plan es REFINARLO y dárselo al modelo o meterlo al harness
+(conecta directo con el huérfano #7 del censo: ingesta RAG/KB con procedencia —
+ver #116). Efectos para S3: se excluye del gate de docs
+(`.markdownlintignore`/`.prettierignore` — resuelve N6 sin borrar nada), gana
+marca de VENDORIZADO-AJENO + «insumo de trabajo próximo» en `quantum/README` e
+`INDEX`, y la licencia/atribución de terceros (N11) queda EXPLÍCITAMENTE
+pendiente en O2/M26 ANTES del flip OSS. Reversión: si el refinamiento no llega,
+se re-litiga la desvendorización con este registro como causa.
+
+### #114 — idioma: migración PROGRESIVA a inglés, carril propio post-S4
+
+El corpus completo converge a inglés. Faseo (g2): S3 solo escribe la REGLA en
+`docs/README.md` («el corpus converge a inglés; los docs nuevos nacen en
+inglés»); la traducción del corpus existente es un carril propio DESPUÉS de S4,
+por oleadas empezando por lo normativo (freeze+specs juntos, gates y refs
+verificadas por oleada) — el saneamiento no se contamina de traducción y la
+línea roja del freeze se respeta (traducción = cambio con ceremonia propia por
+oleada).
+
+### #115 — S3 gana alcance quirúrgico de docstrings/comentarios
+
+El hueco S3↔código del censo (§8.5) se cierra DENTRO de S3: traducción de
+vocabulario muerto y terminología de evento en los ~40 archivos de código (diff
+solo-comentarios, cero efecto en runtime ni contratos — los gates verdes lo
+prueban: 804 pytest / 13 contratos / 221 studio). Intocables: los vectores de
+hash congelados (`"rung": 1` en `test_canonical` y
+`gen-canonicalization-vectors`, declarados dato arbitrario por el anexo §163) y
+el ledger. Coherente con #111: un solo barrido de comentarios, no dos.
+
+### #116 — TOP-10 de research huérfana: los 10 entran al backlog
+
+Coherente con #101 («la pregunta ORDENA, no filtra»). S3 los anexa a
+`04-consolidacion.md` con dominio y orden: corpus-runner/eval + KPI over-refusal
+
+- tres-planos → O temprano; corrector AI-QEM → V; protocolo de convergencia
+  simulada↔real como herramienta → O; registro de guardrail-adapters + pick HHEM →
+  C; `JobQueue`/Procrastinate → P (amplía P5); Cedar Analysis + bundle OPA → C;
+  ingesta RAG/KB con procedencia → P/O (adelantado por #113); REGRID M.3/M.4 +
+  feasibility-feedback → G; puerto `ExecutionHarness` + guarda PASS_TO_PASS → C;
+  SEPs white-box → KB + O tardío. Las menciones honoríficas de 07-censo §7.1
+  quedan como KB curada. Todo descarte futuro = CON causa registrada (dejan de
+  existir los huérfanos sin registro).
+
+### #117 — los 4 hallazgos de diseño entran como ítems
+
+S3 los anexa al backlog: (1) registry de lentes de dominio del Studio (la letra
+ya existe en `product-model.md` §38-45) → dominio P; (2) gate de agnosticismo
+multi-capa (engine/api/studio con excepciones declaradas) → dominio O TEMPRANO —
+es el ítem que hace irreversibles los demás; (3) evaluador de policy completo en
+`bundle_check` (`min_level` + `side_effects`; aditivo + ceremonia porque cambia
+el veredicto de bundles estampados) → dominio C; (4) guards de datos estampados
+(corpus a CI + guard nuevo para `knowledge/nexus/`) → dominio O.
+
+Docs-only: ninguna interfaz de código tocada en esta sesión. Siguiente: sesión
+S3 (prompt `06-saneamiento.md` §4.2) con 07-censo §9 + #108-#117 como insumos
+obligatorios; luego S4 valida contra el checklist §6 y desbloquea la Fase 0.
