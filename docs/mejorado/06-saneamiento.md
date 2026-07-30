@@ -72,6 +72,17 @@ verificabilidad que es EL diferenciador.
 
 ## 2 · Alcance / NO-alcance
 
+**Dos horizontes (aclaración de mandato, Dylan 2026-07-30 — decisión #118)**:
+saneamiento NO es el resultado final. **Saneamiento** = preparar el camino:
+borrar archivos basura (archivándolos), agregar tags temporales de estado,
+identificar dónde hay valor y dónde no, actualizar terminologías, y que docs +
+knowledge REFLEJEN el resultado real del proyecto. **El resultado final** (toda
+la documentación ordenada, sin parches, estructura ideal, traducida al inglés)
+es un REFACTORING INTEGRAL propio que se hace AL COMPLETAR la fase Mejorado —
+parqueado en `01-criterio.md` §Fuera-de-la-fase. Las marcas que S3 deja son
+deliberadamente temporales: son el MAPA del refactoring final, no parches
+permanentes.
+
 **Alcance**: todo `docs/` + `knowledge/` + READMEs + índices + estados de docs;
 higiene de repo atada a docs (gate de CI, `.prettierignore`, `CODEOWNERS`,
 `.env.example`, árbol vendorizado); aplicación de los supersedes YA decididos
@@ -82,7 +93,10 @@ explícita.
 **NO-alcance**: refactors de código (G3 dispatch por clase, C-15 baselines, etc. —
 ya viven en `04-consolidacion.md` §4); cambios de forma de contratos (eso es la
 Fase 0 con su ceremonia); reescritura del ledger; re-digest de cualquier cosa
-estampada; borrar historia (lo histórico se ARCHIVA con marca, no se elimina).
+estampada; borrar historia (lo histórico se ARCHIVA con marca, no se elimina);
+**el refactoring documental final** (#118: reorganización ideal sin parches,
+traducción a inglés, `git mv` del ledger — todo eso queda diferido al cierre de
+la fase Mejorado).
 
 ## 3 · El plan (S1 → S4)
 
@@ -144,6 +158,15 @@ Eres la sesión de SANEAMIENTO DOCUMENTAL de Mejorado (worktree mejorado/saneami
 desde mejorado/base). Insumos OBLIGATORIOS: docs/mejorado/06-saneamiento.md (plan y
 línea roja), 07-censo-documental.md (el censo S1) y las decisiones #108+ del ledger
 (el diseño S2 — NO improvises destinos que no estén decididos).
+
+HORIZONTE (#118, no negociable): eres SANEAMIENTO, no el refactoring final. Tu
+trabajo es preparar el camino: archivar basura, poner tags temporales de estado,
+marcar valor, actualizar terminologías y que docs+knowledge reflejen el resultado
+real. NO haces: traducción a inglés (solo escribes la regla en docs/README.md),
+mover el ledger (#111 diferido — gana encabezado global EN SU UBICACIÓN actual),
+ni reorganización estructural más allá del archivo de lo muerto. Tus marcas son
+temporales a propósito: son el mapa del refactoring integral que ocurre al
+completar la fase Mejorado.
 
 ALCANCE en orden:
 1. Aplicar la política de estados: header obligatorio en cada doc según su

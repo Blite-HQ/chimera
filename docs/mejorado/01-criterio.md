@@ -60,7 +60,11 @@ fase siguiente** (sin nombre aún), no como alcance de Mejorado:
 - correr los 3 retos y que el resultado supere al de la hackathon; comparar precisión,
   confiabilidad, agnosticismo, datos generados, benchmarks y duración;
 - research de competencia → extraer e integrar features para competir de tú a tú con
-  las soluciones existentes.
+  las soluciones existentes;
+- **el refactoring documental final** (decisión #118): toda la documentación
+  ordenada y sin parches, estructura ideal, corpus traducido al inglés, ledger
+  reubicado (`git mv` de #111 diferido) — el saneamiento S1-S4 solo prepara el
+  camino y deja el mapa (tags temporales + censo `07-censo-documental.md`).
 
 ## Anclas y decisiones operativas de la Etapa 0
 

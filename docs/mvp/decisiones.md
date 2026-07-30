@@ -740,3 +740,35 @@ el veredicto de bundles estampados) → dominio C; (4) guards de datos estampado
 Docs-only: ninguna interfaz de código tocada en esta sesión. Siguiente: sesión
 S3 (prompt `06-saneamiento.md` §4.2) con 07-censo §9 + #108-#117 como insumos
 obligatorios; luego S4 valida contra el checklist §6 y desbloquea la Fase 0.
+
+### #118 — saneamiento ≠ resultado final: dos horizontes (aclaración de mandato)
+
+- **Aclaración de Dylan** (2026-07-30, post-S2): una cosa es el saneamiento y
+  otra el resultado deseado. **Saneamiento** = preparar el camino: borrar
+  archivos basura (archivándolos), agregar tags temporales de estado,
+  identificar dónde hay valor y dónde no, actualizar terminologías, y que la
+  documentación y el knowledge REFLEJEN el resultado real del proyecto. **El
+  resultado final** (toda la documentación ordenada, sin parches, estructura
+  ideal, traducida al inglés) es un REFACTORING INTEGRAL propio que se hace AL
+  COMPLETAR la fase Mejorado — no antes.
+- **Supersede parcial de #111** (con esta causa): el `git mv` del ledger a
+  `docs/decisiones.md` + el barrido de ~54 referencias se DIFIERE al refactoring
+  final. En S3 el ledger solo gana el encabezado que lo declara registro GLOBAL
+  vigente y la presentación correcta en `docs/README.md`, en su ubicación
+  actual — cero referencias rotas mientras tanto. La decisión de moverlo sigue
+  en pie; cambia el CUÁNDO.
+- **Supersede parcial de #114** (con esta causa): la traducción a inglés es
+  parte del resultado final — el carril de traducción se ancla AL COMPLETAR
+  Mejorado, no post-S4. S3 solo escribe la regla en `docs/README.md` («el
+  corpus converge a inglés en el refactoring final; las superficies públicas ya
+  en inglés se mantienen en inglés»). Los docs de trabajo de fase siguen en
+  español hasta ese refactoring.
+- **Ratificados como saneamiento** (sin cambio): #109 tags de estado, #110
+  marcas de supersede en el freeze + índice-mapa, #112 archivar la basura con
+  los rescates antes, #113 marcar/excluir el vendorizado, #115 actualización
+  quirúrgica de terminologías en docstrings, #116/#117 registro de valor
+  (research + hallazgos al backlog). Las marcas de S3 son deliberadamente
+  TEMPORALES: son el mapa del refactoring final, no parches permanentes.
+- **Registro del hito**: el refactoring documental final entra a la lista de
+  parqueados de `01-criterio.md` §Fuera-de-la-fase como trabajo de cierre
+  post-Mejorado. Reversión: supersede con causa.
