@@ -593,3 +593,28 @@ V → O, con ola 0 documental inmediata. Ajustes posteriores = supersede individ
 
 Sin interfaces de código tocadas en estas etapas (docs-only); la tabla de
 interacciones nace con la ola 0 y las sesiones de Fase 1.
+
+## Sesión control Mejorado — saneamiento como precondición (rama `mejorado/base`, 2026-07-30)
+
+### #107 — saneamiento documental y de cimientos ANTES de la Fase 0
+
+- **Mandato de Dylan** (2026-07-30): ordenar, podar y ajustar la KB y la
+  documentación antes de seguir — mucha información atada a features específicos
+  (plano de confianza) y a UN problema (reto 1); la rigidez documental degrada
+  mantenibilidad y escalabilidad.
+- **Validación de la sesión de control**: CIERTO, con precisión — 8 evidencias del
+  propio ciclo de planning (`06-saneamiento.md` §1: 15 conflictos C-1..C-15,
+  freeze §13 describiendo un sistema que no existe, vocabulario muerto en specs
+  implementables, nombres nunca reconciliados, fugas reto-1 en capas de borde,
+  contradicciones internas congeladas, índices rotos, arqueología multi-doc como
+  costo fijo). Los cimientos ARQUITECTÓNICOS no son el blocker (el research los
+  validó; los 15 conflictos se resolvieron aditivos) — el blocker es la capa
+  documental + los cimientos de proceso de la era hackathon.
+- **Efecto**: la Fase 0 de contratos queda BLOQUEADA hasta que S4 cierre; la ola 0
+  del plan paralelo se funde en S3. Plan S1 (censo) → S2 (diseño del orden con
+  Dylan, decisiones #108+) → S3 (ejecución) → S4 (validación con checklist).
+- **Línea roja**: contratos congelados solo por ceremonia; jamás re-digestar nada
+  estampado; ledger solo-anexar; los refactors de código reto-1 se quedan en el
+  backlog G/P/C/V/O (no se hacen dos veces).
+- Docs: `docs/mejorado/06-saneamiento.md` (plan + prompts S1/S3); salida S1 será
+  `07-censo-documental.md`. Docs-only: ninguna interfaz de código tocada.

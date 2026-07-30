@@ -86,7 +86,12 @@ reto 3 sin nosotros» (quickstart → misión → certificado → `verify-bundle
 las 3 llaves del cierre de fase verificadas con evidencia (git + gates + stack vivo),
 hallazgos → backlog de la fase siguiente. La ejecuta la sesión de control al final.
 
-## 3 · Ola 0 (sesión de control / contratos, inmediata)
+## 3 · Ola 0 — ABSORBIDA por el saneamiento documental (#107)
+
+> **Precondición nueva (decisión #107, 2026-07-30)**: la Fase 0 de contratos NO
+> arranca hasta que el saneamiento documental (`06-saneamiento.md`, etapas S1–S4)
+> cierre. Los ítems de esta ola 0 se ejecutan DENTRO de su etapa S3 — se listan aquí
+> solo como referencia de origen.
 
 1. #102: supersede [MEJORADO] en `contract-freeze.md` §13 + eventos al §14.
 2. O1: gate de docs de CI (excluir el árbol vendorizado quantathon de
