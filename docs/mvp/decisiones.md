@@ -515,3 +515,28 @@ ModelServer), `feec573` (status fallido/cancelado + menores).
 | Proposer←ModelServer (`model_proposer.py` + protocolo en harness-agentico.md) | E ↔ A ↔ protocols   | IMPLEMENTADO — flip por env, default placeholder; frontera loop.py anotada |
 | `status` wire `RunSummary` (spec + reads.py + client)                         | E ↔ D ↔ spec Fase 0 | EXTENSIÓN ADITIVA VERDE VIVO                                               |
 | `compose.yaml` env api (`CHIMERA_MODEL_BACKEND`)                              | infra ↔ E           | DOCUMENTADO comentado — se activa al existir la sesión grabada             |
+
+## Sesión control Mejorado — Etapa 0 · criterio (rama `planeado/base`, 2026-07-29)
+
+**Precondición verificada antes de abrir la fase**: la auditoría Fase 2 de Planeado SÍ
+corrió (#95–#98) y el cierre #100 resolvió sus puntos 1–3; quedan como insumo de
+Mejorado los M18–M20 propuestos, el punto 4 del análisis (proyección fail-loud vs
+`discarded_streams`, SIN decidir) y la sesión agéntica real sin grabar.
+
+### #101 — criterio de Mejorado (Etapa 0 con Dylan)
+
+- **Mandato**: Chimera pasa de demo a PRODUCTO; norte = generalidad (resolver más que
+  el Reto 1) + producto usable (listo para terceros) + confianza (el diferenciador).
+- **La pregunta** (ordena, NO filtra — todo lo mapeado se implementa, mandato
+  explícito): «¿acerca esto a que un tercero resuelva con Chimera un problema que NO
+  es el nuestro, sin nosotros al lado y sin perder la confianza verificable?».
+- **Autoridades**: 1) los retos 2/3 (generalidad; KB2-02 — reto 2 kernel agua, reto 3
+  TFIM/Trotter), 2) un externo sin contexto (usabilidad), 3) el freeze/certificado
+  (confianza).
+- **Cierre de fase = tres llaves conjuntivas**: retos 1–3 punta a punta en la
+  plataforma + lista para terceros + backlog M1–M20+ completo sin descartes.
+- **Flip OSS sin fecha** (el ancla ~1-ago quedó liberada); **sesión agéntica real al
+  backlog** (bloqueado-por-Dylan: requiere su key).
+- **Fase siguiente parqueada** (NO entra a Mejorado): 3 ideas ganadoras corriendo en
+  la plataforma, retos vs resultado de hackathon, research de competencia.
+- Doc: `docs/mejorado/01-criterio.md`. Docs-only: ninguna interfaz de código tocada.
