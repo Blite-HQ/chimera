@@ -67,6 +67,16 @@ Cada sesión = worktree propio + prompt generador (§4). Alcances = ítems de
 | V · Visual/ciencia   | `mejorado/visual`      | V1→V8                                                                         | S-D, S-B                     |
 | O · Plataforma       | `mejorado/plataforma`  | O2→O7 (O1 va en ola 0)                                                        | S-F para O3                  |
 
+**Extensiones al alcance (reconciliación #120, tras el saneamiento)**: los 14 ítems
+del §7 de `04-consolidacion.md` (#116/#117) y el triage de los hallazgos de handoff
+S3 quedan asignados así — G += G8 (+ fix enum `gurobi`, hallazgo 12); P-rt += P11,
+P12 (+ ruta fantasma `/invoke`, hallazgo 7); P-ui += P13 (+ hallazgos 4/5/6: fixtures
+`capability.job.invoked`, meta de index.html, strings de describe); C-2 += C12–C15;
+V += V9; O += O8–O12 (O8/O11 TEMPRANOS — O11 es el que hace irreversibles los demás)
+
+- hallazgos 9/10; Contratos += decisión de inmunización V6 del anexo (hallazgo 1,
+  doc CONGELADO ⇒ ceremonia). Detalle por ítem en `04-consolidacion.md` §7.
+
 ### Checkpoints de costura (la sesión de control mergea)
 
 | CP  | Qué se verifica VIVO antes del merge                                                                                                                                     | Lados         |
@@ -142,6 +152,9 @@ C-8 + rvsp C-9 + fixtures contract/superficie/. (6) S-E manifest v2 en el SDK.
 Pydantic (script gen-contract-fixtures-*) + espejo en apps/studio/src/fixtures/
 contract/ + test anti-drift en ambos lados.
 
+EXTENSIÓN (#120): decide además la inmunización V6 del anexo de canonicalización
+(hallazgo 1 del handoff S3 — es doc CONGELADO: solo por ceremonia registrada).
+
 [REGLAS: bloque común]. DoD: specs mergeables + fixtures byte-idénticos en ambos
 lados + los supersedes registrados con causa + tabla de interacciones. Commits
 docs/spec separados de commits de fixtures/tests.
@@ -172,6 +185,12 @@ challenges/reto{2,3}/ punta a punta. Capabilities SIEMPRE genéricas (la denylis
 bloquea potabilidad/water/etc. — el conocimiento de escenario va a knowledge/).
 Implementaciones proponente/verificador INDEPENDIENTES (espejo fail-loud: error
 0.0000 con dt grande = sospecha).
+
+EXTENSIONES (#120): la receta TFIM ya tiene STUB en knowledge/quantum/11 —
+complétala, no la crees. Además: G8 (reparación M.3/M.4 de REGRID-QAOA +
+feasibility-feedback DFS + pesos desde flujo — 04-consolidacion §7.1) y el fix del
+drift código-manifest de solvers (el enum expone "gurobi" que invoke rechaza —
+hallazgo 12 del handoff S3).
 
 [REGLAS: bloque común]. DoD: CP2 y CP3 vivos (misión → capability → verificador →
 certificado → verify-bundle offline) contra compose.
@@ -204,6 +223,12 @@ bloqueado-por-Dylan — deja el runbook listo. (P5/M27) generate-secrets.sh +
 quickstart 5-min que termina en verify-bundle + doc de USO + fix compose up (worker) +
 .env.example completo + install-dev.sh sin efectos en ~/.claude sin preguntar.
 
+EXTENSIONES (#120): P11 (Procrastinate detrás del puerto JobQueue — dep y servicio
+ya pagados; sin cola, interaction:job no tiene dónde correr), P12 (ingesta RAG/KB
+con procedencia DSSE — frontera congelada: recuperado⇒assumptions, jamás
+Attestation; coordina con O), y la ruta fantasma /invoke (gatewayClient postea,
+nginx proxea, nadie la sirve — hallazgo 7: implementarla o matarla, con registro).
+
 [REGLAS: bloque común]. DoD: CP1 (con P-ui) vivo contra compose; un run live con
 proposer que falla muere con run.failed (jamás colgado).
 ```
@@ -234,6 +259,13 @@ distributions/chimera/pyproject.toml con extras curados + Dockerfile --package +
 policy_digest byte-idéntico verificado + smoke 2.5 verde + medir la imagen antes y
 después. (P10/M24) endpoint de archivos + listado para Papers (reusa capability
 ingesta).
+
+EXTENSIONES (#120): P13 (registry de lentes de dominio — la letra YA existe en
+product-model.md §38-45 y el código la contradice: RedSlot hardcodeado, props
+obligatorias por dominio) + hallazgos 4/5/6 del handoff S3: traducir los fixtures
+que emiten capability.job.invoked→submitted junto con la whitelist SSE del cliente
+(censo §8.3), la meta description de index.html («escalera de verificación»), y los
+strings de describe() con «MVP task N»/«checkpoint 5».
 
 [REGLAS: bloque común]. Stack fijado: shadcn base de todo, charts solo vía wrapper,
 TanStack+Zod, sin tRPC, dark-first, ustedeo. DoD: CP1 (con P-rt) y tu parte de CP6
@@ -269,9 +301,9 @@ habilita — registrar aparte.
 
 ```text
 Eres la sesión CONFIANZA-2 de Mejorado (worktree mejorado/confianza-2). Lee PRIMERO
-docs/mejorado/{01-criterio,03-research,04-consolidacion}.md (§4 dominio C, C3-C11),
-knowledge/trust/11 (traducir a clase+AL — el vocabulario rung está MUERTO) y 12,
-docs/contract-freeze-anexo-canonicalizacion.md.
+docs/mejorado/{01-criterio,03-research,04-consolidacion}.md (§4 dominio C, C3-C15),
+knowledge/trust/11 (YA traducida a clase+AL por el saneamiento #103 — léela como
+spec, no la re-traduzcas) y 12, docs/contract-freeze-anexo-canonicalizacion.md.
 
 ALCANCE en orden: (C3/M3/#103) RuleVerifier: puerto RuleBackend con Z3 (rlimit,
 jamás timeout) + RuleSet como datos SMT-LIB versionados con digest + diseño de la
@@ -290,6 +322,15 @@ Rekor v2 posix como perfil opcional + stapled proofs. (C10/M29) OverridePayload
 Pydantic + chequeo override:apply con match EXACTO (estampado) + Stage emite antes
 de aplicar (INV-4) + test AX2. Los bundles YA emitidos siguen verificando 8/8 —
 extensión aditiva SIEMPRE.
+
+EXTENSIONES (#120, tras C10): C12 (registro de guardrail-adapters + convención
+{etapa}.{mecanismo} + HHEM-2.1-Open con AlignScore fallback — GuardrailsStage sigue
+faltando), C13 (Cedar Analysis sobre el SET de políticas + forma de bundle firmado
+OPA — «probar que la regla nueva no es menos estricta»), C14 (puerto
+ExecutionHarness prepare/run/collect/dispose + guarda PASS_TO_PASS — abre EXECUTION
+a dominios no-eléctricos), C15 (evaluador de policy COMPLETO en bundle_check: hoy
+ignora side_effects y NO comprueba min_level — ~15 líneas PERO cambia el veredicto
+de bundles estampados ⇒ ceremonia obligatoria antes de tocar).
 
 [REGLAS: bloque común]. DoD: CP7 vivo (verify-bundle extendido sin perder los 8
 puntos sobre bundles viejos).
@@ -321,6 +362,10 @@ corrida-viva/artefacto-congelado. (V7) QEC/Iceberg al final (tradeoff medido —
 enunciado advierte degradación). (V8/M23b) deliverables= a assemble_bundle + rutas
 nivel proyecto.
 
+EXTENSIÓN (#120, tras V7): V9 (corrector AI-QEM — ML-QEM RF/GBM, dataset CDR,
+control negativo garbage-folding, certificado del corrector en modo amortizado;
+04-consolidacion §7.1).
+
 [REGLAS: bloque común]. DoD: CP6 vivo contra compose (mapa con badges + ablación +
 rvsp con datos del stream real).
 ```
@@ -345,6 +390,16 @@ catálogo de instancias. (O5/M13) manifest genérico envolvente para MCP ajeno
 DispatchStrategy de red + attestation de importación (builder.id mcp://…) —
 qnexus-mcp como primer caso. (O7/M12) SOLO si el umbral definido se cumple — no es
 compromiso.
+
+EXTENSIONES (#120): O11 y O8 van TEMPRANOS — O11 (gate de agnosticismo multi-capa
+engine/api/studio con excepciones declaradas) es el ítem que hace irreversibles los
+demás; O8 (corpus runner forma-Inspect + KPI over-refusal C/I/P/N + marco «tres
+planos») es la forma de medir si el sistema MEJORA. Después: O9 (protocolo de
+convergencia simulada↔real empaquetado como herramienta), O12 (verify_corpus_digests
+a CI + guard nuevo para knowledge/nexus/), O10 (1-pager SEPs — tardío, doble destino
+KB). Y del handoff S3: hallazgo 9 (re-evaluación vencida del ignore de CVE en ci.yml
++ URL rota de ISSUE_TEMPLATE/config.yml) y hallazgo 10 (pin frágil 68af0c1 — solo
+nota pre-flip, no podar esa rama sin traer el doc al árbol).
 
 [REGLAS: bloque común]. DoD: cada pieza demostrada viva (proyector exportando un
 run real a un collector local; un tool MCP externo invocado como capability

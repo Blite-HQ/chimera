@@ -926,3 +926,28 @@ Mejorado, #118), y la licencia del vendorizado quantathon (O2 pre-flip, #113).
 | merge `mejorado/saneamiento`→`mejorado/base` | TODOS (docs)     | ff limpio; gates verdes citados arriba        |
 | headers de estado ×2 + título trust/README   | docs             | cierre del checklist 1 (#109)                 |
 | prompt Contratos en `05-plan-paralelo.md` §4 | Fase 0           | ola-0 marcada HECHA — evita trabajo duplicado |
+
+### #120 — auditoría de reconciliación del plan de Mejorado tras el saneamiento
+
+**Pregunta de Dylan**: ¿hace falta auditar el plan de implementación ahora que la
+docs y archivos de referencia cambiaron? **Respuesta: SÍ, dirigida — ejecutada en
+esta sesión.** Los docs 02/03 son registros fechados (snapshots @ 8d0620f) y NO se
+editan; el plan operativo (04 §4/§7 + prompts de 05) tenía tres desincronizaciones
+reales, todas cerradas:
+
+1. **14 ítems nuevos sin sesión** (§7 de 04-consolidacion, #116/#117) — asignados:
+   G += G8; P-rt += P11, P12; P-ui += P13; C-2 += C12–C15; V += V9; O += O8–O12
+   (O8/O11 TEMPRANOS). Nota de extensiones bajo la tabla de sesiones + bloque
+   EXTENSIONES en cada prompt.
+2. **Ítems ya hechos por S3 citados como pendientes** — prompts corregidos: trust/11
+   ya traducida (C-2 la lee como spec), receta TFIM = completar el stub
+   knowledge/quantum/11 (G), ola-0 ya estaba marcada HECHA (#119).
+3. **Triage de los 12 hallazgos de handoff S3**: 1→Contratos (inmunización V6, con
+   ceremonia); 2→aceptado (letra congelada, navegación por archivo/README);
+   3→ya es V1/M18; 4/5/6→P-ui; 7→P-rt (/invoke: implementar o matar);
+   **8→RESUELTO VERIFICADO** (codename: 0 hits repo-wide, barrido multilínea
+   incluido — el hallazgo era caduco); 9/10→O; 11→aceptado (registro de
+   procedencia); 12→G (enum gurobi).
+
+Verificado además: la tabla de dueños de specs/README está correctamente marcada
+como derogada (#94) con su valor de mapa de fronteras — sin acción. Docs-only.
