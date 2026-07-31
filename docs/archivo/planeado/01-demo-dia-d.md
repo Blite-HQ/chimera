@@ -1,5 +1,13 @@
 # El demo del día D — guion y workflow
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Guion cronometrado del evento que
+> ya terminó. La parte VIVA (replay determinista como config de primera clase, camino
+> dorado) vive en el freeze §15.4/§15.7 y en el ítem P4/M31 del backlog
+> (`docs/mejorado/04-consolidacion.md`). Las referencias desde código
+> (`api/src/chimera_api/runs.py`, `compose.yaml`) se actualizan en el barrido #115 de esta
+> sesión. Usa la env var muerta `MODEL_ROUTER_BACKEND` (la real es `CHIMERA_MODEL_BACKEND`,
+> N12).
+>
 > **Estado: VIGENTE (2026-07-24, v2).** v2 por mandato de Dylan: Chimera GENERA la
 > solución (agente real), no solo la verifica. Instancia del camino dorado congelado
 > (`contract-freeze.md` §15.4). Decisiones en `docs/mvp/decisiones.md` (#58–#61).

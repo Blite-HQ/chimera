@@ -1,5 +1,11 @@
 # Ratificación S-F — Geovanni (infra) — 20-jul
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Proceso de ratificación por dueños
+> abolido por la decisión #94: sus 5 `[COMPLETÁ VOS]` quedaron sin completar para siempre
+> (el proceso murió). Su legado técnico (Ollama Cloud passthrough) quedó registrado en el
+> freeze §15.7 [S-F-real]; el residuo `OLLAMA_API_KEY` de `.env.example` se retira en esta
+> misma sesión S3 (ningún ejecutable lo lee).
+
 Veredicto global: OK CON OBJECIONES (ya hay al menos una objeción — ítem 4; confirmá el resto
 al cerrar 1, 2, 3, 5, 6, 7)
 

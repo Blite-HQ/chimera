@@ -411,3 +411,32 @@ Verificadas con `importlib.metadata` sobre los paquetes instalados del workspace
 - **D20 (confianza = propiedad del proceso):** los parámetros deterministas (workers=1, seed=1, tiempo determinista) + el digest por instancia hacen el corpus **regenerable y comparable byte a byte**, no anecdótico.
 - **Fail-loud (espíritu de trust/10 §1.2):** el generador aborta ante conflicto entre anclas o ante inconsistencia objetivo↔asignación — un corpus publicado con anclas en desacuerdo sería el equivalente al `pass` mentiroso.
 - **Ninguna contradicción con `docs/invariants.md` encontrada en esta consolidación.** **Todo decidido (S-E 2026-07-18; verificado en S-F 2026-07-20) — ratificación final de Sebas, ajustable bajo su criterio:** la receta §1.9 ya corre con el lock del repo y reproduce 6/6 digests, y la enumeración vectorizada de ieee30 ya confirmó ambos óptimos (§1.4) — a Sebas le queda: decidir la forma de identidad (re-estampar `@v1` vs `@v2` vs attestation externa — §1.4), S=100 como definición de instancia, el criterio narrativo del bus 1 del fixture (freeze §15.5), y aportar cr8/cr6 desde los datos del ICE (§1.8 — gate ~25-jul, fallback `uniforme`).
+
+## 6 · Anexo — formulación QUBO y convención de pesos (rescate S3, 2026-07-30, #112)
+
+> Portado de `docs/arquitectura-reconciliada.md` §4 antes de que ese doc pierda
+> tráfico (el rescate que este corpus ya pedía). Fuentes originales: REGRID-QAOA
+> (arXiv 2606.15083) y González Calaza/Hartmann et al. (arXiv 2408.04097).
+
+- **Variables:** `x_i ∈ {0,1}` por bus/nodo (a qué isla pertenece).
+- **Objetivo (corregido S-E al enunciado oficial):** **Max-Cut**
+  `max Σ_(i,j)∈E w_ij·(x_i + x_j − 2·x_i·x_j)` con `w_ij = |P_ij|` — la
+  convención de pesos `power flow → w_ij` es exactamente la convención `flujo`
+  de este corpus (§1.3). La formulación min-corte de REGRID queda como capa de
+  realismo para la conversación ICE, no como core del reto.
+- **Términos de penalización re-scopeados (Δ1, S-E):** balance de tamaño
+  `γ·(Σ_i x_i − |V|/2)²` (con `γ ≈ óptimo estimado`, `chain_strength = γ·len(nodes)`),
+  balance generación-carga por isla, coherencia de generadores
+  (must-link/cannot-link), y conectividad (no cabe limpio en el QUBO →
+  verificación/reparación clásica con DFS). Todo esto vive en la extensión
+  «constraint mixers»/análisis de limitaciones, no en el camino core del claim
+  de optimalidad.
+- **Trucos accionables:** reducción por coherencia antes de construir el QUBO;
+  **truco de pesos** (en IEEE-30, `λ_cut = 2` con `λ_comp = λ_net = 1` mejoró el
+  time-to-solution ~110× sin cambiar la partición óptima); warm-start
+  (Goemans-Williamson / espectral) + CVaR-QAOA + XY-mixer; post-procesamiento
+  M.3 (reparación 2 etapas + descenso monótono + DFS — recupera el cut óptimo en
+  los 6 benchmarks IEEE del paper; ver también `knowledge/quantum/05` §2 y el
+  ítem REGRID del backlog, decisión #116).
+- **Herramientas:** pandapower (topología + power flow → `w_ij`), NetworkX
+  (grafo + DFS), CP-SAT (ground-truth — trust/10).

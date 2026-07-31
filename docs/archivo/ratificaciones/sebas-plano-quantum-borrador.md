@@ -1,5 +1,8 @@
 # Ratificación S-F — Sebas (ciencia/cuántica) — BORRADOR 2026-07-20
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Supersedido por la versión FINAL
+> (`sebas-plano-quantum-final.md`); la marca original de borrador queda debajo como registro.
+>
 > **BORRADOR con análisis técnico pre-cargado.** Los veredictos sugeridos vienen del análisis
 > contra KB2-01…05 y las notas; los ítems ejecutables quedan [PENDIENTE] hasta que los corras
 > vos en el repo — la plantilla es clara: el resultado real (o el error pegado tal cual) ES la

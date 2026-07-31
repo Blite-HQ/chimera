@@ -1,5 +1,10 @@
 # Gap analysis Reto 1 — vanilla espejo vs Chimera (E2 del Plan Espejo)
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Estructurado por la rúbrica del
+> evento ya terminado; depende del repo externo `reto1-vanilla`. Contiene intel operativa
+> de Nexus no estampada en `knowledge/quantum/08` (§2 de este doc) — si alguien la
+> necesita, este archivo es la fuente.
+
 **Fecha:** 2026-07-23 · **Insumo:** repo `reto1-vanilla` (hermano de este repo) — la "mejor
 solución convencional" del Challenge 1, construida deliberadamente SIN Chimera para fijar la
 barra empírica. **Regla del análisis:** solo se lista una brecha si compra puntos de rúbrica o

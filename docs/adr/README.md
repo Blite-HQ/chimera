@@ -8,6 +8,11 @@ An ADR captures a significant architectural decision: the context that forced it
 decision itself, and its consequences (trade-offs accepted, alternatives rejected). Format
 follows Michael Nygard's original template — see [`adr-template.md`](adr-template.md).
 
+**Historical registry:** [`registro-adr-historico.md`](registro-adr-historico.md) resolves
+the IDs `ADR-001`…`ADR-027` cited by code, SQL and docs (rescued from
+`arquitectura-arc42-adrs.md` §12 by the S3 sanitation, decision #112), plus the
+invariant→component map and the `ModelServer.local: boolean` (D19) rescue note.
+
 **Naming:** `ADR-<id>-<slug>.md`, where `<id>` matches the identifier already used in
 [`../invariants.md`](../invariants.md), code comments, and `import-linter` contract names —
 not a separate sequential counter. This keeps one traceable ID across doc, code, and gate.

@@ -1,5 +1,10 @@
 # Consolidación Planeado/Mejorado — convergencia validada y backlog operativo
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Backlog absorbido por
+> `docs/mejorado/04-consolidacion.md`. Nota M9: su enunciado «M9 … + backend Langfuse
+> self-hosted» (línea ~107) quedó supersedido — Langfuse es perfil OPCIONAL del compose
+> (C-11/#106); el proyector OTel es lo que se construye (O3 del backlog vigente).
+>
 > **Estado: VIGENTE (2026-07-24).** Cierra el ciclo de research: valida que diseño ↔
 > investigación convergen, resuelve las divergencias, y deja EL backlog operativo de
 > Planeado y Mejorado. El criterio sigue siendo `00-criterio-niveles.md`; las tablas de

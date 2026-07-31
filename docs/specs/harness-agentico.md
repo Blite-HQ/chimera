@@ -11,7 +11,7 @@ de 8 etapas, fail-closed) · §3 (vocabulario de eventos del run) · §14 (catá
 > Steven** (es su plano, §13/§8): esta spec registra el diseño con causa (regla 3 del
 > freeze) — `engine/src/blite/runtime/loop.py` no se toca hasta su ratificación; si no
 > ratifica, la sesión de implementación A avanza igual sobre este contrato (regla del plan,
-> `docs/planeado/05-plan-paralelo.md`). Cita sin repetir:
+> `docs/archivo/planeado/05-plan-paralelo.md`). Cita sin repetir:
 > `docs/planeado/03-research-estado-del-arte.md` §R1 (research que funda los componentes) ·
 > `docs/specs/confianza-api-sse.md` (formato) · `docs/specs/README.md` §"Specs de costura"
 > (ciclo de vida SPEC→SEED→VERDE, convención de fixtures) · `knowledge/execution/02`

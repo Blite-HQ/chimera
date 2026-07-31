@@ -1,5 +1,9 @@
 # Ratificaciones S-F — índice
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** El proceso de ratificación por
+> dueños que este índice documenta fue abolido por la decisión #94 (gobernanza Dylan+Claude
+> vía ledger). Su valor restante es la trazabilidad del contract-freeze.
+
 Respuestas de los 3 dueños al checklist de `docs/guia-ratificacion.md` sobre el diseño
 congelado (`docs/contract-freeze.md`, CONGELADO 2026-07-18). Cada archivo es el documento
 del dueño **tal cual lo entregó**, sin editar — este índice solo describe, no evalúa ni

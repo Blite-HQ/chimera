@@ -1,5 +1,8 @@
 # Guía de ratificación del diseño congelado — Sebas · Steven · Geovanni
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Proceso «CERRADA (2026-07-21)» de
+> la era de dueños; cede autoridad al freeze, como su propio texto declara.
+>
 > **Estado: CERRADA (2026-07-21 — proceso completado; conservada como registro).** Los tres dueños
 > respondieron dentro de la ventana y sus ratificaciones están auditadas
 > (`docs/research/ratificacion-real-sf.md`) y convergidas contra el contrapeso simulado

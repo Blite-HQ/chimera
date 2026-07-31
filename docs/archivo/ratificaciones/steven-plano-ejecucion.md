@@ -1,5 +1,8 @@
 # Ratificación del plano de ejecución — Steven
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Proceso de ratificación por dueños
+> abolido por la decisión #94. Registro verbatim tal como se entregó.
+>
 > **Estado: RATIFICADO (2026-07-19).** Respuesta al checklist de `guia-ratificacion.md` §4
 > (~75 min de revisión, sección Steven). Cubre `contract-freeze.md` §1/§2/§3/§8/§13/§15.7 y las
 > notas `knowledge/execution/01–09` contra su forma final en el freeze. Formato: veredicto por

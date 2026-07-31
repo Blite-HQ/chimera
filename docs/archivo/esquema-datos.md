@@ -2,7 +2,11 @@
 
 _PostgreSQL · Fase 1_
 
-> **Estado: SUPERSEDIDO (2026-07-18, barrido S-E) por [`esquema-datos-v2.md`](esquema-datos-v2.md)** (que ya incorpora los 3 ajustes que este documento tenía anotados: `global_seq`, REVOKE+trigger, `expected_seq`). Se conserva como registro histórico. La fuente de verdad de la traducción es [`contract-freeze.md`](contract-freeze.md) — no implementar de este documento. Ver [`README.md`](README.md).
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Se conserva la marca SUPERSEDIDO
+> de abajo. Nada rescatable (verificado en el censo §6.3 — todo lo que v1 tiene y v2 no es
+> reversión deliberada).
+>
+> **Estado: SUPERSEDIDO (2026-07-18, barrido S-E) por [`esquema-datos-v2.md`](../esquema-datos-v2.md)** (que ya incorpora los 3 ajustes que este documento tenía anotados: `global_seq`, REVOKE+trigger, `expected_seq`). Se conserva como registro histórico. La fuente de verdad de la traducción es [`contract-freeze.md`](../contract-freeze.md) — no implementar de este documento. Ver [`README.md`](../README.md).
 >
 > **Propósito.** Realiza en PostgreSQL las entidades definidas en _Especificación de Contratos_. El principio rector es Event Sourcing: la tabla `events` es la **única fuente de verdad** (append-only); todo lo demás son proyecciones derivables por replay.
 >

@@ -1,5 +1,12 @@
 # CHIMERA — Convergencia simulada↔real (S-F) · matriz, veredicto y set unificado para S-G · 2026-07-21
 
+> **Estado: HISTÓRICO-acta (2026-07-30, archivado por #112).** Acta append-only por su
+> propia regla — su contenido no se toca. Riesgo registrado: su «autoridad de método» está
+> pinneada a `git show 68af0c1:docs/research/protocolo-auditoria-ratificaciones.md`, un doc
+> que NO existe en el árbol — si esa rama se poda, el pin muere (queda registrado como
+> riesgo; no se resuelve aquí). El protocolo de convergencia que contiene entró al backlog
+> vigente como herramienta por decisión #116 (dominio O).
+>
 > **Qué es esto.** El paso de **comparación y convergencia** del protocolo de auditoría de
 > ratificaciones (§5 "Fase C — la matriz de convergencia" + §7 "Fase E — veredicto"), aplicado a los
 > dos tracks ya cerrados de la ratificación S-F. **Autoridad de método:** la versión original del

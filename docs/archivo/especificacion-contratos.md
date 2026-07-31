@@ -2,7 +2,14 @@
 
 _Firmas TypeScript de puertos y entidades · Fase 1_
 
-> **Estado: SUPERSEDIDO (2026-07-18, barrido S-E) por [`especificacion-contratos-v2.md`](especificacion-contratos-v2.md).** Se conserva como registro histórico de la investigación inicial. La fuente de verdad de la traducción a Python/Pydantic es [`contract-freeze.md`](contract-freeze.md) — no implementar de este documento. Ver [`README.md`](README.md).
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Se conserva la marca SUPERSEDIDO
+> de abajo. Rescate previo al archivo: el concepto `ModelServer.local: boolean` («true
+> preserva autonomía», D19/ADR-026) fue rescatado a `docs/adr/registro-adr-historico.md`
+> antes de archivar; la única cita viva desde código
+> (`engine/src/blite/verification/context.py:4`) se actualiza en el barrido #115 de esta
+> misma sesión.
+>
+> **Estado: SUPERSEDIDO (2026-07-18, barrido S-E) por [`especificacion-contratos-v2.md`](../especificacion-contratos-v2.md).** Se conserva como registro histórico de la investigación inicial. La fuente de verdad de la traducción a Python/Pydantic es [`contract-freeze.md`](../contract-freeze.md) — no implementar de este documento. Ver [`README.md`](../README.md).
 >
 > **Propósito.** Define los contratos (interfaces, tipos) que el código debe satisfacer. Es la realización en TypeScript de las entidades de la base lógica y de los puertos de la arquitectura. Cada contrato está anotado con el invariante que materializa.
 >

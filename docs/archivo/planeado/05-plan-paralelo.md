@@ -1,5 +1,8 @@
 # Plan de ejecución paralela — Planeado (metodología v2)
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Plan de la fase cerrada (#100);
+> su metodología sobrevive destilada en `docs/mejorado/00-playbook-fase.md`.
+>
 > **Estado: VIGENTE (2026-07-24).** La ejecución del backlog de `04-consolidacion.md`.
 > Evolución de la metodología MVP (que funcionó: 5 dominios, gates verdes, decisiones al
 > momento) endurecida con las lecciones aprendidas: los mocks silenciosos, el compose que

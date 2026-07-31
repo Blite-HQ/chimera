@@ -1,5 +1,10 @@
 # Cobertura del diseño existente vs backlog Planeado — validación pre-research
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Insumo consumido; su reemplazo
+> funcional es `docs/mejorado/02-cobertura.md`. Su llamada a arquitectura-reconciliada como
+> «la VIGENTE» (línea ~37) queda superseded por el mapa sección→doc de `docs/README.md`
+> (#108).
+>
 > **Estado: VIGENTE (2026-07-24).** Validación pedida por Dylan antes del research:
 > ¿cuánto del backlog Planeado v2 ya está contemplado en el diseño (freeze, arquitectura,
 > knowledge, ratificaciones)? Ejecutada con tres auditorías paralelas sobre `mvp/base`.

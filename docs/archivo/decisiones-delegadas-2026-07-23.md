@@ -1,5 +1,12 @@
 # Decisiones delegadas — cierre del carril runtime+confianza (2026-07-23)
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Su «Estado: VIGENTE, pendiente de
+> ratificación» era un estado imposible bajo la decisión #94 (ya no hay dueños que
+> ratifiquen). 3 de sus pendientes YA están cerrados en código: ModelServer/replay
+> implementado (`engine/src/blite/protocols/model_server.py`), `ieee14-topology.json`
+> entregado, y el golden path ya no usa fixture fabricado (`challenges/reto1/run_all.py`).
+> El header viejo queda debajo como registro.
+>
 > **Estado: VIGENTE, pendiente de ratificación.** Dylan delegó cerrar el carril en esta
 > sesión tomando las decisiones necesarias sin esperar validación previa. Este documento
 > las registra TODAS para que Steven (ejecución) y Sebas (ciencia) las validen, editen o

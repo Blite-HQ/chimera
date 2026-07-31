@@ -14,14 +14,15 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
   describing how claims in this project are validated (e.g. the assurance calculus —
   classes + AL0–AL4 + criticality — and what "confiable ≠ plausible" means formally).
 
-## Process records — S-F ratification (2026-07-21/22)
+## Process records — moved to the archive (S3, #112)
 
-- [`ratificacion-real-sf.md`](ratificacion-real-sf.md) — audit of the REAL S-F ratifications
-  (Fase A + pre-B stress test + Fase B application + re-stress, verdict GO).
-- [`convergencia-simulada-real-sf.md`](convergencia-simulada-real-sf.md) — the
-  simulated↔real convergence matrix (protocol §5), verdict **CONVERGEN**, unified set +
-  prioritized S-G list + port table. The simulated-track sources live in the read-only
-  exercise branch `ejercicio/sf-ratificacion-simulada`.
+The event-era process records were archived with `git mv` (history preserved) on
+2026-07-30 — see [`../archivo/research/`](../archivo/research/):
+`ratificacion-real-sf.md` (audit of the REAL S-F ratifications),
+`convergencia-simulada-real-sf.md` (simulated↔real convergence matrix, verdict
+CONVERGEN — its protocol entered the live backlog as a tool, decision #116),
+`gap-analysis-reto1.md` and `plan-espejo.md` (challenge-1 event planning).
+What remains here is only what is still live:
 
 ## Design proposals
 

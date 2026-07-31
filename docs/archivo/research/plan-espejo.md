@@ -1,5 +1,10 @@
 # Plan Espejo — Reto 1: solución vanilla → gap analysis → Chimera verificando
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Huérfano absoluto del censo
+> (0 referencias entrantes en todo el repo). Su tracking HECHO/FALTA quedó congelado en un
+> estado falso (E3/E5 marcados «FALTA» están construidos y cerrados) — el tracking NO se
+> corrige, se declara congelado.
+
 **Fecha:** 2026-07-23 · **Rama de trabajo:** `reto1/plan-espejo` · **Dueños:** Dylan + Claude.
 Este doc es el plan aprobado el 23-jul y su registro de progreso, para que el equipo vea qué
 está hecho y qué falta sin reconstruir la sesión.

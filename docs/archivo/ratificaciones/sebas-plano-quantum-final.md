@@ -1,5 +1,8 @@
 # Ratificación S-F — Sebas (ciencia/cuántica) — FINAL — 2026-07-21
 
+> **Estado: HISTÓRICO (2026-07-30, archivado por #112).** Proceso de ratificación por dueños
+> abolido por la decisión #94. Registro verbatim tal como se entregó.
+
 **Veredicto global: OK CON MATICES** — corpus ratificado con 3 anclas independientes y 2 entornos;
 matices convertidos en propuestas concretas; 1 pendiente de trabajo (cr8/cr6, prioritario: §15.3
 lo pone como core del demo en vivo). 3 hallazgos accionables para el equipo.

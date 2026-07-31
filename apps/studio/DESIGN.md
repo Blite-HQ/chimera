@@ -204,7 +204,7 @@ Reglas de consumo:
 
 > **Reobra carril 2 (2026-07-23):** el topbar como única navegación (v3) quedó
 > SUPERSEDIDO — el Studio muestra el PROYECTO, no solo el reto, y la navegación
-> escaló a un shell con sidebar (mockups `docs/design/mockups/studio-layout-v1.html`,
+> escaló a un shell con sidebar (mockups `docs/archivo/mockups/studio-layout-v1.html`,
 > shell B validado por Dylan + equipo).
 
 - **Sidebar** (navegación del proyecto, `w-64`): logomark + wordmark "Chimera
@@ -248,7 +248,7 @@ completa en F2/F7).
   la Table shadcn (repetición Runs/Artifacts).
 
 - **2026-07-23 (carril 2, F1):** shell B (sidebar) elegido por Dylan + equipo sobre
-  los pseudo-mockups de layout (`docs/design/mockups/studio-layout-v1.html`, commit
+  los pseudo-mockups de layout (`docs/archivo/mockups/studio-layout-v1.html`, commit
   b638bec) — supersede el "topbar única navegación" de v3 (§7 reescrito). El Studio
   pasa a IA de proyecto: secciones Runs / Artifacts / Papers / Knowledge y el run como
   página con header persistente + sub-tabs. Referencias de layout: Vercel (lista de

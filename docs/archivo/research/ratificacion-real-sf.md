@@ -1,5 +1,9 @@
 # CHIMERA — Auditoría de las ratificaciones REALES (S-F) · Fase A · 2026-07-21
 
+> **Estado: HISTÓRICO-acta (2026-07-30, archivado por #112).** Auditoría del proceso de
+> ratificación por dueños, abolido por la decisión #94. Mismo pin frágil a `68af0c1` que
+> `convergencia-simulada-real-sf.md` (riesgo registrado: si esa rama se poda, el pin muere).
+>
 > **Qué es esto.** Los Pasos 1→2 del flujo pre-S-G (`protocolo-auditoria-ratificaciones.md` — vive
 > solo en la rama ejercicio; pin: `git show 68af0c1:docs/research/protocolo-auditoria-ratificaciones.md`)
 > aplicados a las ratificaciones **reales** de Sebas/Steven/Geovanni y a los cambios de código que
