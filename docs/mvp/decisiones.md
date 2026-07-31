@@ -968,3 +968,38 @@ calidad INDIVIDUAL la garantiza el modelo de cada sesión según su riesgo:
 
 Estampado en `05-plan-paralelo.md` §4 (tabla + bloques MODO copy-paste que se pegan
 junto al bloque REGLAS al lanzar cada sesión). Docs-only.
+
+## Sesión Contratos Mejorado — Fase 0 (rama `mejorado/contratos`, 2026-07-31)
+
+> Alcance: specs de costura S-A…S-F + fixtures single-origin + tests anti-drift
+> (`05-plan-paralelo.md` §1) + la extensión #120 (inmunización V6). La ola 0 se
+> verificó HECHA en el ledger (#119) — no se repite. Baseline de gates en el
+> worktree citado al abrir: pytest 799 passed / 14 skipped / 5 xpassed / cov
+> 90.92% (mismo total 813 que #119 — 5 tests dependientes de compose pasan a
+> skip fuera del stack) · lint-imports 13 kept/0 broken · ruff 0 · pyright 0 ·
+> studio 221 passed.
+
+### #121 — inmunización V6 del anexo de canonicalización (hallazgo 1 del handoff S3, vía #120)
+
+**Problema (censo §8.5 / hallazgo 1):** la nota de inmunización del anexo
+(`contract-freeze-anexo-canonicalizacion.md` §6, nota final) declara «los
+vectores prueban los bytes, no el vocabulario» pero nombra SOLO V1
+(`stream_id: "run:…"`) y V2 (`"rung": 1`). V6 — vector NORMATIVO de
+`view(claim)` — exhibe un `canonical_statement` de islanding y un
+`scope = {dataset, corpus_digest}`: un implementador de retos no-MaxCut (los
+consumidores de S-C) puede leer esas claves como la FORMA congelada del scope y
+bloquear scopes legítimos (folds de C2, series ED de C3).
+
+**Opciones analizadas (gobernanza #94):** (a) extender la nota de inmunización
+para cubrir V6 explícitamente — aditivo, cero bytes tocados; (b) regenerar V6
+con datos neutrales — RECHAZADA: la propia nota prohíbe regenerar (romperían
+hashes) y el checklist punto 6 ya verifica contra estos bytes; (c) no hacer
+nada — RECHAZADA: el hallazgo es real y S-C lo pisa de inmediato.
+
+**Decisión: (a).** La forma normativa de `view(claim)` es EXACTAMENTE el sobre
+de 2 campos `{canonical_statement, scope}` (§5 del anexo); el CONTENIDO del
+vector — el texto del statement y las claves internas `{dataset, corpus_digest}`
+del scope — es dato arbitrario del gate de hashing: el scope real es el
+ScopeExpr canónico del certificado (freeze §4), cuyas claves dependen del claim.
+Edición aditiva con marca `[MEJORADO #121]` tras la nota existente; los vectores
+y sus hashes quedan intactos byte a byte.

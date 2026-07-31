@@ -162,6 +162,17 @@ SHA-256( b"blite/provenance/v1\n" + C(view(e_1)) + b"\n" + C(view(e_2)) + b"\n" 
 
 **Notas [S-F] sobre los vectores existentes (los vectores NO se regeneran — romperían hashes):** el `stream_id: "run:8f2c1a9b"` de V1 y el `"rung": 1` del payload de V2 son **datos arbitrarios del gate de hashing, no forma normativa** — el `run_id` real no lleva prefijo (freeze §7 [S-F]) y `rung` es vocabulario eliminado (freeze §4). Un payload es un JSON opaco para `C()`: los vectores prueban los bytes, no el vocabulario.
 
+> **[MEJORADO #121 · 2026-07-31] La inmunización cubre también V6 (hallazgo 1
+> del handoff S3; ceremonia registrada en `docs/mvp/decisiones.md` #121):** de
+> V6 lo NORMATIVO es exactamente el sobre de 2 campos
+> `{canonical_statement, scope}` (§5) y el algoritmo `C()`+prefijo
+> `blite/claim/v1`; el CONTENIDO del vector — el texto de islanding del
+> `canonical_statement` y las claves internas `{dataset, corpus_digest}` del
+> `scope` — es **dato arbitrario del gate de hashing, no forma del contrato**.
+> El scope real es el ScopeExpr canónico del certificado (freeze §4) y sus
+> claves dependen del claim (los retos 2/3 traen scopes distintos — S-C). Los
+> bytes y hashes de V6 quedan intactos.
+
 ## 7 · Reconciliación
 
 - **D14/AX2:** este anexo materializa la mitad "recomputable" de la integridad; la cadena de Fase 2 reusa `C()` sin cambio de forma (regla rectora de la semilla).
