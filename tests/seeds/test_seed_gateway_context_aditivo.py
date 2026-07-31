@@ -4,29 +4,15 @@ Contrato: freeze §8, marca [MEJORADO C-5/#106]: el contexto gana
 `run_id`/`step_id`/`domain_id` OPCIONALES (el cruce por invocación de
 capability queda correlacionable con el run/step que lo causó). La
 construcción actual (sin los campos) sigue válida — aditivo puro.
-Implementación = ítem C2/M2 (Fase 1).
-
-Directiva pyright per-file: los campos objetivo no existen por diseño hasta
-Fase 1; la directiva se retira junto con el xfail.
+VERDE desde C2/M2 (Fase 1 Mejorado, sesión C-1): el ctx porta los tres
+campos — el xfail se retiró con la implementación.
 """
-
-# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
-# pyright: reportUnknownMemberType=false
 
 from __future__ import annotations
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 C2/M2: GatewayContext aún no porta run_id/step_id/domain_id "
-            "— freeze §8 marca [MEJORADO C-5/#106]"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 
 def _identity():  # noqa: ANN202 — tipo del engine, import diferido

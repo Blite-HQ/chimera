@@ -53,7 +53,6 @@ congele.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from typing import Any, Literal
 
@@ -62,6 +61,7 @@ from pydantic import BaseModel, ConfigDict
 from blite.content import ContentStore
 from blite.events.rules import validate_run_id
 from blite.events.store import EventStore
+from blite.runtime.digests import digest_via
 from blite.runtime.dispatch import Dispatcher
 from blite.runtime.plan import (
     PlanCreatedPayload,
@@ -78,10 +78,14 @@ EXHAUSTED_ERROR_KIND = "exhausted"
 con `MAX_STEPS_EXCEEDED`: dos guards distintos, dos `error_kind` distintos,
 mismo campo `str` libre (freeze §3)."""
 
+GATEWAY_REJECTION_ERROR_KIND = "GatewayRejection"
+"""Un `Rejection` del cruce inyectado (C2/M2) — el `run.failed` porta además
+`stage`/`reason` como claves ADITIVAS del payload (freeze §3 no cierra el
+dict; la proyección solo lee `error_kind`)."""
+
 _DEFAULT_MAX_TURNS = 30
 
 _RUNTIME_ACTOR = "service:runtime"
-_JSON_MEDIA_TYPE = "application/json"
 
 StepStatus = Literal["pending", "running", "completed", "failed"]
 
@@ -183,6 +187,40 @@ tests, un fake determinista local; jamás litellm/red importado aquí
 (AX3-b: `blite.runtime` no puede importar SDKs de modelo)."""
 
 
+class CrossingRequest(BaseModel):
+    """Lo que el loop le entrega al cruce del gateway — UN cruce por
+    invocación de capability (interpretación §13 registrada en C-5): el par
+    resolve→invoke del turno cruza COMPLETO (resolve es parte de mediation).
+    Datos, no poderes — mismo patrón que `TurnContext`."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    run_id: str
+    step_id: str
+    domain_id: str
+    capability_id: str
+    inputs: dict[str, Any]
+
+
+class CrossingRejected(BaseModel):
+    """El espejo runtime-side del `Rejection` del gateway — qué etapa cortó y
+    por qué. Es un tipo PROPIO del runtime: el contrato `layers` prohíbe
+    importar `blite.gateway` aquí; el adapter del gateway lo construye."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    stage: str
+    reason: str
+
+
+GatewayCrossing = Callable[[CrossingRequest], "dict[str, Any] | CrossingRejected"]
+"""El puerto inyectable del cruce (freeze §8 C-5: el Pipeline se INYECTA en
+`execute_run`, como `proposer`) — el adapter vive en `blite.gateway.crossing`;
+el runtime solo conoce esta firma. Con cruce: los eventos `capability.job.*`
+los emiten las etapas de provenance CON el actor real (AX1); sin cruce: el
+loop los emite él mismo (modo test/embebido, `service:runtime`)."""
+
+
 class _TurnOutcome(BaseModel):
     """Resultado interno de un par resolve→invoke.
 
@@ -197,21 +235,18 @@ class _TurnOutcome(BaseModel):
     es terminal — el CALLER es responsable de journalizar `fail_run`, en el
     orden que le corresponda (pipeline fijo: inmediato; loop agéntico:
     después de `plan.item_updated` — decisión #91/#95-#98, el bug
-    post-terminal confirmado en vivo era el orden inverso)."""
+    post-terminal confirmado en vivo era el orden inverso).
+
+    `failure_detail` (C2/M2): claves ADITIVAS para el payload del
+    `run.failed` — hoy `{stage, reason}` cuando el cruce del gateway
+    rechazó; `None` en todos los demás caminos."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     output_digest: str | None
     error_kind: str | None
     step_id: str | None
-
-
-def _canonical_json(obj: object) -> bytes:
-    """Forma canónica mínima de Fase 1 (claves ordenadas, sin espacios) — la
-    canonicalización RFC 8785 completa llega con la vista canónica del anexo."""
-    return json.dumps(
-        obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode()
+    failure_detail: dict[str, Any] | None = None
 
 
 class _RunRecorder:
@@ -224,11 +259,9 @@ class _RunRecorder:
         self._content = content
         self._run_id = run_id
         self._domain_id = domain_id
-        self._ctx = {"domain_id": domain_id}
 
     def digest_of(self, obj: object) -> str:
-        artifact = self._content.put(_canonical_json(obj), _JSON_MEDIA_TYPE, self._ctx)
-        return artifact.digest
+        return digest_via(self._content, obj, self._domain_id)
 
     def append(
         self, type_: str, payload: dict[str, Any], *, actor_id: str = _RUNTIME_ACTOR
@@ -241,11 +274,15 @@ class _RunRecorder:
             payload=payload,
         )
 
+    @property
+    def domain_id(self) -> str:
+        return self._domain_id
+
     def step_event(self, suffix: str, step: RunStep) -> None:
         self.append(f"run.step.{suffix}", step.model_dump())
 
-    def fail_run(self, error_kind: str) -> None:
-        self.append("run.failed", {"error_kind": error_kind})
+    def fail_run(self, error_kind: str, detail: dict[str, Any] | None = None) -> None:
+        self.append("run.failed", {"error_kind": error_kind, **(detail or {})})
 
 
 def _run_resolve_and_invoke(
@@ -256,6 +293,7 @@ def _run_resolve_and_invoke(
     *,
     capability_id: str,
     inputs: dict[str, Any],
+    crossing: GatewayCrossing | None = None,
 ) -> _TurnOutcome:
     """Corre el par resolve→invoke de UN turno (nota 02 §11) — compartido por
     el pipeline fijo (un solo turno) y el loop agéntico (N turnos, cada uno
@@ -309,6 +347,42 @@ def _run_resolve_and_invoke(
         return _TurnOutcome(
             output_digest=None, error_kind=MAX_STEPS_EXCEEDED, step_id=None
         )
+
+    if crossing is not None:
+        # ── UN cruce por invocación (C2/M2, interpretación §13): el gateway
+        # emite los capability.job.* (provenance, actor real — AX1); el loop
+        # conserva run.step.* y el terminal. Rejection ⇒ el caller journaliza
+        # run.failed {error_kind: GatewayRejection, stage, reason}. ──
+        result = crossing(
+            CrossingRequest(
+                run_id=invoke_step.run_id,
+                step_id=invoke_step.step_id,
+                domain_id=recorder.domain_id,
+                capability_id=capability_id,
+                inputs=inputs,
+            )
+        )
+        if isinstance(result, CrossingRejected):
+            recorder.step_event(
+                "failed", invoke_step.model_copy(update={"status": "failed"})
+            )
+            return _TurnOutcome(
+                output_digest=None,
+                error_kind=GATEWAY_REJECTION_ERROR_KIND,
+                step_id=invoke_step.step_id,
+                failure_detail={"stage": result.stage, "reason": result.reason},
+            )
+        crossed_digest = recorder.digest_of(result)
+        recorder.step_event(
+            "completed",
+            invoke_step.model_copy(
+                update={"status": "completed", "output_digest": crossed_digest}
+            ),
+        )
+        return _TurnOutcome(
+            output_digest=crossed_digest, error_kind=None, step_id=invoke_step.step_id
+        )
+
     job_id = f"{invoke_step.step_id}:job"
     # PR1 (provenance:pre): el submitted existe ANTES de ejecutar — el rastro
     # sobrevive aunque la ejecución explote.
@@ -402,6 +476,7 @@ def execute_run(
     proposer: Proposer | None = None,
     plan_id: str | None = None,
     plan_items: tuple[PlanItem, ...] = (),
+    crossing: GatewayCrossing | None = None,
 ) -> RunRow:
     """Ejecuta el run y retorna la fila proyectada.
 
@@ -471,6 +546,7 @@ def execute_run(
             capability_id=capability_id,
             inputs=inputs,
             post_invoke=post_invoke,
+            crossing=crossing,
         )
 
     return _execute_agentic_loop(
@@ -489,6 +565,7 @@ def execute_run(
         proposer=proposer,
         plan_id=plan_id if plan_id is not None else f"plan-{run_id}",
         plan_items=plan_items,
+        crossing=crossing,
     )
 
 
@@ -504,6 +581,7 @@ def _execute_single_turn(
     capability_id: str,
     inputs: dict[str, Any],
     post_invoke: PostInvokeDelegate | None,
+    crossing: GatewayCrossing | None = None,
 ) -> RunRow:
     """El pipeline fijo de Fase 1 — comportamiento PREVIO a A3, sin cambios:
     el retorno de `post_invoke` se ignora (el run completa tras el único
@@ -516,6 +594,7 @@ def _execute_single_turn(
         dispatcher,
         capability_id=capability_id,
         inputs=inputs,
+        crossing=crossing,
     )
     if outcome.error_kind is not None:
         # `step_id is None` ⇒ `start_step` ya journalizó (max_steps) — no
@@ -523,7 +602,7 @@ def _execute_single_turn(
         # ESTE caller, inmediato (mismo orden observable que antes: nada
         # más se emite entre el error y `run.failed`).
         if outcome.step_id is not None:
-            recorder.fail_run(outcome.error_kind)
+            recorder.fail_run(outcome.error_kind, outcome.failure_detail)
         return projected_row()
 
     # Costura post-invoke, ANTES del terminal: lo que el delegate emita entra
@@ -606,6 +685,7 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
     goal_capability_id: str,
     goal_inputs: dict[str, Any],
     previous_output_digest: str | None,
+    crossing: GatewayCrossing | None = None,
 ) -> _TurnResult:
     """UN turno del loop agéntico plano (§Contrato-1): `proponer → gobernar →
     ejecutar → journalizar → verificar`. El MODELO (vía `proposer`) SOLO
@@ -661,6 +741,7 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
         dispatcher,
         capability_id=proposal.capability_id,
         inputs=proposal.inputs,
+        crossing=crossing,
     )
     if outcome.error_kind is not None:
         # Orden corregido (decisión #91/#95-#98): `plan.item_updated` viaja
@@ -676,7 +757,7 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
             cause=outcome.error_kind,
         )
         if outcome.step_id is not None:
-            recorder.fail_run(outcome.error_kind)
+            recorder.fail_run(outcome.error_kind, outcome.failure_detail)
         return _TurnResult(
             terminal=True,
             done=False,
@@ -739,6 +820,7 @@ def _execute_agentic_loop(  # noqa: PLR0913 — misma superficie que _execute_si
     proposer: Proposer,
     plan_id: str,
     plan_items: tuple[PlanItem, ...],
+    crossing: GatewayCrossing | None = None,
 ) -> RunRow:
     """El driver del loop agéntico plano de A3 — repite `_run_agentic_turn`
     hasta la terminación triple (docs/specs/harness-agentico.md
@@ -785,6 +867,7 @@ def _execute_agentic_loop(  # noqa: PLR0913 — misma superficie que _execute_si
             goal_capability_id=capability_id,
             goal_inputs=inputs,
             previous_output_digest=previous_output_digest,
+            crossing=crossing,
         )
         spent_tokens, spent_cost_usd = result.spent_tokens, result.spent_cost_usd
         previous_output_digest = result.output_digest

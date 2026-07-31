@@ -353,6 +353,18 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "M2/C-5: the gateway is injected into the runtime — runtime never imports gateway"
+type = "layers"
+# freeze §8 (supersede C-5/#106): el Pipeline se INYECTA en execute_run (como
+# proposer). El runtime define el seam (CrossingRequest/CrossingRejected/
+# GatewayCrossing) y el adapter vive en blite.gateway.crossing — la dirección
+# permitida es gateway→runtime (capa alta importa baja), jamás al revés.
+layers = [
+    "blite.gateway",
+    "blite.runtime",
+]
+
+[[tool.importlinter.contracts]]
 name = "SDK-standalone: the SDK never imports the engine or any capability package"
 type = "forbidden"
 # Extraction precondition (plan §1.A): blite_capability is the ONLY shared

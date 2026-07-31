@@ -44,3 +44,17 @@ class GatewayContext(BaseModel):
 
     outputs: dict[str, Any] | None = None
     """Resultado del despacho — lo estampa `mediation`."""
+
+    # ── Supersede ADITIVA C-5/#106 (2026-07-30, freeze §8 — la MISMA
+    # ceremonia que congeló el ctx): el cruce por invocación porta su
+    # procedencia. Opcionales: toda construcción previa sigue validando.
+    run_id: str | None = None
+    """El run bajo el que cruza esta invocación (C-5) — lo estampan las
+    etapas de provenance en los eventos `capability.job.*`."""
+
+    step_id: str | None = None
+    """El step 1:1 con el job de esta invocación (C-5, freeze §3)."""
+
+    domain_id: str | None = None
+    """Dominio de visibilidad del cruce (SO2) — coherente con
+    `identity.domain_id`, vigilado por la etapa `identity`."""
