@@ -1,0 +1,7 @@
+# Vendored third-party course material (decisión #113): se queda como insumo de
+# trabajo próximo, EXCLUIDO del gate de docs — 671 errores que no son nuestros.
+# La licencia/atribución (N11) queda pendiente en O2/M26 antes del flip OSS.
+knowledge/quantum/quantathon/
+
+node_modules/
+**/node_modules/

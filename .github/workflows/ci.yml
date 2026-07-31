@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # mejorado/** añadido por S3 (O1/M25, N8): las ramas de trabajo de la fase
+    # también corren CI en push — antes solo main y los PRs.
+    branches: [main, 'mejorado/**']
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
@@ -69,6 +71,7 @@ jobs:
               - 'docs/**'
               - 'knowledge/**'
               - '.markdownlint.json'
+              - '.markdownlintignore'
               - '.prettierignore'
               - '.github/workflows/ci.yml'
 

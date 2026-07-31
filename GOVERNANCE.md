@@ -1,65 +1,48 @@
 # Governance
 
-Chimera is maintained by a small maintainer council — four people, each owning
-one "plano" (domain), the same split already encoded in
-[`.github/CODEOWNERS`](.github/CODEOWNERS):
+> **Estado: VIGENTE (2026-07-30).** Rewritten by the S3 sanitation to reflect
+> the real governance since decision #94 (2026-07-29). The previous version —
+> a four-person maintainer council with per-plano ownership — is historical:
+> see git history (pre-2026-07-30) and `docs/archivo/ratificaciones/`.
 
-| Plano                                                                                                     | Maintainer |
-| --------------------------------------------------------------------------------------------------------- | ---------- |
-| Execution (`engine/src/blite/{gateway,runtime,serving}/`, `apps/studio/`)                                 | Steven     |
-| Trust (`engine/src/blite/{verification,events,certificate,identity,protocols,guardrails,authz}/`, `sdk/`) | Dylan      |
-| Quantum (`capabilities/quantum/`)                                                                         | Sebastián  |
-| Repo setup & CI (`.github/`, `scripts/`)                                                                  | Geovanni   |
+## How decisions get made (#94)
 
-This mirrors what CNCF calls a maintainer council: a small group of equal
-maintainers, no single decision-maker, decisions made by consensus rather
-than a vote.
+There are no per-person domain owners and no "pending ratification" states.
+Every decision — technical, architectural, or documentary — is made by
+**analysis of options against the architecture, the context, and the actual
+state of the system**, and is **recorded in the append-only decision ledger**
+([`docs/mvp/decisiones.md`](docs/mvp/decisiones.md)). The ledger is the single
+authority trail: a decision exists when it is written there, and it is reversed
+only by a later entry that supersedes it **with cause**.
 
-## How decisions get made
+Two consequences, both deliberate:
 
-**Ownership is advisory, not a gate.** A plano's maintainer is
-auto-requested for review on any PR touching their area (via CODEOWNERS) and
-is the preferred reviewer — but their approval is never _required_ to merge.
-The reason is deliberate, not an oversight: during the hackathon, if the
-owner of a domain is unavailable, the team cannot afford to be blocked
-waiting for them. Concretely, this means:
+- **No person is a gate.** Nothing waits for a specific individual's approval;
+  the analysis and the record are the gate. (`PENDIENTE-<persona>` marks are
+  dead vocabulary.)
+- **No deadlines.** Since the hackathon ended, depth beats speed
+  (`docs/mejorado/00-playbook-fase.md`).
 
-- **Normal changes** — one approving review from **any** maintainer is
-  enough to merge, whether or not they own the touched plano.
-- **Changes to the constitution** (`docs/invariants.md`) — require consensus
-  from all four maintainers. This is the one deliberate exception:
-  `docs/invariants.md` defines Chimera's frozen logical invariants (the
-  contract that `import-linter` and `dependency-cruiser` mechanically
-  enforce), and changing it changes what every other contribution is judged
-  against.
+## Frozen surfaces
 
-This is a Node.js-style consensus-seeking model ("does anyone object?"), not
-a BDFL or a formal voting body — appropriate for a team this size. See
-[`CONTRIBUTING.md`](CONTRIBUTING.md#5-review) for exactly which of this is
-enforced by GitHub today versus convention, and for the plan to make review
-and branch protection mechanically enforced once the repo is public.
+The constitution — [`docs/invariants.md`](docs/invariants.md),
+[`docs/base-logica-formal.md`](docs/base-logica-formal.md),
+[`docs/contract-freeze.md`](docs/contract-freeze.md) and its annex — changes
+only through an explicit supersede ceremony recorded in the ledger. Nothing
+stamped (digests, fixtures, canonicalization vectors) is ever re-digested.
+Mechanical enforcement: import-linter contracts, invariant tests, and the
+enforced-anchor check (`tests/invariants/test_enforced_anchors.py`).
 
-## Endurecimiento gradual — how this tightens later
+## Review
 
-Advisory-only ownership is the right shape for four trusted maintainers
-moving fast. It is **not** the end state. As the project gains external
-contributors, the plan is:
+Every change goes through the gates (pytest, lint-imports, ruff, pyright,
+Studio tests/lint, docs lint) before merge — see
+[`CONTRIBUTING.md`](CONTRIBUTING.md). `.github/CODEOWNERS` holds a single
+catch-all so review requests route somewhere; it does not encode ownership.
 
-1. Add a **backup maintainer** per plano in CODEOWNERS, so "the owner" is
-   never a single person.
-2. Only then turn on GitHub's "require review from Code Owners" rule — with
-   two people per plano, that rule stops being a single-point-of-block.
-3. Introduce a lightweight contributor ladder (contributor → reviewer →
-   maintainer), in the spirit of Kubernetes' OWNERS model, once there's a
-   real pipeline of external contributions to grow into it.
+## When the repo goes public
 
-None of this is needed yet, and it is intentionally not built ahead of time
-(YAGNI) — but the CODEOWNERS structure and this document are written so the
-tightening is additive, not a rewrite.
-
-## Scope
-
-This document governs decision-making and review policy for the Chimera
-repository. It does not replace [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
-(behavioral expectations) or [`SECURITY.md`](SECURITY.md) (vulnerability
-disclosure) — see those files for those topics.
+Branch protection, required status checks, and external-contributor policy
+(DCO bot) are part of the pre-flip OSS checklist (backlog item O2/M26) — they
+are declared here so the flip has a governance target, not because they are
+active today.

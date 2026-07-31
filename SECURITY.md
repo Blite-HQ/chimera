@@ -25,7 +25,8 @@ and infrastructure not committed to this repo (e.g. cloud deployment config).
 ## What We Check For
 
 CI enforces secret scanning (gitleaks), dependency auditing (pip-audit,
-`pnpm audit`), and Python SAST (Ruff's `S` rule set). See
+`pnpm audit`), Python SAST (Ruff's `S` rule set), and Semgrep (custom
+base-lógica rules + `p/python` + `p/secrets` registry packs). See
 [`docs/invariants.md`](docs/invariants.md) for the architectural invariants
 (e.g. egress governed only by authorization, verifier is never a model) that
 exist specifically to contain the blast radius of a compromised component or

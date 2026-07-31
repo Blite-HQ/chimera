@@ -2,6 +2,16 @@
 pnpm-lock.yaml
 uv.lock
 
+# Vendored third-party course material (decisión #113) — excluido del gate de
+# docs; se refina como insumo, no se formatea. Licencia N11 pendiente (O2/M26).
+knowledge/quantum/quantathon/
+
+# Datos estampados con digest — reformatearlos rompería su identidad (línea
+# roja: jamás re-digestar). El productor es el dueño de los bytes, no prettier.
+knowledge/islanding/raw/
+apps/studio/src/fixtures/ice/
+capabilities/ingesta/tests/fixtures/
+
 # Fixtures de costura — un solo origen (docs/specs/README.md).
 # Los generan `scripts/gen-contract-fixtures-harness.py`, `gen-informe-fixtures.py`
 # y `gen-fixtures-ingesta.py` con json.dumps(indent=2, sort_keys=True), y los tests

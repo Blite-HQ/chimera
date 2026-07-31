@@ -82,7 +82,7 @@ If a hook rejects your commit, **fix the code/message, don't bypass it** — see
 **`pre-push`** runs a lightweight architecture check before your commits leave your machine
 (the full gate runs in CI, this is a fast local approximation):
 
-1. `uv run lint-imports` — the 12 architecture contracts (ADR-008 ×2, S-G ×2 — "api
+1. `uv run lint-imports` — the 13 architecture contracts (ADR-008 ×3, S-G ×2 — "api
    consumes engine ports, never capability packages" / "engine and capabilities never
    import the api" —, INV-2, INV-3, AX3, AX3-b — "model client SDKs are imported only by
    the protocols adapter (ModelServer)" —, Inv-E, INV-5, INV-6, SDK-standalone).
@@ -111,17 +111,13 @@ Fill out the PR template's invariant checklist (`.github/pull_request_template.m
 
 ### 5. Review
 
-See [`GOVERNANCE.md`](GOVERNANCE.md) for the full policy and why it's shaped this way — in
-short (and per the "enforced vs. convention" table below, still convention today): 1
-approving review from **any** maintainer is enough to merge, and if your change touches a
-path listed in `.github/CODEOWNERS` that owner is auto-requested as the preferred reviewer,
-but their approval is never a hard requirement — ownership is advisory on purpose, so the
-team is never blocked by one person's availability. Current owners by plano: **Steven**
-(`engine/src/blite/{gateway,runtime,serving}/`, `apps/studio/`), **Dylan**
-(`engine/src/blite/{verification,events,certificate,identity,protocols,
-guardrails,authz}/`, `sdk/`), **Sebastián** (`capabilities/quantum/`), **Geovanni**
-(`.github/`, `scripts/`). `docs/invariants.md` is the one exception — changes there need
-consensus from all four.
+See [`GOVERNANCE.md`](GOVERNANCE.md) for the full policy — **rewritten 2026-07-30 per
+decision #94**: there are no per-person plano owners and no person is a review gate.
+Decisions are made by analysis against architecture/context/system state and recorded in
+the append-only ledger (`docs/mvp/decisiones.md`); the gates (tests, lint-imports, docs
+lint) are the mechanical review. `.github/CODEOWNERS` is a single catch-all for routing,
+not an ownership map. The old per-plano split lives in git history and
+`docs/archivo/ratificaciones/`.
 
 **Known gap, left as-is on purpose:** CODEOWNERS has no catch-all rule. `knowledge/`, most
 of `docs/`, and most root configs have no required reviewer today (the enforcement files
@@ -141,11 +137,11 @@ Ruleset. The branch auto-deletes on merge (`delete_branch_on_merge=true`).
   landed on `main` came from a merged PR; if not, it leaves a visible warning (Actions
   annotation + step summary). Pure traceability today, since nothing yet _prevents_ a direct
   push.
-- **`promote-demo.yml`** — runs the `dev` job automatically, then the `demo` job (`needs:
-dev`). Both `dev` and `demo` are real GitHub Environments, but their steps are
-  **placeholders** (`TODO` echoes) — there is no real deploy target yet. `knowledge/infra/03`
-  designs the demo infrastructure (Dockerfiles, air-gapped compose, Fargate) but is still
-  pending ratification; don't wire up a real deploy before that note is ratified.
+- **`promote-demo.yml`** — **removed by the S3 sanitation (2026-07-30, #112)**: it was a
+  placeholder (`TODO` echoes) for the hackathon's "promote to demo" concept, an event that
+  already happened. It lives in git history; if a real deploy pipeline returns it will be
+  designed fresh (deployment reference: `docs/deployment.md`, infra design:
+  `knowledge/infra/03`).
 
 ## Promotion to demo (interim convention)
 
@@ -177,10 +173,10 @@ calling this out.
 - Sign off your commits (`git commit -s`) — see the DCO note in step 2.
 - Keep branches short-lived and rebase/merge `main` in often if a branch lives more than a
   day or two.
-- Ask the relevant plano owner (CODEOWNERS) for review when touching their area, even
-  though nothing technically requires it yet.
-- Mark unresolved gaps explicitly as `PENDIENTE` in `knowledge/` notes (established
-  convention) instead of silently guessing.
+- Record decisions in the ledger (`docs/mvp/decisiones.md`) instead of waiting on any
+  person's approval (#94) — the record is the gate.
+- Mark unresolved gaps explicitly as open items in `knowledge/` notes or the backlog
+  (never `PENDIENTE-<persona>` — dead vocabulary since #94) instead of silently guessing.
 - Treat `docs/invariants.md` as frozen: if `lint-imports` or an invariant test fails, **fix
   the code, not the test.**
 
@@ -197,8 +193,9 @@ calling this out.
   fail (capabilities stay generic; scenario knowledge belongs in `knowledge/`).
 - Don't merge a Dependabot PR without at least skimming the diff — `dependabot.yml` is
   explicit that these are advisory, no-auto-merge by design.
-- Don't wire up real deploy logic in `promote-demo.yml` before `knowledge/infra/03` is
-  ratified — the placeholders are intentional.
+- Don't add deploy workflows without a real deploy target — the hackathon-era
+  `promote-demo.yml` placeholder was removed (#112); `docs/deployment.md` is the Fase-2
+  reference when one exists.
 
 ## Dependency updates (Dependabot)
 

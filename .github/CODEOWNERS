@@ -1,43 +1,14 @@
-# Chimera CODEOWNERS — maps repo paths to GitHub handles.
-# Each PR touching a section requires approval from the owner(s).
+# Chimera CODEOWNERS — rewritten by the S3 sanitation (2026-07-30) to match the
+# real governance: decision #94 abolished per-person plano ownership. Decisions
+# are made by analysis against architecture/context/system state and recorded in
+# the append-only ledger (docs/mvp/decisiones.md); no person is a review gate.
 #
-# Owners:
-#   Dylan     → @dchavesh
-#   Steven    → @Hilvvy
-#   Sebastián → @sebastianZO6
-#   Geovanni  → @Bozzita
+# This file is intentionally minimal: a single catch-all so review requests
+# still route somewhere, without resurrecting per-path owners. The old per-plano
+# mapping lives in git history (pre-2026-07-30) and in
+# docs/archivo/ratificaciones/ as historical record.
+#
+# When the repo goes public and external PRs exist, revisit together with the
+# branch-protection plan in GOVERNANCE.md (O2/M26 pre-flip checklist).
 
-# Plano de ejecución (Steven + Dylan)
-/engine/src/blite/gateway/          @Hilvvy
-/engine/src/blite/runtime/          @Hilvvy
-/engine/src/blite/serving/          @Hilvvy
-/apps/studio/                       @Hilvvy
-
-# Plano de confianza (Dylan)
-/engine/src/blite/verification/    @dchavesh
-/engine/src/blite/events/          @dchavesh
-/engine/src/blite/certificate/     @dchavesh
-/engine/src/blite/identity/        @dchavesh
-/engine/src/blite/protocols/       @dchavesh
-/engine/src/blite/guardrails/      @dchavesh
-/engine/src/blite/authz/           @dchavesh
-/sdk/                              @dchavesh
-
-# Quantum capabilities (Sebastián)
-/capabilities/quantum/              @sebastianZO6
-
-# Repo setup & CI (Geovanni)
-/.github/                           @Bozzita
-/scripts/                           @Bozzita
-
-# Gates & enforcement — los archivos que HACEN CUMPLIR la constitución.
-# Cambiarlos altera el enforcement: requiere plano de confianza + repo setup.
-/pyproject.toml                     @dchavesh @Bozzita
-/semgrep.yml                        @dchavesh @Bozzita
-/.husky/                            @Bozzita
-/package.json                       @Bozzita
-/tests/                             @dchavesh
-/tools/claude/                      @dchavesh
-
-# Constitution — requires all four owners
-/docs/invariants.md                 @dchavesh @Hilvvy @sebastianZO6 @Bozzita
+* @dchavesh

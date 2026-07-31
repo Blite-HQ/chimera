@@ -1,7 +1,7 @@
-# Auto-labels PRs by plano — mirrors .github/CODEOWNERS 1:1 so the label
-# always matches who gets auto-requested for review. Advisory only: labels
-# make ownership visible, they don't gate anything (see CONTRIBUTING.md
-# "enforced vs. convention").
+# Auto-labels PRs by area. Advisory only: labels make the touched area visible,
+# they don't gate anything and they don't encode ownership — per-person plano
+# owners died with decision #94 (S3, 2026-07-30); CODEOWNERS is now a single
+# catch-all. The area globs below remain useful as-is.
 
 verification:
   - changed-files:
