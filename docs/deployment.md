@@ -1,9 +1,10 @@
 # Chimera — Deployment: BYOC y Managed en AWS
 
-> **Estado: REFERENCIA FASE 2 — no se construye este mes.** El código actual solo debe **no
-> impedir** este diseño (data plane autocontenido, config externa, imágenes Docker por
-> deployable). Movido aquí desde el plan maestro del proyecto (antes su §7) durante la
-> consolidación documental de semana 1 — ver [`README.md`](README.md) para el índice de
+> **Estado: VIGENTE (2026-07-30) — referencia Fase 2, no se construye en esta fase.** El
+> código actual solo debe **no impedir** este diseño (data plane autocontenido, config
+> externa, imágenes Docker por deployable) — su única exigencia presente (imagen por
+> deployable) se cumple. Movido aquí desde el plan maestro del proyecto (antes su §7) durante
+> la consolidación documental de semana 1 — ver [`README.md`](README.md) para el índice de
 > autoridad.
 
 ## El modelo mental: dos planos (y cómo lo hacen los referentes)

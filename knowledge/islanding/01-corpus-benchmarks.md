@@ -1,7 +1,7 @@
 # Nota 01 — Corpus de benchmarks con óptimos conocidos (IEEE 9/14/30)
 
 **Ítem del plan (§4, Sebas):** el entregable central que faltó de la investigación del plano cuántico — valores óptimos concretos de IEEE 9/14/30 (+ la red CR estilizada), congelados como vectores con el mismo rol que G1–G6 de trust/10 (ver `knowledge/quantum/README.md`, pendiente №1).
-**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y ratificación de Sebas.
+**Fecha:** 2026-07-14 · **Estado:** **VIGENTE-CON-DRIFT (2026-07-30, #109).** El corpus creció más allá de lo que esta nota describe: hoy hay TRES convenciones de peso (`uniforme`/`flujo`/`voltaje`) y las instancias cr6/cr8/ice ya están en `corpus/` — ver las notas de corrección fechadas en §1.3 y §1.8; un sello de verificación de §1.8 quedó declarado **ERRÓNEO** (sin borrarlo, regla #109). Estado original (2026-07-14): investigación de consolidación (Dylan) — pendiente validación y ratificación de Sebas (era-de-dueños, derogada por #94).
 **Fuentes:** `knowledge/quantum/02-recetario-formulacion-por-reto.md` §1 (convención Q simétrica/maximización, Max-Cut, canonicalización x₀=0) · `knowledge/trust/10-spec-exact-solver-verifier-cpsat.md` §1.4–1.6 (determinismo, escalado entero, formulación Max-Cut de referencia, vectores G1–G6) · `knowledge/trust/17-evaluacion-inspect-tres-planos.md` (corpus runner rung 3) · `pandapower.networks` (case9/case14/case30) verificado en vivo 2026-07-14 · `docs/arquitectura-reconciliada.md` (benchmarks IEEE + red CR) · `knowledge/quantum/00-kb-fuentes.md` §1.5 (IEEE vía pandapower = mismo benchmark que REGRID-QAOA).
 
 ---
@@ -22,6 +22,12 @@
 - **Conexidad verificada** con networkx (`nx.is_connected`) antes de publicar: los tres grafos son conexos y sin nodos aislados.
 
 ### 1.3 Las DOS convenciones de peso
+
+> **[Nota de corrección 2026-07-30, #109]:** esta sección dice «las DOS convenciones» porque el
+> 2026-07-14 solo existían `uniforme` y `flujo`. Hoy el corpus tiene **TRES** convenciones de
+> peso: `uniforme` / `flujo` / `voltaje` — la convención `voltaje` es la de las instancias de la
+> red CR e ICE (`cr6/cr8/ice-voltaje.json`, incorporadas por decisión #75; C-10 estampa
+> `-voltaje@v1`). La tabla de abajo queda como registro de las dos originales.
 
 | Convención | Peso de la rama                                                                  | `escala` | Racional                                                                                                                                                                                                 |
 | ---------- | -------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -124,6 +130,15 @@ CR): el criterio oficial de suficiencia (p=1 con r ≥ 0.6) se define sobre una 
 nodos y hoy el corpus no tiene ninguna. **[Verificado 2026-07-24, post-MVP: cr8/cr6 (datos ICE)
 SIGUE AUSENTE del repo — `corpus/` solo contiene ieee{6,9,14,30}; la instancia de 6 nodos quedó
 cubierta por `ieee6` (2026-07-23, D5), no por una reducción de la red CR.]**
+
+> **[Nota de corrección 2026-07-30, #109]:** el sello «[Verificado 2026-07-24, post-MVP: cr8/cr6
+> (datos ICE) SIGUE AUSENTE del repo …]» de arriba es **ERRÓNEO** y queda declarado como tal sin
+> borrarlo (regla #109): `corpus/cr8-uniforme.json` **existe** — datos del espejo `reto1-vanilla`
+> obtenidos el 2026-07-23, incorporado al corpus por decisión #75 (2026-07-24) con su digest
+> interno preservado verbatim (`66bb6c5a…`) — junto con `cr6-{uniforme,voltaje}.json`,
+> `cr8-voltaje.json` y `ice-{uniforme,voltaje}.json`. Además, el id `cr8-flujo.json` del párrafo
+> anterior está muerto: los IDs reales de la red CR son `-uniforme`/`-voltaje` (C-10 estampa
+> `-voltaje@v1`); la convención `flujo` no existe para cr6/cr8.
 
 **[S-F 2026-07-20] Gate de fecha y fallback (E1 — el cumplimiento del "6–12 nodos, red real"
 del enunciado pende SOLO de cr8/cr6):** fecha límite **~25-jul** con fallback declarado. Los

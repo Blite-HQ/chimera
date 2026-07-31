@@ -1,7 +1,7 @@
 # Nota 14 — Integración de terceros: evaluación corta de Nango y Composio, descarte del mes, semilla del token vault de Fase 2
 
 **Ítem del backlog (ficha G3):** sub-área de mi fila sin nota — conectores con auth de terceros → evaluación corta → descarte formal + semilla Fase 2 (third-party token vault, conecta con nota 08).
-**Fecha:** 2026-07-07 · **Estado:** insumo para el contract freeze (no cambia contrato este mes)
+**Fecha:** 2026-07-07 · **Estado:** **VIGENTE (2026-07-30).** Escrita como «insumo para el contract freeze (no cambia contrato este mes)» — el freeze se materializó el 2026-07-18; el descarte formal de Nango/Composio y la semilla del token vault de Fase 2 siguen vigentes.
 **Fuentes:** Nango (`nango.dev`, `github.com/NangoHQ/nango` — LICENSE, docs de seguridad/self-hosting, issues #900/#5536) y Composio (`composio.dev`, `github.com/ComposioHQ/composio` — LICENSE, docs de connected accounts, issue #291, discussion #1037, post-mortem del incidente de seguridad de mayo 2026) verificados en vivo 2026-07-07 · nota 08 (identidad lite)
 
 ---

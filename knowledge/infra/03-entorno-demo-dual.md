@@ -1,7 +1,7 @@
 # Nota 03 — Entorno de demo dual: compose air-gapped y Fargate, mismo artefacto
 
 **Ítem del plan (§4, Geovanni):** los entregables del demo que la nota 01 dejó sin cubrir (pendiente #2 del README de infra): Dockerfiles por deployable, `docker-compose.yml` de referencia, ruta ECR/Fargate/ALB con el límite sin-GPU verificado, y las fechas de dry-run. **Todo lo de esta nota es DISEÑO documentado — no existe (ni debe crearse aún) `infra/` real, Dockerfiles reales ni compose real en el repo.** _[superado 2026-07-24: el compose y los Dockerfiles ya existen — ver Estado]_
-**Fecha:** 2026-07-14 · **Estado:** **PARCIALMENTE EJECUTADA (2026-07-24)** — existen `compose.yaml` real (postgres+api+worker+studio, secretos `*_FILE`) y `docker/{api,studio}.Dockerfile`; es un subconjunto del diseño §1.3 (sin `ollama` [ya archivado por el addendum], sin red `internal: true`, sin volumen `replay_fixtures`, sin migración one-shot I6, sin `MODEL_ROUTER_BACKEND=replay`). La ruta Fargate/ECR sigue siendo diseño.
+**Fecha:** 2026-07-14 · **Estado:** **PARCIALMENTE EJECUTADA (2026-07-24)** — existen `compose.yaml` real (postgres+api+worker+studio, secretos `*_FILE`) y `docker/{api,studio}.Dockerfile`; es un subconjunto del diseño §1.3 (sin `ollama` [ya archivado por el addendum], sin red `internal: true`, sin volumen `replay_fixtures`, sin migración one-shot I6, sin `MODEL_ROUTER_BACKEND=replay`). La ruta Fargate/ECR sigue siendo diseño. **Marca de saneamiento (2026-07-30, #109) — split por secciones:** el diseño técnico (Dockerfiles multi-stage, compose dual, secretos `*_FILE`, ruta Fargate) sigue **VIGENTE** como diseño; §1.5 (calendario de dry-runs y «~sáb 1 ago — evento») es **HISTÓRICO** — el evento terminó.
 **Fuentes:** verificado en vivo 2026-07-14: guía oficial de uv para Docker (docs.astral.sh — multi-stage, cache mounts, `--no-install-project`, `UV_COMPILE_BYTECODE`) · AWS ECS Developer Guide, _Task definition differences for Fargate_ (tabla CPU/memoria válida; lista de parámetros no válidos que **incluye `gpu`**) y _Task definitions for GPU workloads_ (GPU solo con container instances EC2) · Docker Hub `ollama/ollama` (imagen, puerto 11434, volumen `/root/.ollama`) · vite.dev _Static Deploy_ (build estático a `dist/`) · repos `astral-sh/uv` (MIT/Apache-2.0 dual) y `ollama/ollama` (MIT) · precio Fargate us-east-1 vía fuentes secundarias contrastadas (la página oficial no expone la tabla al fetch — número marcado como aproximado). Internas: `docs/deployment.md` (Modo A/B/C), `docs/invariants.md`, `knowledge/infra/01` y `02`, `knowledge/execution/05` (frontera del model router).
 
 ---
@@ -225,6 +225,10 @@ Arquitectura x86_64 para el mes (ARM64/Graviton es ~20% más barato pero exige b
 Orden de magnitud total: **decenas de dólares para la ventana del demo** — no es una variable de decisión. Los rubros marcados se confirman con la calculadora oficial al provisionar (chequeo declarado).
 
 ### 1.5 Calendario de dry-runs — **PROPUESTA a ratificar por Geovanni y el equipo**
+
+> **HISTÓRICO (2026-07-30, #109):** el evento terminó — todo este calendario (dry-runs, video de
+> respaldo, «~sáb 1 ago — evento») es logística de la hackathon ya ocurrida y se conserva solo
+> como registro. La «ratificación de Geovanni» del título es era-de-dueños, derogada por #94.
 
 Alineada al roadmap (feature freeze ~23 jul, semana 4; evento ~1 ago). Las fechas son propuesta de Dylan en esta consolidación, **no compromiso acordado**:
 

@@ -13,6 +13,9 @@
 > Convención de veredictos: **CONVERGE** (sin acción) · **SUPERSEDE** (el nuevo reemplaza, con
 > mapa) · **GANA-FREEZE** (lo vigente gana; el doc nuevo no vio esa investigación) ·
 > **ADOPTAR** (pieza nueva sin contraparte) · **AJUSTAR** (nota puntual a corregir).
+> **[S3 2026-07-30]** Función residual confirmada por el censo S1: registro ejecutado, sin
+> acciones pendientes; su §2.1 sigue vivo como EL mapa de traducción escalera→clases
+> (`rung`→clase de verificador + AL), citado por la decisión #103.
 
 ---
 

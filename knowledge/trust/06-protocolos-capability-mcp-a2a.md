@@ -1,7 +1,7 @@
 # Nota 06 — Capability como abstracción universal; MCP/A2A/AsyncAPI como adapters + el contrato del job asíncrono
 
 **Ítem del plan (§4 Dylan):** MCP (spec + python-sdk) + A2A solo lectura + el ajuste de `CapabilityManifest` (§1.C del plan maestro)
-**Fecha:** 2026-07-02 · **Estado:** insumo para el contract freeze del viernes
+**Fecha:** 2026-07-02 · **Estado:** **VIGENTE (2026-07-30).** Era «insumo para el contract freeze del viernes» — el freeze se materializó el 2026-07-18, ya no es cosa futura; el meta-hallazgo (capability como abstracción universal, ADR-013) y el contrato del job asíncrono siguen vigentes.
 **Fuentes:** Revisión de arquitectura de referencia de Chimera (ADR-013, el meta-hallazgo) · MCP spec 2025-11-25 + python-sdk verificados en vivo 2026-07-02 · A2A verificado en vivo · plan maestro §1.C
 
 ---

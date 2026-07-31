@@ -3,7 +3,7 @@
 Notas de la investigación de semana 1 (2026-07-02/03) + sesiones de la Fase 1 (07-07→). Cada nota tiene los 4 campos obligatorios
 (patrón/mecanismo · decisión `integrar|portar|inspirar|descartar` · licencia · impacto en contrato)
 y cierra con su reconciliación contra `docs/invariants.md` (la base lógica NO está bajo revisión).
-La consolidación de todas: **`docs/contract-freeze.md`** (DRAFT para el freeze del viernes).
+La consolidación de todas: **`docs/contract-freeze.md`** (CONGELADO desde el 2026-07-18 — ya no es DRAFT).
 
 ## Índice
 

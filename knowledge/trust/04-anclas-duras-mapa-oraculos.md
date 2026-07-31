@@ -1,7 +1,7 @@
 # Nota 04 — El mapa de oráculos: anclas duras, el hueco de AWS, y la frontera guardrail ≠ verificación
 
 **Ítem del plan (§4 Dylan):** Métodos de la escalera (parte 2: las anclas concretas y el paisaje competitivo)
-**Fecha:** 2026-07-02 · **Estado:** insumo para el contract freeze del viernes
+**Fecha:** 2026-07-02 · **Estado:** **SUPERSEDIDA-POR-contract-freeze + trust/16 (2026-07-30).** Era «insumo para el contract freeze del viernes» — el freeze se materializó el 2026-07-18. Su `GuardrailSignal{name, rung}` nunca se materializó: lo real es `Signal{kind}` sin `rung` (`engine/src/blite/guardrails/signal.py:22-28`). Sucesores: el contract freeze (`docs/contract-freeze.md`) y la convención `{etapa}.{mecanismo}` migrada a la nota 16 (`Signal.kind`).
 **Fuentes:** Mapa de Repositorios Parte V · compass deep-dive de verificación (AWS AR/ZELKOVA, Weaver, white-box) · compass panorama competitivo · docs AWS verificadas en vivo 2026-07-02 · licencias verificadas en vivo 2026-07-02
 
 ---

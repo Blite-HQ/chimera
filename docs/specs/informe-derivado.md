@@ -24,6 +24,10 @@ Módulo Fase 1 (Dylan, no existe hoy): `capabilities/report/src/blite_cap_report
 ambos importan `DerivationProvenance` de `engine/src/blite/verification/provenance.py`
 (capability-ingesta.md) sin redefinirla.
 
+**[S3 2026-07-30]** Existe (D-N7): `capabilities/report/src/blite_cap_report/` está en el árbol
+(con su gate propio `ADR-008-report` en import-linter, `pyproject.toml:194`) — el «no existe
+hoy» de arriba quedó histórico.
+
 Capability `blite.report.render_figure` (`side_effects: pure`, `interaction: request_response` —
 CapabilityManifest v2, misma discrepancia con `sdk/manifest.py` flaggeada en `capability-ingesta.md`, no
 se repite aquí): `inputs = [{ref: "conclusion:<claim_digest>", digest: <digest de la instancia
@@ -51,7 +55,7 @@ entre corridas con el mismo input por defecto.
 - `recipe.inputs` del PDF = `[{ref: "template", digest: <digest de la plantilla Typst>}] +
 [{ref: "figure:<n>", digest: <digest de cada figura (a)>}] + [{ref: "cifra:<n>", digest: <claim_digest o
 attestation_digest citado>}]` — el PDF hereda TODOS los digests de sus insumos, no solo su propio
-contenido.
+  contenido.
 - **Verificar el informe = recompilar y comparar digests + DSSE offline**: el mismo patrón que
   `scripts/verify-bundle.py` (freeze §7) aplicado a este dominio — un verificador independiente
   recompila desde los mismos inputs pinneados por digest y compara el digest del PDF resultante contra
@@ -87,24 +91,24 @@ lo deja a criterio de implementación Fase 1 porque no cambia ningún contrato).
 
 ### Descartes (con causa, R4)
 
-| Alternativa                    | Por qué NO                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| LaTeX                            | Toolchain pesado; sin garantía de bytes idénticos entre corridas por defecto (timestamps, fuentes)     |
+| Alternativa                               | Por qué NO                                                                                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| LaTeX                                     | Toolchain pesado; sin garantía de bytes idénticos entre corridas por defecto (timestamps, fuentes)                                              |
 | Quarto/papermill EN el camino certificado | Autoría humana interactiva, no determinista — válido como HERRAMIENTA de autoría fuera del camino, nunca como paso de la derivación certificada |
-| C2PA                             | Vigilar como estándar de procedencia de medios, no adoptar este mes — fuera del alcance del mínimo (§15.4 del freeze) |
-| WeasyPrint                       | Solo FALLBACK si Typst no está disponible en el entorno de despliegue — nunca el camino primario/certificado |
+| C2PA                                      | Vigilar como estándar de procedencia de medios, no adoptar este mes — fuera del alcance del mínimo (§15.4 del freeze)                           |
+| WeasyPrint                                | Solo FALLBACK si Typst no está disponible en el entorno de despliegue — nunca el camino primario/certificado                                    |
 
 ## Interfaces con otros dominios
 
-| Interfaz                                                    | Dominio            | Estado                                                                    |
-| ------------------------------------------------------------ | ------------------- | ---------------------------------------------------------------------------- |
-| Receta de derivación (`Provenance`, `ContentStore`, `C(x)`) | costura (Sebas+Dylan) | VERDE — reutiliza [`capability-ingesta.md`](capability-ingesta.md) tal cual   |
-| `deliverables[{artifact_ref, digest}]` del predicate         | confianza (Dylan)   | VERDE (freeze §7, reutilizado sin cambio de forma)                          |
-| Run jerárquico / `●ClaimEmitted{sub_run_id, sub_run_provenance_hash}` | frontera (Dylan+Steven) | VERDE (freeze §13, reutilizado tal cual)                              |
-| `claim_type: "derivation"`                                   | confianza (Dylan)   | VERDE (`perfil-stem-v1-0.md` §1, ya registrado — cero extensión nueva aquí) |
-| `verify-bundle.py` (patrón de verificación offline)          | confianza (Dylan)   | VERDE (freeze §7, mismo patrón aplicado al dominio del informe)             |
-| `CapabilityManifest` v2 (`blite.report.render_figure`/`blite.report.compile_pdf`) | A · ejecución (Steven) | SPEC — misma discrepancia flaggeada en `capability-ingesta.md`         |
-| Superficie visual del Studio (badges `sha256:… · cert:<id>`) | D · superficie visual (Dylan) | SPEC — frontera con `superficie-visual.md`, no decidida aquí       |
+| Interfaz                                                                          | Dominio                       | Estado                                                                      |
+| --------------------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------- |
+| Receta de derivación (`Provenance`, `ContentStore`, `C(x)`)                       | costura (Sebas+Dylan)         | VERDE — reutiliza [`capability-ingesta.md`](capability-ingesta.md) tal cual |
+| `deliverables[{artifact_ref, digest}]` del predicate                              | confianza (Dylan)             | VERDE (freeze §7, reutilizado sin cambio de forma)                          |
+| Run jerárquico / `●ClaimEmitted{sub_run_id, sub_run_provenance_hash}`             | frontera (Dylan+Steven)       | VERDE (freeze §13, reutilizado tal cual)                                    |
+| `claim_type: "derivation"`                                                        | confianza (Dylan)             | VERDE (`perfil-stem-v1-0.md` §1, ya registrado — cero extensión nueva aquí) |
+| `verify-bundle.py` (patrón de verificación offline)                               | confianza (Dylan)             | VERDE (freeze §7, mismo patrón aplicado al dominio del informe)             |
+| `CapabilityManifest` v2 (`blite.report.render_figure`/`blite.report.compile_pdf`) | A · ejecución (Steven)        | SPEC — misma discrepancia flaggeada en `capability-ingesta.md`              |
+| Superficie visual del Studio (badges `sha256:… · cert:<id>`)                      | D · superficie visual (Dylan) | SPEC — frontera con `superficie-visual.md`, no decidida aquí                |
 
 ## Fronteras (qué NO decide esta spec)
 
@@ -122,6 +126,10 @@ lo deja a criterio de implementación Fase 1 porque no cambia ningún contrato).
 (digests + receta, NO el PDF binario), espejados a
 `apps/studio/src/fixtures/contract/informe/*.json` — **declarados, no generados** (las capabilities
 `render_figure`/`compile_pdf` no existen hoy).
+
+**[S3 2026-07-30]** Generados (D-N8): `tests/fixtures/contract/informe/{figura-example,pdf-example}.json`
+y su espejo en `apps/studio/src/fixtures/contract/informe/` existen commiteados — «declarados,
+no generados» quedó histórico.
 
 ## Tests semilla
 

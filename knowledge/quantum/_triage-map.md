@@ -1,5 +1,10 @@
 # Triage — QWorld OQI Pre-Hackathon Training 2026 (11/16 sesiones QWorld triadas)
 
+> **Estado: HISTÓRICO (2026-07-30).** Triage pre-hackathon: su propósito (decidir qué extraer de
+> las clases del bootcamp antes del evento) es del evento ya terminado. Queda como registro de
+> metodología y cobertura; sus pendientes no son tareas vivas. Ver la nota fechada al final sobre
+> la regla «VTT crudos NUNCA en el repo».
+
 **Qué es esto:** mapa de reconocimiento (no destilación) sobre las clases de q-world/bootcamp,
 producido para decidir qué vale la pena extraer a `knowledge/quantum/`. Metodología: captions de
 YouTube (`yt-dlp --write-auto-subs`, gratis) + un agente por sesión que produce tema/resumen/tags,
@@ -77,3 +82,9 @@ Modelo usado para el triage: heredado de la sesión (no se enrutó a Fable/Groq 
 plan original — pendiente si se retoma a escala). Transcripts en inglés únicamente (captions en
 español fueron parcialmente rate-limited por YouTube durante la descarga; el inglés cubrió 11/11
 sin huecos). Archivos VTT crudos viven en el scratchpad de la sesión, NUNCA en el repo.
+
+> **Nota (2026-07-30, saneamiento S3):** la regla de arriba («VTT crudos NUNCA en el repo») quedó
+> contradicha de facto por el árbol vendorizado `knowledge/quantum/quantathon/` — material del
+> evento que este triage no menciona. La decisión #113 acepta ese árbol como «insumo de trabajo
+> próximo», con licencia/atribución de terceros PENDIENTE (N11) antes del flip OSS (O2/M26). La
+> regla original no se borra: queda como registro de la metodología de esta pasada.

@@ -95,6 +95,13 @@ adapter `ModelServer` + los backends `replay`/`record` no existen aún (solo el 
 doctrina, §15.7 [S-F]) — construir esa comprobación es frontera Dylan/Steven, declarada, no
 entregada en Fase 0.
 
+> **[S3 2026-07-30]** Implementado (D-N7): el adapter `ModelServer` y sus backends
+> `replay`/`record` existen — `engine/src/blite/protocols/model_server.py` (única casa
+> legítima de litellm, AX3-b). Esto resuelve la contradicción interna del doc: la
+> declaración de arriba («no existen aún», 2026-07-24) es la histórica; la sección
+> «Wiring del proposer real (carril P4)» al final, que lo describe funcionando, es la
+> vigente. La letra no se reescribe — manda esta marca.
+
 **6 · Gobernanza tripwire + aprobación humana.** Veredictos de guardrail/authz viajan como
 eventos tipados con causa — REUSA el catálogo ya frozen (§14): `●SignalRecorded` (detector,
 non-decisional — trust/16, disjunto de `Attestation`), `●EscalationOpened`/`●Resolved` (vía

@@ -5,7 +5,11 @@ videos estilo curso (contenido semi-completo, no un manual único) y el equipo q
 conocimiento que el propio agente de Chimera pueda consultar en tiempo de ejecución — no solo
 documentación para que el equipo lea. Esta nota compara los mecanismos (RAG, CAG, fine-tuning,
 knowledge graph) y fija dónde engancha esto en lo que ya está congelado, antes de que existan specs/tests.
-**Fecha:** 2026-07-21 · **Estado:** investigación inicial — **fuera del alcance de
+**Fecha:** 2026-07-21 · **Estado:** **investigación ABIERTA (2026-07-30)** — sin decisión de
+cierre. Su objeto (ingerir los cursos de la Quantathon) se resolvió de facto vendorizando el árbol
+`knowledge/quantum/quantathon/` (decisión #113); esta nota queda como insumo del ítem de ingesta
+RAG/KB con procedencia del backlog (decisión #116, dominio P/O). Estado original (2026-07-21):
+investigación inicial — **fuera del alcance de
 `docs/contract-freeze.md` (S-E, ya CONGELADO)**. Esto es candidato a un ítem nuevo `[ejecución]`/`[frontera]`
 si Dylan no ve objeciones — el propio freeze exige que cualquier cambio post-cierre sea "supersesión con
 causa registrada (L2), jamás edición silenciosa" (`contract-freeze.md`, regla 3). Esta nota no edita el

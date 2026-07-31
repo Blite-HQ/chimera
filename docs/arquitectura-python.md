@@ -2,7 +2,7 @@
 
 _La espina de invariantes + el build pragmático del equipo, reconciliados_
 
-> **Estado: VIGENTE.** Arquitectura activa de Chimera — core Python-dominante (FastAPI) + Studio en TypeScript. Ver [`README.md`](README.md) para el índice de autoridad documental y [`invariants.md`](invariants.md) para la constitución que enforza.
+> **Estado: VIGENTE-CON-DRIFT (2026-07-30).** Arquitectura activa de Chimera — core Python-dominante (FastAPI) + Studio en TypeScript. Ver [`README.md`](README.md) para el índice de autoridad documental y [`invariants.md`](invariants.md) para la constitución que enforza. **Deltas verificados por el censo S1 (D-N13, 5 en total):** (1) describe `root_package = chimera` inexistente — el repo real declara `root_packages = ["blite", "blite_capability", "chimera_api", "blite_cap_*"]` (`pyproject.toml:142-158`); (2) el layout `apps/api/` + (3) `packages/contracts` + `infra/` nunca se construyeron — el layout real es `engine/` + `sdk/` + `api/` + `capabilities/` + `apps/`; (4) el diagrama de §2 nombra capabilities que nunca existieron con esos nombres — las reales están en `capabilities/*/src/*/tool.py`; (5) el stack fija sqlalchemy/asyncpg donde lo real es psycopg3 (`engine/pyproject.toml:9-23`). Las 8 etapas del gateway de §2 SÍ coinciden con el código. Marcas `[S3]` en las secciones afectadas; la corrección de fondo queda diferida al backlog.
 > **⚠️ [S-F/convergencia · 2026-07-22] Vocabulario de verificación supersedido en este doc:** los pasajes con `rung`/`aggregate_rung`/"escalera de verificación" son **pre-freeze** — el freeze §4 eliminó la escalera 1–7 (badges = clase de verificador + AL; §7: `titular_level`). Los ejemplos de código de abajo se leen con esa traducción; los contratos vigentes son las semillas v2 + el freeze.
 > **Corrección S-E (2026-07-18, contra el enunciado oficial):** el pipeline del gateway se cita ahora con las **8 etapas congeladas** (freeze §8); la capability del reto condicional es el **simulador de dinámica/Trotter (Challenge 3 oficial = TFIM)**, no `vqe_simulator`/química; `cvxpy` sube a dependencia obligatoria (Goemans-Williamson es baseline oficial); el segundo reto condicional es **C3**, no el Reto 2.
 >
@@ -58,6 +58,8 @@ Studio (React/TS) ──HTTP+SSE──► API (FastAPI)
    └ constraint_checker (genérico)
 ```
 
+**[S3 2026-07-30]** Los nombres de capabilities del diagrama (`qubo_solver`, `qml_classifier`, `dynamics_simulator`, `classical_baseline`, `constraint_checker`) nunca existieron con esos nombres. Las reales se declaran en `capabilities/*/src/*/tool.py`: `blite.solvers.qubo`, `blite.quantum.qaoa`, `blite.sim.power_flow`, `blite.ml.classify`, `blite.numeric.matrix_ops`, `blite.smt.*`, `blite.report.*`, `blite.ingesta.*`. La estructura del diagrama (Studio → API → gateway → capabilities/eventos/verificación) sí coincide.
+
 ---
 
 ## 3 · Cómo se enforzan los invariantes en Python (la traducción)
@@ -74,6 +76,8 @@ Esto es lo que garantiza que Python **no** baje la calidad. Cada garantía que t
 | Revisión semántica en PR                                 | invariant-reviewer | invariant-reviewer (igual, agnóstico)            |
 
 **import-linter** — los contratos de arquitectura (en `pyproject.toml`):
+
+**[S3 2026-07-30]** El bloque siguiente es el diseño original, no el repo real: `root_package = chimera` y los módulos `chimera.*` no existen. El `pyproject.toml` real (`:142-158`) declara `root_packages = ["blite", "blite_capability", "chimera_api", "blite_cap_*"]`, y los contratos vigentes (ADR-008, INV-2, AX3, …) operan sobre esos paquetes. El mecanismo (import-linter como gate) sí es el que corre en CI.
 
 ```ini
 [importlinter]
@@ -174,6 +178,8 @@ Su documento es un borrador a validar, no a copiar tal cual. Lo que hay que corr
 
 Su estructura + nuestra gobernanza, en clave Python:
 
+**[S3 2026-07-30]** Este layout nunca se construyó: no existen `apps/api/`, `packages/contracts` ni `infra/`. El layout real del repo es `engine/` (core `blite.*`) + `sdk/` (`blite_capability`) + `api/` (`chimera_api`) + `capabilities/` (paquetes `blite_cap_*`) + `apps/studio/` + `distributions/` + `docker/` (`pyproject.toml:142-158`).
+
 ```
 chimera/
 ├── apps/
@@ -202,6 +208,8 @@ La distinción que ordena todo: el mapa de ~150 repos era para **aprender de**. 
 
 No se "investigan" a fondo; se conoce su API. Son las dependencias del `pyproject.toml`:
 `fastapi`, `uvicorn`, `sqlalchemy`, `asyncpg`, `pydantic` · `qiskit`, `qiskit-aer`, `qiskit-optimization`, `qiskit-algorithms` · `pennylane`, `pennylane-lightning` · `networkx`, `ortools`, **`cvxpy`** (obligatoria desde S-E: Goemans-Williamson es baseline oficial del C1), `scikit-learn`, `numpy`, `scipy`, `pyscf` (ED — ancla del C3 condicional) · y para los tests de propiedad, `hypothesis`. _(Corrección S-E: `qiskit-nature` sale — era del Reto 3 = VQE/química; el C3 oficial es TFIM/Trotter y usa `PauliEvolutionGate` de qiskit core + ED de SciPy/PySCF.)_
+
+**[S3 2026-07-30]** El stack de persistencia real es psycopg3 (`psycopg[binary,pool]`) + procrastinate (`engine/pyproject.toml:9-23`); `sqlalchemy`/`asyncpg` nunca entraron al repo.
 
 ### Aprendés DE (las referencias para la espina — pocas, por rol)
 

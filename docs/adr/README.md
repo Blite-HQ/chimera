@@ -1,5 +1,9 @@
 # Architecture Decision Records
 
+> **Estado: VIGENTE-CON-DRIFT (2026-07-30).** The promotion criterion below is current, but
+> the "Enforced by" column does not reflect import-linter contracts and invariant gates added
+> after this index was written; refresh deferred to the final refactoring pass (backlog #118).
+
 An ADR captures a significant architectural decision: the context that forced it, the
 decision itself, and its consequences (trade-offs accepted, alternatives rejected). Format
 follows Michael Nygard's original template — see [`adr-template.md`](adr-template.md).

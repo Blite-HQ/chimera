@@ -1,5 +1,11 @@
 # Knowledge — Islanding (particionamiento de red · Sebas)
 
+> **Estado: VIGENTE-CON-DRIFT (2026-07-30, #109).** La sección «Datos versionados» queda
+> actualizada al corpus real (14 JSON, 3 convenciones de peso, `raw/` + `ieee14-topology.json`).
+> Drift restante declarado: el índice y la aclaración de procedencia aún hablan de cr8/cr6 «en
+> curso» — ya existen en `corpus/` (decisión #75) — y las «ratificaciones de Sebas» son
+> era-de-dueños, derogada por #94. La regla de soberanía del digest sigue intacta y vigente.
+
 Conocimiento de escenario del Reto 1 (islanding / particionamiento de red eléctrica):
 formulación del problema, corpus de benchmarks con óptimos conocidos, y los datos
 versionados que el engine consume como conocimiento, no como código (ADR-029; regla
@@ -31,9 +37,19 @@ con su reconciliación contra `docs/invariants.md` (la base lógica no está baj
 
 ## Datos versionados
 
-`corpus/` — 8 instancias de Max-Cut con óptimo exacto conocido, un JSON por
-instancia×convención (`ieee{6,9,14,30}-{uniforme,flujo}.json`; `ieee6-{uniforme,flujo}.json`
-añadidas 2026-07-23, decisión D5 — provenance en la nota 01 §1.7), cada una con su
+`corpus/` — **14 JSON de Max-Cut**, uno por instancia×convención, en TRES convenciones de peso
+(`uniforme`/`flujo`/`voltaje`): `ieee{6,9,14,30}-{uniforme,flujo}.json` (8, óptimo exacto
+probado con doble ancla; `ieee6-{uniforme,flujo}.json` añadidas 2026-07-23, decisión D5 —
+provenance en la nota 01 §1.7), `cr{6,8}-{uniforme,voltaje}.json` (4, red CR desde datos del
+ICE, incorporadas por decisión #75, con óptimo estampado) y `ice-{uniforme,voltaje}.json` (2,
+red ICE n=68, **`optimo: null`** honesto — sin doble ancla a esa escala), cada uno con su
 `digest` SHA-256 (receta de verificación en la nota 01 §1.6). El JSON congelado es
 la fuente de verdad: una regeneración que no reproduzca el digest se reporta, no se
 sobreescribe.
+
+Existen además dos artefactos de datos estampados con procedencia, hermanos del corpus:
+`raw/ice-{subestaciones,lineas-transmision}.geojson` (snapshots crudos de los datos abiertos
+del ICE, commiteados por decisión #75 para reproducibilidad air-gap — insumo de
+`scripts/gen_corpus_ice.py`) y `ieee14-topology.json` (topología ieee14 con `digest`, `limits`
+y `provenance` declarada — modelo single-voltage derivado de `pandapower.networks.case14`).
+Como todo dato estampado, se citan por digest y no se regeneran en silencio.

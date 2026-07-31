@@ -101,6 +101,12 @@ jamás en la respuesta HTTP.
 
 ### Resolución instancia→inputs (capabilities reales, cierra "Análisis para discusión" #1)
 
+> **[S3 2026-07-30]** (Resolución de dominio Reto-1 — lente, no contrato genérico): esta
+> sección entera es dominio del reto (mapa proposer→capability de max-cut, corpus de
+> islanding por ruta, transform grafo→QUBO, óptimos congelados) alojada en una spec genérica
+> — censo §4, tipo (iii). La doctrina que la resuelve es la de lentes de
+> `docs/studio/product-model.md`.
+
 **Hueco que cierra** (auditoría Fase 2, `docs/mvp/decisiones.md` §"Análisis para discusión con
 Dylan" punto 1, opción (a)): el proposer placeholder proponía `{mission, instance_id}` como
 inputs de la capability meta, y el Studio mapeaba los proposers a IDs inventados
@@ -200,6 +206,12 @@ edita código de `apps/studio/src` (regla del mandato: Fase 0 = contratos, no fe
 spec deja el pin escrito para que D3 no lo redescubra a mitad de integración.
 
 ## Las 6 queries fixture-only del Studio — su rama live sale de estas rutas
+
+> **[S3 2026-07-30]** Superado (D-N5): todas las queries ya ramifican fixture-vs-live vía
+> `isLiveMode()` (`apps/studio/src/data/queries.ts:72-311`) — «6 queryOptions que sirven
+> SIEMPRE fixture» quedó histórico. Además la lista de abajo no incluye `rvspQueryOptions`
+> (`queries.ts:317`), agregada después de escribirse esta sección. La letra queda como
+> registro de Fase 0.
 
 `apps/studio/src/data/queries.ts` tiene hoy **6 queryOptions que sirven SIEMPRE fixture**, sin
 rama `isLiveMode()` — a diferencia de `certificateQueryOptions`/`loadCertificate`, que YA
@@ -301,6 +313,13 @@ introduce ningún tipo de evento nuevo. Su única novedad de "wire" es la FORMA 
 HTTP (tabla de arriba), no un evento SSE nuevo.
 
 ## Tests semilla
+
+> **[S3 2026-07-30]** Superado (D-N3): las 6 rutas GET viven en
+> `api/src/chimera_api/reads.py:371-440` y están montadas vía `create_reads_router` en
+> `app.py:90`; el propio seed declara hoy que «el `xfail` se retiró de las 6»
+> (`tests/seeds/test_seed_endpoints_rutas.py:9`). La letra de abajo («xfail, todas 404,
+> ninguna existe») queda como registro de Fase 0 — el ciclo SPEC→SEED→VERDE se cumplió sin
+> re-marcar este doc.
 
 - `tests/seeds/test_seed_endpoints_rutas.py` — **xfail** (todas las rutas 404 hoy; ninguna
   existe en `chimera_api/app.py`). El seed importa `chimera_api.app.create_app` DENTRO de cada

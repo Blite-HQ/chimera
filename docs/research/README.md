@@ -34,6 +34,11 @@ enforced in [`../invariants.md`](../invariants.md) and explored in
 
 ## Suggested structure (create as content arrives)
 
+> **[S3 2026-07-30]** Propuesta NO materializada: `paper-draft.md`, `bibliography.md` y
+> `methodology.md` nunca se crearon — el árbol real de `docs/research/` contiene solo los
+> registros de proceso y las propuestas de diseño listados arriba. Se conserva como
+> propuesta, no como descripción del directorio.
+
 ```
 docs/research/
 ├─ README.md          this file

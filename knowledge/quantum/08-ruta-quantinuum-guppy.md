@@ -1,7 +1,7 @@
 # Nota 08 — Ruta Quantinuum/Guppy: transpilación, emulador con ruido y plan B
 
-**Ítem del plan:** contingencia Quantathon CR (~1 ago 2026): con ~80% de certeza el evento usará el emulador de **Quantinuum** y probablemente pida **Guppy**. Esta nota fija la ruta de transpilación desde nuestro stack (Qiskit Reto 1 / PennyLane Reto 2), el veredicto sobre el modelo de ruido del emulador (gate del feature AI-QEM de la nota 09) y el plan B.
-**Fecha:** 2026-07-17 · **Estado:** investigación de consolidación (Dylan) — ratificación final de Sebas.
+**Ítem del plan:** contingencia Quantathon CR (~1 ago 2026 — fecha-deadline del evento, ya terminado; se conserva como registro — marca 2026-07-30): con ~80% de certeza el evento usará el emulador de **Quantinuum** y probablemente pida **Guppy**. Esta nota fija la ruta de transpilación desde nuestro stack (Qiskit Reto 1 / PennyLane Reto 2), el veredicto sobre el modelo de ruido del emulador (gate del feature AI-QEM de la nota 09) y el plan B.
+**Fecha:** 2026-07-17 · **Estado:** investigación de consolidación (Dylan) — ratificación final de Sebas. **Vigente (2026-07-30).**
 
 > **Actualización oficial (2026-07-18, PDFs del evento):** confirmado **emulador H2, tratamiento
 > exacto hasta 26 qubits** (única disponibilidad confirmada; hardware real SIN confirmar — vale

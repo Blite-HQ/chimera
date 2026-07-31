@@ -4,7 +4,7 @@
 (perspectiva comercial/industrial de QC, automatización profunda + IA) convertidas en munición
 verificable para el pitch, el Q&A del jurado y el material de inversión post-hackathon.
 **Fecha:** 2026-07-23 · **Estado:** investigación dirigida (web, fuentes primarias citadas por
-claim) — pendiente ratificación de Sebas.
+claim) — pendiente ratificación de Sebas. **Vigente (2026-07-30).**
 **Complementa (no duplica):** `00-kb-fuentes.md` (papers/repos), `06-quantathons-ganadores.md`
 (qué premia un jurado), tesis de adopción del roadmap (por-qué-ahora, regla de umbral, dos modos).
 

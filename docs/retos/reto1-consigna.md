@@ -1,10 +1,12 @@
 # Reto 1 — consigna, rúbrica y datos (contrato externo)
 
-> **Estado: VIGENTE.** Resumen fiel del documento oficial "Quantathon CR 2026 · Challenge 1"
-> (Dojo Coding · UCR · OQI · Quantinuum), leído 2026-07-23/24. El PDF oficial es la
-> autoridad; este doc existe para que ninguna sesión trabaje el reto sin su contrato.
+> **Estado: VIGENTE (2026-07-30).** Contrato externo documentado como DATO (doctrina del
+> índice, `docs/README.md`). Resumen fiel del documento oficial "Quantathon CR 2026 ·
+> Challenge 1" (Dojo Coding · UCR · OQI · Quantinuum), leído 2026-07-23/24. El PDF oficial
+> es la autoridad; este doc existe para que ninguna sesión trabaje el reto sin su contrato.
 > Fuente local: `doc-1784337876281-78ecd714-Challenge 1.pdf` (Descargas de Dylan; no se
-> commitea por ser material del organizador).
+> commitea por ser material del organizador). Su entry point único está implementado en
+> `challenges/reto1/run_all.py`.
 
 ## El problema
 

@@ -1,5 +1,11 @@
 # Knowledge — Execution (plano de ejecución · Steven)
 
+> **Estado: VIGENTE-CON-DRIFT (2026-07-30, #109).** La carpeta tiene **10 notas** (01–09 + la 10,
+> posterior al cierre S-E); las menciones a «las 7 notas» databan de cuando solo existían 01–07 y
+> quedan corregidas abajo. La sección «Cómo revisar esto con Dylan» es logística de una sesión ya
+> ocurrida (marcada HISTÓRICO inline). Drift restante declarado: vocabulario «rung» residual,
+> pendiente de la traducción a clase decisoria + AL (decisión #103).
+
 Notas de investigación del plano de ejecución, sesión inicial (2026-07-10, revisión 2026-07-10). Cada
 nota tiene los 4 campos obligatorios (patrón/mecanismo · decisión `integrar|portar|inspirar|descartar` ·
 licencia · impacto en contrato), agrega alternativas consideradas + "por qué no" + tradeoffs + modos de
@@ -91,6 +97,10 @@ No es necesario leerlas en orden de número — el orden de dependencia real es:
 
 ## Cómo revisar esto con Dylan
 
+> **HISTÓRICO (2026-07-30):** logística de una sesión ya ocurrida — los puntos 1–4 se cerraron en
+> S-E (2026-07-18) y la frontera de la nota 10 se resolvió el 2026-07-22. Se conserva como
+> registro; no es un plan vigente.
+
 Cada nota marca sus puntos de frontera explícitamente (ver su sección de preguntas abiertas y su tabla de
 decisión), pero para una sesión de revisión conjunta, estos son los puntos que requieren su input directo,
 en orden de bloqueo:
@@ -114,7 +124,7 @@ en orden de bloqueo:
 
 **Formato sugerido de la sesión:** repasar la tabla "Decisión" de cada nota primero (son las filas más
 rápidas de aprobar/objetar), y dejar las secciones de "preguntas abiertas" para discusión en vivo — no se
-espera que Dylan lea las 7 notas completas antes de la sesión.
+espera que Dylan lea las 10 notas completas antes de la sesión.
 
 ## Qué queda intencionalmente sin resolver
 
@@ -148,7 +158,7 @@ Dylan y la mecánica es de Steven, y su encabezado dice textualmente: _"pendient
 de Steven (plano de ejecución) antes de congelar"_. El flujo previsto (mismo patrón que usó Dylan con
 `knowledge/trust/`) es:
 
-1. Estas 7 notas se revisan con Dylan donde tocan un contrato que él ya declaró en el freeze (marcado
+1. Estas 10 notas se revisan con Dylan donde tocan un contrato que él ya declaró en el freeze (marcado
    `[frontera]` en cada nota abajo, y priorizado en la sección "Cómo revisar esto con Dylan" arriba).
 2. Los puntos sin objeción se incorporan a `docs/contract-freeze.md` como ítems nuevos etiquetados
    `[ejecución]`, o como refinamiento de un ítem `[frontera]` existente — en una edición posterior,
@@ -158,7 +168,8 @@ de Steven (plano de ejecución) antes de congelar"_. El flujo previsto (mismo pa
 
 Ninguna nota de esta carpeta edita `docs/contract-freeze.md` ni `docs/invariants.md` directamente.
 
-**Cerrado (S-E 2026-07-18):** el flujo previsto arriba ocurrió — los puntos de las 9 notas entraron
+**Cerrado (S-E 2026-07-18):** el flujo previsto arriba ocurrió — los puntos de las 9 notas
+existentes al cierre (01–09; la nota 10 es posterior, 2026-07-21) entraron
 al freeze como ítems `[ejecución]` (§1, §2, §3, §5, §8, §13, §15.7) o quedaron declarados con dueño
 (§15.8); las preguntas de frontera de "Cómo revisar esto con Dylan" están todas decididas (stream por
 run, egress de modelo, `registry.loaded`, idempotencia-regla, 8 etapas). Queda la ratificación final

@@ -1,7 +1,7 @@
 # Nota 05 — REGRID-QAOA: extracción de ecuaciones exactas y mapeo contra la formulación CHIMERA
 
 **Ítem del plan (§4, Sebas):** cerrar el pendiente №4 del README del directorio — "REGRID-QAOA a medias: citado y usado como justificación de la Ruta A, pero sin extracción de sus ecuaciones específicas". Esta nota extrae la formulación completa (ecuaciones, pipeline, setup, métricas) y la mapea pieza por pieza contra la nota 02 §1.
-**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y ratificación de Sebas
+**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y ratificación de Sebas. **Vigente (2026-07-30).**
 **Fuentes:** arXiv:2606.15083 **v2** (título v2: _"REGRID-QAOA: A Resource-Efficient Graph-Reduced Hybrid QAOA Framework for Physics-Constrained Power System Islanding"_; Jiang, Zhang, Liang, Guan, Li, Venayagamoorthy; v1 2026-06-13, v2 2026-06-28) — abs y HTML completo **verificados en vivo 2026-07-14**. Licencia del paper: arXiv non-exclusive license. **Sin repositorio de código público** (buscado en vivo 2026-07-14: ni el abstract ni los comments declaran código; la búsqueda web tampoco lo encuentra) — todo lo de abajo se extrajo del texto, y cualquier código derivado se implementa desde las ecuaciones.
 
 > Convención de esta nota: numeración de ecuaciones = la del paper (v2, versión HTML). Notación matemática/pseudocódigo únicamente — **no es código de producción**.

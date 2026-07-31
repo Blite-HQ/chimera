@@ -142,6 +142,8 @@
 
 **Rationale:** Base lógica AX1 (inviolable axiom). This cannot be structurally enforced yet — the `Event` dataclass and the identity module do not exist as real code, so there is nothing to stamp an actor onto. A tracked, intentionally-failing (`xfail`) test exists so the gap is visible in CI output rather than silently absent. It must flip to a real, passing assertion — never be deleted — once the gateway/identity module stamps identity on every event.
 
+<!-- [S3 2026-07-30] Rationale outdated: engine/src/blite/events/event.py:22 and identity/ exist; the xfail gate at tests/invariants/test_types.py:99-104 already tracks the real condition. Rationale text kept frozen; fix deferred (census D-N11). -->
+
 **Gate:** `xfail` placeholder test (tracked TODO, not yet a hard gate)
 
 <!-- enforced: tests/invariants/test_types.py::test_event_has_non_null_actor_id -->

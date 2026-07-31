@@ -1,7 +1,7 @@
 # Nota 06 — Soluciones ganadoras de quantathons pasadas: análisis de repos, patrones y licencias
 
 **Ítem del plan (§4, Sebas):** cerrar el pendiente №5 del README del directorio — "Soluciones ganadoras de quantathons pasadas: solo links (nota 00 §5), sin análisis". Esta nota analiza los cuatro repos linkeados en la nota 00 §5 y los ganadores concretos minados desde ellos.
-**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y ratificación de Sebas
+**Fecha:** 2026-07-14 · **Estado:** investigación de consolidación (Dylan) — pendiente validación y ratificación de Sebas. **Vigente como registro/KB (2026-07-30):** su objeto — la táctica de entrega de una hackathon — es del evento ya terminado; §5 registra (S-E 2026-07-18) que el enunciado oficial + P0-6 subsumieron el formato aquí propuesto. El análisis de patrones ganadores y la regla de licencias de §3 siguen siendo KB viva.
 **Fuentes:** repos `MauriceDHanisch/ethz_qhack_24`, `XanaduAI/QHack2023`, `XanaduAI/QHack2022`, `CDL-Quantum/Hackathon2020` — READMEs, árboles y licencias **verificados en vivo 2026-07-14 vía `gh api`**; ganadores de QHack 2023 desde el blog oficial de PennyLane ("QHack 2023 Highlights", lista completa con repos) y de QHack 2022 desde el AWS Quantum Technologies Blog — ambos **verificados en vivo 2026-07-14**.
 
 ---

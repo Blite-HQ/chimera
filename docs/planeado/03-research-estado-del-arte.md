@@ -5,6 +5,12 @@
 > (event-sourced, replay determinista, DSSE offline, capabilities agnósticas). Tres
 > investigaciones con fuentes primarias (URLs clave inline; el detalle completo vive en
 > los reportes de la sesión 2026-07-24). Complementa `02-cobertura-diseno.md`.
+>
+> **Estado: VIGENTE, re-verificado (2026-07-30).** Aunque su fase de origen (Planeado)
+> cerró (#100), este doc NO es histórico: es un hub real del grafo de autoridad —
+> co-autoridad de las 6 specs de costura junto al freeze (`docs/specs/README.md`
+> §«Specs de costura (Fase 0 · Planeado)», bloque «Autoridad: el freeze + …R1–R6»),
+> reconocido en el índice de autoridad por la decisión #108.
 
 ## Las tres tesis transversales
 

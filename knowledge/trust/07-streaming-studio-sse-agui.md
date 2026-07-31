@@ -1,7 +1,7 @@
 # Nota 07 — Streaming del Studio: SSE simple vs AG-UI + el contrato de eventos por vista + hallazgos del spike
 
 **Ítems del plan (§4 Dylan):** #4 (parcial: streaming Studio↔Engine) y #5 (spike Cytoscape)
-**Fecha:** 2026-07-03 · **Estado:** insumo para el contract freeze
+**Fecha:** 2026-07-03 · **Estado:** **VIGENTE (2026-07-30).** Escrita como «insumo para el contract freeze» — el freeze se materializó el 2026-07-18 (`docs/contract-freeze.md`), ya no es cosa futura; la decisión SSE-simple y el contrato de eventos por vista siguen vigentes.
 **Fuentes:** CHIMERA-Studio-Frontend (vistas y comportamientos) · AG-UI verificado en vivo 2026-07-03 (MIT, ~16 tipos de evento, transport-agnóstico) · nota 01 (cursor global/notify-then-catchup) · spike en `apps/studio/src/spike/`
 
 ---

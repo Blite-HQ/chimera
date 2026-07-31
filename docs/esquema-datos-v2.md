@@ -2,10 +2,13 @@
 
 _PostgreSQL · Fase 1 · SEMILLA_
 
-> **Estado: SEMILLA v2 (importada 2026-07-18, barrido S-E).** Realiza en PostgreSQL las
-> entidades de la _Especificación de Contratos v2_ — **la verdad ejecutable sigue siendo la
-> traducción gobernada por [`contract-freeze.md`](contract-freeze.md)** (misma regla que la
-> semilla v1, hoy supersedida). Importada del working set externo, sanitizada ("el Engine") y
+> **Estado: VIGENTE (2026-07-30).** SEMILLA v2 (importada 2026-07-18, barrido S-E) con
+> candado bidireccional en CI: doc⊆SQL⊆doc
+> (`tests/invariants/test_esquema_migration.py:41-58`) — el drift estructural es imposible.
+> Realiza en PostgreSQL las entidades de la _Especificación de Contratos v2_ — **la verdad
+> ejecutable sigue siendo la traducción gobernada por
+> [`contract-freeze.md`](contract-freeze.md)** (misma regla que la semilla v1, hoy
+> supersedida). Importada del working set externo, sanitizada ("el Engine") y
 > con las correcciones del veredicto de convergencia aplicadas al importar: **C3** (el esquema
 > `events` gana-freeze: `global_seq`, append-only que falla fuerte con REVOKE + trigger,
 > semántica `expected_seq`) y **C1** (tabla `capabilities` sin `protocol`, con `interaction` +

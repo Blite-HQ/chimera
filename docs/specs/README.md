@@ -26,8 +26,16 @@ Convención de archivo: `docs/specs/<plano>-<tema>.md` (ej. `confianza-verify-bu
 
 **El desacoplador es el contrato en código.** Cada quien programa contra los Protocols, los
 modelos Pydantic, el SQL de `engine/sql/init_v2.sql` y los fixtures — **nunca contra la
-implementación de otro dueño.** Las fronteras las vigilan `import-linter` (12 contratos) y
-CODEOWNERS; si `lint-imports` falla, se arregla el código, no el contrato.
+implementación de otro dueño.** Las fronteras las vigilan `import-linter` (13 contratos —
+**[S3 2026-07-30]** el doc decía 12; el 13º es `ADR-008-report`, `pyproject.toml:194`; D-N9)
+y CODEOWNERS; si `lint-imports` falla, se arregla el código, no el contrato.
+
+> **[S3 2026-07-30]** La tabla de dueños de abajo (y la columna «Dueño (Fase 1)» del índice
+> de specs de costura al final) opera sobre el modelo de dueños DEROGADO por la decisión #94:
+> toda decisión es gobernanza Dylan+Claude vía ledger, sin dueños por persona ni
+> `PENDIENTE-{persona}`. La tabla se conserva sin editar porque su información de
+> plano/alcance (qué área escribe qué, qué NO toca) sigue siendo el mapa vigente de
+> fronteras del código.
 
 | Dueño    | Área (escribe)                                                                                           | NO toca                                             |
 | -------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
@@ -51,6 +59,12 @@ Reglas:
    base — la base no depende de eso.
 
 ## Índice de specs
+
+> **[S3 2026-07-30]** Este índice quedó fechado 07-22/24 y no se re-marcó al implementarse
+> las specs. Refresco (censo `docs/mejorado/07-censo-documental.md` §1.2): las 7 specs del
+> directorio existen y su letra sigue vigente, pero varios estados «SPEC/xfail» ya corren en
+> código sin marca — el estado real por spec vive en el censo §1.2 y en las marcas `[S3]`
+> dentro de cada spec. Esta tabla no se reescribe: es registro de la Etapa 0.
 
 | Base / seed (Etapa 0)                                                                                                                                                                                                                    | Plano              | Estado                      |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------------------------- |
@@ -117,11 +131,18 @@ del API real. Regla: **el fixture de costura tiene UN solo origen y ambos lados 
 
 ### Índice de specs de costura
 
-| Spec                                                                | Costura   | Dueño (Fase 1) | Estado |
-| ------------------------------------------------------------------- | --------- | -------------- | ------ |
-| [`harness-agentico.md`](harness-agentico.md)                        | A↔E↔D     | Dylan+Steven   | SPEC   |
-| [`capability-ingesta.md`](capability-ingesta.md)                    | B↔A       | Sebas+Dylan    | SPEC   |
-| [`evidencia-externa.md`](evidencia-externa.md)                      | B         | Sebas          | SPEC   |
-| [`informe-derivado.md`](informe-derivado.md)                        | C↔B       | Dylan          | SPEC   |
-| [`superficie-visual.md`](superficie-visual.md)                      | D↔E↔A     | Dylan          | SPEC   |
-| [`endpoints-studio.md`](endpoints-studio.md)                        | E↔D       | Steven+Dylan   | SPEC   |
+> **[S3 2026-07-30]** Los estados «SPEC» de esta tabla quedaron fechados 2026-07-24; según
+> el censo §1.2 varias costuras ya corren implementadas total o parcialmente (las 6 rutas de
+> `endpoints-studio` vivas, `ConsensusLeg` de `evidencia-externa` con su validador,
+> `ModelServer` de `harness-agentico`, módulos y fixtures de `capability-ingesta` e
+> `informe-derivado` en el árbol) — ver marcas `[S3]` en cada spec. La columna «Dueño
+> (Fase 1)» quedó derogada por #94 (nota arriba); se conserva como registro de plano/alcance.
+
+| Spec                                             | Costura | Dueño (Fase 1) | Estado |
+| ------------------------------------------------ | ------- | -------------- | ------ |
+| [`harness-agentico.md`](harness-agentico.md)     | A↔E↔D   | Dylan+Steven   | SPEC   |
+| [`capability-ingesta.md`](capability-ingesta.md) | B↔A     | Sebas+Dylan    | SPEC   |
+| [`evidencia-externa.md`](evidencia-externa.md)   | B       | Sebas          | SPEC   |
+| [`informe-derivado.md`](informe-derivado.md)     | C↔B     | Dylan          | SPEC   |
+| [`superficie-visual.md`](superficie-visual.md)   | D↔E↔A   | Dylan          | SPEC   |
+| [`endpoints-studio.md`](endpoints-studio.md)     | E↔D     | Steven+Dylan   | SPEC   |

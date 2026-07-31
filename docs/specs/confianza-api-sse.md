@@ -1,7 +1,9 @@
 # Spec — `chimera_api`: el API del walking skeleton + SSE (plano confianza)
 
-**Gobernada por:** freeze **§9** (contrato SSE Studio↔Engine) + trust/07 §1.2–1.3 ·
-**Dueño:** Dylan · **Estado:** VERDE (2026-07-22)
+**Gobernada por:** freeze **§9** (contrato SSE Studio↔Engine) ·
+**Dueño:** Dylan · **Estado:** VERDE (2026-07-22) ·
+**Insumo:** `knowledge/trust/07` §1.2–1.3 — **[S3 2026-07-30]** slot normalizado: la nota de
+knowledge estaba en «Gobernada por:»; knowledge es insumo, jamás autoridad (#108).
 
 > **Alcance (2026-07-24):** la frontera «solo el puerto EventStore» aplica al carril SSE
 > de esta spec. El arranque de runs (`runs.py`, MVP Nivel-1) compone

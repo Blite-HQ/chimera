@@ -3,6 +3,13 @@
 > **Estado: VIGENTE (2026-07-24).** Cierra el checkpoint F2a (plan del Studio): la
 > estructura lógica del producto, decidida POR Dylan en sesión dirigida. Autoridad para
 > D6 (presentación conversacional), M1 (chat real) y el routing del Studio.
+>
+> **Estado: VIGENTE, re-verificado (2026-07-30).** Su decisión clave — el registry de
+> lentes de dominio (§«Superficies de plataforma vs dominio», abajo) — **NO está
+> implementada**: el código actual la contradice (`apps/studio/src/views/RunDetail.tsx:30-41`
+> recibe la lente `red` como prop obligatoria cableada en el shell, sin slot ni resolución
+> por tipo de claim/capability contra un registry). La implementación entra al backlog por
+> decisión #117 (dominio P). La doctrina de este doc sigue siendo la autoridad.
 
 ## Públicos y principio rector
 

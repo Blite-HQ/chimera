@@ -10,6 +10,13 @@
 > stack vigente — FastAPI (`apps/api`) + cola de jobs en Python (elección concreta en la nota 02) +
 > Postgres. El texto original vive en el documento externo de Downloads. Los demás puntos abiertos
 > están en la sección **R · Reconciliación** al final — Geovanni los ratifica, no se editan en silencio.
+>
+> **Estado: VIGENTE-CON-DRIFT (2026-07-30, #109).** Dos residuos declarados sin editar el cuerpo:
+> (a) la lista de infraestructura estática de §3 aún incluye **Redis** — residuo del diseño
+> original NestJS/BullMQ; el stack real no lo usa (compose: postgres+api+worker+studio).
+> (b) Toda mención a «pendiente de / ratifica Geovanni» es era-de-dueños, derogada por la
+> decisión #94: esas ratificaciones ya no ocurrirán; lo abierto se resuelve por análisis
+> Dylan+Claude registrado en el ledger.
 
 ---
 

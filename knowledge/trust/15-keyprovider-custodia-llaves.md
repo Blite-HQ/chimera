@@ -1,7 +1,7 @@
 # Nota 15 — Forma del puerto `KeyProvider`: las 2 llaves del engine, env hoy → OpenBao Fase 2
 
 **Ítem del backlog (ficha G4):** custodia de las 2 llaves del engine (Ed25519 del certificado + JWT); env hoy → OpenBao Fase 2; rotación por keyid. **Coordinación:** el §13 _del backlog externo de fichas_ (infraestructura/secretos en general — misma fuente que la "ficha G4"; NO es una sección de esta nota [aclarado en S-F]) es carril de Geovanni; el slice de ESTE puerto (cómo el engine pide firmas, no dónde vive la infra de secretos) es mío — señalado, no decidido por mí solo.
-**Fecha:** 2026-07-07 · **Estado:** insumo para el contract freeze
+**Fecha:** 2026-07-07 · **Estado:** **VIGENTE (2026-07-30).** Escrita como «insumo para el contract freeze» — el freeze se materializó el 2026-07-18; el diseño del puerto `KeyProvider` sigue vigente.
 **Fuentes:** nota 02 (Ed25519 del certificado), nota 08 §4.2 (JWT — dejaba "HS256 o Ed25519, decidir en implementación"), nota 09 §1.3 (keystore Protocol del AGT — Software/PKCS#11/TEE, inspiración directa), OpenBao (`openbao.org`, `github.com/openbao/openbao` — Transit engine, AppRole) verificado en vivo 2026-07-07
 
 ---

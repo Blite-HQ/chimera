@@ -8,6 +8,9 @@
 > **P0-5(d)** del stress test S-D (modo amortizado sin ancla ex ante). La referencia de spec se
 > actualizó de v3.0 a v3.2 (mismo contrato de perfil, hoy [`spec-confianza-v3-2.md`](spec-confianza-v3-2.md) §7).
 > Evolución por versionado propio (§6) — jamás toca `cal-*`.
+> **[S3 2026-07-30]** El registro de claim_types de §1 aún no tiene enforcement en código —
+> admitido explícitamente por el propio código (`engine/src/blite/verification/claim.py:47-49`,
+> «str mientras el registro madura»); no es drift de este doc (censo S1).
 >
 > **Qué es este documento.** Chimera es la **distribución "Laboratorio de Investigación"** del Engine: no es dueña de los módulos — los **cura, configura y enmarca** para investigación y trabajo STEAM. Este perfil es ese framing hecho norma: los schemas de claim del dominio, la curación de capabilities con configuración fijada por digest, las plantillas de Policy de investigación y la doctrina metodológica. **Contrato de perfil (spec v3.2 §7):** solo puede agregar y elevar; jamás altera leyes, cálculo, tipos o formatos, ni rebaja mínimos del kernel. Se versiona y las Policies lo referencian por digest.
 

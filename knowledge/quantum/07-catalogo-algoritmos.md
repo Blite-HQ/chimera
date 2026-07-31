@@ -1,7 +1,7 @@
 # Nota 07 — Catálogo de algoritmos (clásicos y cuánticos) del que elige el planner
 
 **Ítem del plan:** cerrar el gap "catálogo amplio de algoritmos" detectado en el bootcamp — la Quantathon CR insiste en "múltiples algoritmos" por reto, y hasta hoy el knowledge tenía recetas profundas (notas 01–02) pero ningún catálogo transversal del que un planner pueda ELEGIR.
-**Fecha:** 2026-07-17 · **Estado:** investigación de consolidación (Dylan) — ratificación final de Sebas.
+**Fecha:** 2026-07-17 · **Estado:** investigación de consolidación (Dylan) — ratificación final de Sebas. **Vigente (2026-07-30).**
 **Fuentes:** `docs/convergencia-diseno-v32.md` §2.1 (clases decisorias FORMAL_EXACT/EXECUTION/GROUND_TRUTH/PROPERTY_RULE/CONSENSUS_REPLICATION/HUMAN_EXPERT + niveles AL0–AL4 — el vocabulario de verificación de esta nota) · notas `quantum/01–04` (teoría, recetas, stack, estadística) · `knowledge/islanding/01-corpus-benchmarks.md` (doble ancla CP-SAT + fuerza bruta) · Egger, Mareček, Woerner — _Warm-starting quantum optimization_ — arXiv:2009.10095, Quantum 5, 479 (2021) — **verificado en vivo 2026-07-17** · Herrman et al. — _Multi-angle Quantum Approximate Optimization Algorithm_ — arXiv:2109.11455, Sci. Rep. (2022) — **verificado en vivo 2026-07-17** · Bravyi, Kliesch, König, Tang — _Obstacles to variational quantum optimization from symmetry protection_ (introduce RQAOA) — Phys. Rev. Lett. 125, 260505 (2020) — **verificado en vivo 2026-07-17** · Zhou et al. arXiv:1812.01041 (INTERP) y Goemans–Williamson 1995 (cota 0.878) — ya citados y referenciados en la nota 01 (no se re-verifican).
 
 ---

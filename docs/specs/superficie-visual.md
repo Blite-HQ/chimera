@@ -1,10 +1,12 @@
 # Spec de costura — Superficie visual del Studio: plan, aprobación y mapa (D↔E↔A)
 
 **Gobernada por:** freeze **§9** (contrato SSE Studio↔Engine, extendido ADITIVAMENTE) + **§14**
-(catálogo ● de la capa de confianza) + trust/07 §1.3 (payload mínimo por vista) + trust/18 §2
-(specs de componente) · research `docs/planeado/03-research-estado-del-arte.md` §R5 ·
+(catálogo ● de la capa de confianza) · research `docs/planeado/03-research-estado-del-arte.md` §R5 ·
 decisión #66 (`docs/mvp/decisiones.md`, ceremonia A1 → loop agéntico) fija el wire canónico que
 esta spec consume.
+**Insumo:** trust/07 §1.3 (payload mínimo por vista) + trust/18 §2 (specs de componente) —
+**[S3 2026-07-30]** slot normalizado: las notas de knowledge estaban en «Gobernada por:»;
+knowledge es insumo, jamás autoridad (#108).
 **Costura:** D↔E↔A · **Dueño (Fase 1):** Dylan · **Estado:** SPEC (Fase 0, 2026-07-24)
 
 > **Regla de aditividad (README "Specs de costura"):** los payloads nuevos de este documento
@@ -68,6 +70,11 @@ implemente.
 
 ### 4 · Payload de MAPA (topología / partición)
 
+> **[S3 2026-07-30]** (superficie de dominio Reto-1 — lente): silueta de Costa Rica,
+> ancho-por-kV, `pmtiles --region=cr` — dominio del caso demo presentado como superficie de
+> plataforma (censo §4, tipo (iii)); la doctrina que lo resuelve es la de lentes de
+> `docs/studio/product-model.md` §Superficies.
+
 **Orden de construcción (R5, fallback primero — garantía del día D):**
 
 1. **Fase 1 (S, ~0.5 día):** mapa abstracto-geográfico SIN basemap — silueta de Costa Rica
@@ -114,6 +121,13 @@ alineada al shape ya validado por el spike (`PartitionView`/`Island` en `ieee14.
 resultado de partición lleva `verification` **POR ISLA** — un payload de mapa con un único
 bloque `verification` a nivel raíz (y no uno por isla) violaría §9 tanto como un resultado sin
 bloque `verification` en absoluto.
+
+**[S3 2026-07-30]** Nota: «por isla» es la instancia Reto-1 de la regla, no su enunciado
+universal — la formulación GENÉRICA correcta es la de
+`docs/specs/confianza-api-sse.md` §Contrato, bala «Regla de forma (freeze §9)» (líneas
+31-35 tras el ajuste de header S3): «ningún payload de resultado sin su bloque
+`verification`» (por sub-entidad del resultado; «isla» es vocabulario del dominio, no del
+contrato — censo §4).
 
 Este payload NO introduce un tipo de evento nuevo al catálogo §14: viaja embebido en el payload
 de `verification.completed` (o el `run.step.completed` del paso de partición) tal como trust/07
@@ -178,20 +192,20 @@ estos payloads — ver Tests semilla.
 
 ## Interfaces con otros dominios
 
-| Interfaz                                                                 | Dominio afectado          | Estado                                                             |
-| ------------------------------------------------------------------------- | -------------------------- | -------------------------------------------------------------------- |
-| Consume `plan.created`/`plan.item_updated`/`approval.requested`/`approval.responded` (wire) | D↔A (`harness-agentico.md`) | SPEC — wire pinneado por decisión #66; emisor pendiente Fase 1     |
-| Consume la proyección SSE genérica (`project_event`/`sse_frame`)          | D↔E (`confianza-api-sse.md`) | VERDE — validado por el seed de esta spec (proyección type-agnostic) |
-| Payload de mapa/partición (verification por isla, embebido en `verification.completed`) | D↔E | Forma congelada por trust/07 §1.3; esta spec la formaliza          |
+| Interfaz                                                                                    | Dominio afectado             | Estado                                                               |
+| ------------------------------------------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------- |
+| Consume `plan.created`/`plan.item_updated`/`approval.requested`/`approval.responded` (wire) | D↔A (`harness-agentico.md`)  | SPEC — wire pinneado por decisión #66; emisor pendiente Fase 1       |
+| Consume la proyección SSE genérica (`project_event`/`sse_frame`)                            | D↔E (`confianza-api-sse.md`) | VERDE — validado por el seed de esta spec (proyección type-agnostic) |
+| Payload de mapa/partición (verification por isla, embebido en `verification.completed`)     | D↔E                          | Forma congelada por trust/07 §1.3; esta spec la formaliza            |
 
 ## Eventos/payloads nuevos (wire dotted-lowercase → ● catálogo §14)
 
-| Wire                  | ● catálogo §14 | Nota                                                                                          |
-| ---------------------- | --------------- | ----------------------------------------------------------------------------------------------- |
-| `plan.created`        | `●PlanCreated`  | ya en el catálogo (§14)                                                                        |
-| `plan.item_updated`   | —               | progreso incremental del mismo `●PlanCreated`; sin ● propio en el catálogo — aditivo (ver "Discrepancia" abajo) |
-| `approval.requested`  | —               | sin ● propio en §14 — el catálogo tiene `●HumanOverrideRecorded` (posterior al hecho, para overrides ya aplicados) pero NADA para una solicitud de aprobación PENDIENTE; ver nota |
-| `approval.responded`  | —               | idem — candidato natural sería sumarlo al catálogo §14 en la próxima actualización del freeze, fuera del alcance de esta spec (que no lo edita) |
+| Wire                 | ● catálogo §14 | Nota                                                                                                                                                                              |
+| -------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plan.created`       | `●PlanCreated` | ya en el catálogo (§14)                                                                                                                                                           |
+| `plan.item_updated`  | —              | progreso incremental del mismo `●PlanCreated`; sin ● propio en el catálogo — aditivo (ver "Discrepancia" abajo)                                                                   |
+| `approval.requested` | —              | sin ● propio en §14 — el catálogo tiene `●HumanOverrideRecorded` (posterior al hecho, para overrides ya aplicados) pero NADA para una solicitud de aprobación PENDIENTE; ver nota |
+| `approval.responded` | —              | idem — candidato natural sería sumarlo al catálogo §14 en la próxima actualización del freeze, fuera del alcance de esta spec (que no lo edita)                                   |
 
 **Nota (discrepancia a resolver, no bloqueante):** `plan.item_updated` y el par
 `approval.requested`/`approval.responded` no tienen un ● homólogo explícito en el catálogo §14

@@ -1,5 +1,10 @@
 # Verificación del walking skeleton de infra (operador)
 
+> **Estado: VIGENTE (2026-07-30).** Runbook operativo de verificación de infra — verificado
+> contra `scripts/smoke_infra.sh` y `docker/api-entrypoint.sh` (fixes #95/#96). Es el ÚNICO
+> doc operativo de `docs/mvp/` (el resto del directorio es el closure set histórico del
+> MVP); su reubicación queda diferida al refactoring final (decisión #118).
+
 **Dominio:** `04-infra.md`. **Decisiones referenciadas:** #6–#11 en
 `docs/mvp/decisiones.md`. Este doc es la versión-operador de `scripts/smoke_infra.sh`
 — el script ES la verificación ejecutable; este texto explica qué hace y por qué.

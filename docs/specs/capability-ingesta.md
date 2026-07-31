@@ -20,11 +20,14 @@ canonicalización — `blite/certificate/canonical.py`, freeze-anexo §2) y el v
 ### Dos instancias, no una
 
 1. **Snapshot crudo** — blob inmutable. Se ingiere con `ContentStore.put(bytes_de_la_respuesta,
-   media_type, ctx) -> Artifact`; el digest **es** `sha256` sobre los bytes exactos recibidos del
+media_type, ctx) -> Artifact`; el digest **es** `sha256` sobre los bytes exactos recibidos del
    FeatureServer (ContentStore no canonicaliza contenido opaco — Regla 1 del anexo aplicada por
    analogía: los bytes tal cual, jamás una re-serialización). **El ancla es el snapshot, JAMÁS la URL**:
    los FeatureServer ArcGIS del ICE son mutables y paginados — dos fetches a la misma URL en instantes
    distintos son evidencia distinta con digests distintos, y eso es correcto, no un bug.
+   **[S3 2026-07-30]** (ejemplo de dominio Reto-1 — no forma del contrato: la regla genérica
+   es «el ancla es el snapshot, jamás la fuente mutable»; ArcGIS/FeatureServer del ICE es el
+   caso del reto que la justifica, no parte del contrato — censo §4.)
 2. **Instancia derivada** — el resultado de una capability de derivación (p. ej. "convertir el
    FeatureServer crudo en un grafo de topología") **más su receta**, en vocabulario PROV/`dvc.lock`:
 
@@ -43,12 +46,14 @@ canonicalización — `blite/certificate/canonical.py`, freeze-anexo §2) y el v
    ```
 
    `Provenance` es una unión discriminada por `kind` (Pydantic, `frozen=True, extra="forbid"`) — módulo
-   NUEVO `engine/src/blite/verification/provenance.py` (Fase 1, Sebas+Dylan; no existe hoy). **No se
+   NUEVO `engine/src/blite/verification/provenance.py` (Fase 1, Sebas+Dylan; no existe hoy).
+   **[S3 2026-07-30]** Existe (D-N7): `engine/src/blite/verification/provenance.py` está en el
+   árbol con la unión `Provenance` — el «no existe hoy» quedó histórico. **No se
    agrega ningún campo a `Artifact`** (freeze §12 queda intacto): la `Provenance` se canonicaliza con
    `C(x)` y se guarda ELLA MISMA vía `ContentStore.put()` — hereda digest/identidad gratis, sin sustrato
    nuevo. La "instancia" completa es el par `{artifact: Artifact, provenance_digest: str}`; ese par viaja
    como payload adicional (aditivo, freeze §3 no lo prohíbe) de `capability.job.completed
-   {output_digest, provenance_digest}`.
+{output_digest, provenance_digest}`.
 
 ### Validación en frontera, DENTRO de la receta
 
@@ -57,6 +62,10 @@ declarar la instancia derivada válida: **`geojson-pydantic`** (RFC 7946) para g
 para tabular. El resultado — pase o falle — entra como `assertions` (mismo espíritu que el facet
 `dataQualityAssertions` de OpenLineage citado en R2): el certificado puede afirmar "esta derivación pasó
 el contrato de forma X", nunca "confía en que pasó".
+
+**[S3 2026-07-30]** (ejemplo de dominio Reto-1 — no forma del contrato: la forma genérica es
+«la receta valida en frontera y registra `assertions`»; qué librería concreta valida qué —
+geoespacial/tabular — es del dominio de la capability, no del contrato de ingesta — censo §4.)
 
 ### Determinismo del digest (la regla que rompe silenciosamente sin disciplina)
 
@@ -67,6 +76,12 @@ el contrato de forma X", nunca "confía en que pasó".
    resuelve el round-trip JCS/ECMAScript (shortest round-trip, banda `[1e-6,1e-4)` fija); reformatear
    coords ANTES de pasarlas por `C(x)` (redondeo "cosmético", notación distinta) es una segunda
    canonicalización no auditada que puede divergir de la primera.
+
+   **[S3 2026-07-30]** (ejemplo de dominio Reto-1 — no forma del contrato: «features» y
+   «coordenadas» son el caso GIS del reto; la regla genérica de los puntos 1-2 es «orden
+   estable por ID antes de canonicalizar, y una sola canonicalización — jamás reformateo
+   previo del dato» — censo §4.)
+
 3. **Una sola puerta de canonicalización**: toda instancia derivada de esta spec pasa por
    `blite.certificate.canonical.canonicalize` — el MISMO gate que `provenance_hash`/`claim_digest`. Cero
    copias derivadas (la lección `SF-P1-1` del anexo: una segunda copia del formateo de floats es
@@ -84,13 +99,21 @@ cual ya está registrado — cero cambio ahí.
 
 ### Dos capabilities nuevas, `CapabilityManifest` v2
 
-| id                      | `side_effects`          | `required_permission`         | `interaction`     | `execution_profile` | Propósito                                  |
-| ----------------------- | ------------------------ | ------------------------------ | ------------------ | -------------------- | ------------------------------------------- |
-| `blite.ingesta.snapshot.fetch` | `reversible-external` | `capability:ingest:external-source` | `job`               | `in-process` (hint)  | Trae el snapshot crudo del FeatureServer     |
-| `blite.ingesta.geojson.to_graph` | `pure`                 | `capability:ingest:derive`          | `request_response`  | `in-process` (hint)  | Deriva topología/grafo del snapshot crudo    |
+| id                               | `side_effects`        | `required_permission`               | `interaction`      | `execution_profile` | Propósito                                 |
+| -------------------------------- | --------------------- | ----------------------------------- | ------------------ | ------------------- | ----------------------------------------- |
+| `blite.ingesta.snapshot.fetch`   | `reversible-external` | `capability:ingest:external-source` | `job`              | `in-process` (hint) | Trae el snapshot crudo del FeatureServer  |
+| `blite.ingesta.geojson.to_graph` | `pure`                | `capability:ingest:derive`          | `request_response` | `in-process` (hint) | Deriva topología/grafo del snapshot crudo |
+
+**[S3 2026-07-30]** (ejemplo de dominio Reto-1 — no forma del contrato: los dos `id`
+concretos y el output «topología/grafo» de la tabla son la instancia del reto — roza
+ADR-029; la forma del contrato genérico es el par snapshot+derivación con manifest v2 —
+censo §4.)
 
 Paquete Fase 1: `capabilities/ingesta/src/blite_cap_ingesta/` (mismo patrón `blite_cap_<domain>` que
 `blite_cap_sim`/`blite_cap_quantum`).
+
+**[S3 2026-07-30]** Existe (D-N7): `capabilities/ingesta/src/blite_cap_ingesta/` está en el
+árbol — el paquete dejó de ser «Fase 1» pendiente.
 
 **DISCREPANCIA A FLAGGEAR (no es competencia de esta spec arreglarla):** `sdk/src/blite_capability/manifest.py`
 hoy es un `@dataclass(frozen=True)` con `{id, description, input_schema, output_schema, version, tags}` —
@@ -110,15 +133,15 @@ tal cual, sin campos nuevos en el evento).
 
 ## Interfaces con otros dominios
 
-| Interfaz                                                    | Dominio            | Estado                                                                 |
-| ------------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------ |
-| `CapabilityManifest` v2 (side_effects/required_permission/interaction/execution_profile) | A · ejecución (Registry/Dispatcher, Steven) | SPEC — discrepancia con `sdk/manifest.py` flaggeada arriba, pendiente Fase 1 |
-| `capability.job.{submitted,progress,completed,failed}`      | A · ejecución       | VERDE (freeze §3, reutilizado sin cambio de forma; `provenance_digest` es campo aditivo del payload) |
-| `●ClaimEmitted{claim_type: ingestion\|derivation}`          | confianza (Dylan)   | SPEC — `derivation` ya registrado (perfil §1); `ingestion` propuesto aquí, ratificación pendiente Dylan |
-| `ContentStore.put/get/stat`                                  | frontera (Dylan)    | VERDE (freeze §12, reutilizado sin cambios)                              |
-| `canonicalize()` / `C(x)`                                    | confianza (Dylan)   | VERDE (freeze-anexo §2, reutilizado — única puerta)                     |
-| `assertions` → `PropertyRulePredicate` (evidence.py)         | confianza (Dylan)   | SPEC — uso nuevo del predicate existente para dataQualityAssertions      |
-| Run jerárquico / `parent_run_id` (§13)                       | frontera (Dylan+Steven) | VERDE (freeze §13, reutilizado — criterio step-vs-sub-run aplicado tal cual) |
+| Interfaz                                                                                 | Dominio                                     | Estado                                                                                                  |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `CapabilityManifest` v2 (side_effects/required_permission/interaction/execution_profile) | A · ejecución (Registry/Dispatcher, Steven) | SPEC — discrepancia con `sdk/manifest.py` flaggeada arriba, pendiente Fase 1                            |
+| `capability.job.{submitted,progress,completed,failed}`                                   | A · ejecución                               | VERDE (freeze §3, reutilizado sin cambio de forma; `provenance_digest` es campo aditivo del payload)    |
+| `●ClaimEmitted{claim_type: ingestion\|derivation}`                                       | confianza (Dylan)                           | SPEC — `derivation` ya registrado (perfil §1); `ingestion` propuesto aquí, ratificación pendiente Dylan |
+| `ContentStore.put/get/stat`                                                              | frontera (Dylan)                            | VERDE (freeze §12, reutilizado sin cambios)                                                             |
+| `canonicalize()` / `C(x)`                                                                | confianza (Dylan)                           | VERDE (freeze-anexo §2, reutilizado — única puerta)                                                     |
+| `assertions` → `PropertyRulePredicate` (evidence.py)                                     | confianza (Dylan)                           | SPEC — uso nuevo del predicate existente para dataQualityAssertions                                     |
+| Run jerárquico / `parent_run_id` (§13)                                                   | frontera (Dylan+Steven)                     | VERDE (freeze §13, reutilizado — criterio step-vs-sub-run aplicado tal cual)                            |
 
 ## Fronteras (qué NO decide esta spec)
 
@@ -140,6 +163,11 @@ emitirá `tests/fixtures/contract/ingesta/snapshot-example.json` y
 `apps/studio/src/fixtures/contract/ingesta/*.json`. **Declarados aquí, NO generados en esta sesión** — el
 modelo `Provenance` que los produce todavía no existe (Fase 0 entrega contrato + seed xfail, no la
 feature).
+
+**[S3 2026-07-30]** Generados (D-N8): `tests/fixtures/contract/ingesta/{snapshot-example,derivation-example}.json`
+y su espejo en `apps/studio/src/fixtures/contract/ingesta/` existen commiteados, y el modelo
+`Provenance` que los produce vive en `engine/src/blite/verification/provenance.py` (D-N7) —
+las dos afirmaciones del párrafo anterior quedaron históricas.
 
 ## Tests semilla
 

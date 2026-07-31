@@ -1,5 +1,9 @@
 # Planeado vs Mejorado — el criterio y el backlog
 
+> **Estado: HISTÓRICO (2026-07-30).** La fase Planeado cerró (decisión #100); el criterio
+> vigente es `docs/mejorado/01-criterio.md` (decisión #101). Se conserva íntegro como
+> registro — el header original decía:
+>
 > **Estado: VIGENTE (2026-07-24, v2).** v2 incorpora el mandato de Dylan del mismo día:
 > **Chimera no es solo verificador — es el agente que GENERA el resultado del reto (paridad
 > con `reto1-vanilla`) y además lo verifica, lo certifica, produce el informe formal y lo

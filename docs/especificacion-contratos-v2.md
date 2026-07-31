@@ -2,16 +2,25 @@
 
 _Firmas TypeScript de puertos y entidades · Fase 1 · SEMILLA_
 
-> **Estado: SEMILLA v2 (importada 2026-07-18, barrido S-E).** Realización en TypeScript de las
-> entidades de la base lógica y de la spec de confianza v3.2 — **la verdad ejecutable sigue
-> siendo la traducción a Python/Pydantic gobernada por [`contract-freeze.md`](contract-freeze.md)**
-> (misma regla que la semilla v1, hoy supersedida). Importada del working set externo,
+> **Estado: VIGENTE-CON-DRIFT (2026-07-30).** SEMILLA histórica TS (v2, importada 2026-07-18,
+> barrido S-E); **la verdad ejecutable es la traducción a Python/Pydantic gobernada por
+> [`contract-freeze.md`](contract-freeze.md)** (misma regla que la semilla v1, hoy
+> supersedida). Realización en TypeScript de las entidades de la base lógica y de la spec de
+> confianza v3.2. Importada del working set externo,
 > sanitizada ("el Engine") y con las correcciones del veredicto de convergencia aplicadas al
 > importar: **C1** (manifest sin `protocol`, con `interaction` + `executionProfile`), **C3/C4**
 > (eventos y vocabulario: gana el freeze §2/§3), **P0-2** (letra chica del certificado),
 > **P1-2** (`VALID_AS_OF` + revocación autodeclarada), **P1-5** (override con autoridad
 > graduada) y la unificación `ModelPort`/`ModelServer` (execution/09). Cada corrección está
 > marcada `// [S-E]` en su sitio.
+>
+> **[S3 2026-07-30] Deltas contra el código (censo S1, D-N13):** `CapabilityManifest` (§2)
+> declara 4 campos v2 — `sideEffects`, `requiredPermission`, `interaction`,
+> `executionProfile` — que el SDK real aún no tiene
+> (`sdk/src/blite_capability/manifest.py:14-46`; ítem C1 del backlog).
+> `InvocationContext.invocationChain`/`effectivePermissions` (§2) no tienen implementación
+> (`engine/src/blite/verification/context.py:15-22`) — la defensa SO1 anti confused-deputy
+> NO existe en el código; queda registrado, no resuelto aquí.
 >
 > **Correcciones S-F (2026-07-20, auditoría de ratificación — marcadas `// [S-F]`):** la
 > importación S-E dejó semillas incompletas contra la máquina de estados congelada

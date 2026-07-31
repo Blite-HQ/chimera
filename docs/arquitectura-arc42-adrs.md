@@ -2,7 +2,7 @@
 
 _arc42 + C4 + ADRs + Patrones · Reflejo verificable de la base lógica_
 
-> **Estado: VIGENTE, salvo ADR-001, ADR-002 y ADR-012** (§12, Registro de decisiones) — fijaban núcleo TypeScript/NestJS y runtime Node.js; supersedidos por la decisión de core Python (ver [`arquitectura-python.md`](arquitectura-python.md)). El resto del documento (fundamento lógico, vistas C4, cómo la arquitectura garantiza cada invariante, patrones, riesgos) sigue vigente. Ver [`README.md`](README.md) para el índice de autoridad documental.
+> **Estado: VIGENTE-CON-DRIFT (2026-07-30), salvo ADR-001, ADR-002 y ADR-012** (§12, Registro de decisiones) — fijaban núcleo TypeScript/NestJS y runtime Node.js; supersedidos por la decisión de core Python (ver [`arquitectura-python.md`](arquitectura-python.md)). El resto del documento (fundamento lógico, vistas C4, cómo la arquitectura garantiza cada invariante, patrones, riesgos) sigue vigente. **Drift verificado por el censo S1 (D-N13):** §5 pinta un pipeline de gateway de 5 etapas vs las 8 congeladas (freeze §8; `engine/src/blite/gateway/pipeline.py:40-48`) — marca `[S3]` en §5. Ver [`README.md`](README.md) para el índice de autoridad documental.
 >
 > **Propósito.** Documento de arquitectura autoritativo de Chimera. Define la estructura, los componentes, las decisiones y los patrones del sistema, y demuestra que cada uno es el reflejo de un invariante de la base lógica formal (documento separado: _Base Lógica Formal del Engine_, ver [`base-logica-formal.md`](base-logica-formal.md)).
 >
@@ -120,6 +120,8 @@ flowchart TB
     gw --> models
     cp -. "control, nunca datos" .-> gw
 ```
+
+**[S3 2026-07-30]** El rótulo del gateway en el diagrama (identidad → autorización → rate-limit → verificación → procedencia, 5 etapas) es pre-freeze: el pipeline congelado y el código real tienen **8 etapas** — identity → authorization → guardrails → provenance:pre → mediation → verification → provenance:post → egress (freeze §8; `engine/src/blite/gateway/pipeline.py:40-48`).
 
 **Subconjunto de la Fase 1** (lo que se construye en el incremento inicial, con implementación mínima): Studio, Gateway (pipeline mínimo pero punto único de control), Runtime (loop con retroalimentación), Capability Registry (adapters MCP y HTTP), Verifiers (anchors internos), Event Store (PostgreSQL), Identidad (JWT), Servicios científicos. **Semillas de Fase 2:** `override` como evento, agregado `Domain` (un solo dominio), certificado de confianza (JSON), puerto `Verifier` que excluye modelos.
 

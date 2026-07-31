@@ -1,7 +1,7 @@
 # Nota 00 — KB-fuentes: fuentes, repositorios, papers y gotchas por reto
 
 **Ítem del plan (§4, Sebas):** la capa de fuentes del plano cuántico — URLs, versiones, migraciones de API y gotchas operativos. Las notas 01–04 la referencian como "KB-fuentes" y no repiten su contenido.
-**Fecha:** 2026-07-08 · **Estado:** vigente como capa de fuentes — importada desde `docs/research/` en la consolidación del knowledge base (2026-07-14).
+**Fecha:** 2026-07-08 · **Estado:** vigente como capa de fuentes — importada desde `docs/research/` en la consolidación del knowledge base (2026-07-14). **Normalización (2026-07-30, saneamiento S3):** VIGENTE-CON-DRIFT según la política de estados (decisión #109) — la nota de drift es la advertencia de vocabulario pre-reconciliación del bloque de consolidación de abajo, que se conserva íntegra en su formato original.
 **Fuentes:** este documento ES la capa de fuentes; ninguna verificada en vivo durante la consolidación.
 
 > **Nota de consolidación (Dylan, 2026-07-14):** anterior al template de notas (no tiene los 4 campos ni
@@ -334,6 +334,12 @@ Fuentes que respaldan el diferenciador central de CHIMERA (verificar, no confiar
 ---
 
 ## 6. Checklist de incorporación al RAG de CHIMERA
+
+> **Nota (2026-07-30, saneamiento S3):** este checklist de 13 documentos a indexar **nunca se
+> ejecutó** (censo documental, `docs/mejorado/07-censo-documental.md` §7). No se borra: es insumo
+> directo del ítem de ingesta RAG/KB con procedencia que entró al backlog (decisión #116). La ruta
+> `distributions/chimera/datasets/docs/` es del layout pre-reconciliación — ver la advertencia del
+> encabezado.
 
 Documentos a descargar/convertir e indexar en `distributions/chimera/datasets/docs/`:
 

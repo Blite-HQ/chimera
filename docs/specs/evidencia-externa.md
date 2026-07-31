@@ -5,6 +5,12 @@
 en el catálogo) · freeze-anexo-canonicalización §2 (`C(x)`) · **Dueño:** Sebas · **Estado:** SPEC
 (2026-07-24)
 
+> **Rango (S3 2026-07-30):** spec **DE DOMINIO** (lente cuántica/Nexus-Quantinuum), no
+> contrato genérico del núcleo — el doc entero es dominio alojado en `docs/specs/` genérico
+> (censo `docs/mejorado/07-censo-documental.md` §4, tipo (iii): `NormalizedCounts` en
+> `engine/`, predicado con campos solo-cuánticos, `ConsensusLeg` sobre una clase decisoria
+> del freeze §4). El contenido queda intacto; solo cambia el rango declarado.
+>
 > Insumo: `docs/planeado/03-research-estado-del-arte.md` §R3 · `knowledge/quantum/08-ruta-quantinuum-guppy.md`
 > §1.5 (footgun de endianness Qiskit↔pytket) y §4/Impacto en contrato (campos por backend-leg) ·
 > `knowledge/trust/04-anclas-duras-mapa-oraculos.md` (mapa de anclas — esta spec NO agrega un ancla
@@ -137,6 +143,11 @@ class ConsensusReplicationPredicate(BaseModel):
 
 Ningún campo existente (`replicas`/`seeds`/`agreement`) se elimina ni cambia de forma — extensión pura.
 
+**[S3 2026-07-30]** Implementado (D-N6): `ConsensusLeg` y la extensión `legs` corren en
+producción con el validador exacto aquí propuesto (legs↔replicas y seeds por pata) —
+`engine/src/blite/verification/evidence.py:133-181`. El «esta spec propone» de arriba quedó
+histórico; la letra se conserva como registro de la propuesta.
+
 ### Seguridad dura — NO NEGOCIABLE
 
 **JAMÁS deserializar evidencia externa con `RuntimeDecoder` de Qiskit** (CVE
@@ -158,15 +169,15 @@ normalized_digest: str, imported_by: str, imported_at: datetime}`
 
 ## Interfaces con otros dominios
 
-| Interfaz                                                    | Dominio            | Estado                                                                    |
-| ------------------------------------------------------------ | ------------------- | ---------------------------------------------------------------------------- |
-| Receta de derivación (`Provenance`, `ContentStore`, `C(x)`) | costura (Sebas+Dylan) | VERDE — reutiliza [`capability-ingesta.md`](capability-ingesta.md) tal cual   |
-| `deliverables[{artifact_ref, digest}]` del predicate         | confianza (Dylan)   | VERDE (freeze §7, reutilizado sin cambio de forma)                          |
-| Firma DSSE del certificado (T6/#64a)                        | confianza (Dylan)   | VERDE (freeze §7, ampara transitivamente — cero firma individual en Fase 1) |
-| `transpiled_circuit_digest`/`backend_id`/`noise_config_digest` | ciencia (Sebas)   | VERDE (freeze §11, ya congelados del lado del claim proponente)             |
-| `ConsensusReplicationPredicate.legs` (extensión)             | confianza (Dylan)   | SPEC — propuesta aditiva, pendiente Fase 1                                  |
-| `●ExternalCertificateImported` / `external_certificate.imported` | confianza (Dylan) | SPEC — nombre de wire fijado aquí, evento ya reservado en catálogo §14      |
-| `CapabilityManifest` v2 (`blite.evidencia.nexus.normalize_counts`) | A · ejecución (Steven) | SPEC — misma discrepancia flaggeada en `capability-ingesta.md`             |
+| Interfaz                                                           | Dominio                | Estado                                                                      |
+| ------------------------------------------------------------------ | ---------------------- | --------------------------------------------------------------------------- |
+| Receta de derivación (`Provenance`, `ContentStore`, `C(x)`)        | costura (Sebas+Dylan)  | VERDE — reutiliza [`capability-ingesta.md`](capability-ingesta.md) tal cual |
+| `deliverables[{artifact_ref, digest}]` del predicate               | confianza (Dylan)      | VERDE (freeze §7, reutilizado sin cambio de forma)                          |
+| Firma DSSE del certificado (T6/#64a)                               | confianza (Dylan)      | VERDE (freeze §7, ampara transitivamente — cero firma individual en Fase 1) |
+| `transpiled_circuit_digest`/`backend_id`/`noise_config_digest`     | ciencia (Sebas)        | VERDE (freeze §11, ya congelados del lado del claim proponente)             |
+| `ConsensusReplicationPredicate.legs` (extensión)                   | confianza (Dylan)      | SPEC — propuesta aditiva, pendiente Fase 1                                  |
+| `●ExternalCertificateImported` / `external_certificate.imported`   | confianza (Dylan)      | SPEC — nombre de wire fijado aquí, evento ya reservado en catálogo §14      |
+| `CapabilityManifest` v2 (`blite.evidencia.nexus.normalize_counts`) | A · ejecución (Steven) | SPEC — misma discrepancia flaggeada en `capability-ingesta.md`              |
 
 ## Fronteras (qué NO decide esta spec)
 

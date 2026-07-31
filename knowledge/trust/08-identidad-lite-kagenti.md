@@ -54,7 +54,7 @@ Los flags booleanos (`canCallTools`, `canUseNetwork`) son demasiado gruesos para
 
 Hoy: `test_event_has_non_null_actor_id` es xfail porque ni `Event` tiene `actor_id` ni existe quién lo estampe. Ruta concreta:
 
-1. **Freeze (viernes):** `Event.actor_id` obligatorio (nota 01) + contrato `Identity`/JWT (esta nota).
+1. **El contract freeze, materializado 2026-07-18:** `Event.actor_id` obligatorio (nota 01) + contrato `Identity`/JWT (esta nota).
 2. **Post-freeze:** módulo `identity` verifica el JWT y produce `Identity`; la etapa 1 del pipeline (carril Steven, contrato nuestro) la estampa en el contexto; el `EventStore.append` la exige (parámetro no-opcional).
 3. **Flip:** el xfail se voltea a aserción real ("todo evento tiene actor_id no vacío") — nunca se borra (regla del invariante). Los eventos emitidos fuera de un request (bootstrap, jobs) usan identidades de servicio (`service:runtime`), no strings vacíos.
 

@@ -1,7 +1,7 @@
 # Nota 13 — Gobernanza a fondo: OPA (decision logs + bundles), Cedar (verificar la política misma), descartes formales de Casbin/Kyverno, y el mapeo integral OWASP Top 10 para Aplicaciones Agénticas 2026
 
 **Ítem del backlog (ficha A2):** OPA a fondo (decision logs + bundle API → empaquetado de políticas versionadas); Cedar a fondo (schema + validación estática); descarte formal de Casbin y Kyverno; mapeo integral riesgo→mitigación→capa del OWASP Agentic Top 10 (hoy solo existe el slice de identidad, nota 08 §1.5).
-**Fecha:** 2026-07-07 · **Estado:** insumo para el contract freeze (no cambia contrato este mes — todo es inspiración/descarte)
+**Fecha:** 2026-07-07 · **Estado:** **VIGENTE (2026-07-30).** Era «insumo para el contract freeze (no cambia contrato este mes — todo es inspiración/descarte)» — el freeze se materializó el 2026-07-18, ya no es cosa futura; los descartes formales (Casbin/Kyverno) y el mapeo OWASP Agentic siguen vigentes.
 **Fuentes:** OPA (`openpolicyagent.org`, CNCF graduated, Apache-2.0), Cedar (`docs.cedarpolicy.com`, `cedar-policy/cedar` + `cedar-spec`, Apache-2.0), Casbin (`casbin.apache.org`, Apache Incubating), Kyverno (`kyverno.io`, CNCF graduated) — todos verificados en vivo 2026-07-07 · **OWASP Top 10 for Agentic Applications 2026** (`genai.owasp.org`, OWASP Gen AI Security Project / Agentic Security Initiative, publicado 2025-12-09) — verificado en vivo 2026-07-07 · nota 05 (VerificationPolicy), nota 08 §1.5 (slice de identidad), nota 09 (policy engine del AGT), `docs/invariants.md`
 
 ---

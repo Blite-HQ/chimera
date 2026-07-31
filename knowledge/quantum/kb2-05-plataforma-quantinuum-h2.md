@@ -1,8 +1,15 @@
 # KB2-05 — La plataforma del enunciado: Quantinuum H2, emuladores, TKET/pytket y Nexus
 
 **Rol:** brief operativo de la plataforma obligatoria del C1 ("emulador H2 de Quantinuum, exacto ≤26 qubits"). Qué es cada pieza, cómo mapea al contrato de evidencia ya congelado (freeze §11 / nota quantum-08), y cómo se reconcilia con el air-gap del demo (freeze §15.4).
+**Fecha:** 2026-07-20 · **Estado:** VIGENTE como KB (marcado 2026-07-30, saneamiento S3 — hasta entonces sin header de estado y fuera de ambos índices del directorio).
 **Fuentes:** docs.quantinuum.com (systems + nexus) y learn.microsoft.com/azure/quantum, consultadas en vivo 2026-07-20. Los ítems marcados ⚠️ requieren verificación con la cuenta/portal real antes de depender.
 **Complementa:** KB2-02 (la formulación que se ejecuta aquí) · KB2-03 (Qiskit/PennyLane — este doc agrega la tercera pata: TKET) · KB2-04 §8 (semillas/replay).
+
+> **Nota (2026-07-30, saneamiento S3):** nombre fuera de la convención `NN-` del directorio
+> (colisiona con `05-regrid-qaoa-extraccion.md`). El renombre, o la fusión con
+> `08-ruta-quantinuum-guppy.md` (deuda declarada desde S-G), quedó DIFERIDO al refactoring final
+> (decisión #118). Registrado: su reconciliación (§5) se hizo contra el air-gap del demo (freeze
+> §15.4) y no contra `docs/invariants.md`.
 
 ---
 
