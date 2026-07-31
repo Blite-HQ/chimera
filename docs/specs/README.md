@@ -153,6 +153,11 @@ del API real. Regla: **el fixture de costura tiene UN solo origen y ambos lados 
 > #94 — los consumidores son sesiones de Fase 1). Misma convención de fixtures single-origin
 > de arriba; el ledger (`../mvp/decisiones.md` #121+) registra cada ceremonia.
 
-| Spec                                           | Costura | Consumen | Estado               |
-| ---------------------------------------------- | ------- | -------- | -------------------- |
-| [`chat-conversacion.md`](chat-conversacion.md) | A↔E↔D   | P3, P6   | SPEC (decisión #122) |
+| Spec                                           | Costura       | Consumen | Estado               |
+| ---------------------------------------------- | ------------- | -------- | -------------------- |
+| [`chat-conversacion.md`](chat-conversacion.md) | A↔E↔D         | P3, P6   | SPEC (decisión #122) |
+| [`generalidad-retos.md`](generalidad-retos.md) | B↔A↔confianza | G1–G4    | SPEC (decisión #125) |
+
+Además: `endpoints-studio.md` ganó las secciones ADITIVAS «GET /runs/discarded» (#123) y
+«GET /runs/{run_id}/rvsp» (#124); `superficie-visual.md` ganó §8 (branch-ids C-8) y §9
+(metrics C-4) — #124.

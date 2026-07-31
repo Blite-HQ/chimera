@@ -1115,3 +1115,48 @@ ejecutable que #106 dejó enunciado:
    espejo + Zod `topologySnapshotSchema` NUEVO + anti-drift en ambos lados.
    Declarados (modelo Fase 1): `run-metrics-recorded.json` (V2) y
    `contract/endpoints/get-runs-rvsp.json` (V3).
+
+### #125 — S-C: contrato de generalidad (`docs/specs/generalidad-retos.md`, spec NUEVA)
+
+Decisiones de forma para que los retos 2/3 corran EN la plataforma (G1–G4):
+
+1. **claim_types por reto = REUSO del registro STEM, no invención**: la
+   conclusión C3 (series TFIM vs ED) es **`simulation_result`** (perfil §1:
+   modelo digest + params digest + seeds + output digest — calza exacto, techo
+   AL3); la conclusión C2 (desempeño del clasificador vs baseline) es
+   **`statistical`** (McNemar; la extensión `statistical_procedure` ya prevista
+   en perfil §1 nota). Los claims intermedios siguen el vocabulario runtime
+   (`intermediate`, C1). El perfil está CONGELADO ⇒ **anexo aditivo aparte**
+   (mismo patrón que `capability-ingesta.md` declaró): la §"Anexo del perfil
+   STEM" de la spec ES el anexo (versión menor v1.0→v1.1 — perfil §6: agregar
+   schemas/plantillas = versión menor), sin editar el doc congelado.
+2. **C-14 (detalle de la extensión ya decidida en #106):** `Differential.status`
+   gana el literal **`EXACT_DIAGONALIZATION`** (aditivo a la unión CpSat) y
+   `Differential` gana **`relative_tolerance: float | None = None`** (≤5%
+   oficial; `None` para CP-SAT que sigue en `abs_tol: 0`); la tolerancia entra
+   al `verifier_params_digest` del verificador que la usa.
+3. **Homes de los verificadores nuevos** (predicates YA congelados sin adapter):
+   `blite.verification.exact_diagonalization.ExactDiagonalizationVerifier`
+   (`formal_exact`, ancla `solver` — recompute vivo, mismo patrón CP-SAT) ·
+   `blite.verification.ground_truth.GroundTruthVerifier` (`ground_truth`, ancla
+   `dataset`) · `blite.verification.property_rule.PropertyRuleVerifier`
+   (`property_rule`, ancla `rule`). Dos patas C3 por construcción: formal_exact
+   (recompute ED) + ground_truth (series congeladas del corpus) = grupos de
+   independencia distintos.
+4. **Identidad de corpus GENERALIZADA**: la regla islanding §1.6/§15.3 se
+   generaliza a `dataset_id = "<corpus>/<instancia>[-<convencion>]@v<n>"` con
+   digest EMBEBIDO self-consistente (mismo algoritmo); C3 =
+   `tfim-corpus/...`, C2 = `tabular-corpus/...` (ids concretos los estampa
+   G1/G2 al congelar los JSON — jamás esta spec). Folds C2 sellados por
+   COMPROMISO PREVIO: `folds_digest` (asignación de folds canonicalizada)
+   emitido ANTES de cualquier fit, citado por el claim.
+5. **Dispatch por clase (G3)**: `resolve_verifiers` conserva su firma; el
+   hardcode Reto-1 (`_OPTIMALITY_CLAIM_TYPES`/`ELECTRICAL_DATA`) se reemplaza
+   por un registro declarativo por `claim_type` (`CLAIM_TYPE_VERIFIERS`) —
+   resolución vacía sigue siendo 400 fail-closed.
+6. **Fixtures `contract/generalidad/`**: generables HOY (modelos existentes) —
+   `claim-c3-simulation-result.json` / `claim-c2-statistical.json` (desde
+   `ClaimEmittedPayload`) y `predicate-ground-truth.json` /
+   `predicate-property-rule.json` (desde los predicates congelados); espejo
+   Studio byte-idéntico con verificación Python (mismo precedente que
+   ingesta/informe: sin consumidor Zod todavía).
