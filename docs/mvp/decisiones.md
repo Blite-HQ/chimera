@@ -1076,3 +1076,42 @@ píldora #96 como caso. El payload extendido de metrics (C-4) se especifica en
 la pasada S-D (`superficie-visual.md` — es la superficie que lo consume); los
 seeds de C-5 (`GatewayContext` aditivo) y C-6 (`verify_all`) entran con esta
 decisión sin ceremonia nueva (C-5/C-6 ya están decididas en #106).
+
+### #124 — S-D: superficie visual — branch-ids C-8, rvsp C-9, metrics C-4 (elaboraciones de #106)
+
+**Estado previo verificado:** el supersede de `superficie-visual.md` §5 ya estaba
+estampado por S3 (marca [MEJORADO C-9/#106]). Esta decisión materializa el DETALLE
+ejecutable que #106 dejó enunciado:
+
+1. **Convención de branch-ids (C-8)** — texto normativo nuevo en
+   `superficie-visual.md` §8: instancias derivadas de GIS usan `edge_id_property`
+   (FID/OBJECTID del portal, declarado en la receta de `geojson_to_graph`);
+   modelos sin GIS usan el id canónico determinista **`L{min}-{max}[-k]`**
+   (buses ordenados; `k` = índice 1-based de paralela, presente SOLO con
+   multi-aristas). La convención se VERSIONA con la instancia
+   (`recipe.version` + `params_digest` — un cambio de convención es instancia
+   nueva, jamás re-etiquetado silencioso). Verdict por isla =
+   `derive_execution_verdict` aplicado al subconjunto de checks `island-{k}:*`
+   de esa isla; `step_id = island_id` estable (`island-{k}`) — la base que C4/M4
+   consume.
+2. **Wire de `GET /runs/{run_id}/rvsp` (C-9)** — fila nueva en
+   `endpoints-studio.md`: snake_case (el espejo camelCase existente
+   `rvspSchema` gana mapper en Fase 1, mismo patrón `toRunSummary`); 404 para
+   run desconocido Y para run cuya instancia no tiene `optimo` (`ice-*` FUERA
+   del endpoint — jamás una curva fabricada); `baselines` cerrado a 3 claves
+   (`cpsat/greedy/gw`) con extensión COORDINADA al llegar `sa` (C-15, G5).
+3. **Payload extendido de `run.metrics.recorded` (C-4)** — forma exacta en
+   `superficie-visual.md` §9: los campos de confianza congelados (§3 [S-F]) se
+   mantienen; entran `variant?` (enum de 4: `quantum|classical|mitigated|zne`) y
+   los científicos opcionales `cut_cost?`/`wall_ms?` (lo que `AblationMetric`
+   consume — nada más se especula). Módulo propuesto: `blite.runtime.metrics`
+   (`RunMetricsRecordedPayload`). Dos brazos = sub-runs (§13): cada brazo emite
+   SU evento en SU stream. `AblationMetric`/Zod/TS/chart extienden el enum a 4
+   en el MISMO checkpoint (extensión coordinada, jamás catchall).
+4. **Fixture `contract/superficie/`** (precondición del merge de V1, letra C-8):
+   `topology-snapshot.json` se genera HOY desde `TopologyResponse`
+   (`api/src/chimera_api/reads.py:138` — el modelo YA existe) con el shape §4
+   (verification POR isla) y branch-ids ejemplificando la convención §8;
+   espejo + Zod `topologySnapshotSchema` NUEVO + anti-drift en ambos lados.
+   Declarados (modelo Fase 1): `run-metrics-recorded.json` (V2) y
+   `contract/endpoints/get-runs-rvsp.json` (V3).

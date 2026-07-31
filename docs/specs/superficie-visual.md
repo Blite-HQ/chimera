@@ -195,6 +195,57 @@ generarlo hoy sería inventar un dato que ningún modelo respalda. Lo que SÍ ex
 spec valida en su seed es que la proyección genérica (`project_event`/`sse_frame`) no degrada
 estos payloads — ver Tests semilla.
 
+### 8 · Convención de branch-ids y verdict por isla (C-8/#106 · #124 — Fase 0 Mejorado, 2026-07-31)
+
+**Hueco que cierra (cobertura C-8):** `cut_branch_ids` viajaba sin convención versionada en
+3 modelos, y la regla de agregación per-isla del verdict no existía escrita.
+
+- **Convención HÍBRIDA de branch-ids (decisión #106 C-8, detalle #124):**
+  - Instancias **derivadas de GIS**: el id de rama es el `edge_id_property` del portal
+    (FID/OBJECTID), declarado como parámetro de la receta de `geojson_to_graph` — el dato
+    del cliente conserva SU identidad; la receta lo estampa.
+  - Modelos **sin GIS** (IEEE, sintéticas): id canónico determinista **`L{min}-{max}[-k]`**
+    — buses de la rama ordenados ascendente; `k` = índice 1-based de la paralela, presente
+    SOLO cuando hay multi-aristas (`L2-5`, `L3-8-2`).
+  - **Versionado:** la convención viaja CON la instancia (`recipe.version` +
+    `params_digest` de la receta que la generó) — cambiar de convención produce una
+    instancia nueva con digest nuevo, jamás un re-etiquetado del dato estampado.
+- **Verdict por isla (la regla de agregación que faltaba):** el verdict de la isla `k` =
+  `derive_execution_verdict` aplicado al SUBCONJUNTO de checks `island-{k}:*` de esa isla —
+  ningún check de otra isla contamina; un check global (`power_balance` de red completa)
+  pertenece al resultado, no a una isla. `step_id = island_id` estable (`island-{k}`) — la
+  base sobre la que C4/M4 construye `verify_all()` y los badges nativos.
+- **Fixture (precondición del merge de V1, letra C-8):**
+  `tests/fixtures/contract/superficie/topology-snapshot.json` — generado desde
+  `TopologyResponse` (`api/src/chimera_api/reads.py:138`, modelo YA existente) por
+  `scripts/gen-contract-fixtures-superficie.py`, espejado al Studio y parseado por el Zod
+  NUEVO `topologySnapshotSchema` (entregado en Fase 0 — cierra el «declarado en prosa» del
+  §7 para topología). El caso ejemplifica AMBAS formas de branch-id y `verification` POR
+  isla (§4).
+
+### 9 · `run.metrics.recorded` extendido y `variant` ×4 (C-4/#106 · #124 — Fase 0 Mejorado, 2026-07-31)
+
+Materializa el supersede (b) del freeze §3 como contrato ejecutable:
+
+- **Payload v2 (aditivo):** los campos de confianza congelados se MANTIENEN
+  (`verification_latency_ms`, `attestations_total`, `inconclusive_count`,
+  `false_reject_proxy`, `cost_per_verification?`, `ms_por_clase?`); entran **`variant?`**
+  (enum de 4: `quantum|classical|mitigated|zne` — cubre M6) y los científicos opcionales
+  **`cut_cost?`/`wall_ms?`** (exactamente lo que `AblationMetric` consume — nada más se
+  especula). Módulo propuesto: `blite.runtime.metrics` (`RunMetricsRecordedPayload`,
+  emisor `service:runtime` al cerrar el run; el evento sigue FUERA del hash, §2).
+- **Dos brazos = sub-runs (§13):** cada brazo de ablación es un sub-run que emite SU
+  `run.metrics.recorded` en SU stream; las métricas científicas que sean EVIDENCIA van
+  además como deliverable con digest citado por el certificado (letra C-4) — el evento
+  post-terminal es proyección visual, jamás amparo.
+- **Extensión coordinada del enum (jamás catchall):** `AblationMetric.variant`
+  (`reads.py:132`), `ablationMetricSchema` (Zod), el tipo TS y el chart pasan de 2 a 4
+  valores EN EL MISMO checkpoint que el productor (V2/M19) — misma disciplina que C-15
+  fija para `baselines`.
+- **Fixture declarado:** `tests/fixtures/contract/superficie/run-metrics-recorded.json`
+  (modelo Fase 1 — V2; el generador de superficie gana el caso al existir el modelo). Seed:
+  `tests/seeds/test_seed_metrics_variant.py`.
+
 ## Fronteras (qué NO decide esta spec)
 
 - **Quién EMITE `plan.created`/`plan.item_updated`/`approval.*`** (A, harness agéntico, dueño

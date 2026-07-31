@@ -208,6 +208,57 @@ el caso al existir el modelo, y el Zod espejo del Studio entra con la rama live 
 (stream sano + stream envenenado ⇒ `GET /runs` lista solo el sano; `GET /runs/discarded`
 reporta el envenenado).
 
+## GET /runs/{run_id}/rvsp — curva r-vs-p (C-9/#106 · #124, Fase 0 Mejorado 2026-07-31)
+
+**Hueco que cierra:** la divergencia consumada que C-9 estampó en `superficie-visual.md` §5 —
+el Studio construyó la curva sobre un payload propio (`rvspSchema`, fixture de la ciencia
+real `results/exp_r_vs_p/`) que no vivía en NINGUNA spec E↔D. Esta fila lo vuelve contrato;
+la implementación es V3/M20 (ángulos de Nexus ingeridos con digest + `optimize:false` en
+QAOA + Aer multi-semilla etiquetado).
+
+### Contrato
+
+`GET /runs/{run_id}/rvsp` — clave POR RUN (el run cita su instancia — letra C-9). Wire
+**snake_case** (regla de esta spec; el `rvspSchema` camelCase existente del Studio gana un
+mapper en Fase 1, mismo patrón que `toRunSummary`):
+
+```
+{
+  instance: str,                 // dataset_id de la instancia que el run citó
+  optimo: number,                // > 0 — el ancla del denominador de r
+  baselines: { cpsat: {energy, r}, greedy: {energy, r}, gw: {energy, r} },
+  points: [
+    { p: int>0, r_esperado_mean, r_muestral_mean, r_muestral_std,
+      r_muestral_min, r_muestral_max, success_rate }, ...   // toda r ∈ [0,1]
+  ]
+}
+```
+
+- **Errores honestos:** `404` run desconocido; **`404` también para un run cuya instancia
+  no tiene `optimo`** (`ice-*` con `optimo: null` queda FUERA del endpoint — freeze §15.3
+  marca C-10; sin denominador no hay r, y una curva fabricada está prohibida). Un run con
+  instancia elegible pero sin datos rvsp ingeridos todavía: `404` con detail propio — el
+  productor es V3, la ruta jamás inventa puntos.
+- **`baselines` cerrado a 3 claves** (`cpsat/greedy/gw`) — se extiende COORDINADO
+  (schema+tipo+fixture+chart en el mismo checkpoint) cuando `sa` llegue (C-15/G5), nunca
+  catchall.
+- La semántica de la curva (media/std/min/max sobre Aer multi-semilla ETIQUETADO, ⟨C⟩ en
+  ángulos DADOS) es del dominio V/ciencia — esta fila fija el wire, no el método.
+
+### Fixture y seed
+
+Declarado: `tests/fixtures/contract/endpoints/get-runs-rvsp.json` (espejo Studio) — el
+modelo Pydantic origen (`RvspResponse`) es Fase 1 (V3); el generador
+`gen-contract-fixtures-endpoints.py` gana el caso al existir. Seed:
+`tests/seeds/test_seed_rvsp_endpoint.py` (404 desconocido / 404 sin-productor).
+
+### Nota aditiva sobre `GET /runs/{run_id}/ablation` (C-4/#124)
+
+`variant` del wire de ablación pasa de 2 a **4 valores** (`quantum|classical|mitigated|zne`)
+cuando V2/M19 implemente el productor — extensión COORDINADA de `AblationMetric`
+(`reads.py:132`) + `ablationMetricSchema` + tipo TS + chart en el mismo checkpoint. Payload
+del evento productor: `superficie-visual.md` §9.
+
 ## Discrepancia de vocabulario a flaggear (costura E↔D) — bloqueante para D3, no para esta spec
 
 > **[S3 2026-07-30]** Discrepancia RESUELTA — el listener real ya está alineado:
