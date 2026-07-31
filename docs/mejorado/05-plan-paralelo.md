@@ -131,6 +131,44 @@ base `mejorado/base`, y que la sesión LEE PRIMERO `docs/mejorado/01-criterio.md
 > `tests/invariants/scenario_denylist.txt`); verificación antes de afirmar — números
 > citados, jamás «debería pasar».
 
+### Asignación de modelos por sesión (#121) — calidad individual y global
+
+Doble garantía decidida por Dylan (2026-07-31): la calidad GLOBAL la garantiza la
+sesión de control (Fable: valida cierres, mergea checkpoints, registra); la calidad
+INDIVIDUAL la garantiza el modelo de cada sesión según su riesgo:
+
+| Sesión                              | Modelo                                          | Por qué                                                                                                  |
+| ----------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Contratos** (Fase 0)              | **FABLE**                                       | ceremonias sobre docs CONGELADOS; un error se propaga a todas las demás                                  |
+| **C-1** (manifest v2 + gateway/AX1) | **FABLE**                                       | supersede de contrato congelado + flip de invariante + JWT — el chokepoint                               |
+| **C-2** (verificadores + M8)        | **FABLE**                                       | el diferenciador criptográfico (hash-chain/DSSE/StatusList); C15 cambia veredictos de bundles estampados |
+| G · Generalidad                     | Opus orquesta → Sonnet implementa → Opus valida | alcance quirúrgicamente especificado por S-C                                                             |
+| P-runtime                           | Opus → Sonnet → Opus                            | ídem por S-A/S-B                                                                                         |
+| P-studio                            | Opus → Sonnet → Opus                            | ídem por S-A + stack fijado                                                                              |
+| V · Visual/ciencia                  | Opus → Sonnet → Opus                            | ídem por S-D                                                                                             |
+| O · Plataforma                      | Opus → Sonnet → Opus                            | piezas independientes, ideal para delegación                                                             |
+
+Al pegar cada prompt, añade DESPUÉS del prompt su bloque MODO correspondiente
+(además del bloque REGLAS):
+
+**MODO para sesiones FABLE:**
+
+> MODO (#121): sesión RIGUROSA — corres en Fable y ejecutas tú misma con TDD;
+> puedes delegar exploración/lectura a subagentes, pero todo diseño de contrato,
+> ceremonia y código de costura lo escribes y verificas tú.
+
+**MODO para sesiones Opus→Sonnet→Opus (patrón #100 «valida-hace»):**
+
+> MODO (#121): eres el ORQUESTADOR-VALIDADOR (Opus). Por cada ítem del alcance:
+> (1) redacta un brief quirúrgico (spec exacta, archivos, tests a escribir primero,
+> criterios de aceptación); (2) delégalo a un subagente SONNET que implementa con
+> TDD y SIN commitear; (3) valida TÚ la salida — corre los gates completos, revisa
+> el diff contra la spec y los criterios, rechaza y re-briefa si no cumple;
+> (4) commitea TÚ solo lo validado. Jamás commitees salida de subagente sin
+> validarla; jamás implementes tú lo que puede delegarse (tu contexto es para
+> validar). Los ítems con ceremonia de contrato NO se delegan: repórtalos al
+> handoff para la sesión de control.
+
 ### Prompt · Sesión Contratos (Fase 0 + ola 0)
 
 ```text

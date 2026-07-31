@@ -951,3 +951,20 @@ reales, todas cerradas:
 
 Verificado además: la tabla de dueños de specs/README está correctamente marcada
 como derogada (#94) con su valor de mapa de fronteras — sin acción. Docs-only.
+
+### #121 — asignación de modelos por sesión: doble garantía de calidad
+
+**Decisión de Dylan (2026-07-31)**: la calidad GLOBAL la garantiza la sesión de
+control (Fable — valida cierres con evidencia, mergea por checkpoint, registra); la
+calidad INDIVIDUAL la garantiza el modelo de cada sesión según su riesgo:
+
+- **FABLE (rigurosas)**: Contratos (Fase 0 — ceremonias sobre docs congelados),
+  C-1 (supersede de GatewayContext + flip AX1 + JWT) y C-2 (hash-chain/DSSE/
+  StatusList/KeyProvider — el diferenciador; C15 cambia veredictos estampados).
+- **Opus orquesta → Sonnet implementa → Opus valida** (patrón #100 «valida-hace»):
+  G, P-runtime, P-studio, V y O — brief quirúrgico por ítem, subagente Sonnet con
+  TDD sin commitear, el orquestador corre gates y commitea solo lo validado; los
+  ítems con ceremonia de contrato no se delegan (van al handoff de control).
+
+Estampado en `05-plan-paralelo.md` §4 (tabla + bloques MODO copy-paste que se pegan
+junto al bloque REGLAS al lanzar cada sesión). Docs-only.
