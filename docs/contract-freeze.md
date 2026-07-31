@@ -35,6 +35,13 @@
 
 ## 1 · `CapabilityManifest` v2 **[frontera]** — notas trust/06, execution/04/06/08
 
+> **[MEJORADO · 2026-07-30] Nota de estado (censo §1.7-B):** este § habla en
+> presente («se agregan») pero el SDK real sigue en v1 — los 4 campos de la
+> tabla NO existen en `sdk/src/blite_capability/manifest.py` (el DDL sí los
+> tiene). El contrato congelado queda intacto; su implementación es el ítem
+> **C1** del backlog (`docs/mejorado/04-consolidacion.md` — «el desbloqueador»).
+> Promesa vencida registrada, mismo patrón que las marcas [S-F] corrigen.
+
 Al stub actual (`sdk/src/blite_capability/manifest.py`) se agregan:
 
 | Campo                 | Tipo                                                            | Por qué                                                                       |
@@ -78,6 +85,20 @@ El campo `protocol` de la semilla **se elimina** del manifest: el protocolo es d
 - **Capa de confianza:** el catálogo ● completo (§14).
 - **`max_steps` obligatorio a nivel de `Run`** (execution/02) — el guard del loop es contrato, no cortesía. **[S-F]** Corrección de semillas: `Run.maxSteps` (contratos v2 §3) y `runs_projection.max_steps NOT NULL` (esquema v2 §5) existen desde este barrido; viaja en el payload de `run.created` (arriba).
 - **[S-F] Métricas por run (N3 — el evento de §6 no tenía tipo y era inemitible):** `run.metrics.recorded {verification_latency_ms, attestations_total, inconclusive_count, false_reject_proxy, cost_per_verification?, ms_por_clase?}` — se emite al cerrar el run, `actor_id: service:runtime`.
+
+> **[MEJORADO · 2026-07-30] Supersedes registrados de §3 (aplicados con causa):**
+> **(a) #104 — skip honesto en la ruta de LECTURA:** `GET /runs` descarta streams
+> envenenados y expone `discarded_streams` (extensión aditiva del wire E↔D + Zod +
+> fixture + test con la píldora #96) — supersede PARCIAL de la letra fail-loud
+> SOLO para lectura; escritura/certificados/provenance siguen fail-loud intactos.
+> **(b) C-4/#106 — payload de `run.metrics.recorded` EXTENDIDO aditivo:** los
+> campos de confianza de arriba se mantienen; entran `variant` (enum de 4:
+> `quantum|classical|mitigated|zne`) + campos científicos opcionales; dos brazos
+> de ablación = sub-runs (§13); el evento post-terminal sigue FUERA del hash, como
+> está congelado. Implementación = ítem V2/M19.
+> **(c) Ceremonia #66 (`docs/specs/harness-agentico.md`):** `run.created` ganó
+> `max_turns` (default 30) y `budget` — extensión aditiva registrada en esa spec
+> (§Guardas), nunca portada a esta letra hasta esta marca.
 
 ## 4 · `Verifier` / `Attestation` — clases decisorias y niveles **[confianza]** — trust/03/04/10/11/12 + spec v3.2 §3
 
@@ -126,6 +147,24 @@ De objeto plano a **Statement in-toto + envelope DSSE firmado**, con la **letra 
 - Tabla `trust_certificates` (semilla v2): conclusions/assumptions/deliverables JSONB + `certificate JSONB` (envelope completo) + `keyid` + `valid_as_of` + `revocation`.
 - **Modo amortizado de primera clase (P0-5):** el "case de certificación de capability" (spec §1) usa este MISMO certificado — case cuyo run raíz es la evaluación de una capability contra corpus (GROUND_TRUTH, techo AL3, controles negativos); patrón del certificado del corrector (quantum/09).
 
+> **[MEJORADO · 2026-07-30] Supersedes registrados de §7 (aplicados con causa):**
+> **(a) Checklist = OCHO puntos (censo D-N1):** al «checklist de 7 puntos» de
+> arriba se sumó el **punto 8 — fidelidad de replay** (FALLA el bundle si el
+> stream contiene cualquier `replay.divergence`), entrado por la ceremonia #66
+> (`docs/specs/harness-agentico.md` §Contrato-5) e implementado en
+> `engine/src/blite/certificate/bundle_check.py` (los 8 puntos corren). La letra
+> «7 puntos» quedó atrás del código; esta marca la reconcilia sin reescribirla.
+> **(b) #105 — Rekor RE-ENTRA:** el descarte «Sigstore/Fulcio/Rekor descartados
+> este mes — rompen air-gap» se supersede con causa: el fundamento era la emisión
+> keyless con Fulcio; **Rekor v2 GA con backend POSIX + stapled inclusion proof**
+> mantiene la verificación 100% offline. Entra como transparency-witness OPCIONAL,
+> pieza 5 del orden incremental de M8 (hash-chain → DSSE/VSA → StatusList →
+> OpenBao → Rekor). SPIFFE queda fuera de M8 (gate = multi-nodo).
+> **(c) C-6/#106 — regla nueva del conteo de patas:** las attestations por isla
+> de una MISMA corrida comparten `independence_group` (extensión del punto 7 —
+> jamás inflan patas); el puerto gana `verify_all() -> tuple[Attestation, ...]`
+> con default `= (verify(),)` (compat total). Implementación = ítem C4/M4.
+
 ## 8 · `Identity` + JWT + intersección de permisos **[confianza / frontera en la etapa 1]** — trust/08
 
 - **`Identity`**: `id` = URN estable estilo SPIFFE (`user:dylan`, `agent:planner-7`, regex validada), `kind`, `domain_id`, `permissions: frozenset[str]`, `spiffe_id?` (Fase 2).
@@ -133,6 +172,14 @@ De objeto plano a **Statement in-toto + envelope DSSE firmado**, con la **letra 
 - **Derivación con intersección garantizada**: `derive(parent, requested)` — el delegado solo atenúa, jamás amplía (mismo principio que el gate de sub-agentes del repo) + property-test. `InvocationContext.invocation_chain` + `effective_permissions` (∩ de toda la cadena — SO1, la computa el gateway y nadie más).
 - **Ruta del flip AX1**: `Event.actor_id` obligatorio (§2) → etapa identity estampa **[frontera]** → el xfail se voltea a aserción real (nunca se borra). Eventos fuera de request usan `service:*`.
 - **Orden congelado del pipeline (C2, resolución por unión):** `identity → authorization → guardrails → provenance:pre → mediation → verification → provenance:post → egress` — 8 etapas; la etapa `policy` de execution/01 se disuelve (§6). **[ejecución]** El pipeline es **explícito e in-process** (tupla fija de `Stage`, test de orden como tupla única — execution/01/08); los transversales HTTP van como middleware **ASGI puro** (jamás `BaseHTTPMiddleware`); fail-closed. **Reautorización a mitad de pipeline (pregunta §8.4 de execution/01, cerrada):** no existe — si el despacho revela que la capability exige un permiso distinto al evaluado en la etapa 2, es **error de contrato fail-closed** (el run falla y se re-invoca completo), jamás re-evaluación en vuelo.
+
+> **[MEJORADO C-5/#106 · 2026-07-30] Supersede ADITIVA de `GatewayContext` (con la
+> MISMA ceremonia que lo congeló):** el contexto gana `run_id`/`step_id`/`domain_id`
+> **opcionales**. Granularidad registrada como interpretación de «cada step cruza»
+> (§13): **un cruce por invocación de capability** (resolve es parte de mediation).
+> El `Pipeline` se INYECTA en `execute_run` (como `proposer`); un contrato
+> `layers` nuevo vigila la dirección gateway↛runtime. Implementación = ítem C2/M2
+> del backlog (hoy el pipeline no se construye fuera de tests — censo §8.1).
 
 ## 9 · Contrato SSE Studio↔Engine **[confianza / frontera en la ruta]** — trust/07
 
@@ -180,10 +227,21 @@ Contrato y tabla **nuevos** — el sustrato de `Evidence`, `deliverables` y payl
 
 ## 13 · `Run` jerárquico + pinning por digest **[frontera]** — contratos v2 §3 (ADOPTADO, convergencia §4.2) + execution/02/03/07
 
+> **[MEJORADO #102 · 2026-07-30] Supersede explícito con causa (cierra C-1):** la
+> letra «pipeline fijo Fase 1» de este § quedó reemplazada por el **loop
+> agéntico** de la ceremonia #66 (`docs/specs/harness-agentico.md`): el proposer
+> decide los steps; la rama sin proposer («pipeline fijo») sobrevive como modo
+> de ejecución y de test, no como LA arquitectura. El **criterio step-vs-sub-run
+> permanece intacto** (es sub-run la unidad que produce claims propios que el
+> certificado citará); el set «formular / QAOA / baseline / verificar» pasa de
+> conjunto congelado a **ejemplo del Reto 1**. Todo lo demás de §13 (jerarquía,
+> pinning, las 3 reglas [S-F], reintentos) sigue vigente sin cambio. La regla del
+> índice de specs («una spec jamás contradice el freeze») vuelve a ser cierta.
+
 - **`Run.parent_run_id?`** — ausente = run raíz. **El case de confianza y el certificado cuelgan SIEMPRE del run raíz (D5);** los sub-runs (formular, QAOA, baseline, verificar) **aportan claims al raíz**. Ajuste sobre execution/07 (que adoptó un stream sin jerarquía): **los streams por run se mantienen** — un stream por run (raíz o sub), la jerarquía viaja en `parent_run_id`, no en streams anidados.
 - **Pinning (SO6):** un Run fija por digest todo lo que lo definió al iniciar — `agent_definition_digest?`, `workflow_definition_digest?`, `policy_digest` (obligatorio; mismo patrón R-Pol1). Editar una definición crea versión nueva y no afecta runs en vuelo — precondición de reproducibilidad (D16/AX2).
 - Estados del Run: `created → running → {awaiting-verification} → completed | failed | cancelled` (máquina de execution/07; `awaiting-verification` es **sub-estado de proyección**, no de la máquina de eventos — unificación [S-F] de §3). Proyección `runs_projection` con `parent_run_id` + pinning.
-- **El runtime es dueño del loop; el gateway es dueño del cruce:** el loop (pipeline fijo en Fase 1 — execution/02) secuencia steps y cada step cruza el gateway completo (§8). `max_steps` obligatorio.
+- **El runtime es dueño del loop; el gateway es dueño del cruce:** el loop (pipeline fijo en Fase 1 — execution/02; **[MEJORADO #102]** hoy: loop agéntico, ver la marca de arriba) secuencia steps y cada step cruza el gateway completo (§8). `max_steps` obligatorio.
 - **Reintentos e idempotencia (execution/03, decidido):** `side_effects` es entrada obligatoria de la lógica de reintento; `pure` se reintenta libre; para `reversible/irreversible-external` **sin idempotencia garantizada NO hay reintento automático en Fase 1** — escala a humano (`human_expert` + override registrado antes, INV-4). El mecanismo fino de idempotencia (keys por `step_id`, verificación activa) queda **declarado como diseño de S-G con dueño Steven** — el contrato del mes es la regla de arriba, que es segura sin él. _(El porqué del endurecimiento sobre execution/03 §1.4 quedó estampado como addendum en la nota — [S-F], regla de oro de la guía.)_
 - **[S-F] Las 3 reglas del run jerárquico (sin ellas `parent_run_id` es un puntero decorativo con huérfanos — cierre obligatorio pre-S-G):**
   1. **Cascada de cancelación:** al `run.cancelled` del raíz, el runtime emite `run.cancelled {reason: "parent_cancelled"}` en cada sub-run activo con `actor_id: service:runtime`; los appends post-terminales se **rechazan** (§2) y el job en cola se barre con `JobQueue.cancel(ref)` (infra/02) — el barrido es best-effort; el rechazo de appends es la garantía dura.
@@ -200,6 +258,15 @@ Extensión del vocabulario de §3 (● = propiedad de la capa de confianza; ○ 
 **Mapeo con la semilla v2 (C4):** `tool.invoked` ≡ `capability.job.submitted` (el evento de provenance:pre del job); `verification.completed` se conserva tal cual. **Claims como digests en Fase 1 (convergencia §4.3 — acota el scope del mes):** no hay entidad `Claim` ni tabla `claims`; el claim existe como digest en attestations y conclusions del certificado (el claim `derivation` de la demo se emite como digest + attestation). El grafo completo de claims/derivaciones es Fase 2.
 
 **[S-F]** `●ClaimEmitted` lleva el payload de §13 (`claim_digest`, `sub_run_id`, `sub_run_provenance_hash`) **+ los portadores de §6 (`claim_type`, `is_conclusion`, flags de piso) [stress-final]**; `●CertificateReissued/Revoked` = Fase 2 declarada (§7). El `claim_digest` tiene vista canónica propia en el anexo (`view(claim)`, vector V6 — T7: sin ella, dos implementaciones honestas producían digests distintos). Nota de numeración (T16): las referencias `D#` de este documento apuntan a la **base lógica formal** (D1–D22); la spec v3.2 usa una numeración `D1–D5` interna propia — no son el mismo espacio.
+
+> **[MEJORADO #102 · 2026-07-30] Extensión ADITIVA del catálogo — los eventos de
+> la ceremonia #68 que el código YA emite (§14 nunca se declaró conjunto
+> cerrado):** `●PlanItemUpdated` (`plan.item_updated` — `engine/src/blite/runtime/plan.py`;
+> `●PlanCreated` ya estaba en el catálogo) · `●ReplayDivergenceDetected`
+> (`replay.divergence` — `engine/src/blite/runtime/replay.py`; lo consume el
+> punto 8 del checklist §7) · `●ApprovalRequested` / `●ApprovalResponded`
+> (`approval.requested`/`approval.responded` — `engine/src/blite/gateway/approval.py`).
+> Reservado: `●MissionMessage` (`mission.message`) entra cuando M1/P3 lo traiga.
 
 ## 15 · Decisiones de cierre S-E (todas tomadas — ratificación final por dueño)
 
@@ -230,7 +297,31 @@ Extensión del vocabulario de §3 (● = propiedad de la capa de confianza; ○ 
 
 **`ieee14-topology@v1` (D3/D4, Task 2, 2026-07-23) — dato eléctrico para `ExecutionVerifier` (formato buses/slack/branches/loads + limits, NO el formato Max-Cut de la tabla de arriba):** `dataset_id = "ieee14-topology@v1"`, digest = `5f2725a9fa2e4dbc61f5a4ad9757da7c24c2a19ce5245419469895ce589ce637`. Vive en `knowledge/islanding/ieee14-topology.json` (fuera de `corpus/` a propósito — no cuenta para el guard de 8 archivos de `verify_corpus_digests.py`), generado por `scripts/gen_ieee14_topology.py`. Modelo declarado single-voltage (`V0=110kV` uniforme en los 14 buses) — grafo (20 aristas) y cargas SÍ son de `case14()`; slack = los 5 buses-fuente `[0,1,2,5,7]` (convención slack-por-isla); impedancias por rama son UNIFORMES declaradas (`r=0.5, x=1.5 ohm`) porque la derivación fiel per-rama de case14 (líneas nativas + trafos `vk_percent→z_ohm`) no converge para la red completa (`pandapower.diagnostic`: 13/20 ramas con impedancia casi nula al reescalar sobre 110kV) — fallback honesto del brief, documentado en `provenance` del JSON y en `docs/mvp/decisiones.md` fila D4. Verificado con `ExecutionVerifier` real (pandapower, sin mocks) en `tests/integration/verification/test_ieee14_topology.py`: red completa → `pass`, bipartición válida `{0..5}|{6..13}` (ambos lados conexos, cada uno con fuente) → `pass`, bipartición inválida `{0..6}|{7..13}` (isla `{7..13}` desconectada) → `fail` por `island_connectivity`. PENDIENTE ratificación Sebas (misma fila #5 de `decisiones.md`).
 
-IDs **reservados** para las instancias de P0-7 (dueño Sebas — datos abiertos del ICE): `islanding-corpus/cr8-{uniforme,flujo}@v1` y `islanding-corpus/cr6-{uniforme,flujo}@v1`; sus digests se estampan aquí al congelar los JSON (misma regla, doble ancla, fail-loud).
+IDs **reservados** para las instancias de P0-7 (dueño Sebas — datos abiertos del ICE): `islanding-corpus/cr8-{uniforme,flujo}@v1` y `islanding-corpus/cr6-{uniforme,flujo}@v1`; sus digests se estampan aquí al congelar los JSON (misma regla, doble ancla, fail-loud). **[MEJORADO C-10]** La variante `-flujo` nunca se materializó: los archivos reales son `-voltaje` (suma de kV de circuitos paralelos como peso) — estampado abajo.
+
+> **[MEJORADO C-10/#106 · 2026-07-30] Estampado de la realidad — cr6/cr8/ice
+> (cierra el ex-PENDIENTE §1.9 con la identidad decidida `-voltaje@v1`):** los 6
+> archivos que faltaban en la tabla, con el digest **embebido** de cada JSON
+> (misma regla de identidad de arriba). **Nota de procedencia (variante
+> declarada, jamás regenerar sobreescribiendo):** cr6/cr8 traen doble ancla
+> `bruteforce+spectrum` **del espejo** `reto1-vanilla` (≠ receta §1.9
+> CP-SAT+bruteforce — la procedencia del ancla difiere y se DECLARA, no se
+> esconde; su `criterio_corredor` cita `scripts/build_cr_instances.py`, script
+> que vive en el espejo, no en este repo). Las `ice-*` (red ICE-70 real) tienen
+> `optimo: null` — sin ancla de óptimo; quedan fuera del endpoint rvsp (C-9).
+>
+> | `dataset_id`                       | digest (sha256)                                                    |
+> | ---------------------------------- | ------------------------------------------------------------------ |
+> | `islanding-corpus/cr6-uniforme@v1` | `e8b2121c61399aa758a356835f1e849e435377ebc2eadf0dd08356c702b680db` |
+> | `islanding-corpus/cr6-voltaje@v1`  | `aab9f07fd8e7f6be84d90fc97493de3603b82b3dec80627699051dc706e3dd0c` |
+> | `islanding-corpus/cr8-uniforme@v1` | `66bb6c5ae0eadb1c697436ea36c069b3bf3c3a4ef436d1eda9540a3e79f91392` |
+> | `islanding-corpus/cr8-voltaje@v1`  | `0af00267250f0838ce5445659238c180fe88771383001aa4c745e36462d1aa5b` |
+> | `islanding-corpus/ice-uniforme@v1` | `0078d201ff590345598ab0d7698a724cc642eaec4dca660a4ec66361402485a7` |
+> | `islanding-corpus/ice-voltaje@v1`  | `7bcda6747ac19bda4f8ef9cedc87a5d8c1185a459a08c5c6beb9662ee12d9d0d` |
+>
+> El re-estampado de **ieee30** (identidad tras la 2ª ancla, N13) y el análisis
+> de flips §15.5 repetido para cr6/cr8 siguen en el backlog (ítem O6/M30) — esta
+> marca no los resuelve.
 
 **Segunda ancla de ieee30 (decidida):** **enumeración exhaustiva vectorizada** (numpy por bloques, x₀=0, 2²⁹ asignaciones — cero dependencias nuevas, independiente de CP-SAT), integrada al script de islanding/01 §1.9 **(⚠ [S-F-real]: aún NO integrada; forma de identidad pendiente — ver supersesión abajo)** con presupuesto explícito. **[S-F] Presupuesto medido CON spec de máquina:** 11.5 s por bloque de 2²⁴ ⇒ **~6.1 min/convención, ~12.3 min ieee30 completo** (Intel i7-10510U @ 1.80 GHz, numpy 2.5.1 mono-hilo, ~0.3 GiB; otras máquinas midieron 11.4–13.5 s/bloque — el presupuesto se cita siempre con la máquina). La cota superior del SDP de Goemans-Williamson (cvxpy, ya obligatoria por Δ6) se registra como **chequeo de cordura adicional** (UB ≥ óptimo), no como ancla. Ratificación final de Sebas = correr y comparar digests.
 
@@ -263,6 +354,15 @@ El clímax del demo es contrato, no improvisación: **fixture determinista** —
 La 3ª condición ("existe ancla decisoria dentro de presupuesto; si no ⇒ gap declarado"), la cláusula de cartera (riesgo agregado) y el patrón nombrado **"case de certificación de capability"** quedaron congelados en la [spec v3.2 §1](spec-confianza-v3-2.md); la cláusula STEM ("sin ancla ex ante ⇒ certificación amortizada + Signal en operación, jamás por-resultado") en el [Perfil STEM §4.7](perfil-stem-v1-0.md). El anti-slop es doctrina ejecutable: en C0 el sistema dice "no verifiques".
 
 ### 15.7 Egress del model router: `ModelPort` / `ModelServer` **[frontera]** (execution/09 — decidido, ratificación final Steven + Dylan)
+
+> **[MEJORADO N12 · 2026-07-30] Nota de reconciliación de nombre (aplica a TODO
+> este doc):** la letra congelada dice `MODEL_ROUTER_BACKEND` (aquí, en §7 y en
+> §15.4); el nombre REAL implementado es **`CHIMERA_MODEL_BACKEND`**
+> (`api/src/chimera_api/runs.py`, `compose.yaml`) — el código jamás usó el nombre
+> viejo. Toda aparición de `MODEL_ROUTER_BACKEND` en este doc se lee como
+> `CHIMERA_MODEL_BACKEND` (con `CHIMERA_MODEL_SESSION_DIR`/`CHIMERA_MODEL_ID`
+> como acompañantes del modo replay). La letra congelada no se reescribe; esta
+> marca la reconcilia.
 
 - **`ModelPort`** (Protocol) vive en `blite.serving` — router puro, cero red (AX3 por construcción, incluida la cadena transitiva `litellm → httpx`); forma = la de la semilla v2 §7 (`id`, `local: boolean` — D19 local-first, `complete()`).
 - **`ModelServer`** = el adapter que lo implementa, vive en `blite.protocols` — hereda el contrato de layers **INV-6 (protocols exige authz)** sin gate nuevo; envuelve **LiteLLM SDK (`Router`)** con un solo `model_list` seleccionado por el `DistributionManifest` — mismo router en todos los entornos, **más el backend `replay`** (P1-8: prompt fijo + respuesta cacheada) como config de primera clase.

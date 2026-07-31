@@ -74,6 +74,13 @@ implemente.
 > ancho-por-kV, `pmtiles --region=cr` — dominio del caso demo presentado como superficie de
 > plataforma (censo §4, tipo (iii)); la doctrina que lo resuelve es la de lentes de
 > `docs/studio/product-model.md` §Superficies.
+>
+> **[S3 2026-07-30] Registro del divorcio D-N12 (censo §1.7-A — SIN supersede
+> decidido, se reporta):** el mapa que el Studio construyó no es el payload que
+> esta sección fija — `DataFormatRouter.tsx` enruta a `GridMap`/GeoJSON propio, y
+> el endpoint que SÍ implementa esta spec (`api/src/chimera_api/reads.py:440`) no
+> tiene consumidor. Divorcio distinto de C-9; su resolución es trabajo de
+> V1/M18, no de saneamiento.
 
 **Orden de construcción (R5, fallback primero — garantía del día D):**
 
@@ -134,6 +141,15 @@ de `verification.completed` (o el `run.step.completed` del paso de partición) t
 §1.3 ya lo fijó — esta spec formaliza la FORMA exacta, no inventa wire.
 
 ### 5 · Dataviz r vs p
+
+> **[MEJORADO C-9/#106 · 2026-07-30] SUPERSEDIDA la fuente de datos de esta
+> sección (divergencia consumada, estampada con causa):** el Studio construyó la
+> curva r-vs-p sobre un payload propio (rvsp) y NO sobre `AblationMetric[]` sin
+> eje p como esta sección fijó. Resolución C-9: la fuente pasa a ser
+> **`GET /runs/{run_id}/rvsp`** (clave POR RUN — el run cita su instancia), que
+> entra como fila de `endpoints-studio.md` al implementarse el ítem V3/M20; las
+> instancias con `optimo: null` (`ice-*`) quedan declaradas FUERA del endpoint.
+> El componente de render (Recharts vía `ChartContainer`) sigue vigente tal cual.
 
 - **Recharts** (ya instalado `^3.8`, R5) vía `ChartContainer` (wrapper shadcn — regla de stack,
   `feedback_stack_definitivo_studio`): `ComposedChart` + `Scatter` con `<ErrorBar>` `[lo, hi]` +
