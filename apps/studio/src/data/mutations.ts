@@ -2,11 +2,12 @@
  * Puente de datos para "Nuevo run": la vista (NewRunView) solo llama a
  * `useCreateRun`/`createRun`, jamás a `postRun`/`gatewayClient` directo
  * (F3). Modo demo corta a `DEMO_RUN_ID` sin red; modo live arma el body
- * MISIÓN-FIRST del contrato (checkpoint 5, endpoints-studio.md §"POST /runs
+ * MISIÓN-FIRST del contrato (decisión #91, endpoints-studio.md §"POST /runs
  * — modo misión") y lo manda por `postRun` (INV-1: el fetch vive solo ahí).
  *
- * El body claim-first del MVP (instance+assignment) exigía un claim que el
- * form no puede armar — era el 422 vivo del checkpoint 2. El contrato de
+ * El body claim-first del Nivel-1 (instance+assignment) exigía un claim que
+ * el form no puede armar — era el 422 reproducido en vivo contra el gateway
+ * (previo a la decisión #91). El contrato de
  * misión lo cierra: el fixture de costura single-origin
  * (`src/fixtures/contract/endpoints/post-runs-mission.json`, generado desde
  * el Pydantic `MissionRequest`) fija este body en ambos lados.

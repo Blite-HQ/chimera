@@ -17,7 +17,7 @@ import { shortDate, shortDigest } from './format';
 import type { ProjectArtifact } from './types';
 
 /**
- * Artifacts del proyecto (carril 2 F2, mockup S4): todos los entregables de
+ * Artifacts del proyecto (dominio Studio F2, mockup S4): todos los entregables de
  * todos los runs, cada uno con su procedencia — un artifact jamás se
  * muestra suelto (digest + run origen + confianza del run que lo emitió).
  */

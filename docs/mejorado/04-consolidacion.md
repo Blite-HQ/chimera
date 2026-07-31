@@ -145,3 +145,54 @@ degradación de M9 en el enunciado. Todo docs/config — sin tocar el runtime.
 - deck.gl: condicional con umbral (O7) — no es compromiso.
 - La fase siguiente parqueada (3 ideas ganadoras, comparación vs hackathon, research
   de competencia) — registrada en `01-criterio.md`, NO entra aquí.
+
+## 7 · Extensiones del backlog — saneamiento S3 (decisiones #116/#117, 2026-07-30)
+
+> Anexado por la sesión S3: los 10 ítems del TOP-10 de research huérfana
+> (07-censo §7.1) y los 4 hallazgos de diseño (07-censo §8.5) ENTRAN al backlog
+> — coherente con #101 («la pregunta ORDENA, no filtra»). Los IDs existentes
+> G1-G7/P1-P10/C1-C11/V1-V8/O1-O7 NO se renumeran (los cita el ledger); los
+> ítems nuevos declaran su posición en la columna Orden. Cero huérfanos sin
+> registro: todo descarte futuro = con causa en el ledger.
+
+### 7.1 · TOP-10 de research huérfana (#116)
+
+| ID  | Orden declarado           | Ítem                                                                                                                                                                                                                                           | Base                                                                        |
+| --- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| O8  | O TEMPRANO (tras O1)      | **Corpus runner forma-Inspect + KPI over-refusal `C/I/P/N` + marco «tres planos»** (verificación ≠ guardrail ≠ evaluación) — sin esto no hay forma de medir si el sistema MEJORA; `false_reject_proxy` (trust/05 §1.3) es su dato de entrada   | trust/17 §1.2/§1.6; censo §7.1-1                                            |
+| V9  | V (tras V7)               | **Corrector AI-QEM** (ML-QEM RF/GBM, dataset CDR, control negativo garbage-folding, certificado del corrector — modo amortizado §7 del freeze)                                                                                                 | quantum/09 §1.2-1.4; censo §7.1-2                                           |
+| O9  | O (tras O8)               | **Protocolo de convergencia simulada↔real empaquetado como herramienta** (cuadrantes A/B/C/D, test del paraguas, pasada de refutación) — instrumento para auditar el backlog antes de gastar en él                                             | archivo/research/convergencia-simulada-real-sf.md §1,5-8; censo §7.1-3      |
+| C12 | C (tras C11)              | **Registro de guardrail-adapters + convención `{etapa}.{mecanismo}` + pick decidido (HHEM-2.1-Open, AlignScore fallback)** — `GuardrailsStage` sigue faltando; ASI01/ASI06 = los 2 riesgos OWASP peor cubiertos                                | trust/16 §1.3-1.4; censo §7.1-4                                             |
+| P11 | P (amplía P5)             | **Procrastinate detrás del puerto `JobQueue`** — dep y servicio ya pagados (`engine/pyproject.toml`, `compose.yaml`); sin cola, `interaction: job` y `execution_profile: remote-job` no tienen dónde correr                                    | infra/02 §2; censo §7.1-5                                                   |
+| C13 | C (tras C12)              | **Cedar Analysis (propiedades del SET de políticas) + forma de bundle firmado OPA** — «probar que la regla nueva no es menos estricta»: la garantía de claims aplicada a políticas; `policy_diff.py` hoy compara texto                         | trust/13 §1.1-1.2; censo §7.1-6                                             |
+| P12 | P/O (adelantado por #113) | **Ingesta RAG/KB con procedencia DSSE** (`RunStep` retrieval + multi-modal) — frontera YA congelada (freeze §7: recuperado⇒assumptions, jamás Attestation); primer insumo: refinar el árbol vendorizado #113; único gap OWASP sin plan (ASI06) | execution/10 + docs/research/arquitectura-ingesta-kg-fase2.md; censo §7.1-7 |
+| G8  | G (tras G7)               | **Reparación M.3/M.4 de REGRID-QAOA + feasibility-feedback DFS + pesos desde flujo** (~50-100 líneas; reusa `island_connectivity`) — la mejora del proponente cuántico más barata disponible                                                   | quantum/05 §2; censo §7.1-8                                                 |
+| C14 | C (tras C13)              | **Puerto `ExecutionHarness` (prepare/run/collect/dispose) + guarda PASS_TO_PASS + microVM como ancla general** — abre EXECUTION a dominios no-eléctricos; AX3 «sandboxing exigible» deja de ser aspiracional                                   | trust/12 §1.4 + trust/04 §1.1; censo §7.1-9                                 |
+| O10 | O TARDÍO + KB             | **1-pager white-box SEPs** (semantic entropy probes sobre hidden states) — el único argumento «esto una API cerrada no lo puede copiar»; como implementación es tardío, como material es KB                                                    | trust/16 §1.5; censo §7.1-10                                                |
+
+**Menciones honoríficas → KB curada (#116, sin ítem propio):** mapeo OWASP
+ASI01-10 (trust/13 §1.5) · trust tiers + manifest firmado + SBOM (trust/09 §1.4)
+· razones reservadas tipadas (trust/09 §1.2) · RQAOA/MA-QAOA/Kernighan-Lin/
+espectral (quantum/07) · mapa de adopción industrial (quantum/10) · lecciones de
+costo de ingesta (arquitectura-ingesta-kg-fase2 §2) · Merkle + inclusion proofs
+(trust/09 §1.1) · snapshot por volumen + idempotencia fina (execution/03 §6/§10)
+· Selene local plan B (quantum/08 §2.2) · enriquecimiento vs muestreo uniforme
+(quantum/04 §3) · intel Nexus operativa (archivo/research/gap-analysis-reto1.md
+§2). Cualquier promoción futura de estas menciones = ítem nuevo con registro.
+
+### 7.2 · Los 4 hallazgos de diseño (#117)
+
+| ID  | Orden declarado            | Ítem                                                                                                                                                                                                                                                                           | Base              |
+| --- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| P13 | P (con P6/P7 — es Studio)  | **Registry de lentes de dominio del Studio** — la letra YA existe (`docs/studio/product-model.md` §38-45) y el código la contradice (`red`/`ablacion` props obligatorias, `RedSlot` hardcodeado); 6+ puntos de edición por dominio nuevo                                       | censo §8.5-1      |
+| O11 | O TEMPRANO (junto a O1/O8) | **Gate de agnosticismo multi-capa** (engine/api/studio con excepciones declaradas) — hoy la doctrina tiene UNA compuerta sobre UNA superficie (4 campos del manifest); **es el ítem que hace irreversibles los demás**                                                         | censo §8.1/§8.5-2 |
+| C15 | C (aditivo + ceremonia)    | **Evaluador de policy completo en `bundle_check`** — hoy matchea solo `claim_type` (ignora `MatchCondition.side_effects`) y NO comprueba `min_level`: una conclusión AL1 bajo regla AL3 pasa el punto 7; ~15 líneas PERO cambia el veredicto de bundles estampados ⇒ ceremonia | censo §8.5-3      |
+| O12 | O (con O6)                 | **Guards de datos estampados**: `verify_corpus_digests.py` entra a CI + guard NUEVO equivalente para `knowledge/nexus/` (hoy sin guard)                                                                                                                                        | censo §8.5-4      |
+
+### 7.3 · Ampliación de O2/M26 (N11, decisión #113)
+
+O2 gana enunciado EXPLÍCITO: **la licencia/atribución del árbol vendorizado
+`knowledge/quantum/quantathon/` (material de terceros con ponentes nominados,
+sin licencia declarada) se resuelve ANTES del flip OSS** — el árbol se queda
+como insumo de trabajo próximo (#113, excluido del gate de docs), pero no
+cruza el flip sin atribución o sin desvendorización re-litigada con causa.

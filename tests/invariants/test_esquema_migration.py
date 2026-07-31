@@ -6,7 +6,8 @@ docs/esquema-datos-v2.md (SEMILLA v2, gobernada por contract-freeze.md) cierra c
 ejecutable en AMBAS direcciones: cada statement SQL de los bloques ```sql del doc
 debe aparecer normalizado en engine/sql/init_v2.sql, y el init no puede cargar
 statements sin respaldo en el doc (la dirección que produjo el índice duplicado
-[S-F · N6] en el viejo events_v2.sql). El drift explota aquí, no en el día D.
+[S-F · N6] en el viejo events_v2.sql). El drift explota aquí, no en el
+camino dorado.
 """
 
 from __future__ import annotations

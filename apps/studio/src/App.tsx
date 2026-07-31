@@ -55,7 +55,7 @@ import { usePlaybackReveal } from './views/usePlaybackReveal';
 import type { ProvenanceFilters } from './views/types';
 
 /**
- * Chimera Studio — raíz (carril 2 F2, shell B).
+ * Chimera Studio — raíz (dominio Studio F2, shell B).
  *
  * IA de PROYECTO (mockups F1 validados): secciones Runs / Artifacts /
  * Papers / Knowledge en el sidebar; un run abre como página con header
@@ -173,7 +173,7 @@ function RunDetailScreen({
   readonly onBack?: () => void;
 }): React.ReactElement {
   // No-op en modo fixtures/demo; en modo live alimenta el cache con el SSE
-  // real (MVP task 1) — llamada incondicional, el hook decide adentro.
+  // real (Nivel-1 task 1) — llamada incondicional, el hook decide adentro.
   useRunEventStream(runId);
   const summariesQuery = useQuery(runSummariesQueryOptions());
   const eventsQuery = useQuery(runEventsQueryOptions(runId));
@@ -205,7 +205,7 @@ function RunDetailScreen({
     ? (stepsQuery.data?.[selectedEvent.stepId] ?? null)
     : null;
 
-  // D6 (checkpoint 5) — el hilo conversacional es un layout sobre los MISMOS
+  // D6 (decisión #93) — el hilo conversacional es un layout sobre los MISMOS
   // eventos del run (misión → plan checklist → cierre); mismos estados de
   // carga/error que el timeline, misma fuente (`runEvents`), cero query nueva.
   const hilo = eventsQuery.isPending ? (
@@ -376,7 +376,7 @@ function RunsScreen({
   const [showNewRun, setShowNewRun] = useState(false);
   const createRunMutation = useCreateRun();
 
-  // MVP task 2 — "Nuevo run" reemplaza la lista mientras está abierto; el
+  // Nivel-1 task 2 — "Nuevo run" reemplaza la lista mientras está abierto; el
   // POST /runs real no existe todavía (createRun corta a DEMO_RUN_ID en
   // modo fixtures/demo — el flip a live ya está escrito en data/mutations).
   if (showNewRun) {

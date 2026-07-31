@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Runbook ejecutable — graba una sesión agéntica REAL para el modo replay
-del demo (carril P4, mandato Dylan 2026-07-29, tarea 4;
-`docs/planeado/01-demo-dia-d.md`: "el agente es real... en escena corre por
-defecto en replay — reproducción determinista de una sesión agéntica real
-grabada").
+del escenario de demostración reproducible (P4, mandato Dylan 2026-07-29,
+tarea 4; `docs/archivo/planeado/01-demo-dia-d.md`: "el agente es real... en
+escena corre por defecto en replay — reproducción determinista de una
+sesión agéntica real grabada").
 
 Corre UNA misión completa (`execute_run` en modo agéntico, MISMA costura
 `Proposer` que `POST /runs`) con el agente real

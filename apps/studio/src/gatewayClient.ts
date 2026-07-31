@@ -68,7 +68,7 @@ export async function invokeCapability<T = unknown>(
  * Contrato claim-first de `POST /runs` (plan-01, decisión #6) — INTACTO:
  * exige el claim completo (instance+assignment) en el request. El Studio ya
  * no lo emite desde el form (ver CreateRunMissionBody), pero el tipo se
- * conserva porque el endpoint sigue aceptándolo (compat MVP total).
+ * conserva porque el endpoint sigue aceptándolo (compat Nivel-1 total).
  */
 export interface CreateRunBody {
   readonly capability_id: string;
@@ -82,7 +82,7 @@ export interface CreateRunBody {
 }
 
 /**
- * Checkpoint 5 — body misión-first de `POST /runs` (endpoints-studio.md
+ * Decisión #91 — body misión-first de `POST /runs` (endpoints-studio.md
  * §"POST /runs — modo misión"): alternativa discriminada por presencia de
  * campo (`mission` vs `claim`). Sin instance/assignment — los claims los
  * emiten los sub-runs/steps del harness. Espejo del Pydantic
@@ -232,7 +232,7 @@ export async function getAblation(runId: string): Promise<GatewayResponse<unknow
 }
 
 /**
- * MVP task 1 (S10) — el conjunto de tipos de evento que emite chimera_api
+ * Nivel-1 task 1 (S10) — el conjunto de tipos de evento que emite chimera_api
  * en `GET /runs/{id}/events` (freeze §9 · `chimera_api.projection`). El
  * wire nombra el evento SSE (`event: {type}`), no el genérico `message`,
  * así que no hay `onmessage` que capture todo: se registra un listener por
@@ -261,7 +261,7 @@ const KNOWN_RUN_EVENT_TYPES = [
   'verification.completed',
   'claim.emitted',
   'replay.divergence',
-  // D6 (checkpoint 5) — el plan como artefacto del stream (harness-agentico.md
+  // D6 (decisión #93) — el plan como artefacto del stream (harness-agentico.md
   // §Contrato-2): sin estos listeners el SSE real nunca entrega el checklist
   // del hilo conversacional (mismo fallo silencioso que el pin de .submitted).
   'plan.created',

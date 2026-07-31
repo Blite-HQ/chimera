@@ -2,8 +2,8 @@
 §Contrato-6). [S-G · A6]
 
 Par `approval.requested`/`approval.responded` (freeze §14, `●ApprovalRequested`/
-`●ApprovalResponded` — nuevo en catálogo, PENDIENTE-Steven, misma ceremonia
-#66): request→response tipado y replay-able, mismo home conceptual que
+`●ApprovalResponded` — nuevo en catálogo, misma ceremonia #66 (#94: sin gate
+por persona)): request→response tipado y replay-able, mismo home conceptual que
 `OverridePayload` (freeze §10) — el Stage que la abre emite su propio evento
 (INV-4), esta suite solo cubre la FORMA de los payloads y la validación de
 `authorized_by`, no el wiring del Stage (frontera Steven — "qué estampa cada

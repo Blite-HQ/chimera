@@ -1,4 +1,4 @@
-"""Smoke — integración viva del informe (checkpoint 7, lado C del par C↔D).
+"""Smoke — integración viva del informe (lado C del par C↔D).
 
 Corre el pipeline COMPLETO del Dominio C contra la instancia certificada real
 de la Fase 0 (`scripts/example-bundle.json`, el mismo bundle que valida

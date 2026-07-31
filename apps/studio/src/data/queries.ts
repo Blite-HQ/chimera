@@ -80,7 +80,7 @@ export async function loadRunSummaries(): Promise<readonly RunSummary[]> {
   return [deriveRunSummary(EXAMPLE_CERTIFICATE, events)];
 }
 
-/** Runs del proyecto (carril 2 F2) — hoy proyecta el run del bundle real. */
+/** Runs del proyecto (dominio Studio F2) — hoy proyecta el run del bundle real. */
 export function runSummariesQueryOptions() {
   return queryOptions({
     queryKey: ['runs'] as const,

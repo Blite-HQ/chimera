@@ -1,4 +1,5 @@
-"""ExecutionVerifier (pandapower) — el adapter rung-2 del puerto Verifier.
+"""ExecutionVerifier (pandapower) — el adapter de la clase `execution`
+(AL3) del puerto Verifier.
 
 Nota 12 (knowledge/trust/12 §1.3): "correr de verdad y observar, no opinar".
 Checks por isla propuesta: conectividad, fuente, convergencia del flujo,

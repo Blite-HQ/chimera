@@ -11,8 +11,9 @@ nuevas): el freeze §1 congela un `CapabilityManifest` v2 con 4 campos
 adicionales — `side_effects`/`required_permission`/`interaction`/
 `execution_profile` — que `sdk/src/blite_capability/manifest.py` (el
 `@dataclass` v1 hoy instalado) NO tiene. Se programa aquí contra el v1
-EXISTENTE (no se reescribe el SDK — carril de Dylan, Fase 1, compartido por
-TODAS las capabilities nuevas del plan, no exclusivo de ingesta); los 4
+EXISTENTE (no se reescribe el SDK — la migración al manifest v2 es trabajo
+pendiente del SDK, compartido por TODAS las capabilities nuevas del plan,
+no exclusivo de ingesta); los 4
 campos v2 quedan documentados en la `description`/tabla de abajo y en
 `tags`, listos para migrar cuando el manifest v2 llegue:
 

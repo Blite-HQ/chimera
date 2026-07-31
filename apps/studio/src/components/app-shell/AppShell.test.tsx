@@ -1,5 +1,5 @@
 /**
- * AppShell shell B (DESIGN.md §7, reobra carril 2): sidebar de proyecto +
+ * AppShell shell B (DESIGN.md §7, reobra del dominio Studio): sidebar de proyecto +
  * breadcrumb delgado + contenido. La navegación de secciones es del shell;
  * el estado vive en App.
  */

@@ -6,7 +6,7 @@ import RunThread, { deriveRunThread } from './RunThread';
 import type { ProjectedEvent, RunSummary } from './types';
 
 /**
- * D6 (checkpoint 5) — dobles ETIQUETADOS: los payloads de plan.* siguen la
+ * D6 (decisión #93) — dobles ETIQUETADOS: los payloads de plan.* siguen la
  * forma del fixture de costura (src/fixtures/contract/harness/*.json,
  * generado desde Pydantic); los eventos son ProjectedEvent construidos a
  * mano solo para fijar el layout del hilo (misión → checklist → cierre).

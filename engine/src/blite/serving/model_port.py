@@ -6,8 +6,8 @@ AX3: un modelo nunca toca el mundo directo — `blite.serving` no importa
 import). Este módulo define SOLO el puerto; los SDKs de modelo viven en el
 adapter de `blite.protocols` (AX3-b).
 
-Contrato `replay` (freeze §15.7 [S-F], la red de seguridad del air-gap del
-día D):
+Contrato `replay` (freeze §15.7 [S-F], la red de seguridad del air-gap
+del escenario de demostración reproducible):
 1. Miss ⇒ `model.call.failed {error_kind: "replay_miss"}` — JAMÁS passthrough
    a red.
 2. Clave = digest (Regla 2 del anexo) sobre el request canónico, incluyendo

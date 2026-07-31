@@ -55,7 +55,7 @@ class MediationStage:
             )
         try:
             # El perfil default es "in-process" (trust/06 §4) hasta que el
-            # manifest exponga execution_profile (carril de Dylan).
+            # manifest exponga execution_profile (trabajo pendiente del SDK).
             strategy = self._dispatcher.resolve(_DEFAULT_PROFILE)
             outputs = strategy.execute(capability, ctx.inputs)
         except Exception as exc:  # noqa: BLE001 — frontera de capability: fail-closed como Rejection, jamás excepción fuera del chokepoint

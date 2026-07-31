@@ -3,7 +3,7 @@
 Convergencia §10-4: bus 1 de ieee14-flujo, r = 0.5712, corte 32 597 / óptimo
 57 070; prohibidos [7] (flujo) y [0, 1, 11] (uniforme). Dos fuentes
 independientes eligieron el mismo bus — este seed lo fija como regresión.
-VERDE (carril/capabilities 2026-07-23): `capabilities_sim_api` expone el
+VERDE (dominio capabilities 2026-07-23): `capabilities_sim_api` expone el
 recompute; xfail volteado a aserción real (docs/specs/README.md).
 """
 

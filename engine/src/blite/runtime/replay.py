@@ -1,6 +1,6 @@
 """
 Replay por digest de cada efecto — A5 (`docs/specs/harness-agentico.md`
-§Contrato-5). [S-G · carril confianza]
+§Contrato-5). [S-G · confianza]
 
 Extiende (no reemplaza) la doctrina `replay` ya congelada en
 `blite.serving.model_port` (miss ⇒ `REPLAY_MISS_ERROR_KIND`, JAMÁS

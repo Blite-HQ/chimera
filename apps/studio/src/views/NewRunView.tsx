@@ -14,7 +14,7 @@ import {
 import type { NewRunInput } from './types';
 
 /**
- * MVP task 2 — form de "Nuevo run" (instancia + proposer). Presentacional
+ * Nivel-1 task 2 — form de "Nuevo run" (instancia + proposer). Presentacional
  * puro (F3): no importa src/data/** ni gatewayClient — solo local state +
  * onSubmit/onCancel. El llamador (App.tsx) decide qué hacer con el input.
  */

@@ -3,7 +3,7 @@ Predicates por clase — la forma auditable que cada método deja. Vocabulario �
 
 freeze §4: la evidence deja de ser unión embebida — son refs content-addressed
 (`Attestation.evidence_digests` → Artifacts §12) con **predicates por clase**.
-Refinamientos aditivos decididos (ratificación final de Dylan):
+Refinamientos aditivos decididos (decisión registrada en el ledger):
 - `formal_exact.differential.status` usa el enum REAL de CP-SAT; `MODEL_INVALID`
   e `INFEASIBLE` son **error de proceso** (no emiten Attestation) — construir
   un predicate con esos status EXPLOTA.

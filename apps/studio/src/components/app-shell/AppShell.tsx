@@ -6,7 +6,7 @@ import { BrandMark } from './BrandMark';
 import { ThemeToggle } from './ThemeToggle';
 
 /**
- * Shell del Studio, variante B (DESIGN.md §7, reobra carril 2 — mockups F1):
+ * Shell del Studio, variante B (DESIGN.md §7, reobra del dominio Studio — mockups F1):
  * sidebar de proyecto (marca, selector de proyecto, secciones) + barra
  * delgada de breadcrumb + contenido. Este componente es capa visual: el
  * estado de navegación vive en App.

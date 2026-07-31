@@ -1,5 +1,5 @@
 /**
- * @chimera/assurance-ui — la voz de confianza de Chimera (carril 2 F3).
+ * @chimera/assurance-ui — la voz de confianza de Chimera (dominio Studio F3).
  *
  * Semántica clase·AL (freeze §4) + componentes de verificación, extraídos
  * del Studio por repetición real entre pantallas validadas. Los tokens

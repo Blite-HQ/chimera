@@ -1,4 +1,4 @@
-/** MVP task 2 — form de "Nuevo run" (presentacional, F3: sin data imports). */
+/** Nivel-1 task 2 — form de "Nuevo run" (presentacional, F3: sin data imports). */
 
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

@@ -19,7 +19,7 @@ excepción de invocación no tumban el API — el runtime las registra como
 solo falla por errores del REQUEST (claim de dominio inválido o
 fail-closed), nunca por lo que pase DENTRO del run.
 
-Modo misión (checkpoint 5, `docs/specs/endpoints-studio.md` §"POST /runs —
+Modo misión (decisión #91, `docs/specs/endpoints-studio.md` §"POST /runs —
 modo misión"): el MISMO endpoint acepta un body alternativo `{mission, ...}`
 discriminado del claim-first por presencia de campo (ambos modelos con
 `extra="forbid"` ⇒ ni ambos ni ninguno validan → 422). El modo misión NO
@@ -67,15 +67,17 @@ from chimera_api.instance_verifiers import resolve_verifiers
 from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import load_session
 
-# Sin auth aún — la sesión de seguridad del API (carril Steven) fija el actor
-# real; este placeholder es explícito para no fingir identidad (Planeado §7).
+# Sin auth aún — el trabajo pendiente de auth (ítem C2/M2 del backlog) fija
+# el actor real; este placeholder es explícito para no fingir identidad
+# (Planeado §7).
 _API_ACTOR = "user:api"
 _DEFAULT_DOMAIN = "domain-default"
 _KEYID = "certificate:api-ephemeral"
 _MODEL_CTX: dict[str, str] = {"domain_id": _DEFAULT_DOMAIN}
 
-# Flip del agente real (carril P4, decisión #92 · docs/planeado/01-demo-dia-d.md
-# "el agente es real... en escena corre por defecto en replay"). Env AUSENTE
+# Flip del agente real (P4, decisión #92 · el camino dorado de
+# docs/archivo/planeado/01-demo-dia-d.md: "el agente es real... en escena
+# corre por defecto en replay"). Env AUSENTE
 # (default) ⇒ `_make_goal_proposer` placeholder, comportamiento intacto.
 _MODEL_BACKEND_ENV = "CHIMERA_MODEL_BACKEND"
 _MODEL_SESSION_DIR_ENV = "CHIMERA_MODEL_SESSION_DIR"
@@ -416,7 +418,7 @@ def _resolve_proposer(
 def _start_claim_run(
     resources: RunResources, body: CreateRunRequest, background_tasks: BackgroundTasks
 ) -> CreateRunResponse:
-    """Arranque claim-first (decisión #6) — INTACTO desde el MVP."""
+    """Arranque claim-first (decisión #6) — INTACTO desde el Nivel-1."""
     claim = _build_domain_claim(body.claim)
 
     instance_id = str(body.claim.scope.get("instancia", ""))

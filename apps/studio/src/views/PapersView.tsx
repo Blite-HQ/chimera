@@ -3,7 +3,7 @@ import React from 'react';
 import { SectionHeader } from '@/components/layout/SectionHeader';
 
 /**
- * Papers y archivos del proyecto (carril 2 F2, mockup S5 — pantalla nueva).
+ * Papers y archivos del proyecto (dominio Studio F2, mockup S5 — pantalla nueva).
  * Todavía sin backend de archivos: la vista declara el estado real (vacío)
  * e invita a actuar; la dropzone se activa cuando exista la capability de
  * ingesta (sin datos fingidos — regla del plan).

@@ -18,7 +18,7 @@ import { shortDate } from './format';
 import type { RunSummary } from './types';
 
 /**
- * Lista de runs del proyecto (carril 2 F2, mockup S1 — layout Vercel):
+ * Lista de runs del proyecto (dominio Studio F2, mockup S1 — layout Vercel):
  * tabla densa, una fila = un run, la confianza clase·AL como columna de
  * primera clase. La fila navega al run.
  */

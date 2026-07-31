@@ -1,4 +1,4 @@
-/** Vistas de proyecto (carril 2 F2): Artifacts, Papers y Knowledge. */
+/** Vistas de proyecto (dominio Studio F2): Artifacts, Papers y Knowledge. */
 
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

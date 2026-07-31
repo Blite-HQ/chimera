@@ -2,7 +2,7 @@
 Loop del runtime — pipeline fijo de Fase 1 + loop agéntico plano (A3).
 [S-G · Steven, evolución Sonnet/A3]
 
-nota execution/02 §11 (recomendación de POC, ratificada en freeze §13 "el
+nota execution/02 §11 (recomendación de POC, registrada en freeze §13 "el
 runtime es dueño del loop"): NO ReAct, NO plan-execute, NO jerárquico — una
 secuencia fija de pasos discretos y nombrados ("resolver qué capability
 invocar" → "invocarla"), cada uno serializable como payload de evento. El
@@ -16,8 +16,9 @@ step↔job 1:1; `capability.job.submitted` se emite ANTES de ejecutar (PR1);
 `run.failed`, jamás un cuelgue. Despacho EXCLUSIVAMENTE vía Registry +
 Dispatcher (ADR-008 — mitiga el "unlogged tool call", nota 02 §6).
 
-docs/specs/harness-agentico.md (decisión #66, PENDIENTE-Steven — esta
-implementación es el material que ratifica o rechaza, no se auto-ratifica):
+docs/specs/harness-agentico.md (decisión #66, registrada en el ledger — #94:
+sin gate por persona; esta implementación es el material sobre el que se
+decide, no se auto-aprueba):
 `execute_run` gana un loop agéntico OPCIONAL, activado por un `proposer`
 inyectable. Sin `proposer` (default), el comportamiento es BYTE-IDÉNTICO al
 pipeline fijo original (un turno resolve→invoke) — la superficie que ya
@@ -39,14 +40,14 @@ vigente sin cambios: por construcción `max_turns <= max_steps` es
 responsabilidad del caller, pero AMBOS guards conviven — el que se agote
 primero corta.
 
-Decisiones de carril avisadas (no congeladas): `error_kind` del guard =
+Decisiones de dominio avisadas (no congeladas): `error_kind` del guard =
 "MaxStepsExceeded" (misma convención type-name que el registry); eventos
 emitidos por el runtime (started/step/job/terminal) llevan
 `actor_id: service:runtime` (§13 cascada) — `run.created` estampa el actor
 del caller (AX1). El perfil de despacho es el default "in-process"
-(trust/06 §4) hasta que el manifest exponga `execution_profile` (carril de
-Dylan). El cruce por el gateway completo por step (§13) se cablea cuando el
-ctx del pipeline se congele con Dylan.
+(trust/06 §4) hasta que el manifest exponga `execution_profile` (trabajo
+pendiente del manifest v2, SDK). El cruce por el gateway completo por step
+(§13) se cablea cuando el ctx del pipeline se congele.
 """
 
 from __future__ import annotations
@@ -92,7 +93,7 @@ AppendEvent = Callable[[str, dict[str, Any]], None]
 class PostInvokeContext(BaseModel):
     """Lo que el loop le entrega al delegate post-invoke — datos, no poderes.
 
-    Decisión de carril (avisada, no congelada): el loop NO verifica (INV-2) —
+    Decisión de dominio (avisada, no congelada): el loop NO verifica (INV-2) —
     ofrece esta costura ANTES del terminal para que un delegado (p.ej. el
     orquestador de `blite.verification`) emita sus eventos DENTRO del corte
     de procedencia. Si el delegate levanta, el run falla fail-loud con el
@@ -130,7 +131,8 @@ class RunStep(BaseModel):
 
 class RunBudget(BaseModel):
     """Presupuesto tokens/costo del run — freeze §3 aditivo en `run.created`
-    (decisión #66, PENDIENTE-Steven). Ambos ejes opcionales e independientes:
+    (decisión #66; #94: sin gate por persona). Ambos ejes opcionales e
+    independientes:
     `None` en un eje ⇒ ese eje no tiene tope (freeze §Contrato-3)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")

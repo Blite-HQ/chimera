@@ -1,5 +1,5 @@
 /**
- * Toggle fixtures↔live por env (MVP task 1, plan §03-frontend-studio).
+ * Toggle fixtures↔live por env (Nivel-1 task 1, plan §03-frontend-studio).
  *
  * `VITE_API_URL` ausente ⇒ modo fixtures/demo (comportamiento actual, sin
  * cambios); presente ⇒ modo live, el Studio consume el SSE real de

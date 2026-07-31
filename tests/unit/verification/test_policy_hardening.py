@@ -1,6 +1,6 @@
 """Palanca EX-5, mitad Policy (freeze §6): ¿la Policy nueva ENDURECE?
 
-El runtime (carril Steven) decide abrir `●EscalationOpened` sobre cases en
+El runtime (módulo `blite.runtime`) decide abrir `●EscalationOpened` sobre cases en
 vuelo con ESTE veredicto — acá solo se computa si la exigencia subió y por
 qué. El pin no cambia jamás (R-Pol1): la palanca es alarma, no revocación.
 """

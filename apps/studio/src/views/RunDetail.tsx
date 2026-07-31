@@ -16,12 +16,12 @@ import { shortDate } from './format';
 import type { RunSummary } from './types';
 
 /**
- * Página de un run (carril 2 F2, mockup S2): header persistente — id +
+ * Página de un run (dominio Studio F2, mockup S2): header persistente — id +
  * estado + AL titular + acciones, siempre visibles (nota 07 §1.3) — y las
  * vistas del run como sub-tabs. Las vistas llegan como slots ya cableados
  * (App conserva queries y estado, este componente es layout).
  *
- * D6 (checkpoint 5, directriz #69/product-model.md): la entrada
+ * D6 (decisión #93, directriz #69/product-model.md): la entrada
  * conversacional es la presentación por defecto — la tab "Hilo" abre
  * primero (misión → plan → veredicto como turnos); el resto de vistas
  * quedan intactas como sub-tabs.

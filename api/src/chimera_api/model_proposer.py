@@ -19,7 +19,7 @@ canonicalización del proyecto) ⇒ mismo `prompt_digest` ⇒ mismo `replay_key`
 2). El prompt en sí se `put()` en el `ContentStore` — el `ModelPort` solo
 viaja por digest (freeze §3, `model.call.requested`).
 
-**Frontera declarada contra `loop.py` (fuera de mi carril, Steven):**
+**Frontera declarada contra `loop.py` (fuera del alcance de este módulo):**
 `_run_agentic_turn` llama `proposer(TurnContext(...))` SIN try/except — un
 `raise` ahí tumba el turno completo antes de journalizar cualquier evento
 (verificado empíricamente: `execute_run` propaga la excepción cruda, ningún

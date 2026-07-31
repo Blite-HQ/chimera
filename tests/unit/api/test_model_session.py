@@ -1,5 +1,5 @@
 """Tests de `chimera_api.model_session` — persistencia en disco de una sesión
-agéntica grabada (carril P4, mandato Dylan 2026-07-29, tarea 3).
+agéntica grabada (P4, mandato Dylan 2026-07-29, tarea 3).
 
 Formato: `<session_dir>/manifest.json` (`SessionManifest`: `backend_id`,
 `local`, `entries: [{replay_key, response_digest}]`) +

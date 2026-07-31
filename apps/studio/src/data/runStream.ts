@@ -3,7 +3,7 @@
  *
  * FIXTURES (VITE_API_URL ausente): emite los eventos del run demo con
  * cadencia, status 'demo' → 'complete' — comportamiento sin cambios. LIVE
- * (VITE_API_URL presente, MVP task 1): delega en
+ * (VITE_API_URL presente, Nivel-1 task 1): delega en
  * `gatewayClient.openRunEventStream` (el único lugar que construye un
  * EventSource real, INV-1) y alimenta el cache vía
  * `queryClient.setQueryData(runEventsQueryOptions(runId).queryKey, ...)`

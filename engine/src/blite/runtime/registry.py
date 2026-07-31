@@ -9,7 +9,8 @@ Eventos: `registry.loaded {capability_ids[], failed[]}` /
 `actor_id: service:runtime` en el stream `system:registry` (freeze §2 [S-F·N2]).
 
 Versión duplicada de un id: pin por `DistributionManifest` (via
-`version_pins` — el Pydantic completo del manifest es carril de Dylan),
+`version_pins` — el Pydantic completo del manifest es trabajo pendiente
+del SDK),
 default DETERMINISTA (menor versión en orden lexicográfico), jamás `latest`.
 Un pin insatisfacible es fail-closed: el id queda fuera y se registra
 `PinnedVersionNotFound` — nunca se elige otra versión en silencio.
@@ -126,8 +127,8 @@ def load_registry(
 
     `entry_points_source` permite inyectar dobles en tests; en producción se
     enumeran los entry points instalados del grupo `blite.capabilities`.
-    `version_pins` viene del `DistributionManifest` (carril de Dylan) cuando
-    exista — `{capability_id: version}`.
+    `version_pins` viene del `DistributionManifest` (trabajo pendiente del
+    SDK) cuando exista — `{capability_id: version}`.
     """
     if entry_points_source is None:
         entry_points_source = tuple(entry_points(group=ENTRY_POINT_GROUP))

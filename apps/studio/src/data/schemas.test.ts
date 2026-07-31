@@ -75,7 +75,7 @@ describe('schemas de la frontera (F3)', () => {
     expect(projected.actorId).toBe('service:verifier');
     expect(projected.verdict).toBe('pass');
     expect(projected.assurance).toEqual({ verifierClass: 'formal_exact', level: 'AL3' });
-    // D6 (checkpoint 5) — el payload ahora viaja ÍNTEGRO con el evento
+    // D6 (decisión #93) — el payload ahora viaja ÍNTEGRO con el evento
     // proyectado (freeze §9: la proyección no recorta); antes se descartaba.
     expect(projected.payload).toEqual(wire.payload);
   });

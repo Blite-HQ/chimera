@@ -7,7 +7,8 @@ notify-then-catchup real (LISTEN/NOTIFY) llega con el store Postgres detrás
 del MISMO puerto (nota 01 §1.5) — este módulo no cambia.
 
 Autenticación: JWT en cookie ya DECIDIDO (freeze §9 P1-9); su implementación
-es la sesión de seguridad del API (carril Steven) — aquí no se inventa auth.
+es trabajo pendiente de auth (ítem C2/M2 del backlog) — aquí no se inventa
+auth.
 """
 
 from __future__ import annotations

@@ -1,7 +1,8 @@
 """SEED · A · Harness — loop agéntico: plan como artefacto + terminación triple.
 
-docs/specs/harness-agentico.md (spec de costura A↔E↔D, decisión #66 — PENDIENTE
-ratificación de Steven). Collection-safe: ningún import de `blite`/`chimera_api`
+docs/specs/harness-agentico.md (spec de costura A↔E↔D, decisión #66 —
+registrada en el ledger; #94: sin gate por persona). Collection-safe: ningún
+import de `blite`/`chimera_api`
 a nivel de módulo — cada test importa dentro de su cuerpo, así el archivo se
 colecta aunque los módulos origen todavía no existan (Fase 0 entrega spec+seed,
 no la feature — docs/specs/README.md §"Specs de costura").

@@ -1,5 +1,5 @@
 /**
- * Proyecciones de PROYECTO (carril 2 F2): funciones puras que derivan las
+ * Proyecciones de PROYECTO (dominio Studio F2): funciones puras que derivan las
  * filas de Runs / Artifacts / Knowledge desde el certificado (bundle real)
  * y los eventos del run. Viven en data/ porque son forma-de-datos, no
  * presentación; las vistas las reciben ya proyectadas vía queryOptions.

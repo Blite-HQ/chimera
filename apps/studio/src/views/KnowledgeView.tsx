@@ -9,7 +9,7 @@ import { shortDate } from './format';
 import type { KnowledgeClaim } from './types';
 
 /**
- * Knowledge del proyecto (carril 2 F2, mockup S6): las conclusiones
+ * Knowledge del proyecto (dominio Studio F2, mockup S6): las conclusiones
  * verificadas acumuladas de todos los runs. Cada claim conserva su badge y
  * su run origen — el conocimiento hereda la confianza, no la pierde al
  * agregarse.

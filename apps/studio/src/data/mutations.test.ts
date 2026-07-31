@@ -33,7 +33,7 @@ describe('toCreateRunBody (checkpoint 5 — modo misión, endpoints-studio.md)',
     // desde MissionRequest (Pydantic); el API prueba que ese body responde 202.
     const input: NewRunInput = { instance: 'ieee14', proposer: 'qaoa' };
 
-    // Act & Assert — el 422 vivo del checkpoint 2 muere por contrato
+    // Act & Assert — el 422 vivo previo muere por contrato (decisión #91)
     expect(toCreateRunBody(input)).toEqual(MISSION_CONTRACT_FIXTURE);
   });
 

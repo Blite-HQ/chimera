@@ -2,8 +2,9 @@
 §Contrato-6). [S-G · A6]
 
 Par `approval.requested`/`approval.responded` (freeze §14 — `●ApprovalRequested`/
-`●ApprovalResponded`, **nuevo en catálogo, PENDIENTE-Steven, misma ceremonia
-#66**): forma "elicitation" de MCP — request→response tipado y replay-able,
+`●ApprovalResponded`, **nuevo en catálogo, misma ceremonia #66 — #94: sin
+gate por persona**): forma "elicitation" de MCP — request→response tipado y
+replay-able,
 mismo home conceptual que `OverridePayload` (freeze §10, `blite.gateway`) — el
 Stage que abre la aprobación emite su propio evento vía `EventStore` (INV-4);
 este módulo fija la FORMA de los dos payloads y la validación de

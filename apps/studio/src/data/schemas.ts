@@ -65,11 +65,11 @@ export const projectedEventSchema = z.object({
   stepId: z.string().optional(),
   resumen: z.string().min(1),
   verdict: verdictSchema.optional(),
-  // MVP task 4 — sin esto Zod lo strippea silenciosamente en
+  // Nivel-1 task 4 — sin esto Zod lo strippea silenciosamente en
   // `z.array(projectedEventSchema).parse(RUN_EVENTS)` (queries.ts) y el
   // AssuranceBadge nunca se muestra en fixtures/demo mode.
   assurance: z.object({ verifierClass: z.string().min(1), level: assuranceLevelSchema }).optional(),
-  // D6 (checkpoint 5) — mismo motivo que assurance: sin declararlo, Zod lo
+  // D6 (decisión #93) — mismo motivo que assurance: sin declararlo, Zod lo
   // strippea y RunThread nunca ve los payloads de plan.* en fixtures.
   payload: z.record(z.string(), z.unknown()).optional()
 });
@@ -141,7 +141,7 @@ export function toProjectedEvent(wire: SseProjectedEvent): ProjectedEvent {
 }
 
 /**
- * D6 (checkpoint 5) — Zod espejo de `blite.runtime.plan` (superficie-visual.md
+ * D6 (decisión #93) — Zod espejo de `blite.runtime.plan` (superficie-visual.md
  * §7, declarado en prosa por la spec; materializado acá). El contrato es el
  * par [fixture generado desde Pydantic + este espejo a mano]:
  * `src/fixtures/contract/harness/plan-created.json` / `plan-item-updated.json`

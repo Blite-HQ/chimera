@@ -32,8 +32,9 @@ mapeo `replay_key -> response_digest`, conceptualmente distinto del
 `ContentStore` que solo direcciona bytes por su propio hash. `ReplayManifest`
 formaliza esa pieza; `InMemoryReplayManifest` es su respaldo mínimo (mismo
 rol que `InMemoryContentStore` para el puerto `ContentStore`) — el respaldo
-pinneado/versionado del día D (freeze: "el modo grabación no puede mutar la
-config del demo en silencio") es trabajo posterior, no de este adapter.
+pinneado/versionado del escenario de demostración reproducible (freeze: "el
+modo grabación no puede mutar la config del demo en silencio") es trabajo
+posterior, no de este adapter.
 
 **Inyección del caller vivo:** `LiveModelCaller = Callable[[ModelRequest],
 bytes]` — testeable sin red/API key/litellm instalado (el fake de test es una
@@ -100,7 +101,8 @@ class ReplayManifest(Protocol):
 class InMemoryReplayManifest:
     """Respaldo mínimo de `ReplayManifest` — mismo rol que
     `InMemoryContentStore` para `ContentStore` (freeze: el respaldo
-    pinneado/versionado del día D es trabajo posterior, no de este adapter)."""
+    pinneado/versionado del escenario de demostración reproducible es
+    trabajo posterior, no de este adapter)."""
 
     def __init__(self) -> None:
         self._entries: dict[str, str] = {}

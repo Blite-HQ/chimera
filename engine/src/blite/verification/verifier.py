@@ -2,8 +2,8 @@
 Verifier — el puerto que implementa todo adapter de ancla dura. Vocabulario §4.
 
 docs/contract-freeze.md §4: `Verifier(Protocol)` = `verifier_class` +
-`determinism` + `verify(claim, ctx) -> Attestation`. El campo `rung: int`
-DESAPARECE (la escalera quedó supersedida). En no-deterministas la
+`determinism` + `verify(claim, ctx) -> Attestation`. La confianza se expresa
+como clase de verificador + AL (freeze §4). En no-deterministas la
 rerun_policy aplica a AMBOS veredictos. La distinción dura: **error de
 proceso NO emite Attestation** — `verdict: "fail"` es un veredicto sobre el
 claim, jamás una falla del verificador.

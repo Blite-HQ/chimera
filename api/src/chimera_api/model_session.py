@@ -1,5 +1,5 @@
 """
-Persistencia en disco de una sesión agéntica grabada (carril P4, mandato
+Persistencia en disco de una sesión agéntica grabada (P4, mandato
 Dylan 2026-07-29, tarea 3). Complementa `blite.protocols.model_server`
 (A2, `ReplayManifest`/`InMemoryReplayManifest`) — ESE módulo define el
 puerto+respaldo en memoria; ESTE módulo lo dumpea/carga de un directorio
@@ -45,7 +45,8 @@ class SessionCorruptError(Exception):
     al digest declarado, o `manifest.json` no es JSON válido bajo
     `SessionManifest`. Fail-loud — jamás cargar una sesión parcial en
     silencio (freeze §15.7: el modo replay es la red de seguridad del
-    air-gap del día D, no puede fundarse en una sesión dudosa)."""
+    air-gap del escenario de demostración reproducible, no puede fundarse
+    en una sesión dudosa)."""
 
 
 class SessionEntry(BaseModel):

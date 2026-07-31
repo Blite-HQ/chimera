@@ -580,7 +580,7 @@ describe('openRunEventStream', () => {
       occurredAt: '2026-07-22T12:00:04.000000Z',
       resumen: 'Verificación formal exacta (AL3)',
       verdict: 'pass',
-      // D6 (checkpoint 5) — el payload viaja íntegro con el evento
+      // D6 (decisión #93) — el payload viaja íntegro con el evento
       // proyectado (freeze §9): RunThread parsea plan.* desde acá.
       payload: { verdict: 'pass' }
     });

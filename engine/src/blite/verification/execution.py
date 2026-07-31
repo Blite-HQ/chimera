@@ -1,6 +1,7 @@
 """
-ExecutionVerifier — el adapter rung-2 (pandapower) del puerto Verifier.
-Nota 12 §1.3: "correr de verdad y observar, no opinar". [S-G · confianza]
+ExecutionVerifier — el adapter de la clase `execution` (AL3, pandapower)
+del puerto Verifier. Nota 12 §1.3: "correr de verdad y observar, no
+opinar". [S-G · confianza]
 
 La topología eléctrica y los límites son DATOS del ancla (regla "reglas como
 datos"): el `anchor_digest` que porta la Attestation debe pinnear el modelo
@@ -107,7 +108,8 @@ def _is_connected(buses: set[int], edges: list[tuple[int, int]]) -> bool:
 
 @dataclass(frozen=True)
 class ExecutionVerifier:
-    """Adapter rung-2: corre el flujo POR ISLA propuesta y observa."""
+    """Adapter de la clase `execution` (AL3): corre el flujo POR ISLA
+    propuesta y observa."""
 
     verifier_id: str
     independence_group: str

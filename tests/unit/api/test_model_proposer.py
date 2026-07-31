@@ -1,12 +1,13 @@
 """Tests de `chimera_api.model_proposer` — el adapter `Proposer ← ModelServer`
-(carril P4, mandato Dylan 2026-07-29). El agente real entra por el MISMO seam
+(P4, mandato Dylan 2026-07-29). El agente real entra por el MISMO seam
 `Proposer` (decisión #92, `loop.py`) — este módulo arma el request del modelo
 desde `TurnContext` (determinista: mismos bytes ⇒ mismo `replay_key`), llama
 `ModelPort.call`, y parsea la respuesta con un protocolo JSON ESTRICTO
 (reusa `ProposedStep` como el wire — `extra="forbid"` ya lo hace estricto).
 
 Frontera declarada (ver `docs/specs/harness-agentico.md` sección aditiva):
-`_run_agentic_turn` (`engine/src/blite/runtime/loop.py`, fuera de mi carril)
+`_run_agentic_turn` (`engine/src/blite/runtime/loop.py`, fuera del alcance
+de este módulo)
 NO envuelve la llamada al `proposer` en try/except — un `raise` ahí tumba el
 turno ANTES de journalizar nada (verificado empíricamente: `execute_run`
 propaga la excepción sin emitir `run.failed`). Por eso este adapter JAMÁS deja

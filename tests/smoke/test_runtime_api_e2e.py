@@ -120,7 +120,8 @@ def _run_body(*, assignment: tuple[int, int, int, int]) -> dict[str, Any]:
 
 
 class TestGoldenPathE2E:
-    """POST→SSE terminal→GET certificate→check_bundle 7/7 — el MVP del dominio."""
+    """POST→SSE terminal→GET certificate→check_bundle 7/7 — el Nivel-1 del
+    dominio."""
 
     def test_run_optimo_completa_7_de_7_con_titular_al3(self) -> None:
         # Arrange

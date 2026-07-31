@@ -6,7 +6,7 @@ import RunTimeline from './RunTimeline';
 import type { ProjectedEvent } from './types';
 
 /**
- * MVP task 4 — verification.completed debe mostrar AssuranceBadge
+ * Nivel-1 task 4 — verification.completed debe mostrar AssuranceBadge
  * (clase + AL) + veredicto, y claim.emitted debe mostrar un marcador de
  * declaración. `resumen` evita a propósito las mismas palabras que
  * `classLabel`/el marcador emiten, para que las aserciones por texto no

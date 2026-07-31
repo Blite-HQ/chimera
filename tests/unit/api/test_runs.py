@@ -288,7 +288,7 @@ class TestCapabilityDesconocida:
 
 class TestModoMision:
     """`POST /runs` modo misión — docs/specs/endpoints-studio.md
-    §"POST /runs — modo misión" (checkpoint 5, costura A↔E↔D).
+    §"POST /runs — modo misión" (decisión #91, costura A↔E↔D).
 
     Contrato: 202 + run_id; el plan viaja como eventos (`plan.created` /
     `plan.item_updated`) en el stream; sin gate de verificación el run
@@ -582,7 +582,8 @@ class TestModoMisionProposerReal:
 class TestContratoFixtureStudio:
     """El body EXACTO que el Studio produce (fixture de costura single-origin,
     `tests/fixtures/contract/endpoints/post-runs-mission.json`) responde 202 —
-    el 422 vivo del checkpoint 2 está muerto por contrato, no por casualidad."""
+    el 422 que ese body provocaba en vivo (pre-#91) está muerto por contrato,
+    no por casualidad."""
 
     def test_el_body_del_fixture_responde_202_y_emite_plan_created(self) -> None:
         # Arrange

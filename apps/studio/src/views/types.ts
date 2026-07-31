@@ -21,7 +21,7 @@ import type { AnchorKind, Verdict } from '../spike/ieee14';
 export type { AnchorKind, AssuranceLevel, ConclusionVerdict, Verdict, VerifierClass };
 
 /**
- * MVP task 4 — clase+AL de un evento `verification.completed`, tomado de
+ * Nivel-1 task 4 — clase+AL de un evento `verification.completed`, tomado de
  * `payload.attestation.{verifier_class, level}` (wire real del
  * orquestador). Nota 18 §5 permite props de capa UI adaptables además del
  * wire congelado; este campo es aditivo y opcional para no romper eventos
@@ -41,9 +41,9 @@ export interface ProjectedEvent {
   readonly stepId?: string;
   readonly resumen: string;
   readonly verdict?: Verdict; // presente si el evento representa un resultado
-  readonly assurance?: EventAssurance; // MVP task 4 — solo verification.completed
+  readonly assurance?: EventAssurance; // Nivel-1 task 4 — solo verification.completed
   /**
-   * D6 (checkpoint 5) — el payload ÍNTEGRO del wire SSE (freeze §9: la
+   * D6 (decisión #93) — el payload ÍNTEGRO del wire SSE (freeze §9: la
    * proyección no recorta lo que el emisor estampó). Opcional y aditivo
    * (nota 18 §5, capa UI adaptable): los fixtures previos a D6 no lo traen.
    * RunThread lo parsea con los Zod de plan.* (schemas.ts) — jamás a mano.
@@ -173,7 +173,7 @@ export interface DsseEnvelope {
 }
 
 /**
- * carril 2 F2 — estado de un run en la lista del proyecto. Extensión ADITIVA
+ * dominio Studio F2 — estado de un run en la lista del proyecto. Extensión ADITIVA
  * `fallido`/`cancelado` (auditoría Fase 2, `docs/mvp/decisiones.md`
  * §"Análisis para discusión" punto 3): antes de esto un run terminado en
  * `run.failed`/`run.cancelled` quedaba "en_curso" para siempre en la lista
@@ -182,7 +182,7 @@ export interface DsseEnvelope {
 export type RunStatus = 'en_curso' | 'completado' | 'fallido' | 'cancelado';
 
 /**
- * carril 2 F2 — fila de la lista de Runs (proyección del certificado + los
+ * dominio Studio F2 — fila de la lista de Runs (proyección del certificado + los
  * eventos del run). La confianza (clase + AL) es columna de primera clase:
  * un run jamás se lista sin su badge.
  */
@@ -198,7 +198,7 @@ export interface RunSummary {
   readonly completedAt?: string;
 }
 
-/** carril 2 F2 — entregable a nivel de proyecto, siempre con su procedencia. */
+/** dominio Studio F2 — entregable a nivel de proyecto, siempre con su procedencia. */
 export interface ProjectArtifact {
   readonly artifactRef: string;
   readonly digest: string;
@@ -209,7 +209,7 @@ export interface ProjectArtifact {
   readonly issuedAt: string;
 }
 
-/** carril 2 F2 — conclusión verificada acumulada en Knowledge. */
+/** dominio Studio F2 — conclusión verificada acumulada en Knowledge. */
 export interface KnowledgeClaim {
   readonly statement: string;
   readonly scope: Readonly<Record<string, string>>;
@@ -286,7 +286,7 @@ export interface RvsPExperiment {
 }
 
 /**
- * MVP task 2 — el form de "Nuevo run" (NewRunView), consumido también por
+ * Nivel-1 task 2 — el form de "Nuevo run" (NewRunView), consumido también por
  * `src/data/mutations.ts` (el mapper hacia el contrato plan-01 de
  * `POST /runs`). Vive acá — no en data/mutations.ts — porque es la vista la
  * dueña del shape del formulario (F3: data/** importa tipos de views/**,

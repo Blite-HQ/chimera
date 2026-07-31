@@ -1,5 +1,5 @@
 /**
- * Proyecciones de PROYECTO (carril 2 F2): del certificado real del bundle
+ * Proyecciones de PROYECTO (dominio Studio F2): del certificado real del bundle
  * (fixtures regenerados por scripts/gen-example-bundle.py) salen las filas
  * de Runs, Artifacts y Knowledge. Nada se muestra sin su confianza.
  */

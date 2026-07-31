@@ -1,5 +1,5 @@
 /**
- * MVP task 1 (S10) — alimenta el cache de Query con el stream en vivo.
+ * Nivel-1 task 1 (S10) — alimenta el cache de Query con el stream en vivo.
  *
  * Modo live únicamente (`isLiveMode()`): se suscribe a
  * `subscribeToRunEvents` (runStream.ts, que a su vez delega en

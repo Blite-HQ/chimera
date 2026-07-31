@@ -1,5 +1,5 @@
 """Tests de `scripts/record_session.py` — runbook para grabar una sesión
-agéntica REAL (carril P4, mandato Dylan 2026-07-29, tarea 4). El script NO se
+agéntica REAL (P4, mandato Dylan 2026-07-29, tarea 4). El script NO se
 ejecuta acá contra litellm/una API key real (PROHIBIDO en esta sesión) —
 solo se ejercita `--fake`: un `live_caller` + registry deterministas locales
 recorren el MISMO camino de producción (proposer real → `ModelServer(mode=

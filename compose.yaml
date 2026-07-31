@@ -41,10 +41,10 @@ services:
     environment:
       # *_FILE únicamente — el valor real nunca vive en este YAML (EG-3).
       CHIMERA_DB_PASSWORD_FILE: /run/secrets/postgres_password
-      # Flip del agente real (carril P4, decisión #92 · docs/planeado/01-demo-
-      # dia-d.md: "el agente es real... en escena corre por defecto en
-      # replay — reproducción determinista de una sesión agéntica real
-      # grabada"). SIN activar por default — ausente ⇒ el proposer
+      # Flip del agente real (P4, decisión #92 · el camino dorado de
+      # docs/archivo/planeado/01-demo-dia-d.md: "el agente es real... en
+      # escena corre por defecto en replay — reproducción determinista de
+      # una sesión agéntica real grabada"). SIN activar por default — ausente ⇒ el proposer
       # placeholder determinista actual (comportamiento intacto). Descomentar
       # ambas líneas SOLO cuando exista una sesión grabada de verdad en
       # `knowledge/sessions/<nombre>/` (`scripts/record_session.py`, runbook
@@ -74,7 +74,7 @@ services:
   # dominio 01 / Nivel Planeado #4). Este servicio satisface el seed y el
   # freeze §15 (O6) como servicio de primera clase, pero FALLARÁ al arrancar
   # hasta que 01 registre la app procrastinate — no se levanta en la
-  # verificación viva del MVP (que trae solo `postgres api studio`).
+  # verificación viva del Nivel-1 (que trae solo `postgres api studio`).
   worker:
     build:
       context: .

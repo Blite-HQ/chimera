@@ -72,7 +72,7 @@ function formatTime(occurredAt: string): string {
 }
 
 /**
- * MVP task 4 — la confianza (o su ausencia) de un evento, en el orden de
+ * Nivel-1 task 4 — la confianza (o su ausencia) de un evento, en el orden de
  * prioridad del brief: `assurance` gana siempre (AssuranceBadge clase+AL +
  * veredicto); si no hay assurance pero sí veredicto, el Badge plano de
  * siempre; `claim.emitted` (sin veredicto todavía) se marca como

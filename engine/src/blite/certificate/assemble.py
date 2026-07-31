@@ -1,6 +1,6 @@
 """
 Ensamblador del Bundle — el certificado se PROYECTA del stream de un run
-vivo, jamás se fabrica a mano. [S-G · carril confianza]
+vivo, jamás se fabrica a mano. [S-G · confianza]
 
 Freeze §7: el Bundle mínimo = envelope DSSE (attestations embebidas — una
 sola firma) + descriptores de anclas/verificadores + Policy pinneada (bytes

@@ -1,9 +1,9 @@
 """
 InvocationContext — the minimal, frozen context a Verifier receives.
 
-Mirrors docs/especificacion-contratos.md SS2 (runId/actor/domainId) without
-depending on the full Identity contract (built in a later piece of this
-session) — Verifier only needs to know who is asking and in which run/domain.
+Mirrors docs/contract-freeze.md SS8 (runId/actor/domainId; TS mirror in
+docs/especificacion-contratos-v2.md) without depending on the full Identity
+contract — Verifier only needs to know who is asking and in which run/domain.
 """
 
 from __future__ import annotations

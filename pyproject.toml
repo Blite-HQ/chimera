@@ -279,7 +279,8 @@ forbidden_modules = [
     "aiohttp",
     "urllib3",
     "socket",
-    # Explicit, not just transitive-via-httpx (execution/09 §4, ratificación S-F):
+    # Explicit, not just transitive-via-httpx (execution/09 §4, decisión S-F
+    # registrada):
     # a model-client SDK in `serving` would be caught by the chain below anyway,
     # but naming it directly keeps the gate legible and doesn't depend on these
     # SDKs continuing to route through httpx internally.
@@ -293,7 +294,7 @@ forbidden_modules = [
 [[tool.importlinter.contracts]]
 name = "AX3-b: model client SDKs are imported only by the protocols adapter (ModelServer)"
 type = "forbidden"
-# Ratificacion S-F + stress test pre-B: litellm/openai/anthropic are now real
+# Decision S-F registrada + stress test pre-B: litellm/openai/anthropic are now real
 # engine deps (multi-provider router, kept per Steven+Dylan). AX3 guards
 # `serving` and INV-2 guards `verification`; this closes the gap so NO other
 # engine module can import a model SDK and bypass mediation. Only

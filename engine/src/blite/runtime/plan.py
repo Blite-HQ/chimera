@@ -1,5 +1,5 @@
 """Plan como artefacto en el stream — freeze §14 (`●PlanCreated`), decisión
-#66 PENDIENTE-Steven. [S-G · A3]
+#66 registrada en el ledger (#94: sin gate por persona). [S-G · A3]
 
 docs/specs/harness-agentico.md §Contrato-2: el agente jamás reescribe el plan
 in-place (INV-5, append-only) — `plan.created` es el evento fundacional

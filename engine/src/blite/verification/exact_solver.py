@@ -147,7 +147,8 @@ def claim_digest_of(claim: OptimalityClaim) -> str:
 
 @dataclass(frozen=True)
 class ExactSolverVerifier:
-    """Adapter rung-1: contrasta el claim contra CP-SAT exacto e independiente."""
+    """Adapter de la clase `formal_exact`: contrasta el claim contra CP-SAT
+    exacto e independiente."""
 
     verifier_id: str
     independence_group: str
