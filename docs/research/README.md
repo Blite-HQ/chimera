@@ -1,5 +1,9 @@
 # Research
 
+> **Estado: VIGENTE (2026-07-30).** Frontera knowledge↔research vigente; los
+> registros de proceso de la era del evento se archivaron (#112 — ver abajo);
+> la «Suggested structure» quedó marcada como propuesta no materializada.
+
 The academic home for Chimera: framing, methodology, and bibliography for the ideas
 enforced in [`../invariants.md`](../invariants.md) and explored in
 [`../../knowledge/`](../../knowledge/).

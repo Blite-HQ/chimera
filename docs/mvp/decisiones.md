@@ -785,3 +785,80 @@ obligatorios; luego S4 valida contra el checklist §6 y desbloquea la Fase 0.
 - **Registro del hito**: el refactoring documental final entra a la lista de
   parqueados de `01-criterio.md` §Fuera-de-la-fase como trabajo de cierre
   post-Mejorado. Reversión: supersede con causa.
+
+## Sesión S3 — saneamiento documental EJECUTADO (worktree `mejorado/saneamiento`, 2026-07-30)
+
+Insumos obligatorios consumidos: `06-saneamiento.md` (plan + línea roja),
+`07-censo-documental.md` (censo S1) y las decisiones #108–#118 (diseño S2).
+Horizonte #118 respetado: marcas TEMPORALES, cero traducción a inglés (solo la
+regla en `docs/README.md`), ledger EN SU UBICACIÓN con encabezado global, cero
+reorganización más allá del archivo de lo decidido. Siete commits, uno por
+bloque del alcance: `0493c5c` (b1 estados #109, 53 archivos) · `a99ff95` (b2
+rescates #112 + 19 archivos a `docs/archivo/` + `docs/README.md` mapa de
+autoridad #108/#110) · `8d1ef01` (b3 supersedes del freeze #102/#104/#105/#106
+más C-9/C-10/N12, checklist 7→8 y nota manifest v2 §1) · `8773167` (b4
+traducciones a clase+AL #103: trust/11 completa, stub TFIM
+`knowledge/quantum/11`, DESIGN.md §4 3-barras, READMEs honestos) · `04ee723`
+(b5 higiene: `.markdownlintignore`/`.prettierignore` #113, CI `mejorado/**`,
+`promote-demo.yml` fuera, CODEOWNERS/GOVERNANCE per #94, `.env.example` con
+`CHIMERA_MODEL_*` y sin `OLLAMA_API_KEY`) · `88d012e` (b6: §7 de
+`04-consolidacion.md` con los 14 ítems #116/#117 — O8-O12/V9/C12-C15/P11-P13/G8
+— + barrido #115 solo-comentarios en 65 archivos).
+
+**Gates (verificación, no fe — batería completa ANTES de cada commit; final
+sobre el árbol completo):** pytest **799 passed + 5 xpassed (= 804), 14
+skipped, cov 90.92%** · lint-imports **13 kept / 0 broken** · ruff **0** ·
+pyright **0** · studio **221/221** · eslint **0** · **gate de docs verde SOBRE
+TODO EL REPO**: `pnpm run docs:lint` = 0 errores y `prettier --check .` = limpio
+(baseline pre-S3: 671+ errores por el vendorizado). Sin regresión respecto del
+baseline #108 (804/90.9x/13/221 — la centésima de cobertura varía por entorno
+de worktree, no por código).
+
+### Tabla de interacciones de la sesión
+
+| Frente            | Qué se hizo                                                                                                                                                                     | Interacción / nota                                                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Estados #109      | Header de estado en TODO doc vivo de `docs/` y `knowledge/`; sello falso de `islanding/01` §1.8 declarado ERRÓNEO con nota fechada (sin borrarlo)                               | los V-D llevan el delta con refs; los archivados llevan HISTÓRICO + destino                                                                                                          |
+| Archivo #112      | 19 archivos a `docs/archivo/` con `git mv` (ratificaciones ×5, decisiones-delegadas, guía, contratos v1, esquema v1, mockup, planeado 01/02/04/05, research de proceso ×4)      | 4 rescates ANTES: registro ADR-001-027 + tabla invariante→componente → `docs/adr/registro-adr-historico.md`; QUBO §4 → `islanding/01` §6; `local: boolean` → nota en el registro ADR |
+| Freeze            | Marcas [MEJORADO] con causa en §1/§3/§7/§8/§13/§14/§15.3/§15.7; C-10 estampó los 6 digests reales (cr6/cr8/ice × uniforme/voltaje) con nota de procedencia                      | letra congelada intacta; ieee30 + flips cr6/cr8 siguen en O6/M30                                                                                                                     |
+| Vocabulario       | `rung`→clase+AL (trust/11 traducida entera #103), `aggregate_rung`→`titular_level`, `min_rung`→matriz 0.2.0, 5 barras→3, `MODEL_ROUTER_BACKEND`→nota N12, era-hackathon en docs | hits restantes = ledger (histórico intocable) + declaraciones polarizadas que DECLARAN la muerte del término                                                                         |
+| Código #115       | 65 archivos, diff SOLO comentarios/docstrings (engine/api/tests/studio/compose/pyproject); intocables respetados (vectores `"rung":1`, signal.py:7, «pipeline fijo» del loop)   | los gates idénticos antes/después lo prueban (cero efecto en runtime)                                                                                                                |
+| Backlog #116/#117 | Los 14 ítems anexados a `04-consolidacion.md` §7 con dominio y orden declarado; menciones honoríficas = KB curada; N11 explícito en O2                                          | **cero descartes** (todo entró — #101); el único descarte-con-causa previo (`results/` duplicado) ya estaba en el censo §2.7                                                         |
+| Índices           | `docs/README.md` reconstruido (jerarquía #108 + 4 desempates + mapa por plano del freeze #110 + regla de idioma #114/#118); knowledge/quantum/nexus con índices completos       | `knowledge/nexus/README.md` creado (40 JSON — el censo decía 37; contado en vivo)                                                                                                    |
+
+### Hallazgos REPORTADOS al handoff (línea roja: sin decisión NO se ejecuta)
+
+1. **Anexo de canonicalización — inmunización §163 no cubre V6** (censo): extenderla
+   toca un doc CONGELADO sin decisión registrada → NO se hizo; que S4/Fase 0 lo decida.
+2. **El freeze cita rutas hoy archivadas** (guía de ratificación y actas de research en
+   sus registros de cierre): letra congelada, sin decisión de path-fix → intactas; el
+   mapa del índice y `docs/archivo/README.md` resuelven la navegación.
+3. **D-N12 (divorcio del mapa)** registrado con nota en `superficie-visual.md` §4 —
+   resolución = V1/M18, no saneamiento.
+4. **Fixtures del Studio siguen emitiendo `capability.job.invoked`**
+   (`apps/studio/src/fixtures/runEvents.ts`, test del hook): es DATO de test — fuera del
+   alcance solo-comentarios de #115; traducirlos cambia comportamiento del modo fixtures
+   → trabajo de código (va con la whitelist SSE del cliente, censo §8.3).
+5. **`apps/studio/index.html:8`**: «escalera de verificación» vive en el `content` del
+   `<meta name="description">` — string funcional servido, no comentario → código.
+6. **Strings de `describe()`** con «MVP task N»/«checkpoint 5» en 5 tests del Studio —
+   dato de runtime de test → código menor.
+7. **La ruta fantasma `/invoke`** (gatewayClient postea, nginx proxea, nadie la sirve —
+   censo §2.7) sigue SIN ítem propio de backlog.
+8. **El codename de marca interna** sigue en su única aparición (`docs/specs/README.md`);
+   S2 no decidió reformular la línea; el enforcement versionado es O2/M26.
+9. **ci.yml**: el ignore de CVE con fecha de re-evaluación vencida sigue igual (sin
+   decisión); `ISSUE_TEMPLATE/config.yml` con URL rota hasta el flip.
+10. **Pin frágil `68af0c1`** (`protocolo-auditoria-ratificaciones.md` alcanzable solo por
+    `git show`): registrado en los headers de las actas archivadas — NO podar esa rama
+    sin traer el doc al árbol.
+11. **Residuos de autoría con dueño** dejados como registro de procedencia (no gates):
+    «frontera Steven» en `approval.py`/su test, tags `[S-G · Steven]`, cita literal «Ese
+    test ES el MVP del dominio» (comilla de doc histórico).
+12. **Drift código-manifest de solvers**: el enum del manifest expone `"gurobi"` que
+    `invoke` rechaza en runtime → backlog.
+
+Docs-only salvo el barrido #115 (solo-comentarios, autorizado). Contratos tocados:
+SOLO por las ceremonias ya decididas (#102-#106/C-9/C-10/N12); cero re-digests; ledger
+solo-anexado (este bloque es el anexo). Siguiente: **S4 valida contra el checklist §6
+de `06-saneamiento.md`** con esta evidencia y desbloquea la Fase 0.
