@@ -47,8 +47,9 @@ emitidos por el runtime (started/step/job/terminal) llevan
 del caller (AX1). El perfil de despacho viene de
 `manifest.execution_profile` (manifest v2, C1) — un perfil sin estrategia
 falla el run, jamás fallback silencioso (freeze §1). El cruce por el
-gateway completo por step (§13) se cablea cuando el ctx del pipeline se
-congele.
+gateway completo (§13, C2/M2) se INYECTA como `crossing` (freeze §8 C-5):
+UN cruce por invocación de capability; con cruce, los `capability.job.*`
+los emiten las etapas de provenance con el actor real del JWT.
 """
 
 from __future__ import annotations

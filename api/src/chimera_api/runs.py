@@ -42,16 +42,19 @@ from typing import Any
 from uuid import uuid4
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from blite.certificate.assemble import ConclusionDeclaration
 from blite.content import ContentStore
 from blite.events.store import EventStore
+from blite.gateway.crossing import RunCrossing, build_run_pipeline
+from blite.identity.identity import Identity
 from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
 from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.dispatch import Dispatcher, ProfileDispatcher
 from blite.runtime.loop import (
+    GatewayCrossing,
     ProposedStep,
     Proposer,
     RunBudget,
@@ -63,14 +66,15 @@ from blite.runtime.registry import Registry, load_registry
 from blite.serving.model_port import ModelPort
 from blite.verification.exact_solver import MaxCutInstance, OptimalityClaim
 from blite.verification.orchestrator import ClaimDeclaration, make_verification_delegate
+from chimera_api.auth import SessionAuth
 from chimera_api.instance_verifiers import resolve_verifiers
 from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import load_session
 
-# Sin auth aún — el trabajo pendiente de auth (ítem C2/M2 del backlog) fija
-# el actor real; este placeholder es explícito para no fingir identidad
-# (Planeado §7).
-_API_ACTOR = "user:api"
+# El actor viene de la sesión JWT en cookie (C2/M2, freeze §9 P1-9) — el
+# placeholder `_API_ACTOR = "user:api"` MURIÓ con el cruce del gateway:
+# `SessionAuth.identity_from(request)` resuelve la Identity real y el
+# pipeline inyectado la estampa en los eventos del job (AX1).
 _DEFAULT_DOMAIN = "domain-default"
 _KEYID = "certificate:api-ephemeral"
 _MODEL_CTX: dict[str, str] = {"domain_id": _DEFAULT_DOMAIN}
@@ -264,6 +268,7 @@ class RunResources:
     signing_key: ed25519.Ed25519PrivateKey
     keyid: str
     run_tickets: dict[str, RunTicket]
+    session_auth: SessionAuth
     _registry: Registry | None = None
     model_backend: ModelBackendConfig | None = None
 
@@ -290,8 +295,23 @@ def build_run_resources(
         signing_key=ed25519.Ed25519PrivateKey.generate(),
         keyid=_KEYID,
         run_tickets={},
+        session_auth=SessionAuth(_DEFAULT_DOMAIN),
         _registry=registry,
         model_backend=_build_model_backend(content),
+    )
+
+
+def _make_crossing(resources: RunResources, identity: Identity) -> GatewayCrossing:
+    """El cruce completo del gateway para ESTE actor (C2/M2): las 8 etapas
+    reales sobre la infra de vida-de-app — UN cruce por invocación (§13)."""
+    return RunCrossing(
+        build_run_pipeline(
+            registry=resources.registry(),
+            dispatcher=resources.dispatcher,
+            store=resources.store,
+            content=resources.content,
+        ),
+        identity,
     )
 
 
@@ -416,7 +436,10 @@ def _resolve_proposer(
 
 
 def _start_claim_run(
-    resources: RunResources, body: CreateRunRequest, background_tasks: BackgroundTasks
+    resources: RunResources,
+    body: CreateRunRequest,
+    background_tasks: BackgroundTasks,
+    identity: Identity,
 ) -> CreateRunResponse:
     """Arranque claim-first (decisión #6) — INTACTO desde el Nivel-1."""
     claim = _build_domain_claim(body.claim)
@@ -465,20 +488,24 @@ def _start_claim_run(
         resources.dispatcher,
         resources.content,
         run_id=run_id,
-        actor_id=_API_ACTOR,
+        actor_id=identity.id,
         domain_id=_DEFAULT_DOMAIN,
         max_steps=body.max_steps,
         policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
         capability_id=body.capability_id,
         inputs=body.inputs,
         post_invoke=delegate,
+        crossing=_make_crossing(resources, identity),
     )
 
     return CreateRunResponse(run_id=run_id)
 
 
 def _start_mission_run(
-    resources: RunResources, body: MissionRequest, background_tasks: BackgroundTasks
+    resources: RunResources,
+    body: MissionRequest,
+    background_tasks: BackgroundTasks,
+    identity: Identity,
 ) -> CreateRunResponse:
     """Arranque modo misión (spec §"POST /runs — modo misión"): agenda
     `execute_run` en modo agéntico — el plan viaja como eventos y la misión
@@ -516,7 +543,7 @@ def _start_mission_run(
         resources.dispatcher,
         resources.content,
         run_id=run_id,
-        actor_id=_API_ACTOR,
+        actor_id=identity.id,
         domain_id=_DEFAULT_DOMAIN,
         max_steps=body.max_turns * _STEPS_PER_TURN,
         policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
@@ -533,6 +560,7 @@ def _start_mission_run(
                 status="pending",
             ),
         ),
+        crossing=_make_crossing(resources, identity),
     )
 
     return CreateRunResponse(run_id=run_id)
@@ -545,13 +573,18 @@ def create_runs_router(resources: RunResources) -> APIRouter:
 
     @router.post("/runs", status_code=202)
     def start_run(
-        body: CreateRunRequest | MissionRequest, background_tasks: BackgroundTasks
+        body: CreateRunRequest | MissionRequest,
+        background_tasks: BackgroundTasks,
+        request: Request,
     ) -> CreateRunResponse:
+        # El actor de la request: cookie JWT válida o el operador default
+        # del despliegue; cookie inválida ⇒ 401 fail-closed (C2/M2, §9 P1-9).
+        identity = resources.session_auth.identity_from(request)
         # Discriminación por presencia de campo (`mission` vs `claim`) —
         # `extra="forbid"` en ambos modelos hace la unión excluyente: un
         # body con ambos (o ninguno) no valida contra ningún lado → 422.
         if isinstance(body, MissionRequest):
-            return _start_mission_run(resources, body, background_tasks)
-        return _start_claim_run(resources, body, background_tasks)
+            return _start_mission_run(resources, body, background_tasks, identity)
+        return _start_claim_run(resources, body, background_tasks, identity)
 
     return router

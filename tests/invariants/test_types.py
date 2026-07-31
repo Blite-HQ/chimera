@@ -102,26 +102,30 @@ def test_event_log_is_append_only() -> None:
     )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "AX1 (base lógica, Identidad): every action must be attributable to "
-        "exactly one actor. Event.actor_id is now a required Pydantic field "
-        "(ficha B2, sesión 7) and EventStore.append() requires it as a "
-        "mandatory keyword argument — but nothing yet GUARANTEES every "
-        "caller receives a gateway-verified identity to pass in; that "
-        "wiring (gateway identity stage stamps InvocationContext.actor_id "
-        "on every request) is post-freeze, knowledge/trust/08 SS1.4 step 2. "
-        "Tracked placeholder; flip to a real assertion once the gateway "
-        "stamps identity end-to-end. Do not delete this test to make it "
-        "pass — that would silently drop AX1 enforcement."
-    ),
-    strict=False,
-)
 def test_event_has_non_null_actor_id() -> None:
-    """AX1: every Event must carry a required, non-empty actor_id."""
+    """AX1: every Event carries a required actor_id AND the gateway stamps
+    the verified identity end-to-end.
+
+    Flipped from xfail in C2/M2 (Fase 1 Mejorado, freeze §8 «Ruta del flip
+    AX1»): the gateway's identity stage + provenance stages now stamp the
+    crossing's real Identity on every capability.job.* event — the exact
+    condition the placeholder tracked (knowledge/trust/08 SS1.4 step 2).
+    The assertion is HARDENED to actor provenance, never deleted: events
+    emitted by the crossing carry the verified identity's id, not a
+    runtime service default.
+    """
     from blite.events.event import Event
+    from blite.gateway.crossing import RunCrossing, build_run_pipeline
+    from blite.identity.identity import Identity
+    from blite.runtime.content_store import InMemoryContentStore
+    from blite.runtime.dispatch import ProfileDispatcher
+    from blite.runtime.loop import CrossingRequest
+    from blite.runtime.registry import EntryPointRegistry
 
     assert "actor_id" in Event.model_fields, "Event is missing the actor_id field (AX1)"
+    assert Event.model_fields["actor_id"].is_required(), (
+        "actor_id must be a required field (AX1)"
+    )
 
     store = create_event_store()
     event = store.append(
@@ -132,6 +136,60 @@ def test_event_has_non_null_actor_id() -> None:
         payload={},
     )
     assert event.actor_id, "actor_id must not be empty (AX1)"
+
+    # Provenance of the actor: a full gateway crossing stamps the VERIFIED
+    # identity on the job events — the wiring the xfail used to wait for.
+    class _Echo:
+        @property
+        def manifest(self) -> CapabilityManifest:
+            return CapabilityManifest(
+                id="cap.ax1-echo",
+                description="generic echo for the AX1 gate",
+                input_schema={"type": "object"},
+                output_schema={"type": "object"},
+                side_effects="pure",
+                required_permission="capability:invoke",
+                interaction="request_response",
+            )
+
+        def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+            return {"echo": inputs}
+
+    crossing_store = create_event_store()
+    identity = Identity(
+        id="user:ax1-verified",
+        kind="human",
+        domain_id="d-default",
+        permissions=frozenset({"capability:invoke"}),
+    )
+    crossing = RunCrossing(
+        build_run_pipeline(
+            registry=EntryPointRegistry({"cap.ax1-echo": _Echo()}),
+            dispatcher=ProfileDispatcher(),
+            store=crossing_store,
+            content=InMemoryContentStore(),
+        ),
+        identity,
+    )
+    outputs = crossing(
+        CrossingRequest(
+            run_id="ax1-crossing",
+            step_id="step-1",
+            domain_id="d-default",
+            capability_id="cap.ax1-echo",
+            inputs={"x": 1},
+        )
+    )
+    assert isinstance(outputs, dict), "the crossing must complete (AX1 gate)"
+    job_events = [
+        e
+        for e in crossing_store.read_stream("ax1-crossing")
+        if e.type.startswith("capability.job.")
+    ]
+    assert job_events, "the crossing must journal the job events (AX1)"
+    assert all(e.actor_id == "user:ax1-verified" for e in job_events), (
+        "every crossing event must carry the gateway-verified actor (AX1)"
+    )
 
 
 def test_event_append_produces_immutable_event() -> None:

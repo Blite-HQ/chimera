@@ -136,15 +136,15 @@
 
 ---
 
-## Axiom AX1 — Identity (placeholder, not yet fully enforced)
+## Axiom AX1 — Identity (ENFORCED)
 
 **Statement:** Every action must be attributable to exactly one actor. Every `Event` must carry a required, non-empty `actor_id`.
 
-**Rationale:** Base lógica AX1 (inviolable axiom). This cannot be structurally enforced yet — the `Event` dataclass and the identity module do not exist as real code, so there is nothing to stamp an actor onto. A tracked, intentionally-failing (`xfail`) test exists so the gap is visible in CI output rather than silently absent. It must flip to a real, passing assertion — never be deleted — once the gateway/identity module stamps identity on every event.
+**Rationale:** Base lógica AX1 (inviolable axiom). `Event.actor_id` is a required Pydantic field and the gateway crossing stamps the VERIFIED identity end-to-end: the api resolves the actor from the JWT session cookie (freeze §9 P1-9, `chimera_api.auth`), the crossing's identity stage guards its coherence, and the provenance stages write `identity.id` on every `capability.job.*` event (freeze §8 «Ruta del flip AX1»). Events outside a request keep `service:*` actors (freeze §13 cascada).
 
-<!-- [S3 2026-07-30] Rationale outdated: engine/src/blite/events/event.py:22 and identity/ exist; the xfail gate at tests/invariants/test_types.py:99-104 already tracks the real condition. Rationale text kept frozen; fix deferred (census D-N11). -->
+**History:** born as an `xfail` placeholder (2026-07 freeze — the identity module did not exist); flipped to a hard assertion in C2/M2 (Fase 1 Mejorado, 2026-07-31) with the assertion HARDENED to actor provenance — the test verifies a real crossing stamps the gateway-verified actor, and is never deleted.
 
-**Gate:** `xfail` placeholder test (tracked TODO, not yet a hard gate)
+**Gate:** hard test (actor required by type + provenance through a real crossing)
 
 <!-- enforced: tests/invariants/test_types.py::test_event_has_non_null_actor_id -->
 
