@@ -1282,3 +1282,42 @@ approvals/topología) · eslint **0** · markdownlint **0** · prettier **0**.
 Fase 1 (G, P-rt, P-ui, C-1, C-2, V, O) quedan desbloqueadas con sus contratos
 completos: cada prompt de `05-plan-paralelo.md` §4 ya cita la spec que aquí se
 entrega.
+
+## Sesión control Mejorado — validación y merge de Fase 0 (rama `mejorado/base`, 2026-07-31)
+
+### #129 — FASE 0 CONTRATOS VALIDADA Y MERGEADA: Fase 1 desbloqueada
+
+**Merge**: fast-forward `b53d09a..0283afa` (15 commits de `mejorado/contratos`,
+rebasados limpio) hecho por la sesión de control tras forense y validación:
+
+- **Forense del diff**: 35 archivos, +2519 líneas, TODO aditivo; **cero código
+  productivo tocado** (engine/api/sdk src intactos — Fase 0 pura); cero paths
+  sensibles (corpus/nexus/SQL); contratos tocados SOLO por ceremonia (anexo V6
+  con marca [MEJORADO #122] y vectores intactos; freeze §3 marca (d) #123; los
+  supersedes doc-side de S-B ya estampados por S3 — verificados, no duplicados).
+- **Entregables verificados**: 4 specs nuevas (chat-conversacion, generalidad-retos,
+  manifest-v2-sdk, observabilidad-proyeccion) + 2 extendidas (endpoints-studio:
+  discarded/rvsp; superficie-visual: §8 branch-ids/§9 metrics) + 5 fixtures
+  single-origin **byte-idénticos verificados con diff -r** en ambos lados + Zod
+  espejo de approvals y topología + 9 seeds xfail + 2 anti-drift + índice.
+- **Gates corridos EN VIVO sobre el merge** (autoridad sobre los del worktree):
+  **823 passed / 9 skipped / 29 xfailed / 5 xpassed / cov 90.96%** — contabilidad
+  exacta: 823 = 804 baseline + 19 tests de contrato nuevos; skips idénticos al
+  baseline (los «14 skipped / 818 / 90.92%» del registro de cierre eran artefacto
+  del entorno del worktree); los 29 xfailed son los seeds de Fase 0, rojos a
+  propósito (`strict=False`) hasta que Fase 1 los implemente · lint-imports 13/0 ·
+  ruff 0 · pyright 0 · studio 227 · eslint 0 · markdownlint 0 · prettier 0.
+- **Decisiones de la sesión Contratos**: #122–#128 (registradas por ella;
+  renumeración por colisión con #121 hecha en su último commit).
+
+**FASE 1 DESBLOQUEADA**: G, P-rt, P-ui, C-1, C-2, V y O tienen sus contratos
+completos; cada prompt de `05-plan-paralelo.md` §4 cita la spec entregada aquí.
+Orden de lanzamiento (#121): paso 2 = C-1 (FABLE) + G/P-rt/P-ui (Opus→Sonnet→Opus);
+paso 3 = C-2 (FABLE) + V/O. Los checkpoints CP1–CP7 los valida y mergea la sesión
+de control.
+
+### Tabla de interacciones (regla #3)
+
+| Interfaz tocada                            | Dominio afectado  | Estado del contrato                    |
+| ------------------------------------------ | ----------------- | -------------------------------------- |
+| merge `mejorado/contratos`→`mejorado/base` | TODOS (contratos) | ff limpio; gates verdes citados arriba |
