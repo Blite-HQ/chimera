@@ -6,6 +6,7 @@ import APPROVAL_REQUESTED_CONTRACT_FIXTURE from '../fixtures/contract/harness/ap
 import APPROVAL_RESPONDED_CONTRACT_FIXTURE from '../fixtures/contract/harness/approval-responded.json';
 import PLAN_CREATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-created.json';
 import PLAN_ITEM_UPDATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-item-updated.json';
+import TOPOLOGY_SNAPSHOT_CONTRACT_FIXTURE from '../fixtures/contract/superficie/topology-snapshot.json';
 import { RUN_EVENTS } from '../fixtures/runEvents';
 import { RVSP_EXPERIMENT } from '../fixtures/rvsp';
 import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
@@ -22,6 +23,7 @@ import {
   runSummaryWireSchema,
   rvspSchema,
   sseProjectedEventSchema,
+  topologySnapshotSchema,
   stepDetailSchema,
   stepDetailWireSchema,
   toAblationMetric,
@@ -420,5 +422,31 @@ describe('Zod espejo de approval.* contra los fixtures de costura (S-A #122, con
     const sinAutor: Record<string, unknown> = { ...APPROVAL_RESPONDED_CONTRACT_FIXTURE };
     delete sinAutor.authorized_by;
     expect(() => approvalRespondedSchema.parse(sinAutor)).toThrow();
+  });
+});
+
+describe('Zod espejo de topología contra el fixture de costura (S-D #124, contrato D↔E)', () => {
+  // superficie-visual.md §8: origen = TopologyResponse (chimera_api.reads);
+  // el fixture ejercita verification POR isla y la convención C-8 de
+  // branch-ids (canónico L{min}-{max}[-k] + edge_id_property de GIS).
+  it('topology-snapshot.json valida contra topologySnapshotSchema', () => {
+    const parsed = topologySnapshotSchema.parse(TOPOLOGY_SNAPSHOT_CONTRACT_FIXTURE);
+    expect(parsed.islands).toHaveLength(2);
+    expect(parsed.cut_branch_ids).toEqual(['L3-6', 'L4-8-2', '70143']);
+  });
+
+  it('una isla sin bloque verification explota (regla §9, sin excepción)', () => {
+    const roto = structuredClone(TOPOLOGY_SNAPSHOT_CONTRACT_FIXTURE) as Record<string, unknown>;
+    const islands = roto.islands as Array<Record<string, unknown>>;
+    delete islands[0].verification;
+    expect(() => topologySnapshotSchema.parse(roto)).toThrow();
+  });
+
+  it('cada verification por isla viene en clase+AL (jamás rung)', () => {
+    const parsed = topologySnapshotSchema.parse(TOPOLOGY_SNAPSHOT_CONTRACT_FIXTURE);
+    for (const island of parsed.islands) {
+      expect(island.verification.level).toMatch(/^AL[0-4]$/);
+      expect(island.verification.verifier_class).toBe('execution');
+    }
   });
 });

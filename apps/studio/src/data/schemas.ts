@@ -201,6 +201,39 @@ export const approvalRespondedSchema = z.object({
 export type ApprovalRequested = z.infer<typeof approvalRequestedSchema>;
 export type ApprovalResponded = z.infer<typeof approvalRespondedSchema>;
 
+/**
+ * S-D (decisión #124, superficie-visual.md §8) — Zod espejo del payload de
+ * topología/partición contra el fixture de costura
+ * `src/fixtures/contract/superficie/topology-snapshot.json` (origen:
+ * `TopologyResponse`, `chimera_api.reads`). Regla §9 sin excepción: cada
+ * isla trae SU bloque `verification` — un snapshot con bloque global-only
+ * no parsea. `topology_ref` nullable = honest-empty (run sin partición).
+ */
+export const islandVerificationWireSchema = z.object({
+  verdict: verdictSchema,
+  verifier_class: verifierClassSchema,
+  level: assuranceLevelSchema,
+  anchor_kind: anchorKindSchema,
+  method: z.string().min(1),
+  summary: z.string().min(1)
+});
+
+export const topologySnapshotSchema = z.object({
+  topology_ref: z.string().min(1).nullable(),
+  islands: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      bus_ids: z.array(z.string().min(1)).min(1),
+      verification: islandVerificationWireSchema
+    })
+  ),
+  cut_branch_ids: z.array(z.string().min(1)),
+  cut_cost: z.number().nonnegative()
+});
+
+export type TopologySnapshot = z.infer<typeof topologySnapshotSchema>;
+
 /** nota 18 §2.2 — attestation de un paso, en clase+AL (freeze §4). */
 export const attestationSchema = z.object({
   verifierId: z.string().min(1),

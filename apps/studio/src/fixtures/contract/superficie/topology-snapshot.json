@@ -1,0 +1,53 @@
+{
+  "cut_branch_ids": [
+    "L3-6",
+    "L4-8-2",
+    "70143"
+  ],
+  "cut_cost": 57070.0,
+  "islands": [
+    {
+      "bus_ids": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "id": "island-1",
+      "name": "Norte",
+      "verification": {
+        "anchor_kind": "execution",
+        "level": "AL3",
+        "method": "pandapower newton-raphson",
+        "summary": "isla 1: conexa, con fuente, flujo converge",
+        "verdict": "pass",
+        "verifier_class": "execution"
+      }
+    },
+    {
+      "bus_ids": [
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13"
+      ],
+      "id": "island-2",
+      "name": "Sur",
+      "verification": {
+        "anchor_kind": "execution",
+        "level": "AL3",
+        "method": "pandapower newton-raphson",
+        "summary": "isla 2: conexa, con fuente, flujo converge",
+        "verdict": "pass",
+        "verifier_class": "execution"
+      }
+    }
+  ],
+  "topology_ref": "ieee14-topology@v1"
+}
