@@ -1222,3 +1222,57 @@ span>)[:8 bytes]` (ancla = `step_id`/`job_id`/tipo según la tabla de
    (golden trace del proyector sobre un stream fixture — lo genera O3). Seed:
    `tests/seeds/test_seed_observabilidad_proyector.py` (derivación de ids
    recomputada de forma independiente).
+
+### Registro de cierre — Fase 0 Contratos COMPLETA (2026-07-31)
+
+**Alcance cerrado**: (1) ola-0 verificada HECHA en #119 — NO repetida; (2)–(7)
+S-A…S-F entregadas + extensión #120 (inmunización V6, #121). Decisiones de la
+sesión: **#121–#127**. Commits en `mejorado/contratos` (docs/spec SIEMPRE
+separados de fixtures/tests, sin push — lo coordina Dylan).
+
+**Gates al cierre (corridos en vivo, worktree con venv del principal +
+PYTHONPATH):** pytest **818 passed / 14 skipped / 29 xfailed / 5 xpassed / cov
+90.92%** (baseline de apertura: 799 passed — los +19 son los tests de contrato
+nuevos de superficie/generalidad; los 29 xfailed incluyen los ~21 seeds nuevos
+de Fase 0, todos `strict=False`) · lint-imports **13 kept / 0 broken** · ruff
+**0** · pyright **0** · studio **227 passed** (221 + 6 de espejos
+approvals/topología) · eslint **0** · markdownlint **0** · prettier **0**.
+
+**Entregables por costura:**
+
+- **S-A**: `chat-conversacion.md` + marca (d) freeze §3 (#122) + Zod espejo de
+  approvals VERDE ambos lados + seed `test_seed_chat_conversacion.py` (8).
+- **S-B**: los 5 supersedes doc-side YA estaban estampados por S3 (verificado:
+  §3 a/b, §7 c, §8 C-5, §15.7 N12); entregado el lado ejecutable — wire
+  `GET /runs/discarded` (#123) + seeds discarded/gateway-context/verify_all (6).
+- **S-C**: `generalidad-retos.md` (#125) + 4 fixtures `contract/generalidad/`
+  VERDES ambos lados + seed C-14/homes/dispatch (4).
+- **S-D**: §8/§9 de `superficie-visual.md` + fila rvsp y nota ablation en
+  `endpoints-studio.md` (#124) + fixture `contract/superficie/topology-snapshot`
+  VERDE ambos lados (con `topologySnapshotSchema` nuevo) + seeds metrics/rvsp (5).
+- **S-E**: `manifest-v2-sdk.md` (#126, tabla de migración de las 13) + seed (3).
+- **S-F**: `observabilidad-proyeccion.md` (#127) + seed ids deterministas (3).
+- **#120**: inmunización V6 del anexo (#121) — aditiva, bytes/hashes intactos.
+
+### Tabla de interacciones (regla #3)
+
+| Interfaz tocada                                                    | Dominio afectado | Estado del contrato                                       |
+| ------------------------------------------------------------------ | ---------------- | --------------------------------------------------------- |
+| Anexo canonicalización — nota V6 (#121)                            | confianza        | VIGENTE — aditivo con ceremonia; vectores intactos        |
+| freeze §3 marca (d): `run.created.{thread_id?,project_id?}` (#122) | A↔E↔D            | Supersede aditivo registrado; implementa P3/P6            |
+| `docs/specs/chat-conversacion.md` (NUEVA)                          | A↔E↔D            | SPEC — consumen P3, P6, P-ui                              |
+| Zod espejo `approval.*` (`schemas.ts` + tests)                     | D                | **VERDE** — fixtures existentes, anti-drift ambos lados   |
+| `endpoints-studio.md` §GET /runs/discarded (#123)                  | E↔D              | SPEC + seed — implementa P2                               |
+| `endpoints-studio.md` §GET /runs/{id}/rvsp + nota ablation (#124)  | E↔D              | SPEC + seed — implementa V3/V2                            |
+| `superficie-visual.md` §8 branch-ids C-8 / §9 metrics C-4 (#124)   | D↔E↔A            | SPEC — implementan V1/V2; base de C4/M4                   |
+| `contract/superficie/topology-snapshot` + `topologySnapshotSchema` | D↔E              | **VERDE** — single-origin `TopologyResponse`, ambos lados |
+| `docs/specs/generalidad-retos.md` (NUEVA, #125) + 4 fixtures       | B↔A↔confianza    | SPEC; fixtures **VERDES** ambos lados — consumen G1–G4    |
+| `docs/specs/manifest-v2-sdk.md` (NUEVA, #126)                      | SDK↔B↔ejecución  | SPEC + seed — implementa C1; desbloquea G/O5              |
+| `docs/specs/observabilidad-proyeccion.md` (NUEVA, #127)            | stream→OTel      | SPEC + seed — implementa O3                               |
+| Índice `docs/specs/README.md` — sección Fase 0 Mejorado            | docs             | Aditiva; 4 specs nuevas + 2 extendidas indexadas          |
+
+**Siguiente paso (sesión de control):** merge de `mejorado/contratos` a
+`mejorado/base` (gates citados arriba como evidencia) — con eso las sesiones de
+Fase 1 (G, P-rt, P-ui, C-1, C-2, V, O) quedan desbloqueadas con sus contratos
+completos: cada prompt de `05-plan-paralelo.md` §4 ya cita la spec que aquí se
+entrega.
