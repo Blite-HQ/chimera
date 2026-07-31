@@ -24,8 +24,6 @@ from blite.gateway.pipeline import Rejection
 from blite.runtime.dispatch import Dispatcher
 from blite.runtime.registry import Registry
 
-_DEFAULT_PROFILE = "in-process"
-
 
 class MediationStage:
     """El despacho mediado — Registry + Dispatcher detrás del chokepoint."""
@@ -54,9 +52,9 @@ class MediationStage:
                 reason=f"capability {ctx.capability_id!r} no está en el registry",
             )
         try:
-            # El perfil default es "in-process" (trust/06 §4) hasta que el
-            # manifest exponga execution_profile (trabajo pendiente del SDK).
-            strategy = self._dispatcher.resolve(_DEFAULT_PROFILE)
+            # Manifest v2 (C1): el perfil viene del manifest — un perfil sin
+            # estrategia es Rejection, jamás fallback silencioso (freeze §1).
+            strategy = self._dispatcher.resolve(capability.manifest.execution_profile)
             outputs = strategy.execute(capability, ctx.inputs)
         except Exception as exc:  # noqa: BLE001 — frontera de capability: fail-closed como Rejection, jamás excepción fuera del chokepoint
             return Rejection(

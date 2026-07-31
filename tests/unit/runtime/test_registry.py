@@ -27,6 +27,9 @@ def _manifest(cap_id: str, version: str = "0.1.0") -> CapabilityManifest:
         input_schema={"type": "object"},
         output_schema={"type": "object"},
         version=version,
+        side_effects="pure",
+        required_permission="capability:invoke",
+        interaction="request_response",
     )
 
 

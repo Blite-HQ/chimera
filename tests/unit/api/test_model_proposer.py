@@ -59,6 +59,9 @@ def _registry() -> EntryPointRegistry:
         description="mission-tolerant test capability",
         input_schema={"type": "object"},
         output_schema={"type": "object"},
+        side_effects="pure",
+        required_permission="capability:invoke",
+        interaction="request_response",
     )
 
     class _FakeCapability:

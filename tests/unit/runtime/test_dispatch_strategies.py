@@ -33,6 +33,9 @@ class _FakeCapability:
             description="generic test capability",
             input_schema={"type": "object"},
             output_schema={"type": "object"},
+            side_effects="pure",
+            required_permission="capability:invoke",
+            interaction="request_response",
         )
 
     def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:

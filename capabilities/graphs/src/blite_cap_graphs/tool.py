@@ -34,6 +34,9 @@ _MANIFEST = CapabilityManifest(
         "required": ["partition"],
     },
     tags=("graphs", "partitioning", "classical"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 
@@ -116,6 +119,9 @@ _MAXCUT_MANIFEST = CapabilityManifest(
         "required": ["assignment", "energy"],
     },
     tags=("graphs", "maxcut", "approximation", "classical"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 

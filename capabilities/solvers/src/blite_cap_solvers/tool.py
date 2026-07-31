@@ -45,6 +45,9 @@ _MANIFEST = CapabilityManifest(
         "required": ["assignment"],
     },
     tags=("solver", "optimization", "qubo", "classical"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 

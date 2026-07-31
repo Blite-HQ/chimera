@@ -32,6 +32,9 @@ _MANIFEST = CapabilityManifest(
         "required": ["result"],
     },
     tags=("numeric", "linear-algebra", "classical"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 

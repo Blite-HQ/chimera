@@ -6,21 +6,9 @@ Registrados como entry points:
   blite.capabilities["blite.ingesta.snapshot.fetch"]
   blite.capabilities["blite.ingesta.geojson.to_graph"]
 
-DISCREPANCIA FLAGGEADA (docs/specs/capability-ingesta.md §Dos capabilities
-nuevas): el freeze §1 congela un `CapabilityManifest` v2 con 4 campos
-adicionales — `side_effects`/`required_permission`/`interaction`/
-`execution_profile` — que `sdk/src/blite_capability/manifest.py` (el
-`@dataclass` v1 hoy instalado) NO tiene. Se programa aquí contra el v1
-EXISTENTE (no se reescribe el SDK — la migración al manifest v2 es trabajo
-pendiente del SDK, compartido por TODAS las capabilities nuevas del plan,
-no exclusivo de ingesta); los 4
-campos v2 quedan documentados en la `description`/tabla de abajo y en
-`tags`, listos para migrar cuando el manifest v2 llegue:
-
-| id                             | side_effects        | required_permission                | interaction        | execution_profile |
-| ------------------------------- | -------------------- | ------------------------------------ | ------------------ | ------------------ |
-| blite.ingesta.snapshot.fetch    | reversible-external  | capability:ingest:external-source    | job                | in-process (hint)  |
-| blite.ingesta.geojson.to_graph  | pure                 | capability:ingest:derive             | request_response   | in-process (hint)  |
+Manifest v2 (freeze §1, S-E/#127): los 4 campos viven en el propio
+`CapabilityManifest` — el docstring-workaround que documentaba los valores
+aquí murió con la migración C1; una sola fuente, el manifest.
 
 ADR-029: schemas genéricos — cero término de escenario ("islanding"/"ICE"/
 "subestación") en `id`/`description`/schema. Los datos REALES que fluyen por
@@ -41,10 +29,7 @@ _SNAPSHOT_FETCH_MANIFEST = CapabilityManifest(
     description=(
         "Store an already-retrieved external byte payload as a "
         "content-addressed artifact and record its external-source "
-        "provenance. v2 manifest fields (not yet on CapabilityManifest — "
-        "module docstring): side_effects=reversible-external, "
-        "required_permission=capability:ingest:external-source, "
-        "interaction=job, execution_profile=in-process (hint)."
+        "provenance."
     ),
     input_schema={
         "type": "object",
@@ -98,6 +83,9 @@ _SNAPSHOT_FETCH_MANIFEST = CapabilityManifest(
         "required": ["artifact", "provenance"],
     },
     tags=("ingestion", "snapshot", "external-source"),
+    side_effects="reversible-external",
+    required_permission="capability:ingest:external-source",
+    interaction="job",
 )
 
 
@@ -126,10 +114,7 @@ _GEOJSON_TO_GRAPH_MANIFEST = CapabilityManifest(
         "collections (nodes + edges), validating geometry (RFC 7946) and "
         "tabular attribute shape before declaring the derived instance "
         "valid; validation outcomes travel as assertions on the returned "
-        "derivation provenance. v2 manifest fields (not yet on "
-        "CapabilityManifest — module docstring): side_effects=pure, "
-        "required_permission=capability:ingest:derive, "
-        "interaction=request_response, execution_profile=in-process (hint)."
+        "derivation provenance."
     ),
     input_schema={
         "type": "object",
@@ -262,6 +247,9 @@ _GEOJSON_TO_GRAPH_MANIFEST = CapabilityManifest(
         "required": ["graph", "provenance"],
     },
     tags=("ingestion", "derivation", "graph", "pure"),
+    side_effects="pure",
+    required_permission="capability:ingest:derive",
+    interaction="request_response",
 )
 
 

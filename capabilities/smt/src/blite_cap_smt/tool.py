@@ -38,6 +38,9 @@ _MANIFEST = CapabilityManifest(
         "required": ["satisfiable"],
     },
     tags=("smt", "formal-verification", "anchor", "classical"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 

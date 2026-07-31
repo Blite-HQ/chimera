@@ -19,6 +19,9 @@ def test_capability_manifest_creation() -> None:
         description="A generic test capability",
         input_schema={"type": "object"},
         output_schema={"type": "object"},
+        side_effects="pure",
+        required_permission="capability:invoke",
+        interaction="request_response",
     )
     assert m.id == "blite.test.capability"
     assert m.version == "0.1.0"

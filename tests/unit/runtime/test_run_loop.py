@@ -37,6 +37,9 @@ class _EchoCapability:
             description="generic test capability",
             input_schema={"type": "object"},
             output_schema={"type": "object"},
+            side_effects="pure",
+            required_permission="capability:invoke",
+            interaction="request_response",
         )
 
     def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
@@ -189,3 +192,48 @@ def test_run_id_in_the_system_namespace_is_rejected_before_any_append() -> None:
             inputs={},
         )
     assert store.read_all() == ()
+
+
+class _RemoteJobCapability:
+    """Doble genérico cuyo manifest declara un perfil SIN estrategia en Fase 1."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return CapabilityManifest(
+            id="cap.remote",
+            description="generic test capability",
+            input_schema={"type": "object"},
+            output_schema={"type": "object"},
+            side_effects="pure",
+            required_permission="capability:invoke",
+            interaction="job",
+            execution_profile="remote-job",
+        )
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        msg = "remote-job jamás debe ejecutarse in-process (freeze §1)"
+        raise AssertionError(msg)
+
+
+def test_dispatch_resolves_by_the_manifests_execution_profile() -> None:
+    """Manifest v2 (C1): el loop despacha por `manifest.execution_profile` —
+    un perfil sin estrategia falla el run (NotImplementedError), jamás
+    fallback silencioso a in-process (freeze §1)."""
+    store = create_event_store()
+    registry = EntryPointRegistry({"cap.remote": _RemoteJobCapability()})
+    row = execute_run(
+        store,
+        registry,
+        ProfileDispatcher(),
+        InMemoryContentStore(),
+        run_id="run-1",
+        actor_id="user:steven",
+        domain_id="domain-a",
+        max_steps=8,
+        policy_digest="pol-digest-1",
+        capability_id="cap.remote",
+        inputs={"x": 21},
+    )
+    assert row.status == "failed"
+    failed = [e for e in store.read_stream("run-1") if e.type == "run.failed"]
+    assert failed[0].payload["error_kind"] == "NotImplementedError"

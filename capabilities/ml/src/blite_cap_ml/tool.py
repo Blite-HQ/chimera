@@ -36,6 +36,9 @@ _MANIFEST = CapabilityManifest(
         "required": ["labels"],
     },
     tags=("ml", "classification", "classical"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 

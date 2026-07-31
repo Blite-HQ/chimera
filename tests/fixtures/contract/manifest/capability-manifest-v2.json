@@ -1,0 +1,34 @@
+{
+  "description": "Generic echo capability (contract fixture)",
+  "execution_profile": "in-process",
+  "id": "blite.example.echo",
+  "input_schema": {
+    "properties": {
+      "value": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "value"
+    ],
+    "type": "object"
+  },
+  "interaction": "request_response",
+  "output_schema": {
+    "properties": {
+      "value": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "value"
+    ],
+    "type": "object"
+  },
+  "required_permission": "capability:invoke",
+  "side_effects": "pure",
+  "tags": [
+    "example"
+  ],
+  "version": "0.1.0"
+}

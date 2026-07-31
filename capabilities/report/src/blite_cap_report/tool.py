@@ -82,6 +82,9 @@ _MANIFEST = CapabilityManifest(
         "required": ["digest", "svg", "provenance_recipe"],
     },
     tags=("reporting", "deterministic", "pure"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 
@@ -234,6 +237,9 @@ _COMPILE_PDF_MANIFEST = CapabilityManifest(
         "required": ["digest", "pdf_base64", "page_count", "provenance_recipe"],
     },
     tags=("reporting", "deterministic", "pure"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 
@@ -363,6 +369,9 @@ _COMPILE_SLIDES_MANIFEST = CapabilityManifest(
         "required": ["digest", "pdf_base64", "slide_count", "provenance_recipe"],
     },
     tags=("reporting", "deterministic", "pure"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 

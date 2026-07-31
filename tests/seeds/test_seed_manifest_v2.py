@@ -1,30 +1,16 @@
 """Seed del manifest v2 en el SDK (S-E, decisión #127 — freeze §1).
 
 Contrato: docs/specs/manifest-v2-sdk.md. Los 4 campos congelados aterrizan en
-`blite_capability.manifest`; sin defaults para el riesgo (#127). El xfail se
-retira cuando C1 migre el SDK (y las 13 capabilities, en el mismo checkpoint).
-
-Directiva pyright per-file: los campos objetivo no existen por diseño hasta
-Fase 1; la directiva se retira junto con el xfail.
+`blite_capability.manifest`; sin defaults para el riesgo (#127). VERDE desde
+C1 (Fase 1 Mejorado): el SDK y las 13 capabilities migraron en el mismo
+checkpoint — el xfail se retiró con la migración.
 """
-
-# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
-# pyright: reportUnknownMemberType=false
 
 from __future__ import annotations
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 C1: CapabilityManifest sigue en v1 (sin los 4 campos §1) — "
-            "docs/specs/manifest-v2-sdk.md (#127)"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 _SCHEMA: dict[str, object] = {"type": "object"}
 
@@ -51,7 +37,7 @@ def test_side_effects_obligatorio_fail_closed() -> None:
     from blite_capability.manifest import CapabilityManifest
 
     with pytest.raises(TypeError):
-        CapabilityManifest(
+        CapabilityManifest(  # pyright: ignore[reportCallIssue] — negativo intencional: sin el eje de riesgo DEBE explotar
             id="blite.example.echo",
             description="generic echo",
             input_schema=_SCHEMA,
@@ -69,7 +55,7 @@ def test_literal_invalido_explota_en_post_init() -> None:
             description="generic echo",
             input_schema=_SCHEMA,
             output_schema=_SCHEMA,
-            side_effects="mostly-harmless",
+            side_effects="mostly-harmless",  # pyright: ignore[reportArgumentType] — negativo intencional: literal inválido DEBE explotar en __post_init__
             required_permission="capability:invoke",
             interaction="request_response",
         )

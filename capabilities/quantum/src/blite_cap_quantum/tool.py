@@ -69,6 +69,9 @@ _MANIFEST = CapabilityManifest(
         "required": ["assignment"],
     },
     tags=("quantum", "qaoa", "optimization", "qubo"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 

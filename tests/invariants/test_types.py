@@ -29,6 +29,9 @@ def test_manifest_is_frozen() -> None:
         description="A generic test capability",
         input_schema={"type": "object"},
         output_schema={"type": "object"},
+        side_effects="pure",
+        required_permission="capability:invoke",
+        interaction="request_response",
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
         m.id = "mutated"  # type: ignore[misc]
@@ -41,6 +44,9 @@ def test_manifest_field_types() -> None:
         description="Solve a QUBO matrix",
         input_schema={"type": "object"},
         output_schema={"type": "object"},
+        side_effects="pure",
+        required_permission="capability:invoke",
+        interaction="request_response",
     )
     assert_type(m.id, str)
     assert_type(m.description, str)
@@ -60,6 +66,9 @@ def test_manifest_schemas_are_dicts() -> None:
             "type": "object",
             "properties": {"partition": {"type": "array"}},
         },
+        side_effects="pure",
+        required_permission="capability:invoke",
+        interaction="request_response",
     )
     assert isinstance(m.input_schema, dict)
     assert isinstance(m.output_schema, dict)

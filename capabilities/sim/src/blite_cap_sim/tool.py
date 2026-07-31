@@ -32,6 +32,9 @@ _MANIFEST = CapabilityManifest(
         "required": ["converged"],
     },
     tags=("simulation", "physics", "classical", "anchor"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
 )
 
 

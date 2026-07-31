@@ -44,10 +44,11 @@ Decisiones de dominio avisadas (no congeladas): `error_kind` del guard =
 "MaxStepsExceeded" (misma convención type-name que el registry); eventos
 emitidos por el runtime (started/step/job/terminal) llevan
 `actor_id: service:runtime` (§13 cascada) — `run.created` estampa el actor
-del caller (AX1). El perfil de despacho es el default "in-process"
-(trust/06 §4) hasta que el manifest exponga `execution_profile` (trabajo
-pendiente del manifest v2, SDK). El cruce por el gateway completo por step
-(§13) se cablea cuando el ctx del pipeline se congele.
+del caller (AX1). El perfil de despacho viene de
+`manifest.execution_profile` (manifest v2, C1) — un perfil sin estrategia
+falla el run, jamás fallback silencioso (freeze §1). El cruce por el
+gateway completo por step (§13) se cablea cuando el ctx del pipeline se
+congele.
 """
 
 from __future__ import annotations
@@ -81,7 +82,6 @@ _DEFAULT_MAX_TURNS = 30
 
 _RUNTIME_ACTOR = "service:runtime"
 _JSON_MEDIA_TYPE = "application/json"
-_DEFAULT_PROFILE = "in-process"
 
 StepStatus = Literal["pending", "running", "completed", "failed"]
 
@@ -322,7 +322,9 @@ def _run_resolve_and_invoke(
         },
     )
     try:
-        strategy = dispatcher.resolve(_DEFAULT_PROFILE)
+        # Manifest v2 (C1): el perfil viene del manifest — un perfil sin
+        # estrategia falla el run, jamás fallback silencioso (freeze §1).
+        strategy = dispatcher.resolve(capability.manifest.execution_profile)
         outputs = strategy.execute(capability, inputs)
     except Exception as exc:  # noqa: BLE001 — frontera de capability: el fallo se registra como eventos, jamás tumba el runtime
         error_kind = type(exc).__name__
