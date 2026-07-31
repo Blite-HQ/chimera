@@ -1043,3 +1043,36 @@ de forma, cada una con su porqué:
 RespondedSchema` + tests del Studio contra los fixtures `contract/harness/`
    existentes — se entrega EN Fase 0 (es test anti-drift, no feature); la card
    inline es P3-D.
+
+### #123 — S-B: forma del wire de `discarded_streams` (elaboración de #104)
+
+**Estado previo verificado:** los CINCO supersedes doc-side de S-B ya estaban
+estampados por S3 en el freeze (§3 marcas (a) #104 y (b) C-4; §7 marca (c) C-6;
+§8 marca C-5; §15.7 nota N12) — esta sesión NO los re-estampa; entrega el lado
+ejecutable (spec de wire + seeds).
+
+**Problema de forma:** #104 manda «extensión aditiva del wire E↔D», pero
+`GET /runs` devuelve un **array desnudo** (`reads.py:371`, `list[RunSummary]`)
+— envolverlo en `{runs, discarded_streams}` rompería el parse Zod existente
+(exactamente el choque que C-3 de la cobertura flaggeó).
+
+**Opciones:** (a) envolver el array — RECHAZADA (rompe E↔D; contradice la letra
+«aditiva» de #104); (b) header HTTP con el conteo — RECHAZADA (los headers no
+viajan por el pipeline fixture+Zod: contrato invisible); (c) **ruta hermana
+`GET /runs/discarded`** — ADITIVA pura: `GET /runs` queda byte-idéntico.
+
+**Decisión: (c).** `GET /runs/discarded` → `{discarded_streams: [{stream_id,
+error_kind, detail?}]}` (envelope objeto — ruta nueva, extensible). Semántica:
+la proyección de `GET /runs` captura POR STREAM la excepción de proyección
+(píldora #96: `run.created` sin `policy_digest`/`max_steps` explota hoy TODO el
+listado), omite ese stream del array y lo registra para la ruta hermana —
+`error_kind = type(exc).__name__`, mismo vocabulario que `run.failed`. Reserva
+de namespace: el segmento literal `discarded` no colisiona (los `run_id` son
+uuid4; misma doctrina que la reserva `system:` del freeze §2). **Línea roja
+intacta:** SOLO la ruta de lectura — escritura/certificados/provenance siguen
+fail-loud. Fixture declarado: `contract/endpoints/get-runs-discarded.json`
+(modelo Fase 1, P2); seed `tests/seeds/test_seed_lectura_discarded.py` con la
+píldora #96 como caso. El payload extendido de metrics (C-4) se especifica en
+la pasada S-D (`superficie-visual.md` — es la superficie que lo consume); los
+seeds de C-5 (`GatewayContext` aditivo) y C-6 (`verify_all`) entran con esta
+decisión sin ceremonia nueva (C-5/C-6 ya están decididas en #106).

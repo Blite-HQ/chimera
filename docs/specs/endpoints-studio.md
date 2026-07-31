@@ -177,6 +177,37 @@ byte-idéntico a `apps/studio/src/fixtures/contract/endpoints/post-runs-mission.
 del Studio fija que `toCreateRunBody` produce exactamente ese body). Misma convención que
 `contract/harness/` (README de specs, "Fixtures de costura — un solo origen").
 
+## GET /runs/discarded — skip honesto de la ruta de LECTURA (#104/#123, Fase 0 Mejorado 2026-07-31)
+
+**Hueco que cierra:** la píldora #96 probó que UN stream envenenado (un `run.created` sin
+`policy_digest`/`max_steps` — la proyección explota por diseño, `projection.py`) tumbaba TODO
+`GET /runs` con 500. La decisión #104 manda skip honesto SOLO en lectura; #123 fija la forma
+(el array desnudo de `GET /runs` no admite un campo hermano — envolverlo rompería E↔D).
+
+### Contrato
+
+- **`GET /runs` (INTACTO, byte-idéntico):** la proyección captura POR STREAM la excepción de
+  proyección, omite ese stream del array y sigue — jamás 500 por un stream ajeno al pedido.
+- **`GET /runs/discarded` (ruta NUEVA):** `{discarded_streams: [{stream_id, error_kind,
+detail?}]}` — envelope objeto (ruta nueva ⇒ extensible sin romper), `error_kind =
+type(exc).__name__` (mismo vocabulario que `run.failed`), `detail` opcional legible.
+  Vacío honesto: `{discarded_streams: []}` cuando nada se descartó. Reserva de namespace: el
+  segmento literal `discarded` no colisiona con `run_id` (uuid4 — misma doctrina que la
+  reserva `system:` del freeze §2).
+- **Línea roja (#104):** SOLO lectura. Escritura, certificados y provenance siguen fail-loud
+  — un stream envenenado sigue explotando el recompute del `provenance_hash` y cualquier
+  emisión; este endpoint lo REPORTA, no lo cura.
+
+### Fixture y seed
+
+Fixture de costura declarado: `tests/fixtures/contract/endpoints/get-runs-discarded.json`
+(espejo en `apps/studio/src/fixtures/contract/endpoints/`) — el modelo Pydantic origen
+(`DiscardedStreams`) es Fase 1 (P2); el generador `gen-contract-fixtures-endpoints.py` gana
+el caso al existir el modelo, y el Zod espejo del Studio entra con la rama live (D). Seed:
+`tests/seeds/test_seed_lectura_discarded.py` — **xfail** con la píldora #96 como caso
+(stream sano + stream envenenado ⇒ `GET /runs` lista solo el sano; `GET /runs/discarded`
+reporta el envenenado).
+
 ## Discrepancia de vocabulario a flaggear (costura E↔D) — bloqueante para D3, no para esta spec
 
 > **[S3 2026-07-30]** Discrepancia RESUELTA — el listener real ya está alineado:
