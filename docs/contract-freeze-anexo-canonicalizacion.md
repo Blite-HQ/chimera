@@ -162,8 +162,8 @@ SHA-256( b"blite/provenance/v1\n" + C(view(e_1)) + b"\n" + C(view(e_2)) + b"\n" 
 
 **Notas [S-F] sobre los vectores existentes (los vectores NO se regeneran — romperían hashes):** el `stream_id: "run:8f2c1a9b"` de V1 y el `"rung": 1` del payload de V2 son **datos arbitrarios del gate de hashing, no forma normativa** — el `run_id` real no lleva prefijo (freeze §7 [S-F]) y `rung` es vocabulario eliminado (freeze §4). Un payload es un JSON opaco para `C()`: los vectores prueban los bytes, no el vocabulario.
 
-> **[MEJORADO #121 · 2026-07-31] La inmunización cubre también V6 (hallazgo 1
-> del handoff S3; ceremonia registrada en `docs/mvp/decisiones.md` #121):** de
+> **[MEJORADO #122 · 2026-07-31] La inmunización cubre también V6 (hallazgo 1
+> del handoff S3; ceremonia registrada en `docs/mvp/decisiones.md` #122):** de
 > V6 lo NORMATIVO es exactamente el sobre de 2 campos
 > `{canonical_statement, scope}` (§5) y el algoritmo `C()`+prefijo
 > `blite/claim/v1`; el CONTENIDO del vector — el texto de islanding del

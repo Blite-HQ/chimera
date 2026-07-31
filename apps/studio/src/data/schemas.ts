@@ -175,7 +175,7 @@ export type PlanCreated = z.infer<typeof planCreatedSchema>;
 export type PlanItemUpdated = z.infer<typeof planItemUpdatedSchema>;
 
 /**
- * S-A (decisión #122, chat-conversacion.md §7) — Zod espejo de
+ * S-A (decisión #123, chat-conversacion.md §7) — Zod espejo de
  * `blite.gateway.approval` contra los fixtures de costura
  * `src/fixtures/contract/harness/approval-{requested,responded}.json`
  * (mismo par fixture-Pydantic + espejo a mano que plan.*). El `json_schema`
@@ -202,7 +202,7 @@ export type ApprovalRequested = z.infer<typeof approvalRequestedSchema>;
 export type ApprovalResponded = z.infer<typeof approvalRespondedSchema>;
 
 /**
- * S-D (decisión #124, superficie-visual.md §8) — Zod espejo del payload de
+ * S-D (decisión #125, superficie-visual.md §8) — Zod espejo del payload de
  * topología/partición contra el fixture de costura
  * `src/fixtures/contract/superficie/topology-snapshot.json` (origen:
  * `TopologyResponse`, `chimera_api.reads`). Regla §9 sin excepción: cada

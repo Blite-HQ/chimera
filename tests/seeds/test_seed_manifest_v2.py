@@ -1,7 +1,7 @@
-"""Seed del manifest v2 en el SDK (S-E, decisión #126 — freeze §1).
+"""Seed del manifest v2 en el SDK (S-E, decisión #127 — freeze §1).
 
 Contrato: docs/specs/manifest-v2-sdk.md. Los 4 campos congelados aterrizan en
-`blite_capability.manifest`; sin defaults para el riesgo (#126). El xfail se
+`blite_capability.manifest`; sin defaults para el riesgo (#127). El xfail se
 retira cuando C1 migre el SDK (y las 13 capabilities, en el mismo checkpoint).
 
 Directiva pyright per-file: los campos objetivo no existen por diseño hasta
@@ -21,7 +21,7 @@ pytestmark = [
         strict=False,
         reason=(
             "Fase 1 C1: CapabilityManifest sigue en v1 (sin los 4 campos §1) — "
-            "docs/specs/manifest-v2-sdk.md (#126)"
+            "docs/specs/manifest-v2-sdk.md (#127)"
         ),
     ),
 ]
@@ -47,7 +47,7 @@ def test_los_cuatro_campos_con_default_solo_en_profile() -> None:
 
 
 def test_side_effects_obligatorio_fail_closed() -> None:
-    """#126: defaultear el eje de riesgo miente — construir sin él explota."""
+    """#127: defaultear el eje de riesgo miente — construir sin él explota."""
     from blite_capability.manifest import CapabilityManifest
 
     with pytest.raises(TypeError):
@@ -60,7 +60,7 @@ def test_side_effects_obligatorio_fail_closed() -> None:
 
 
 def test_literal_invalido_explota_en_post_init() -> None:
-    """#126: __post_init__ valida los literals — ValueError al cargar."""
+    """#127: __post_init__ valida los literals — ValueError al cargar."""
     from blite_capability.manifest import CapabilityManifest
 
     with pytest.raises(ValueError):

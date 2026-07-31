@@ -6,7 +6,7 @@ resolución **C-11/#106** (`docs/mejorado/04-consolidacion.md` §3: consumer sta
 de `blite.*` — el exportador OTLP es egress y no puede vivir dentro del engine sin chocar
 Inv-E/INV-6).
 **Costura:** stream→observabilidad (solo-lectura) · **Estado:** SPEC (Fase 0 Mejorado,
-2026-07-31, decisión #127) · **Consume:** O3/M9.
+2026-07-31, decisión #128) · **Consume:** O3/M9.
 
 > El valor de M9 es exportar el rastro del run (incluida la verificación) a cualquier
 > collector OTLP sin tocar la frontera de confianza. La resolución C-11 lo vuelve posible:

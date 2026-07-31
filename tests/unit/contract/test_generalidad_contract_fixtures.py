@@ -1,4 +1,4 @@
-"""Contrato de costura de generalidad — el fixture ES el contrato (S-C #125).
+"""Contrato de costura de generalidad — el fixture ES el contrato (S-C #126).
 
 `docs/specs/generalidad-retos.md` + `docs/specs/README.md` §"Fixtures de
 costura — un solo origen":

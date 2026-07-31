@@ -70,7 +70,7 @@ campos, o con ninguno, falla la validación de los dos lados de la unión → `4
 **Respuesta:** `202 {run_id}` — idéntica al modo claim-first; el resultado vive en el stream,
 jamás en la respuesta HTTP.
 
-> **[Fase 0 Mejorado · 2026-07-31, decisión #122]** El body de misión gana dos campos
+> **[Fase 0 Mejorado · 2026-07-31, decisión #123]** El body de misión gana dos campos
 > ADITIVOS opcionales — `thread_id?: str` (enhebrado conversacional post-terminal: run
 > nuevo que continúa un hilo) y `project_id?: str` (pertenencia a la fila relacional de
 > M15) — que viajan al payload de `run.created` (marca (d) del freeze §3). Forma y
@@ -177,11 +177,11 @@ byte-idéntico a `apps/studio/src/fixtures/contract/endpoints/post-runs-mission.
 del Studio fija que `toCreateRunBody` produce exactamente ese body). Misma convención que
 `contract/harness/` (README de specs, "Fixtures de costura — un solo origen").
 
-## GET /runs/discarded — skip honesto de la ruta de LECTURA (#104/#123, Fase 0 Mejorado 2026-07-31)
+## GET /runs/discarded — skip honesto de la ruta de LECTURA (#104/#124, Fase 0 Mejorado 2026-07-31)
 
 **Hueco que cierra:** la píldora #96 probó que UN stream envenenado (un `run.created` sin
 `policy_digest`/`max_steps` — la proyección explota por diseño, `projection.py`) tumbaba TODO
-`GET /runs` con 500. La decisión #104 manda skip honesto SOLO en lectura; #123 fija la forma
+`GET /runs` con 500. La decisión #104 manda skip honesto SOLO en lectura; #124 fija la forma
 (el array desnudo de `GET /runs` no admite un campo hermano — envolverlo rompería E↔D).
 
 ### Contrato
@@ -208,7 +208,7 @@ el caso al existir el modelo, y el Zod espejo del Studio entra con la rama live 
 (stream sano + stream envenenado ⇒ `GET /runs` lista solo el sano; `GET /runs/discarded`
 reporta el envenenado).
 
-## GET /runs/{run_id}/rvsp — curva r-vs-p (C-9/#106 · #124, Fase 0 Mejorado 2026-07-31)
+## GET /runs/{run_id}/rvsp — curva r-vs-p (C-9/#106 · #125, Fase 0 Mejorado 2026-07-31)
 
 **Hueco que cierra:** la divergencia consumada que C-9 estampó en `superficie-visual.md` §5 —
 el Studio construyó la curva sobre un payload propio (`rvspSchema`, fixture de la ciencia
@@ -252,7 +252,7 @@ modelo Pydantic origen (`RvspResponse`) es Fase 1 (V3); el generador
 `gen-contract-fixtures-endpoints.py` gana el caso al existir. Seed:
 `tests/seeds/test_seed_rvsp_endpoint.py` (404 desconocido / 404 sin-productor).
 
-### Nota aditiva sobre `GET /runs/{run_id}/ablation` (C-4/#124)
+### Nota aditiva sobre `GET /runs/{run_id}/ablation` (C-4/#125)
 
 `variant` del wire de ablación pasa de 2 a **4 valores** (`quantum|classical|mitigated|zne`)
 cuando V2/M19 implemente el productor — extensión COORDINADA de `AblationMetric`

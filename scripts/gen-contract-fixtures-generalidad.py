@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Genera los fixtures de contrato de generalidad (spec
-`docs/specs/generalidad-retos.md` §"Tests de contrato"; decisión #125;
+`docs/specs/generalidad-retos.md` §"Tests de contrato"; decisión #126;
 convención `docs/specs/README.md` §"Fixtures de costura — un solo origen").
 
 ORIGEN ÚNICO = modelos YA existentes del plano de confianza:

@@ -1,4 +1,4 @@
-"""Seed del payload extendido de run.metrics.recorded (C-4/#106 · #124 — S-D).
+"""Seed del payload extendido de run.metrics.recorded (C-4/#106 · #125 — S-D).
 
 Contrato: docs/specs/superficie-visual.md §9 + freeze §3 marca (b). Los campos
 de confianza congelados se mantienen; entran `variant?` (enum de 4) y los
@@ -23,7 +23,7 @@ pytestmark = [
         strict=False,
         reason=(
             "Fase 1 V2/M19: blite.runtime.metrics no existe todavía — "
-            "docs/specs/superficie-visual.md §9 (C-4/#124)"
+            "docs/specs/superficie-visual.md §9 (C-4/#125)"
         ),
     ),
 ]

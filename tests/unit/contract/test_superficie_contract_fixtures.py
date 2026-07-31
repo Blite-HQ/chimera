@@ -1,6 +1,6 @@
 """Contrato de costura de la superficie visual — el fixture ES el contrato.
 
-`docs/specs/superficie-visual.md` §8 (decisión #124) + `docs/specs/README.md`
+`docs/specs/superficie-visual.md` §8 (decisión #125) + `docs/specs/README.md`
 §"Fixtures de costura — un solo origen":
 1. el fixture PARSEA de vuelta a `TopologyResponse` (Python es el origen);
 2. canónico y espejo de Studio BYTE-IDÉNTICOS;

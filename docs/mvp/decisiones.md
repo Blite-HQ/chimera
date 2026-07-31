@@ -978,8 +978,14 @@ junto al bloque REGLAS al lanzar cada sesión). Docs-only.
 > 90.92% (mismo total 813 que #119 — 5 tests dependientes de compose pasan a
 > skip fuera del stack) · lint-imports 13 kept/0 broken · ruff 0 · pyright 0 ·
 > studio 221 passed.
+>
+> **Nota de renumeración (rebase 2026-07-31):** esta sesión abrió sobre @65cea5d
+> y numeró sus decisiones #121–#127; en paralelo la base ganó el #121 (modelos,
+> @b53d09a). Al rebasar sobre la base se renumeraron a **#122–#128** (mapa:
+> viejo+1). Los MENSAJES de los commits previos al rebase citan los números
+> viejos — este bloque y todos los ARCHIVOS citan los definitivos.
 
-### #121 — inmunización V6 del anexo de canonicalización (hallazgo 1 del handoff S3, vía #120)
+### #122 — inmunización V6 del anexo de canonicalización (hallazgo 1 del handoff S3, vía #120)
 
 **Problema (censo §8.5 / hallazgo 1):** la nota de inmunización del anexo
 (`contract-freeze-anexo-canonicalizacion.md` §6, nota final) declara «los
@@ -1001,10 +1007,10 @@ de 2 campos `{canonical_statement, scope}` (§5 del anexo); el CONTENIDO del
 vector — el texto del statement y las claves internas `{dataset, corpus_digest}`
 del scope — es dato arbitrario del gate de hashing: el scope real es el
 ScopeExpr canónico del certificado (freeze §4), cuyas claves dependen del claim.
-Edición aditiva con marca `[MEJORADO #121]` tras la nota existente; los vectores
+Edición aditiva con marca `[MEJORADO #122]` tras la nota existente; los vectores
 y sus hashes quedan intactos byte a byte.
 
-### #122 — S-A: contrato de chat/conversación (`docs/specs/chat-conversacion.md`, spec NUEVA)
+### #123 — S-A: contrato de chat/conversación (`docs/specs/chat-conversacion.md`, spec NUEVA)
 
 Cierra M1-c/M1-d como CONTRATO (la implementación es P3/P6 de Fase 1). Decisiones
 de forma, cada una con su porqué:
@@ -1044,7 +1050,7 @@ RespondedSchema` + tests del Studio contra los fixtures `contract/harness/`
    existentes — se entrega EN Fase 0 (es test anti-drift, no feature); la card
    inline es P3-D.
 
-### #123 — S-B: forma del wire de `discarded_streams` (elaboración de #104)
+### #124 — S-B: forma del wire de `discarded_streams` (elaboración de #104)
 
 **Estado previo verificado:** los CINCO supersedes doc-side de S-B ya estaban
 estampados por S3 en el freeze (§3 marcas (a) #104 y (b) C-4; §7 marca (c) C-6;
@@ -1077,7 +1083,7 @@ la pasada S-D (`superficie-visual.md` — es la superficie que lo consume); los
 seeds de C-5 (`GatewayContext` aditivo) y C-6 (`verify_all`) entran con esta
 decisión sin ceremonia nueva (C-5/C-6 ya están decididas en #106).
 
-### #124 — S-D: superficie visual — branch-ids C-8, rvsp C-9, metrics C-4 (elaboraciones de #106)
+### #125 — S-D: superficie visual — branch-ids C-8, rvsp C-9, metrics C-4 (elaboraciones de #106)
 
 **Estado previo verificado:** el supersede de `superficie-visual.md` §5 ya estaba
 estampado por S3 (marca [MEJORADO C-9/#106]). Esta decisión materializa el DETALLE
@@ -1116,7 +1122,7 @@ ejecutable que #106 dejó enunciado:
    Declarados (modelo Fase 1): `run-metrics-recorded.json` (V2) y
    `contract/endpoints/get-runs-rvsp.json` (V3).
 
-### #125 — S-C: contrato de generalidad (`docs/specs/generalidad-retos.md`, spec NUEVA)
+### #126 — S-C: contrato de generalidad (`docs/specs/generalidad-retos.md`, spec NUEVA)
 
 Decisiones de forma para que los retos 2/3 corran EN la plataforma (G1–G4):
 
@@ -1161,7 +1167,7 @@ Decisiones de forma para que los retos 2/3 corran EN la plataforma (G1–G4):
    Studio byte-idéntico con verificación Python (mismo precedente que
    ingesta/informe: sin consumidor Zod todavía).
 
-### #126 — S-E: manifest v2 en el SDK (`docs/specs/manifest-v2-sdk.md`, spec NUEVA)
+### #127 — S-E: manifest v2 en el SDK (`docs/specs/manifest-v2-sdk.md`, spec NUEVA)
 
 El §1 del freeze está congelado desde S-E; esta decisión fija SOLO lo que la
 letra dejó abierto para aterrizarlo en `blite_capability.manifest`:
@@ -1194,7 +1200,7 @@ letra dejó abierto para aterrizarlo en `blite_capability.manifest`:
    (dataclass → `asdict`; lo genera C1 al existir el campo). Seed:
    `tests/seeds/test_seed_manifest_v2.py`.
 
-### #127 — S-F: proyector de observabilidad (`docs/specs/observabilidad-proyeccion.md`, spec NUEVA)
+### #128 — S-F: proyector de observabilidad (`docs/specs/observabilidad-proyeccion.md`, spec NUEVA)
 
 Materializa C-11 (#106: consumer standalone FUERA de `blite.*`) como contrato:
 
@@ -1226,8 +1232,8 @@ span>)[:8 bytes]` (ancla = `step_id`/`job_id`/tipo según la tabla de
 ### Registro de cierre — Fase 0 Contratos COMPLETA (2026-07-31)
 
 **Alcance cerrado**: (1) ola-0 verificada HECHA en #119 — NO repetida; (2)–(7)
-S-A…S-F entregadas + extensión #120 (inmunización V6, #121). Decisiones de la
-sesión: **#121–#127**. Commits en `mejorado/contratos` (docs/spec SIEMPRE
+S-A…S-F entregadas + extensión #120 (inmunización V6, #122). Decisiones de la
+sesión: **#122–#128**. Commits en `mejorado/contratos` (docs/spec SIEMPRE
 separados de fixtures/tests, sin push — lo coordina Dylan).
 
 **Gates al cierre (corridos en vivo, worktree con venv del principal +
@@ -1240,35 +1246,35 @@ approvals/topología) · eslint **0** · markdownlint **0** · prettier **0**.
 
 **Entregables por costura:**
 
-- **S-A**: `chat-conversacion.md` + marca (d) freeze §3 (#122) + Zod espejo de
+- **S-A**: `chat-conversacion.md` + marca (d) freeze §3 (#123) + Zod espejo de
   approvals VERDE ambos lados + seed `test_seed_chat_conversacion.py` (8).
 - **S-B**: los 5 supersedes doc-side YA estaban estampados por S3 (verificado:
   §3 a/b, §7 c, §8 C-5, §15.7 N12); entregado el lado ejecutable — wire
-  `GET /runs/discarded` (#123) + seeds discarded/gateway-context/verify_all (6).
-- **S-C**: `generalidad-retos.md` (#125) + 4 fixtures `contract/generalidad/`
+  `GET /runs/discarded` (#124) + seeds discarded/gateway-context/verify_all (6).
+- **S-C**: `generalidad-retos.md` (#126) + 4 fixtures `contract/generalidad/`
   VERDES ambos lados + seed C-14/homes/dispatch (4).
 - **S-D**: §8/§9 de `superficie-visual.md` + fila rvsp y nota ablation en
-  `endpoints-studio.md` (#124) + fixture `contract/superficie/topology-snapshot`
+  `endpoints-studio.md` (#125) + fixture `contract/superficie/topology-snapshot`
   VERDE ambos lados (con `topologySnapshotSchema` nuevo) + seeds metrics/rvsp (5).
-- **S-E**: `manifest-v2-sdk.md` (#126, tabla de migración de las 13) + seed (3).
-- **S-F**: `observabilidad-proyeccion.md` (#127) + seed ids deterministas (3).
-- **#120**: inmunización V6 del anexo (#121) — aditiva, bytes/hashes intactos.
+- **S-E**: `manifest-v2-sdk.md` (#127, tabla de migración de las 13) + seed (3).
+- **S-F**: `observabilidad-proyeccion.md` (#128) + seed ids deterministas (3).
+- **#120**: inmunización V6 del anexo (#122) — aditiva, bytes/hashes intactos.
 
 ### Tabla de interacciones (regla #3)
 
 | Interfaz tocada                                                    | Dominio afectado | Estado del contrato                                       |
 | ------------------------------------------------------------------ | ---------------- | --------------------------------------------------------- |
-| Anexo canonicalización — nota V6 (#121)                            | confianza        | VIGENTE — aditivo con ceremonia; vectores intactos        |
-| freeze §3 marca (d): `run.created.{thread_id?,project_id?}` (#122) | A↔E↔D            | Supersede aditivo registrado; implementa P3/P6            |
+| Anexo canonicalización — nota V6 (#122)                            | confianza        | VIGENTE — aditivo con ceremonia; vectores intactos        |
+| freeze §3 marca (d): `run.created.{thread_id?,project_id?}` (#123) | A↔E↔D            | Supersede aditivo registrado; implementa P3/P6            |
 | `docs/specs/chat-conversacion.md` (NUEVA)                          | A↔E↔D            | SPEC — consumen P3, P6, P-ui                              |
 | Zod espejo `approval.*` (`schemas.ts` + tests)                     | D                | **VERDE** — fixtures existentes, anti-drift ambos lados   |
-| `endpoints-studio.md` §GET /runs/discarded (#123)                  | E↔D              | SPEC + seed — implementa P2                               |
-| `endpoints-studio.md` §GET /runs/{id}/rvsp + nota ablation (#124)  | E↔D              | SPEC + seed — implementa V3/V2                            |
-| `superficie-visual.md` §8 branch-ids C-8 / §9 metrics C-4 (#124)   | D↔E↔A            | SPEC — implementan V1/V2; base de C4/M4                   |
+| `endpoints-studio.md` §GET /runs/discarded (#124)                  | E↔D              | SPEC + seed — implementa P2                               |
+| `endpoints-studio.md` §GET /runs/{id}/rvsp + nota ablation (#125)  | E↔D              | SPEC + seed — implementa V3/V2                            |
+| `superficie-visual.md` §8 branch-ids C-8 / §9 metrics C-4 (#125)   | D↔E↔A            | SPEC — implementan V1/V2; base de C4/M4                   |
 | `contract/superficie/topology-snapshot` + `topologySnapshotSchema` | D↔E              | **VERDE** — single-origin `TopologyResponse`, ambos lados |
-| `docs/specs/generalidad-retos.md` (NUEVA, #125) + 4 fixtures       | B↔A↔confianza    | SPEC; fixtures **VERDES** ambos lados — consumen G1–G4    |
-| `docs/specs/manifest-v2-sdk.md` (NUEVA, #126)                      | SDK↔B↔ejecución  | SPEC + seed — implementa C1; desbloquea G/O5              |
-| `docs/specs/observabilidad-proyeccion.md` (NUEVA, #127)            | stream→OTel      | SPEC + seed — implementa O3                               |
+| `docs/specs/generalidad-retos.md` (NUEVA, #126) + 4 fixtures       | B↔A↔confianza    | SPEC; fixtures **VERDES** ambos lados — consumen G1–G4    |
+| `docs/specs/manifest-v2-sdk.md` (NUEVA, #127)                      | SDK↔B↔ejecución  | SPEC + seed — implementa C1; desbloquea G/O5              |
+| `docs/specs/observabilidad-proyeccion.md` (NUEVA, #128)            | stream→OTel      | SPEC + seed — implementa O3                               |
 | Índice `docs/specs/README.md` — sección Fase 0 Mejorado            | docs             | Aditiva; 4 specs nuevas + 2 extendidas indexadas          |
 
 **Siguiente paso (sesión de control):** merge de `mejorado/contratos` a

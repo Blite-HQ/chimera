@@ -151,15 +151,15 @@ del API real. Regla: **el fixture de costura tiene UN solo origen y ambos lados 
 
 > Producidas por la sesión Contratos de Mejorado (`05-plan-paralelo.md` §1; sin dueños por
 > #94 — los consumidores son sesiones de Fase 1). Misma convención de fixtures single-origin
-> de arriba; el ledger (`../mvp/decisiones.md` #121+) registra cada ceremonia.
+> de arriba; el ledger (`../mvp/decisiones.md` #122+) registra cada ceremonia.
 
 | Spec                                                           | Costura         | Consumen  | Estado               |
 | -------------------------------------------------------------- | --------------- | --------- | -------------------- |
-| [`chat-conversacion.md`](chat-conversacion.md)                 | A↔E↔D           | P3, P6    | SPEC (decisión #122) |
-| [`generalidad-retos.md`](generalidad-retos.md)                 | B↔A↔confianza   | G1–G4     | SPEC (decisión #125) |
-| [`manifest-v2-sdk.md`](manifest-v2-sdk.md)                     | SDK↔B↔ejecución | C1, G, O5 | SPEC (decisión #126) |
-| [`observabilidad-proyeccion.md`](observabilidad-proyeccion.md) | stream→OTel     | O3        | SPEC (decisión #127) |
+| [`chat-conversacion.md`](chat-conversacion.md)                 | A↔E↔D           | P3, P6    | SPEC (decisión #123) |
+| [`generalidad-retos.md`](generalidad-retos.md)                 | B↔A↔confianza   | G1–G4     | SPEC (decisión #126) |
+| [`manifest-v2-sdk.md`](manifest-v2-sdk.md)                     | SDK↔B↔ejecución | C1, G, O5 | SPEC (decisión #127) |
+| [`observabilidad-proyeccion.md`](observabilidad-proyeccion.md) | stream→OTel     | O3        | SPEC (decisión #128) |
 
-Además: `endpoints-studio.md` ganó las secciones ADITIVAS «GET /runs/discarded» (#123) y
-«GET /runs/{run_id}/rvsp» (#124); `superficie-visual.md` ganó §8 (branch-ids C-8) y §9
-(metrics C-4) — #124.
+Además: `endpoints-studio.md` ganó las secciones ADITIVAS «GET /runs/discarded» (#124) y
+«GET /runs/{run_id}/rvsp» (#125); `superficie-visual.md` ganó §8 (branch-ids C-8) y §9
+(metrics C-4) — #125.

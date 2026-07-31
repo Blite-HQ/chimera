@@ -1,4 +1,4 @@
-"""Seed de la costura de generalidad (S-C, decisión #125).
+"""Seed de la costura de generalidad (S-C, decisión #126).
 
 Contrato: docs/specs/generalidad-retos.md. Cada test fija una pieza que
 G1/G2/G3 (Fase 1) implementan; el xfail se retira pieza por pieza.
@@ -22,7 +22,7 @@ pytestmark = [
         strict=False,
         reason=(
             "Fase 1 G1/G2/G3: C-14, los verificadores nuevos y el registro de "
-            "dispatch no existen todavía — docs/specs/generalidad-retos.md (#125)"
+            "dispatch no existen todavía — docs/specs/generalidad-retos.md (#126)"
         ),
     ),
 ]

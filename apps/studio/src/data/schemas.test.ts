@@ -401,7 +401,7 @@ describe('Zod espejo de plan.* contra los fixtures de costura (D6, contrato D↔
   });
 });
 
-describe('Zod espejo de approval.* contra los fixtures de costura (S-A #122, contrato D↔A)', () => {
+describe('Zod espejo de approval.* contra los fixtures de costura (S-A #123, contrato D↔A)', () => {
   // chat-conversacion.md §7: mismo par [fixture generado desde Pydantic
   // (gen-contract-fixtures-harness.py) + Zod espejo a mano] que plan.*.
   // Cierra el lado D del anti-drift de N2 (los fixtures existían sin espejo).
@@ -425,7 +425,7 @@ describe('Zod espejo de approval.* contra los fixtures de costura (S-A #122, con
   });
 });
 
-describe('Zod espejo de topología contra el fixture de costura (S-D #124, contrato D↔E)', () => {
+describe('Zod espejo de topología contra el fixture de costura (S-D #125, contrato D↔E)', () => {
   // superficie-visual.md §8: origen = TopologyResponse (chimera_api.reads);
   // el fixture ejercita verification POR isla y la convención C-8 de
   // branch-ids (canónico L{min}-{max}[-k] + edge_id_property de GIS).

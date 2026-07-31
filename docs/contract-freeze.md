@@ -99,7 +99,7 @@ El campo `protocol` de la semilla **se elimina** del manifest: el protocolo es d
 > **(c) Ceremonia #66 (`docs/specs/harness-agentico.md`):** `run.created` ganó
 > `max_turns` (default 30) y `budget` — extensión aditiva registrada en esa spec
 > (§Guardas), nunca portada a esta letra hasta esta marca.
-> **(d) #122 — `run.created` gana `thread_id?`/`project_id?` (aditivos, S-A):**
+> **(d) #123 — `run.created` gana `thread_id?`/`project_id?` (aditivos, S-A):**
 > el enhebrado conversacional post-terminal y la pertenencia a proyecto viajan en
 > el evento fundacional (`thread_id` = run raíz del hilo; `project_id` = fila
 > relacional FUERA del event store — M15). Forma y semántica:

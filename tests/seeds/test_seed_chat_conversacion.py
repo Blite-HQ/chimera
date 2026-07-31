@@ -1,4 +1,4 @@
-"""Seed de la costura chat/conversación (S-A, decisión #122).
+"""Seed de la costura chat/conversación (S-A, decisión #123).
 
 Contrato: docs/specs/chat-conversacion.md. Cada test fija una pieza del
 contrato que P3/P6 (Fase 1) implementan; el xfail se retira pieza por pieza,

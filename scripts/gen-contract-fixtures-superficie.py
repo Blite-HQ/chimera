@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Genera los fixtures de contrato de la superficie visual (spec
-`docs/specs/superficie-visual.md` §8; decisión #124; convención
+`docs/specs/superficie-visual.md` §8; decisión #125; convención
 `docs/specs/README.md` §"Fixtures de costura — un solo origen").
 
 ORIGEN ÚNICO = `TopologyResponse` (`chimera_api.reads`, modelo YA existente).

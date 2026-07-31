@@ -1,4 +1,4 @@
-"""Seed del endpoint GET /runs/{run_id}/rvsp (C-9/#106 · #124 — S-D).
+"""Seed del endpoint GET /runs/{run_id}/rvsp (C-9/#106 · #125 — S-D).
 
 Contrato: docs/specs/endpoints-studio.md §"GET /runs/{run_id}/rvsp". Clave
 POR RUN; 404 honesto para run desconocido Y para run sin datos rvsp (el
@@ -18,7 +18,7 @@ pytestmark = [
         strict=False,
         reason=(
             "Fase 1 V3/M20: GET /runs/{run_id}/rvsp no existe todavía — "
-            "docs/specs/endpoints-studio.md (C-9/#124)"
+            "docs/specs/endpoints-studio.md (C-9/#125)"
         ),
     ),
 ]

@@ -1,4 +1,4 @@
-"""Seed del skip honesto de lectura (#104/#123 — S-B, píldora #96 como caso).
+"""Seed del skip honesto de lectura (#104/#124 — S-B, píldora #96 como caso).
 
 Contrato: docs/specs/endpoints-studio.md §"GET /runs/discarded". La ruta de
 LECTURA descarta streams envenenados sin tumbar el listado; la ruta hermana
@@ -18,7 +18,7 @@ pytestmark = [
         strict=False,
         reason=(
             "Fase 1 P2: el skip por-stream y GET /runs/discarded no existen — "
-            "docs/specs/endpoints-studio.md §GET /runs/discarded (#104/#123)"
+            "docs/specs/endpoints-studio.md §GET /runs/discarded (#104/#124)"
         ),
     ),
 ]

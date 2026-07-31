@@ -1,4 +1,4 @@
-"""Seed del proyector de observabilidad OTel (S-F, decisión #127 — C-11).
+"""Seed del proyector de observabilidad OTel (S-F, decisión #128 — C-11).
 
 Contrato: docs/specs/observabilidad-proyeccion.md. El proyector es un
 consumer standalone FUERA de blite.* (`projectors/otel/`, paquete
@@ -24,7 +24,7 @@ pytestmark = [
         strict=False,
         reason=(
             "Fase 1 O3/M9: projectors/otel (chimera_otel) no existe todavía — "
-            "docs/specs/observabilidad-proyeccion.md (#127)"
+            "docs/specs/observabilidad-proyeccion.md (#128)"
         ),
     ),
 ]

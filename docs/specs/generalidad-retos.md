@@ -8,7 +8,7 @@ identidad de corpus) + **§14** (`●ClaimEmitted` con portadores) ·
 jamás lo edita · **Insumo:** `knowledge/quantum/02-recetario-formulacion-por-reto.md` §2
 (receta C2; su §3 de química está SUPERSEDIDA) · `knowledge/quantum/11-receta-c3-tfim-trotter.md`
 (STUB C3 — lo completa G1) · `docs/mejorado/03-research.md` R1.
-**Costura:** B↔A↔confianza · **Estado:** SPEC (Fase 0 Mejorado, 2026-07-31, decisión #125) ·
+**Costura:** B↔A↔confianza · **Estado:** SPEC (Fase 0 Mejorado, 2026-07-31, decisión #126) ·
 **Consumen:** G1–G4 (y G5/G7 indirectos).
 
 > La llave 1 del cierre de fase (criterio #101) exige que un reto NO-MaxCut corra punta a
@@ -35,7 +35,7 @@ quantum/04 §"McNemar": «competitivo», jamás «supera» sin significancia. `C
 el enforcement del registro sigue siendo doc-level (tensión SF-P1-2 registrada en el freeze
 §6 — NO se resuelve aquí).
 
-**2 · C-14 — extensión aditiva de `FormalExactPredicate` (detalle de #106, forma #125).**
+**2 · C-14 — extensión aditiva de `FormalExactPredicate` (detalle de #106, forma #126).**
 `Differential` (`blite.verification.evidence`) gana:
 
 - el literal **`EXACT_DIAGONALIZATION`** en `status` (aditivo a la unión CpSat — un status

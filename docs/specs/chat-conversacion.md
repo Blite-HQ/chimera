@@ -1,7 +1,7 @@
 # Spec de costura — Chat y conversación del run (costura A↔E↔D)
 
 **Gobernada por:** freeze **§3** (vocabulario de eventos; extensión aditiva (d) del bloque de
-supersedes — decisión #122) + **§14** (catálogo ● — materializa la reserva `●MissionMessage`
+supersedes — decisión #123) + **§14** (catálogo ● — materializa la reserva `●MissionMessage`
 de la marca [MEJORADO #102]) + **§2** (rechazo de appends post-terminales — el 409 de abajo es
 su cara HTTP) + **§9** (JWT en cookie; el Studio consume proyecciones) + **§13** (cascada de
 cancelación) + **§15.7** (replay: la clave jamás repetiría si la vista cargara IDs frescos) ·
@@ -9,7 +9,7 @@ cancelación) + **§15.7** (replay: la clave jamás repetiría si la vista carga
 aditivamente) · `docs/specs/harness-agentico.md` (loop, `TurnContext`, approvals) ·
 `docs/studio/product-model.md` (#78: chat = superficie del project; D6 = hilo sobre eventos,
 decisión #93).
-**Costura:** A↔E↔D · **Estado:** SPEC (Fase 0 Mejorado, 2026-07-31, decisión #122) ·
+**Costura:** A↔E↔D · **Estado:** SPEC (Fase 0 Mejorado, 2026-07-31, decisión #123) ·
 **Consumen:** P3 (chat real), P6 (workspaces), P-ui (hilo D6 multi-turno).
 
 > Cierra M1-c/M1-d como contrato (cobertura `docs/mejorado/02-cobertura.md` §1: «cero
@@ -51,7 +51,7 @@ el stream ya es terminal. La cascada a sub-runs activos y el barrido de jobs son
 (§13), no del endpoint; un step en RUNNING queda `interrupted` por proyección (§3) — esta
 spec no inventa evento nuevo para eso.
 
-**4 · `run.created` gana `thread_id?` y `project_id?` (aditivos — ceremonia #122, marca (d)
+**4 · `run.created` gana `thread_id?` y `project_id?` (aditivos — ceremonia #123, marca (d)
 en freeze §3).** Semántica:
 
 - `thread_id: str?` — `run_id` del run RAÍZ del hilo conversacional. Ausente ⇒ este run ABRE
@@ -63,7 +63,7 @@ en freeze §3).** Semántica:
   `parent_run_id`: el segundo es jerarquía de sub-runs DENTRO de una corrida; el primero es
   sucesión conversacional ENTRE corridas.
 - `project_id: str?` — referencia opaca a la fila relacional `project` de M15 (FUERA del
-  event store — decisión #122; el evento NO valida FK contra esa tabla: la valida el API al
+  event store — decisión #123; el evento NO valida FK contra esa tabla: la valida el API al
   crear el run cuando P6 exista). Ausente ⇒ run sin proyecto (compat total).
 - `MissionRequest` (`endpoints-studio.md` §"POST /runs — modo misión") gana los MISMOS dos
   campos opcionales — extensión aditiva del body; `extra="forbid"` intacto.
@@ -111,7 +111,7 @@ maquinaria `override:apply:<scope>` ya congelada (§8/§10) — esta spec no la 
 
 - **`mission.message`** ↔ `●MissionMessage` (reserva §14 materializada): payload del punto 1,
   módulo `blite.runtime.mission`.
-- **`run.created`** gana `thread_id?`/`project_id?` — aditivos, ceremonia #122 (marca (d) en
+- **`run.created`** gana `thread_id?`/`project_id?` — aditivos, ceremonia #123 (marca (d) en
   el bloque de supersedes de §3 del freeze).
 - **Ningún otro evento nuevo**: cancel reusa `run.cancelled` (congelado), approvals reusan
   `approval.*` (catálogo §14 vía #102), el hilo D6 sigue siendo proyección (decisión #93).

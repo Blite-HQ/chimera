@@ -195,12 +195,12 @@ generarlo hoy sería inventar un dato que ningún modelo respalda. Lo que SÍ ex
 spec valida en su seed es que la proyección genérica (`project_event`/`sse_frame`) no degrada
 estos payloads — ver Tests semilla.
 
-### 8 · Convención de branch-ids y verdict por isla (C-8/#106 · #124 — Fase 0 Mejorado, 2026-07-31)
+### 8 · Convención de branch-ids y verdict por isla (C-8/#106 · #125 — Fase 0 Mejorado, 2026-07-31)
 
 **Hueco que cierra (cobertura C-8):** `cut_branch_ids` viajaba sin convención versionada en
 3 modelos, y la regla de agregación per-isla del verdict no existía escrita.
 
-- **Convención HÍBRIDA de branch-ids (decisión #106 C-8, detalle #124):**
+- **Convención HÍBRIDA de branch-ids (decisión #106 C-8, detalle #125):**
   - Instancias **derivadas de GIS**: el id de rama es el `edge_id_property` del portal
     (FID/OBJECTID), declarado como parámetro de la receta de `geojson_to_graph` — el dato
     del cliente conserva SU identidad; la receta lo estampa.
@@ -223,7 +223,7 @@ estos payloads — ver Tests semilla.
   §7 para topología). El caso ejemplifica AMBAS formas de branch-id y `verification` POR
   isla (§4).
 
-### 9 · `run.metrics.recorded` extendido y `variant` ×4 (C-4/#106 · #124 — Fase 0 Mejorado, 2026-07-31)
+### 9 · `run.metrics.recorded` extendido y `variant` ×4 (C-4/#106 · #125 — Fase 0 Mejorado, 2026-07-31)
 
 Materializa el supersede (b) del freeze §3 como contrato ejecutable:
 
