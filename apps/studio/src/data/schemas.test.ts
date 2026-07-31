@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
+import APPROVAL_REQUESTED_CONTRACT_FIXTURE from '../fixtures/contract/harness/approval-requested.json';
+import APPROVAL_RESPONDED_CONTRACT_FIXTURE from '../fixtures/contract/harness/approval-responded.json';
 import PLAN_CREATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-created.json';
 import PLAN_ITEM_UPDATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-item-updated.json';
 import { RUN_EVENTS } from '../fixtures/runEvents';
@@ -10,6 +12,8 @@ import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
 import {
   ablationMetricSchema,
   ablationWireSchema,
+  approvalRequestedSchema,
+  approvalRespondedSchema,
   knowledgeClaimWireSchema,
   planCreatedSchema,
   planItemUpdatedSchema,
@@ -392,5 +396,29 @@ describe('Zod espejo de plan.* contra los fixtures de costura (D6, contrato D↔
       payload: PLAN_CREATED_CONTRACT_FIXTURE
     });
     expect(projected.payload).toEqual(PLAN_CREATED_CONTRACT_FIXTURE);
+  });
+});
+
+describe('Zod espejo de approval.* contra los fixtures de costura (S-A #122, contrato D↔A)', () => {
+  // chat-conversacion.md §7: mismo par [fixture generado desde Pydantic
+  // (gen-contract-fixtures-harness.py) + Zod espejo a mano] que plan.*.
+  // Cierra el lado D del anti-drift de N2 (los fixtures existían sin espejo).
+  it('approval-requested.json valida contra approvalRequestedSchema', () => {
+    const parsed = approvalRequestedSchema.parse(APPROVAL_REQUESTED_CONTRACT_FIXTURE);
+    expect(parsed.approval_id).toBe('approval-1');
+    expect(parsed.step_id).toBe('step-1');
+    expect(parsed.json_schema).toHaveProperty('required');
+  });
+
+  it('approval-responded.json valida contra approvalRespondedSchema', () => {
+    const parsed = approvalRespondedSchema.parse(APPROVAL_RESPONDED_CONTRACT_FIXTURE);
+    expect(parsed.authorized_by).toBe('user:dylan');
+    expect(parsed.response).toEqual({ aprobado: true });
+  });
+
+  it('una respuesta sin authorized_by explota (AX2: la relajación exige humano identificable)', () => {
+    const sinAutor: Record<string, unknown> = { ...APPROVAL_RESPONDED_CONTRACT_FIXTURE };
+    delete sinAutor.authorized_by;
+    expect(() => approvalRespondedSchema.parse(sinAutor)).toThrow();
   });
 });

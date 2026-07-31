@@ -174,6 +174,33 @@ export type PlanItemStatus = z.infer<typeof planItemStatusSchema>;
 export type PlanCreated = z.infer<typeof planCreatedSchema>;
 export type PlanItemUpdated = z.infer<typeof planItemUpdatedSchema>;
 
+/**
+ * S-A (decisión #122, chat-conversacion.md §7) — Zod espejo de
+ * `blite.gateway.approval` contra los fixtures de costura
+ * `src/fixtures/contract/harness/approval-{requested,responded}.json`
+ * (mismo par fixture-Pydantic + espejo a mano que plan.*). El `json_schema`
+ * del request es dato opaco para el wire: la validación semántica de la
+ * respuesta contra ese schema es del engine (`authorize_approval_response`),
+ * jamás de este espejo.
+ */
+export const approvalRequestedSchema = z.object({
+  run_id: z.string().min(1),
+  approval_id: z.string().min(1),
+  json_schema: z.record(z.string(), z.unknown()),
+  prompt: z.string().min(1),
+  step_id: z.string().min(1).optional()
+});
+
+export const approvalRespondedSchema = z.object({
+  run_id: z.string().min(1),
+  approval_id: z.string().min(1),
+  response: z.record(z.string(), z.unknown()),
+  authorized_by: z.string().min(1)
+});
+
+export type ApprovalRequested = z.infer<typeof approvalRequestedSchema>;
+export type ApprovalResponded = z.infer<typeof approvalRespondedSchema>;
+
 /** nota 18 §2.2 — attestation de un paso, en clase+AL (freeze §4). */
 export const attestationSchema = z.object({
   verifierId: z.string().min(1),
