@@ -1,12 +1,20 @@
 # Nota 09 — MS Agent Governance Toolkit de primera mano: audit log, policy engine, identidad, plugin signing (mi mitad)
 
-**Ítem del backlog (ficha A0):** la referencia central del pool jamás estudiada de primera mano (todo venía de los compass). Mi mitad: audit log tamper-evident · policy engine determinista · identidad Ed25519/DID · plugin signing+SBOM. La otra mitad (pipeline, capability model) es de Steven — su nota **aún no existe** (`knowledge/execution/` vacío al 2026-07-07), así que acá no hay delta que restar; lo que roza su carril queda señalado, no decidido.
+**Ítem del backlog (ficha A0):** la referencia central del pool jamás estudiada de primera mano (todo venía de los compass). Mi mitad: audit log tamper-evident · policy engine determinista · identidad Ed25519/DID · plugin signing+SBOM. La otra mitad (pipeline, capability model) es de Steven — su nota **aún no existía** (`knowledge/execution/` vacío al 2026-07-07; **[S3 2026-07-30]: hoy tiene 10 notas** — ver `knowledge/execution/README.md`), así que acá no hubo delta que restar; lo que roza su carril quedó señalado, no decidido.
 **Fecha:** 2026-07-07 · **Estado:** estudio de primera mano completo; alimenta el anexo de canonicalización del freeze (G2)
 **Fuentes:** `microsoft/agent-governance-toolkit` clonado en `pool/` (HEAD `54a2c52`, 2026-07) — código y specs leídos en vivo · notas 01/02/05/08 (para los deltas) · `docs/contract-freeze.md`
 
 ---
 
 ## 1 · Patrón / mecanismo
+
+> **[S3 · 2026-07-30 · #116] Destino de las semillas «Fase 2» de §1.1–1.4:** las
+> piezas anotadas (Merkle + inclusion proofs, razones reservadas tipadas, trust
+> tiers/SBOM de plugins, export CloudEvents) quedaron registradas como **KB curada /
+> menciones honoríficas** del censo (`docs/mejorado/07-censo-documental.md` §7); el
+> vehículo activo es el **hash-chain del backlog (ítem C5, orden M8: hash-chain →
+> DSSE/VSA → StatusList → OpenBao → Rekor — #105;
+> `docs/mejorado/04-consolidacion.md`)**.
 
 Contexto en una línea: el AGT es un toolkit de gobernanza para agentes ("policy enforcement, identity, sandboxing, SRE"), MIT, Public Preview, monorepo con SDKs en 8 lenguajes + un motor de políticas en Rust (`policy-engine/`). Su tesis coincide con la nuestra en el chokepoint: _"Actions the AGT kernel denies are not 'unlikely'. They are structurally impossible."_ — enforcement determinista fuera del alcance del modelo (nuestro AX3).
 

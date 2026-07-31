@@ -2,7 +2,7 @@
 
 **Rol:** el puente entre la salida cuántica (probabilística) y el contrato de verificación (determinista). Las notas trust/03/04/10–12 definen las FORMAS (`evidence`, `GuardrailSignal`, verdicts); este doc da las FÓRMULAS para llenarlas sin mentir.
 **No repite:** tolerancias float/`isclose`/escala entera (trust/10 §1.5), tri-estado (trust/03 §1.4), tipos disjuntos guardrail/attestation (trust/04 §1.3) — se referencian.
-**Fecha:** 2026-07-14 · **Estado:** vigente — movida de `docs/kb2-04…` a `knowledge/quantum/` en la consolidación (2026-07-14); el template de nota se aplica en la sección final.
+**Fecha:** 2026-07-14 · **Estado:** vigente — movida de `docs/kb2-04…` a `knowledge/quantum/` en la consolidación (2026-07-14); el template de nota se aplica en la sección final. **[S3 2026-07-30 — nota de vocabulario:** toda mención residual de «rung N»/escalera en este doc (§5, mapa rápido, template) es vocabulario supersedido por clase+AL (freeze §4; mapa en `convergencia-diseno-v32.md` §2.1) — las FÓRMULAS siguen vigentes; §4 ya lleva la traducción explícita (`consensus_replication` AL2 / `Signal`).**]**
 
 ---
 
@@ -46,7 +46,18 @@ Ejemplos con los vectores de la nota 10: **G6** (n=3, g=2): p = 0.25 ⇒ ~16 mue
 
 **Consecuencia de reporte (anti quantum-washing, la matemática detrás del riesgo 19.2 del doc CHIMERA):** "QAOA encontró el óptimo" no informa nada en n=8 si el uniforme también lo encuentra. La métrica honesta es el **enriquecimiento**: `p_QAOA(óptimo) / p_uniforme` — cuántas veces más probable es el óptimo bajo la distribución de QAOA que bajo azar. Ese cociente sí mide que el circuito aprendió estructura, y va perfecto en la evidencia/ablación.
 
-## 4 · Consenso entre muestras (rung 5): las fórmulas para `GuardrailSignal.detail`
+> **[S3 2026-07-30]** El «enriquecimiento vs muestreo uniforme como parte del claim» de esta
+> sección quedó registrado como **KB curada** (mención honorífica del censo, 07-censo §7) por
+> decisión #116 — sin ítem propio de backlog; el método sigue vigente como conocimiento.
+
+## 4 · Consenso entre muestras (antes «rung 5»): las fórmulas para `GuardrailSignal.detail`
+
+> **[S3 2026-07-30] Traducción de vocabulario:** la escalera 1-7 murió (freeze §4); «rung 5» ya
+> no nombra nada vigente. Lo vivo es exactamente lo que el AJUSTE S-E de abajo partió en dos —
+> y así lo estampó el freeze (§11 y §4 :111) citando esta misma sección: el consenso de MUESTREO
+> con seeds pinned es pata `consensus_replication` **decisoria** (techo AL2); la concordancia
+> ENTRE MODELOS es `Signal` **no-decisoria** (§5 del freeze). Las fórmulas de esta sección
+> siguen vigentes para ambas; solo el número de escalera muere.
 
 La nota 04 fija el tipo (señal, jamás attestation) y la 16 el registro; aquí, el contenido numérico para `name: "self-consistency"` sobre salidas cuánticas:
 

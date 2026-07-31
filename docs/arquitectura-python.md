@@ -38,7 +38,7 @@ Piezas clave, sin cambios conceptuales respecto de nuestra arquitectura:
 - **Capability:** las herramientas cuánticas y clásicas son Capabilities **genéricas, sin lógica de negocio**; el escenario (islanding) vive como **conocimiento** en el agente, no hardcodeado en la herramienta.
 - **Event Sourcing:** el log de eventos es **append-only y la fuente de verdad**; los `runs` y demás son **proyecciones** que se derivan (no estado mutable — ver §6).
 - **El puerto `Verifier`:** verifica contra **anclas no-modelo** (solver, ejecución, dato, regla, humano) — **nunca un modelo**, garantizado por el tipo (§3).
-- **El certificado de confianza:** salida de primera clase (identidad + procedencia + attestation + el escalón de cada paso).
+- **El certificado de confianza:** salida de primera clase (identidad + procedencia + attestation + el escalón de cada paso). _[S3 2026-07-30: «escalón» = escalera 1-7 supersedida — hoy clase de verificador + AL por paso (freeze §4; mapa en `convergencia-diseno-v32.md` §2.1); aplica también a la columna «Verificación (escalera)» del diagrama de abajo.]_
 
 Vista de componentes (en Python):
 
@@ -139,7 +139,7 @@ class TrustCertificate(BaseModel):
 
 Esto es lo que nosotros obviamos y vale oro — el **cómo** implementable:
 
-- **Los servicios concretos:** `qubo_solver.py`, `qml_classifier.py`, `vqe_simulator.py`, `classical_baseline.py`, `constraint_checker.py` — código de punto de partida. _(Nota S-E: el `vqe_simulator.py` de su doc quedó superseded — el condicional C3 usa `dynamics_simulator` (TFIM/Trotter), ver la corrección del encabezado.)_
+- **Los servicios concretos:** `qubo_solver.py`, `qml_classifier.py`, `vqe_simulator.py`, `classical_baseline.py`, `constraint_checker.py` — código de punto de partida. _(Nota S-E: el `vqe_simulator.py` de su doc quedó superseded — el condicional C3 usa `dynamics_simulator` (TFIM/Trotter), ver la corrección del encabezado.)_ _[S3 2026-07-30: `vqe_simulator.py` es un id que nunca existió como archivo (tampoco `dynamics_simulator`); el entry point cuántico real es `capabilities/quantum/src/blite_cap_quantum/tool.py` (`blite.quantum.qaoa`).]_
 - **El argumento de Python** para el hot-path (las librerías viven ahí).
 - ~~**El Reto 2 (QML, potabilidad del agua)** como prueba de versatilidad~~ — **corregido S-E (2026-07-18, Δ9): el segundo reto condicional es el Challenge 3 (TFIM/Trotter)**, con gate duro (solo tras entrega COMPLETA del C1). El C2/QSVM queda descartado como segundo reto (sin ancla exacta — modo amortizado); la versatilidad la prueban el catálogo (`knowledge/quantum/07`) y el kit C3 sobre el mismo builder.
 - **El dataset de Costa Rica** (subestaciones San José, Cartago, Heredia) y la narrativa de presentación.
@@ -154,7 +154,7 @@ Lo que nos diferencia y su documento no tiene:
 
 - **Los invariantes rigurosos:** el gateway como mediación única, el Verifier que excluye modelos por construcción, el egreso gobernado solo por autorización, la identidad/soberanía.
 - **Event Sourcing como verdad** (no `runs.output` mutable — §6).
-- **La escalera de verificación completa:** el óptimo **exacto** como ancla (no solo un heurístico), la separación ablación-vs-verificación, y el marcado explícito de lo no-anclado.
+- **La escalera de verificación completa:** el óptimo **exacto** como ancla (no solo un heurístico), la separación ablación-vs-verificación, y el marcado explícito de lo no-anclado. _[S3 2026-07-30: la escalera 1-7 murió — hoy clase de verificador + AL (freeze §4); lo que este punto defiende sigue vigente.]_
 - **El certificado de confianza firmado** (vs. un reporte con score).
 - **La separación herramientas-genéricas vs. conocimiento-de-escenario.**
 
@@ -165,12 +165,12 @@ Lo que nos diferencia y su documento no tiene:
 Su documento es un borrador a validar, no a copiar tal cual. Lo que hay que corregir:
 
 1. **Eventos como verdad, no `runs.output` mutable.** Su schema tiene `run_events` (bien) pero también `runs.output`/`runs.status` mutables — podés cambiar el resultado sin dejar rastro. Eso es logging, no Event Sourcing. **Hacer los eventos la fuente de verdad y `runs` una proyección** (read model) que se deriva. Mantener la tabla de eventos append-only (regla de Postgres que rechaza UPDATE/DELETE).
-2. **Ancla exacta, no solo heurística.** Su baseline es Kernighan-Lin (heurístico, escalón 2). Para grafos de ≤8 nodos —los que ellos mismos usan— se puede calcular el **óptimo exacto** con OR-Tools o fuerza bruta (escalón 1), un ancla mucho más fuerte. El heurístico se queda como **baseline de ablación**; el óptimo exacto es el **ancla de verificación**. Son cosas distintas.
-3. **Separar ablación de verificación.** Su score compuesto mezcla "¿es mejor que lo clásico?" (ablación) con "¿es correcto/factible?" (verificación) en un solo número, y un promedio ponderado **esconde el eslabón débil**. Separarlos: el certificado reporta los dos, y la confianza del resultado es **el escalón más débil del camino crítico**, no un promedio.
+2. **Ancla exacta, no solo heurística.** Su baseline es Kernighan-Lin (heurístico, escalón 2). Para grafos de ≤8 nodos —los que ellos mismos usan— se puede calcular el **óptimo exacto** con OR-Tools o fuerza bruta (escalón 1), un ancla mucho más fuerte. El heurístico se queda como **baseline de ablación**; el óptimo exacto es el **ancla de verificación**. Son cosas distintas. _[S3 2026-07-30: los números de escalón murieron — el óptimo exacto hoy es clase `formal_exact` (AL4 con checker); el heurístico no es verificador (freeze §4).]_
+3. **Separar ablación de verificación.** Su score compuesto mezcla "¿es mejor que lo clásico?" (ablación) con "¿es correcto/factible?" (verificación) en un solo número, y un promedio ponderado **esconde el eslabón débil**. Separarlos: el certificado reporta los dos, y la confianza del resultado es **el escalón más débil del camino crítico**, no un promedio. _[S3 2026-07-30: hoy `titular_level` — el nivel más débil del camino decisorio (freeze §7).]_
 4. **Herramientas genéricas, escenario como conocimiento.** Su `constraint_checker` hardcodea la lógica de la red eléctrica. Por nuestro principio, las reglas del grid son **conocimiento de escenario**, no una herramienta. Dejar un checker **genérico** (chequea cualquier set de restricciones) + las restricciones del grid como **datos/conocimiento** que se le pasan.
 5. **El Verifier explícitamente sin modelos.** Su verificación ya es no-modelo (bien), pero hacerlo explícito en el **tipo** (el `Literal`/Protocol de §3).
 6. **Drift de versión en QAOA.** Su `qubo_solver.py` usa la API vieja (`quantum_instance=`), que ya no existe en qiskit-algorithms actual (ahora es `sampler=`). La investigación lo corrige.
-7. **El certificado.** Subir su "reporte de verificación con score" a un **certificado de confianza firmado** (identidad + hash de procedencia + attestation + el escalón de cada paso).
+7. **El certificado.** Subir su "reporte de verificación con score" a un **certificado de confianza firmado** (identidad + hash de procedencia + attestation + el escalón de cada paso). _[S3 2026-07-30: hoy clase+AL por paso (freeze §4).]_
 
 ---
 
@@ -218,7 +218,7 @@ Esto es lo que de verdad se investiga, y es distinto por persona:
 | Persona                             | Qué investiga de verdad                                                                                                                                                                                                                                                                                                                                        |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Sebas (cuántica)**                | **No** los frameworks (construye con ellos). Las **soluciones cerradas:** REGRID-QAOA (`arxiv.org/abs/2606.15083`, el Reto 1 resuelto con nuestro patrón), el tutorial QUBO de Glover (`arxiv.org/abs/1811.11538`), soluciones de **hackathons cuánticos pasados** (QHack, IBM Quantum Challenge, iQuHACK), y los **óptimos conocidos** de los benchmarks IEEE |
-| **Dylan (confianza + integración)** | **in-toto** + **Sigstore** (el modelo del certificado/attestation), un **patrón de Event Sourcing sobre Postgres**, los **métodos de la escalera** (`hypothesis` para property-based, verificación diferencial, metamorphic). Fase 2: OPA/Cedar                                                                                                                |
+| **Dylan (confianza + integración)** | **in-toto** + **Sigstore** (el modelo del certificado/attestation), un **patrón de Event Sourcing sobre Postgres**, los **métodos de la escalera** _[S3 2026-07-30: hoy métodos de las clases de verificador, freeze §4]_ (`hypothesis` para property-based, verificación diferencial, metamorphic). Fase 2: OPA/Cedar                                         |
 | **Steven (ejecución)**              | El **patrón del pipeline del gateway** (el MS Agent Governance Toolkit como concepto), patrones de **middleware en FastAPI**, el **Capability/tool registry**. Más el lado de model serving si aplica                                                                                                                                                          |
 | **Geovanni (infra)**                | **Docker Compose**, despliegue, operación de **Postgres**; el sandbox y la identidad para Fase 2                                                                                                                                                                                                                                                               |
 
@@ -233,9 +233,9 @@ Se respeta su cronograma de 8 días, **insertando la espina** donde corresponde:
 - **Día 1 — Esqueleto que camina:** monorepo (uv + vite), docker-compose con Postgres, **el schema con eventos append-only como verdad** (no output mutable), FastAPI, un run que emite `run.created` por SSE. _(Acá entra la corrección #1.)_
 - **Día 2 — Tool Registry + primer solver:** el `classical_baseline` primero; **los tests de invariantes ya corriendo** (import-linter + mypy).
 - **Día 3 — QAOA real:** el `qubo_solver` con la **API actual** (`sampler=`, no `quantum_instance=`). _(Corrección #6.)_
-- **Día 4 — Verificación con la escalera:** el checker **genérico** + las restricciones del grid como datos; el **óptimo exacto (OR-Tools)** como ancla, el heurístico como baseline de ablación, **separados**; el **certificado firmado**. _(Correcciones #2, #3, #4, #7.)_
+- **Día 4 — Verificación con la escalera:** el checker **genérico** + las restricciones del grid como datos; el **óptimo exacto (OR-Tools)** como ancla, el heurístico como baseline de ablación, **separados**; el **certificado firmado**. _(Correcciones #2, #3, #4, #7.)_ _[S3 2026-07-30: «la escalera» → clases de verificador + AL (freeze §4).]_
 - **Día 5 — Gateway + agentes:** el **gateway como chokepoint** (identidad→authz→guardrails→verificación→procedencia); los agentes (planner, quantum, verification).
-- **Día 6 — Studio:** el run en vivo con SSE, el inspector de paso **con el badge de verificación** (el escalón de cada paso), el certificado, la ablación.
+- **Día 6 — Studio:** el run en vivo con SSE, el inspector de paso **con el badge de verificación** (el escalón de cada paso), el certificado, la ablación. _[S3 2026-07-30: badge = clase+AL por paso (freeze §4).]_
 - **Día 7 — kit del reto condicional C3 (TFIM/Trotter):** solo si el C1 está entregado completo (gate duro Δ9); si no, pulido adelantado.
 - **Día 8 — Pulido + demo:** datos pre-cargados, la narrativa, todo reproducible.
 

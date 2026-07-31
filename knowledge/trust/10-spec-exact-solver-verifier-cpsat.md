@@ -2,6 +2,7 @@
 
 **Ítem del plan (§4 Dylan / ficha A1):** Anclas duras — de decisión a diseño de adapter. Parte 1: el adapter rung 1 (verificación diferencial contra CP-SAT).
 **Fecha:** 2026-07-07 · **Estado:** **EJECUTADA fielmente (2026-07-24)** — `engine/src/blite/verification/exact_solver.py`: `map_optimality_verdict` (error≠fail, contradicción candidato-mejor-que-óptimo), determinismo `workers=1`/`random_seed=1`, ruptura de simetría `x0=0`, XOR linealizado, `verifier_params_digest`. Desviación consciente documentada en el código: siempre resuelve (el `Differential` congelado exige `status` real), en vez del paso-1 "energía mentida sin resolver" de §1.1. Los vectores G1–G6 viven como tests.
+**Rango (#108, 2026-07-30):** «diseño interno citado por código» — `scripts/gen_corpus_islanding.py` y `capabilities/solvers/.../qubo.py` la citan como criterio (formulación §1.5, determinismo §1.4, doble ancla §1.1); sin rango de spec de costura; promoción a spec = Fase 0 si hace falta.
 **Fuentes:** nota 03 §1.2 (forma `evidence` `differential`) y §1.4 (verdict tri-estado) · nota 04 §1.1 (CP-SAT como ancla estrella, diversidad) · `contract-freeze.md` §4 · anexo de canonicalización §5 (`claim_digest`) · docs OR-Tools CP-SAT (`CpSolverStatus`, parámetros de determinismo) · óptimos de Max-Cut calculados a mano · `CHIMERA-Harness-Metodologias.md` §4.4/§6 (ubicación del diferencial cuántico-clásico en escalón 5; verify Reto 1 → OR-Tools rung 1).
 
 ---
@@ -106,6 +107,18 @@ Casos negativos y de frontera derivados de los mismos grafos (verdict esperado):
 | presupuesto agotado en instancia grande | cualquiera                        | `FEASIBLE`, cota `B`    | **`inconclusive`** + `objective_bound=B` |
 
 ### 1.7 Forma del `evidence` (discriminante `method:"differential"`, nota 03 §1.2)
+
+> **[S3 · 2026-07-30] Drift declarado contra el código:** esta forma es el diseño
+> pre-freeze y se conserva como registro. Lo real: el discriminante
+> `method:"differential"` murió con la unión vieja — el predicate vigente es
+> **`formal_exact`** con el objeto **`differential` anidado**
+> (`{status, objective, reference_objective}`, enum real de CP-SAT en `:22`, e
+> `INFEASIBLE`/`MODEL_INVALID` = error de proceso que EXPLOTA al construir —
+> `engine/src/blite/verification/evidence.py:22-61`), más `proof` opcional (AL4,
+> §4-iii). El `subject` anidado tampoco existe: `run_id`/`step_id?`/`claim_digest`
+> van **PLANOS** en la `Attestation`, con binding a 4 digests
+> (`engine/src/blite/verification/attestation.py:67-89`). Los refinamientos que
+> este §4 pedía ratificar YA son código.
 
 ```python
 {

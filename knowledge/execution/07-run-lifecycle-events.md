@@ -18,6 +18,12 @@ para ilustrar orden de eventos — no corresponden a ningún dato real del siste
 
 ---
 
+> **[S3 · 2026-07-30] Drift breve:** las menciones a `Attestation.subject.step_id`
+> (§1.5, §6) usan la forma anidada muerta — los campos van PLANOS en la
+> `Attestation` (`step_id?` directo sobre el tipo,
+> `engine/src/blite/verification/attestation.py:67-89`). Ver la nota de drift
+> completa en `knowledge/trust/12` §1.3 (mismo residuo).
+
 ## 1 · Patrón / mecanismo
 
 ### 1.1 Tres vocabularios que deben componer, no colisionar

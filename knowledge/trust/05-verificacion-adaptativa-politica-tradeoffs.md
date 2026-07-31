@@ -34,6 +34,15 @@ Hoy "qué se verifica y cómo de estricto" estaría implícito en código — no
 
 **Diseño lite para el freeze** (sin OPA ni Cedar este mes — plan maestro §1.E.3):
 
+> **[S3 · 2026-07-30 · #103] Nota de vocabulario:** el YAML de abajo es el
+> **registro de la Policy 0.1.0 histórica** y habla `min_rung` — vocabulario
+> eliminado del contrato (freeze §4/§6; `engine/src/blite/verification/policy.py:9`
+> lo declara y el test `test_min_rung_vocabulary_is_dead` lo custodia). La Policy
+> vigente es la **0.2.0** con la matriz clase×AL×criticidad
+> (`distributions/chimera/policies/verification-default.yaml`, freeze §6 [S-F] T1).
+> El YAML se conserva tal cual como registro; no se reescribe. Lo mismo aplica a la
+> tabla de «rung mínimo» de §1.1 y a la fila `side_effects → min_rung` de §2.
+
 ```yaml
 # VerificationPolicy — dato declarativo versionado (distributions/chimera/), NO código
 policy_id: chimera-default
@@ -58,6 +67,12 @@ Semántica de `on_inconclusive` (cuidado con Inv-E): `mark` = el paso queda no-a
 La política es **dato con procedencia**: `policy_id` + digest se estampan en el evento `verification.completed` — se puede auditar qué política estaba vigente cuando se verificó cada paso (sin esto, el certificado dice "pasó" sin decir "pasó _qué exigencia_").
 
 ### 1.3 Los trade-offs que el contrato debe soportar (aunque el flywheel sea Fase 2)
+
+> **[S3 · 2026-07-30 · #116] Huérfano rescatado:** los KPIs de este §1.3
+> (over-refusal, `false_reject_proxy`) son dato de entrada del ítem
+> **corpus-runner/eval + KPI over-refusal** del backlog (#116, dominio O temprano —
+> `docs/mejorado/04-consolidacion.md`); el evento portador ya existe en el contrato
+> (`run.metrics.recorded`, freeze §3/§6).
 
 1. **Goodhart / reward hacking** (Skalse et al. 2022 — imposible un proxy "unhackable"; Goodhart's Law in RL, ICLR 2024; Inference-Time Reward Hacking, arXiv:2506.19248): un verificador es un proxy; optimizar contra él enseña a engañarlo. Mitigación estructural que el contrato ya da: **anclas duras** (la ejecución y el solver no negocian) + **diversidad** (N attestations independientes por claim, nota 04) + **jamás entrenar contra un verificador único** (regla del flywheel, Fase 2). Nada que cambiar en el contrato: registrar `verifier_id` + `method` por attestation (nota 03) es lo que permite auditar la diversidad después.
 2. **Model collapse** (Shumailov et al., Nature 2024; Escaping Model Collapse via Synthetic Data Verification, arXiv:2510.16657): la verificación como filtro del flywheel **funciona** pero el sistema converge a la información del verificador — un filtro demasiado estricto colapsa diversidad por el mismo mecanismo. Consecuencia contractual hoy: las trayectorias verificadas deben ser **consultables por attestation** (el event log + attestations por paso ya lo dan); la preservación de diversidad es política del flywheel Fase 2, no contrato de hoy.

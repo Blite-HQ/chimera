@@ -4,6 +4,12 @@
 **Fecha:** 2026-07-14 · **Estado:** **PARCIALMENTE EJECUTADA (2026-07-24)** — existen `compose.yaml` real (postgres+api+worker+studio, secretos `*_FILE`) y `docker/{api,studio}.Dockerfile`; es un subconjunto del diseño §1.3 (sin `ollama` [ya archivado por el addendum], sin red `internal: true`, sin volumen `replay_fixtures`, sin migración one-shot I6, sin `MODEL_ROUTER_BACKEND=replay`). La ruta Fargate/ECR sigue siendo diseño. **Marca de saneamiento (2026-07-30, #109) — split por secciones:** el diseño técnico (Dockerfiles multi-stage, compose dual, secretos `*_FILE`, ruta Fargate) sigue **VIGENTE** como diseño; §1.5 (calendario de dry-runs y «~sáb 1 ago — evento») es **HISTÓRICO** — el evento terminó.
 **Fuentes:** verificado en vivo 2026-07-14: guía oficial de uv para Docker (docs.astral.sh — multi-stage, cache mounts, `--no-install-project`, `UV_COMPILE_BYTECODE`) · AWS ECS Developer Guide, _Task definition differences for Fargate_ (tabla CPU/memoria válida; lista de parámetros no válidos que **incluye `gpu`**) y _Task definitions for GPU workloads_ (GPU solo con container instances EC2) · Docker Hub `ollama/ollama` (imagen, puerto 11434, volumen `/root/.ollama`) · vite.dev _Static Deploy_ (build estático a `dist/`) · repos `astral-sh/uv` (MIT/Apache-2.0 dual) y `ollama/ollama` (MIT) · precio Fargate us-east-1 vía fuentes secundarias contrastadas (la página oficial no expone la tabla al fetch — número marcado como aproximado). Internas: `docs/deployment.md` (Modo A/B/C), `docs/invariants.md`, `knowledge/infra/01` y `02`, `knowledge/execution/05` (frontera del model router).
 
+> **[S3 2026-07-30 — reconciliación N12]** Toda aparición de `MODEL_ROUTER_BACKEND` en este
+> doc (el header de estado de arriba y los YAML de ejemplo, que se conservan sin reescribir
+> como registro de diseño) se lee como **`CHIMERA_MODEL_BACKEND`** — el código jamás usó el
+> nombre viejo (`api/src/chimera_api/runs.py`); la nota de reconciliación normativa vive en
+> el freeze §15.7 **[MEJORADO N12]**.
+
 ---
 
 ## 1 · Patrón / mecanismo

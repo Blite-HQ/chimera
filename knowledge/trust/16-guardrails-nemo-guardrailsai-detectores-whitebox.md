@@ -8,6 +8,15 @@
 
 ## 1 · Patrón / mecanismo
 
+> **[S3 · 2026-07-30] Nota de supervivencia/drift:** el tipo `GuardrailSignal` con
+> campo `name` que esta nota especifica no existe con ese nombre — lo real es
+> **`Signal`** (freeze §5) con **`Signal.kind`**, que valida exactamente la
+> convención `{etapa}.{mecanismo}` que ESTA nota inventó
+> (`engine/src/blite/guardrails/signal.py:26-44`, validador incluido). La
+> convención sobrevivió; el nombre del tipo y del campo migraron. La numeración
+> «rung 5/6» del cuerpo murió con la escalera (freeze §4/§5) — `Signal` es
+> no-decisional por tipo (`non_decisional: Literal[True]`), sin número.
+
 ### 1.1 NeMo Guardrails — la taxonomía de 5 rails y su vocabulario real
 
 Repo renombrado en vivo de `NVIDIA/NeMo-Guardrails` a **`NVIDIA-NeMo/Guardrails`** (redirect de GitHub silencioso — citar el nuevo org de acá en adelante). Apache-2.0 confirmado (`LICENSE-Apache-2.0.txt`), v0.23.0 (2026-07-01), 6.6k stars, 417 dependientes, mantenimiento activo.
@@ -45,6 +54,12 @@ Ninguna de las dos librerías se integra como dependencia (§2). Lo que se porta
 **Forma de un futuro registro de guardrail-adapters** (Fase 2, sin comprometerse este mes): tomar del Guardrails AI el patrón decorador-de-auto-registro por nombre + metadata por entrada (tag de **infraestructura** rule-based/local-ML/remote-LLM del Hub — operacionalmente importante para saber cuáles son genuinamente self-hosteables — y tag de **tipo de contenido**); tomar de NeMo la **etapa** declarada (una de las 5, no el concepto de Guardrails AI que no tiene noción de etapa, solo wrapping de input/output).
 
 **La divergencia crítica — lo que NO se copia:** ambos frameworks funden detección con autoridad de decisión dentro del propio primitivo (NeMo: un rail bloquea/reescribe unilateralmente; Guardrails AI: `on_fail` deja que un validador suprima/altere el output vía `REFRAIN`/`FILTER`/`EXCEPTION`). Es exactamente la fusión que el tipo disjunto `GuardrailSignal`/`Attestation` existe para impedir (D18/D21/Inv-E). Un futuro registro de Chimera declara adapters que **solo producen** `{name, flagged, confidence, rung, detail}` — nunca un campo `on_fail`-equivalente que le dé al adapter autoridad de gatear egreso. Esa autoridad, si existe, vive río abajo en `VerificationPolicy`/authz — nunca dentro del adapter de detección. Es un rechazo informado de una decisión de diseño de ambos frameworks fuente, no un descuido.
+
+> **[S3 · 2026-07-30 · #116] Huérfanos rescatados (§1.3–1.5):** el registro de
+> guardrail-adapters (§1.3) + la tabla de detectores con pick **HHEM-2.1-Open**
+> (AlignScore como fallback, §1.4) entraron al backlog por #116 — dominio C, ítem
+> «registro de guardrail-adapters + pick HHEM»; los SEPs white-box (§1.5) quedaron
+> como **KB curada + ítem O tardío** (#116, `docs/mejorado/04-consolidacion.md`).
 
 ### 1.4 Tabla comparativa de detectores — decisión lista para Fase 2
 

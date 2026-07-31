@@ -50,7 +50,10 @@ hilo (los eventos ya existen — D6/A6).
 ## Superficies de plataforma vs dominio (decidido)
 
 - **De plataforma (genéricas)**: timeline, plan/checklist, certificado, procedencia,
-  escalera de verificación, artifacts, chat.
+  escalera de verificación _[S3 2026-07-30: la escalera 1-7 quedó supersedida — hoy
+  clase de verificador + AL0-AL4 (freeze §4; mapa en `convergencia-diseno-v32.md`
+  §2.1); la superficie sigue vigente, cambia el vocabulario del badge]_, artifacts,
+  chat.
 - **De dominio (lentes)**: el shell declara un **slot de lente de dominio** que se
   resuelve por **tipo de claim/capability** contra un registry de lentes — el
   visualizador de red eléctrica (grafo/mapa) es la lente del caso demo, no un feature

@@ -43,12 +43,14 @@ prohibición es la parte que hace el diseño auditable, no solo el flujo feliz).
      estructural.
 3. **Guardrails (pre)** — validaciones de política que NO son autorización (INV-3: guardrails no decide
    egreso, no importa `authz`/`protocols`).
-   - _Puede:_ producir `GuardrailSignal`s (trust/04) que informen rung 5/6 (consenso/detección); rechazar
+   - _Puede:_ producir `Signal`s no-decisionales (antes `GuardrailSignal`s, trust/04; la numeración
+     «rung 5/6» desapareció con la escalera — freeze §5) que informen consenso/detección; rechazar
      una solicitud por política de contenido/forma, ANTES de gastar el costo de despachar.
    - _NO puede:_ producir una `Attestation` (eso requiere `AnchorKind`, que guardrails no tiene por
      construcción — trust/03 §1.1) ni tocar la decisión de authz ya tomada.
-4. **Resolución de `VerificationPolicy`** — qué rung mínimo exige este tipo de claim (consume
-   `knowledge/trust/05`), calculado ANTES de despachar, no después.
+4. **Resolución de `VerificationPolicy`** — qué exigencia mínima pide este tipo de claim ([S3]: hoy
+   la matriz clase×AL×criticidad de la Policy 0.2.0, freeze §6; consume `knowledge/trust/05`),
+   calculado ANTES de despachar, no después.
    - _Puede:_ leer `side_effects`/`interaction` del manifest para elegir la política aplicable.
    - _NO puede:_ ejecutar la verificación misma (eso es la etapa 6) — solo decide QUÉ exigencia aplica.
 5. **Despacho a capability** (vía Registry — nota 04) — `blite.runtime` ejecuta.

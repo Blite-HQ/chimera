@@ -1,7 +1,8 @@
 # Nota 12 — Anatomía del harness (HumanEval/SWE-bench) → checklist del `ExecutionVerifier` + costura al puerto Sandbox (A7)
 
 **Ítem del plan (§4 Dylan / ficha A1):** Anclas duras — de decisión a diseño de adapter. Parte 3: el adapter rung 2 (ejecución/factibilidad) y su costura Fase 2.
-**Fecha:** 2026-07-07 · **Estado:** **EJECUTADA en su parte rung-2 (2026-07-24)** — `engine/src/blite/verification/execution.py`: checks por isla (`island_connectivity`, `island_has_source`, `powerflow_converged`, `voltage_limits`, `line_loading`, `power_balance`), no-convergencia ⇒ `inconclusive` (no `fail`), prefijo `island-{k}`. La costura §1.4 (`ExecutionHarness`/Sandbox microVM) sigue siendo Fase 2, sin tocar.
+**Fecha:** 2026-07-07 · **Estado:** **EJECUTADA en su parte rung-2 (2026-07-24)** — `engine/src/blite/verification/execution.py`: checks por isla (`island_connectivity`, `island_has_source`, `powerflow_converged`, `voltage_limits`, `line_loading`, `power_balance`), no-convergencia ⇒ `inconclusive` (no `fail`), prefijo `island-{k}`. La costura §1.4 (`ExecutionHarness`/Sandbox microVM) sigue sin implementar — entró al backlog por #116 (ver nota en §1.4).
+**Rango (#108, 2026-07-30):** «diseño interno citado por código» — `engine/src/blite/verification/execution.py` la cita como criterio («Nota 12 §1.3: correr de verdad y observar»); sin rango de spec de costura; promoción a spec = Fase 0 si hace falta.
 **Fuentes:** nota 03 §1.2 (forma `evidence` `execution`) · nota 04 §1.1 (pandapower rung 2, "correr y observar") y §2/§4 (E2B/Firecracker como forma, microVM Fase 2) · `contract-freeze.md` §4 y §9 (verificación POR ISLA) · anexo de canonicalización §2 (`C()` para `input_digest`) · anatomía de HumanEval (OpenAI) y SWE-bench (Princeton) · `docs/invariants.md` AX3 · `CHIMERA-Harness-Metodologias.md` (§1 def. de harness, §4–5 pool + árbol PEV, §6 mapeo Reto 1).
 
 ---
@@ -41,7 +42,22 @@ Para el islanding de CHIMERA, los "tests unitarios" son los chequeos de factibil
 - [ ] **Granularidad POR ISLA**: el freeze §9 exige `verification` **por isla** (validado por el spike). La evidencia de ejecución es por-isla: una `Attestation` por isla (`subject.step_id = island_id`), de modo que el Studio ponga un badge por isla (alinea freeze §9 + PRM por-paso de nota 03 §1.3).
 - [ ] **Reglas como datos**: los límites/tolerancias vienen de `knowledge/islanding/` (corrección #4), no hardcodeados — el `ExecutionVerifier` es genérico; los umbrales eléctricos son conocimiento versionado (input de los chequeos, cruza con nota 11).
 
+> **[S3 · 2026-07-30] Drift declarado contra el código (aplica al ítem
+> «granularidad POR ISLA» de arriba y al §4.2):** la implementación real NO emite
+> una `Attestation` por isla con `subject.step_id = island_id` — el `subject`
+> anidado no existe (los campos `run_id`/`step_id?`/`claim_digest` van PLANOS en la
+> `Attestation`, `engine/src/blite/verification/attestation.py:67-89`). Lo real:
+> **una** `Attestation` de clase `execution` cuyos checks van prefijados por isla
+> (`island-{k}:…`, `engine/src/blite/verification/execution.py:152-207`) y cuyo
+> `scope` es el del claim (`execution.py:227`). La granularidad por isla vive en
+> los checks nombrados, no en attestations separadas; el badge por isla del Studio
+> se deriva del prefijo.
+
 ### 1.4 Costura al puerto Sandbox (semilla de la ficha A7)
+
+> **[S3 · 2026-07-30 · #116] Huérfano rescatado:** el puerto `ExecutionHarness`
+> (prepare/run/collect/dispose) entró al backlog por #116 — dominio C, ítem «puerto
+> `ExecutionHarness` + guarda PASS_TO_PASS» (`docs/mejorado/04-consolidacion.md`).
 
 La forma tomada de E2B/Firecracker → un Protocol `ExecutionHarness` de ~4 métodos, con **CERO microVM este mes** (nota 04 §2/§4; plan maestro §1.E.3: el sandbox no se integra este mes):
 

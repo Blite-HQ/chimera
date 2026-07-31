@@ -1,7 +1,7 @@
 # Nota 18 — UX de la confianza: specs de `RunTimeline`, `StepInspector`, `CertificateView`, `ProvenanceExplorer`
 
 **Ítem del backlog (ficha A5):** Langfuse (trace jerárquico + jump-to-detail) → `RunTimeline`/`StepInspector`; Temporal UI (event history) → `ProvenanceExplorer`; visor Rekor/GitHub attestations → `CertificateView`. Spec corta por componente sobre los payloads de la nota 07 §1.3.
-**Fecha:** 2026-07-07 · **Estado:** **EJECUTADA (2026-07-24)** — `apps/studio/src/views/` (RunTimeline, StepInspector, CertificateView, ProvenanceExplorer, AblationPanel) + librería extraída `packages/assurance-ui`.
+**Fecha:** 2026-07-07 · **Estado:** **EJECUTADA (2026-07-24)** — `apps/studio/src/views/` (RunTimeline, StepInspector, CertificateView, ProvenanceExplorer, AblationPanel) + librería extraída `packages/assurance-ui`. **[S3 2026-07-30 — nota de vocabulario:** esta nota arrastra `rung`/`aggregateRung` en sus interfaces de ejemplo y en dos menciones de badge (§2.2 y «verdict+rung») — vocabulario supersedido por clase+AL (freeze §4; el ajuste ya está inline en la línea del `aggregateRung`); el código real migró (`assurance.ts`, `AssuranceScale`) y `docs/specs/superficie-visual.md` §6 ya declara este drift. Los ejemplos quedan como registro histórico.**]**
 **Fuentes:** Langfuse (`langfuse.com/docs`, MIT salvo `ee/`, verificado en vivo 2026-07-07) · Temporal UI (`docs.temporal.io/web-ui`, `github.com/temporalio/ui`, MIT, verificado en vivo) · Rekor (`sigstore/rekor`, Apache-2.0) + GitHub artifact attestations (`docs.github.com`, `gh attestation verify`) — verificados en vivo · nota 07 §1.3 (contrato de payloads por vista) · nota 02 (forma del `TrustCertificate`) · nota 03/04/05 (escalera, anclas, política)
 
 ---

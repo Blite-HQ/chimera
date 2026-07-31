@@ -38,7 +38,7 @@
     "predicate": {
       "run_id": "8f2c...",
       "actor": { "id": "user:dylan", "kind": "human", "domain_id": "d-1" },
-      "aggregate_rung": 2, // el escalón MÁS DÉBIL del camino crítico (nota 03)
+      "titular_level": "AL3", // [S3 #103] antes `aggregate_rung` — el nivel MÁS DÉBIL (mínimo) del camino crítico (nota 03)
       "unanchored_steps": 0,
       "attestations": [/* Attestation[] con rung/verdict/evidence (nota 03) */],
       "policy_id": "chimera-default@0.1.0", // qué exigencia estaba vigente (nota 05)
@@ -84,10 +84,10 @@ Implementar la forma (no integrar las libs) elimina todo riesgo de licencia: los
 Contra la semilla TS §6 (`TrustCertificate` plano: run_id, actor, provenance_hash, attestations, issued_at):
 
 1. **`TrustCertificate`** (Pydantic) — CAMBIA de objeto plano a **Statement + Envelope**:
-   - `statement`: `{_type, subject[{name, digest}], predicate_type, predicate}` con predicate = `{run_id, actor, aggregate_rung, unanchored_steps, attestations[], policy_id, issued_at}`.
+   - `statement`: `{_type, subject[{name, digest}], predicate_type, predicate}` con predicate = `{run_id, actor, titular_level ([S3 #103] antes aggregate_rung), unanchored_steps, attestations[], policy_id, issued_at}`.
    - `envelope`: `{payload_type, payload_b64, signatures[{keyid, sig}]}`.
-   - Campos nuevos respecto de la semilla: **`aggregate_rung`**, **`unanchored_steps`** (nota 03), **`policy_id`** (nota 05), **firma** (la semilla no firmaba — "certificado firmado" es la corrección #7 de Arquitectura-Python).
-2. **Tabla `trust_certificates`** (semilla §5): `+ aggregate_rung SMALLINT NOT NULL`, `+ certificate JSONB NOT NULL` (el envelope completo), `+ keyid TEXT`. Sigue siendo proyección (regenerable del log + attestations).
+   - Campos nuevos respecto de la semilla: **`titular_level`** ([S3 #103] antes `aggregate_rung`), **`unanchored_steps`** (nota 03), **`policy_id`** (nota 05), **firma** (la semilla no firmaba — "certificado firmado" es la corrección #7 de Arquitectura-Python).
+2. **Tabla `trust_certificates`** (semilla §5): `+ titular_level NOT NULL` ([S3 #103] antes `aggregate_rung SMALLINT` — hoy el nivel es `AL0–AL4`, no un entero de escalera), `+ certificate JSONB NOT NULL` (el envelope completo), `+ keyid TEXT`. Sigue siendo proyección (regenerable del log + attestations).
 3. **`provenance_hash`**: semántica congelada = SHA-256 del stream canónico del run; Fase 2 lo sustituye por el head del hash-chain sin cambiar la forma.
 4. **Emisión**: al `run.completed`, el módulo `certificate` lee stream + attestations y emite; la emisión misma queda como evento (PR1). El módulo `certificate` ya existe como stub (`engine/src/blite/certificate/`).
 5. **Studio** (nota 07): la vista de certificado renderiza el Statement legible (inspiración visor Rekor/GitHub attestations) — necesita el JSON del envelope tal cual por el API.

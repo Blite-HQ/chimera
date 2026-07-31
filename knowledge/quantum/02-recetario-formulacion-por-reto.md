@@ -168,6 +168,13 @@ Forma de Havlíček et al. (ya citado en KB-fuentes): capa H + fases e^(i·φ(x)
 
 ## 3 · RETO 3 — Simulación de materiales: de la molécula al VQE
 
+> **[SUPERSEDIDA — S-E 2026-07-18; marcada S3 2026-07-30]** Este título y las
+> subsecciones §3.1–§3.4 recetan química molecular/VQE: vocabulario MUERTO como
+> receta C3 (el Challenge 3 oficial es TFIM+Trotter). La receta vigente vive en
+> **`knowledge/quantum/11-receta-c3-tfim-trotter.md`** (hoy stub con lo normativo
+> decidido; el contenido completo lo escribe G1). Lo de abajo queda íntegro como
+> conocimiento de química (Fase 2 / referencia) — no implementar de aquí.
+>
 > **Nota de drift (2026-07-18, contra el enunciado oficial de la Quantathon CR 2026):** esta
 > sección se escribió ANTES de los enunciados. El Challenge 3 oficial NO es química
 > molecular/VQE: es **TFIM (Ising de campo transversal) con Trotterización** — circuito de

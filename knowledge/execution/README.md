@@ -3,8 +3,8 @@
 > **Estado: VIGENTE-CON-DRIFT (2026-07-30, #109).** La carpeta tiene **10 notas** (01–09 + la 10,
 > posterior al cierre S-E); las menciones a «las 7 notas» databan de cuando solo existían 01–07 y
 > quedan corregidas abajo. La sección «Cómo revisar esto con Dylan» es logística de una sesión ya
-> ocurrida (marcada HISTÓRICO inline). Drift restante declarado: vocabulario «rung» residual,
-> pendiente de la traducción a clase decisoria + AL (decisión #103).
+> ocurrida (marcada HISTÓRICO inline). El vocabulario «rung» residual quedó traducido a clase
+> decisoria + AL (decisión #103, [S3] 2026-07-30) — sin drift de vocabulario pendiente declarado.
 
 Notas de investigación del plano de ejecución, sesión inicial (2026-07-10, revisión 2026-07-10). Cada
 nota tiene los 4 campos obligatorios (patrón/mecanismo · decisión `integrar|portar|inspirar|descartar` ·
@@ -113,7 +113,8 @@ en orden de bloqueo:
 3. **Nota 04, §5** — ¿el registry debería emitir `registry.loaded`? y la política de manejo de un entry
    point que falla al cargar — ambas tocan el vocabulario de eventos que él posee.
 4. **Nota 03, §5** — el mecanismo de idempotencia para pasos `irreversible-external` depende de decisiones
-   que tocan `VerificationPolicy` (trust/05) y potencialmente escalamiento a rung 7 (trust/03) — su plano.
+   que tocan `VerificationPolicy` (trust/05) y potencialmente escalamiento a revisión humana (clase
+   `human_expert`, freeze §4 — [S3] antes «rung 7», trust/03) — su plano.
 5. **Notas 01, 02, 06** — mayormente autocontenidas del lado de ejecución; revisar por completitud, no por
    bloqueo.
 6. **Nota 10 (nueva, 2026-07-21, post-cierre S-E)** — ingesta de conocimiento (RAG/CAG) para el agente.

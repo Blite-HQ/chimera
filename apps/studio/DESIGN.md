@@ -1,5 +1,10 @@
 # Chimera Studio — Sistema de diseño
 
+> **Estado: VIGENTE (2026-07-30).** §4 quedó reconciliado con el código real
+> [S3 2026-07-30]: el glifo `AssuranceScale` es TRES barras / CUATRO estados por la
+> directriz #99.1 (`packages/assurance-ui/src/AssuranceScale.tsx`, `BAR_COUNT = 3`);
+> el texto de cinco barras se conserva abajo como registro supersedido.
+>
 > **v3 (2026-07-08, sesión F1 + feedback de Dylan + investigación profunda de la
 > landing).** Este documento es la fuente de
 > verdad visual del Studio. Toda sesión posterior (F2–F7) toma decisiones de color,
@@ -158,10 +163,21 @@ Sin clase `"model"` **por construcción** (INV-2/PR2): lo probabilístico inform
 (Signal), jamás verifica. **Mayor AL = más fuerza.** El nivel **titular** de un run es
 el **mínimo** del camino crítico — jamás promedio (freeze §7).
 
-- **`<AssuranceScale>`**: cinco barras alineadas por la base, altura ascendente
-  izquierda→derecha (AL4 la más alta). La barra del nivel alcanzado se pinta con el
-  color del veredicto (nivel status); las demás en tinta al 25%. `role="img"` +
-  `aria-label="nivel AL{n} de AL4"`. Tamaños `sm` (badges) y `md`.
+> **Reobra #99.1 (2026-07-29, directriz Dylan; marca [S3 2026-07-30]):** la variante
+> de cinco barras del glifo quedó SUPERSEDIDA — el código real renderiza **TRES
+> barras / CUATRO estados** de confianza, con el supersede estampado en el propio
+> componente (`packages/assurance-ui/src/AssuranceScale.tsx`, `BAR_COUNT = 3`).
+
+- **`<AssuranceScale>`**: ~~cinco barras alineadas por la base, altura ascendente
+  izquierda→derecha (AL4 la más alta)~~ _[supersedido #99.1]_ **tres barras** alineadas
+  por la base, altura ascendente, y **cuatro estados** de confianza — nula (AL0:
+  ninguna barra coloreada), poca (AL1: la baja), media (AL2: la intermedia), alta
+  (AL3/AL4: la más alta; la distinción exacta vive en el texto del badge). La barra
+  alcanzada se pinta con el color del veredicto (nivel status); las demás en tinta al
+  25%. `role="img"` + aria-label real emitido:
+  `confianza {nula|poca|media|alta} (AL{n} de AL4)` (`AssuranceScale.tsx:70` —
+  corrige el `"nivel AL{n} de AL4"` que documentaba esta línea). Tamaños `sm`
+  (badges) y `md`.
 - **`<AssuranceBadge>`**: composición canónica glifo + `{clase} · AL{n}` (nivel en
   mono — trust/18 §2.3: clase+AL como badge, jamás como titular); `detail` reemplaza
   la etiqueta de clase cuando el contexto aporta otra (p. ej. `verifierId`). Es la
@@ -260,7 +276,10 @@ completa en F2/F7).
   fuerza) + `AssuranceBadge` (`{clase} · AL{n}`), módulo único `assurance.ts`. El
   logomark conserva la geometría F1. El fixture del certificado lo emite ahora
   `scripts/gen-example-bundle.py` (bundle auto-validado 7/7; supersede a
-  `gen-example-trust-certificate.py`).
+  `gen-example-trust-certificate.py`). _[S3 2026-07-30: las «5 barras» de esta
+  entrada quedaron a su vez supersedidas por #99.1 — TRES barras / CUATRO estados
+  (`packages/assurance-ui/src/AssuranceScale.tsx`, `BAR_COUNT = 3`); la entrada se
+  conserva como registro histórico.]_
 
 - **2026-07-08 (v3):** investigación profunda del código de la landing → §3b (escalas,
   ritmo, controles, elevación). Se vendorea el Button de la landing (alturas 32/40/48)

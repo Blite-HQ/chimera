@@ -172,11 +172,18 @@ del Studio fija que `toCreateRunBody` produce exactamente ese body). Misma conve
 
 ## Discrepancia de vocabulario a flaggear (costura E↔D) — bloqueante para D3, no para esta spec
 
+> **[S3 2026-07-30]** Discrepancia RESUELTA — el listener real ya está alineado:
+> `KNOWN_RUN_EVENT_TYPES` (`apps/studio/src/gatewayClient.ts`) escucha
+> `capability.job.submitted` (fix #97 + D3/D6; el array además creció con `run.step.*`,
+> `plan.*` y `replay.divergence`). Toda mención de `capability.job.invoked` abajo es el
+> registro del nombre muerto: el nombre real es `capability.job.submitted` — el wire nunca
+> emitió `invoked`. La letra no se reescribe — mandan esta marca y las inline.
+
 El Studio **hoy** (`apps/studio/src/gatewayClient.ts`, constante `KNOWN_RUN_EVENT_TYPES`)
 escucha estos tipos de evento del SSE real:
 
 ```
-'run.started', 'capability.job.invoked', 'capability.job.completed',
+'run.started', 'capability.job.invoked', 'capability.job.completed',   ← [S3 2026-07-30: el nombre real es capability.job.submitted — el wire nunca emitió invoked]
 'verification.completed', 'claim.emitted', 'run.completed', 'run.failed', 'run.cancelled'
 ```
 
@@ -189,11 +196,15 @@ El freeze fija otro nombre para el mismo evento de provenance:pre:
   Studio ya escucha — ese nombre está correcto.
 
 **Pin canónico de esta spec = freeze §3/§14: `capability.job.submitted` + `claim.emitted`.**
-El único nombre desalineado en el Studio es `capability.job.invoked` (debería decir
+El único nombre desalineado en el Studio es `capability.job.invoked` **[S3 2026-07-30: el
+nombre real es `capability.job.submitted` — el wire nunca emitió `invoked`; el listener ya
+está corregido]** (debería decir
 `capability.job.submitted`); el resto del array de `KNOWN_RUN_EVENT_TYPES` ya está correcto.
 
 **Impacto concreto:** mientras `gatewayClient.ts` registre un listener para
-`capability.job.invoked`, el SSE real (que el harness emitirá como `capability.job.submitted`
+`capability.job.invoked` **[S3 2026-07-30: el nombre real es `capability.job.submitted` —
+el wire nunca emitió `invoked`; este escenario ya no aplica]**, el SSE real (que el harness
+emitirá como `capability.job.submitted`
 por el pin de arriba) nunca dispara ESE listener — el evento se pierde silenciosamente para ese
 tipo puntual (el resto del stream sigue funcionando, incluidos `claim.emitted` y
 `verification.completed`). Bajo fixture/demo mode no hay impacto: los fixtures no pasan por

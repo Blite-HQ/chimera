@@ -7,8 +7,12 @@ de 8 etapas, fail-closed) · §3 (vocabulario de eventos del run) · §14 (catá
 > Materializa la ceremonia de supersede A1 (decisión #66, `docs/mvp/decisiones.md`): el
 > freeze §13 congeló "pipeline fijo Fase 1 — NO ReAct, NO plan-execute, NO jerárquico"
 > siguiendo la recomendación de POC de `knowledge/execution/02-runtime-agent-loop.md` §11;
-> el mandato v2 (decisión #61, "Chimera genera, no solo verifica") lo requiere. **PENDIENTE-
-> Steven** (es su plano, §13/§8): esta spec registra el diseño con causa (regla 3 del
+> el mandato v2 (decisión #61, "Chimera genera, no solo verifica") lo requiere. **[S3
+> 2026-07-30: era PENDIENTE-Steven — gate por persona muerto por #94; el supersede A1 se
+> EJECUTÓ: `engine/src/blite/runtime/loop.py` corre el loop agéntico (`execute_run` con
+> seam `Proposer`, `max_turns`/`budget`) y Planeado cerró con #100 (misión viva + proposer
+> real cableado, `docs/mvp/decisiones.md`); la condición «no se toca hasta su ratificación»
+> de abajo es histórica]** (es su plano, §13/§8): esta spec registra el diseño con causa (regla 3 del
 > freeze) — `engine/src/blite/runtime/loop.py` no se toca hasta su ratificación; si no
 > ratifica, la sesión de implementación A avanza igual sobre este contrato (regla del plan,
 > `docs/archivo/planeado/05-plan-paralelo.md`). Cita sin repetir:
@@ -64,7 +68,11 @@ loop corta en el PRIMERO que se agote. Agotar `max_turns` o `budget` ⇒ termina
 `loop.py`) — jamás `done` implícito. `error_kind` ya es `str` libre (freeze §3): `"exhausted"`
 es un valor nuevo dentro de un tipo ya abierto, no una supersesión. Los campos
 `max_turns`/`budget` en `run.created` SÍ extienden la forma exacta que §3 fija hoy —
-**PENDIENTE-Steven (supersesión aditiva, misma ceremonia #66)**, mismo patrón ya usado en
+**[S3 2026-07-30: era PENDIENTE-Steven (supersesión aditiva, misma ceremonia #66) — sin
+gate por persona (#94); supersesión EJECUTADA: implementada en
+`engine/src/blite/runtime/loop.py` (firma de `execute_run` + payload de `run.created` +
+`EXHAUSTED_ERROR_KIND`) y portada al freeze §3 (marca «(c) Ceremonia #66»,
+`docs/contract-freeze.md`)]**, mismo patrón ya usado en
 decisión #64 para vistas SSE nuevas.
 
 **4 · Sub-runs elegidos por el agente.** El set hardcodeado de §13
@@ -79,7 +87,9 @@ fail-closed de `policy_digest`. **Gap contra el freeze YA vigente (frontera Dyla
 supersesión):** `ClaimEmittedPayload` (`engine/src/blite/verification/claim.py`) hoy declara
 `sub_run_provenance_hash` pero NO `sub_run_id` — §13 regla 2 ya exige ambos textualmente (el
 hash encadena, el id correlaciona); es un campo faltante contra un contrato ya congelado, no
-una decisión nueva. Seed abajo.
+una decisión nueva. Seed abajo. **[S3 2026-07-30 — D-N2: CERRADO.** El campo existe:
+`claim.py:59` declara `sub_run_id` citando esta spec como origen; la fila «PENDIENTE (campo a
+añadir)» de la tabla de interfaces quedó atrás del código.**]**
 
 **5 · Replay por digest de cada efecto.** Extiende (no reemplaza) la doctrina `replay` de
 §15.7 (`ModelPort`, `REPLAY_MISS_ERROR_KIND`, prefijo `blite/model-replay/v1`): un MISS (sin
@@ -120,22 +130,39 @@ verification, status}]}`; `status ∈ {pending, running, ok, failed}` (conjunto 
   misma disciplina que `RunStep.status`). Módulo propuesto: `blite.runtime.plan`
   (`PlanItem`, `PlanCreatedPayload`) — mismo home conceptual que `RunStep` en
   `runtime/loop.py`.
-- **`plan.item_updated`** ↔ `●PlanItemUpdated` (**nuevo en catálogo §14 — PENDIENTE-Steven,
-  misma ceremonia #66**). Payload: `{plan_id, run_id, item_id, status, cause?}`. Módulo:
+- **`plan.item_updated`** ↔ `●PlanItemUpdated` (**nuevo en catálogo §14 — [S3 2026-07-30:
+  era PENDIENTE-Steven, sin gate por persona (#94); implementado en
+  `engine/src/blite/runtime/plan.py` (`PlanItemUpdatedPayload`), emitido por `loop.py` y
+  absorbido por el freeze §14 (marca [MEJORADO #102])], misma ceremonia #66**). Payload:
+  `{plan_id, run_id, item_id, status, cause?}`. Módulo:
   `blite.runtime.plan` (`PlanItemUpdatedPayload`).
-- **`replay.divergence`** ↔ `●ReplayDivergenceDetected` (**nuevo en catálogo §14 —
-  PENDIENTE-Steven**). Payload: `{run_id, effect_kind: "model_call"|"capability_job",
+- **`replay.divergence`** ↔ `●ReplayDivergenceDetected` (**nuevo en catálogo §14 — [S3
+  2026-07-30: era PENDIENTE-Steven, sin gate por persona (#94); implementado en
+  `engine/src/blite/runtime/replay.py` (`ReplayDivergencePayload`, `EffectKind`) y
+  absorbido por el freeze §14 (marca [MEJORADO #102]); el Studio ya lo escucha
+  (`KNOWN_RUN_EVENT_TYPES`)]**). Payload: `{run_id, effect_kind: "model_call"|"capability_job",
 request_digest, expected_response_digest, actual_response_digest, step_id?}`. Módulo:
   `blite.runtime.replay` (`ReplayDivergencePayload`, `EffectKind`).
-- **`approval.requested`** ↔ `●ApprovalRequested` (**nuevo en catálogo §14 —
-  PENDIENTE-Steven**). Payload: `{run_id, approval_id, json_schema, prompt, step_id?}`.
+- **`approval.requested`** ↔ `●ApprovalRequested` (**nuevo en catálogo §14 — [S3
+  2026-07-30: era PENDIENTE-Steven, sin gate por persona (#94); forma implementada en
+  `engine/src/blite/gateway/approval.py` (`ApprovalRequestedPayload`) y absorbida por el
+  freeze §14 (marca [MEJORADO #102]); el wiring del Stage emisor sigue ABIERTO — frontera
+  declarada en el docstring de ese módulo, ya sin dueño asignado]**). Payload:
+  `{run_id, approval_id, json_schema, prompt, step_id?}`.
   Módulo: `blite.gateway.approval` (mismo home conceptual que `OverridePayload`, §10 — el
   Stage que la abre emite su propio evento, INV-4).
-- **`approval.responded`** ↔ `●ApprovalResponded` (**nuevo en catálogo §14 —
-  PENDIENTE-Steven**). Payload: `{run_id, approval_id, response, authorized_by}` —
+- **`approval.responded`** ↔ `●ApprovalResponded` (**nuevo en catálogo §14 — [S3
+  2026-07-30: era PENDIENTE-Steven, sin gate por persona (#94); implementado en
+  `engine/src/blite/gateway/approval.py` (`ApprovalRespondedPayload` +
+  `authorize_approval_response()`) y absorbido por el freeze §14 (marca [MEJORADO #102]);
+  mismo estado de wiring que el request]**). Payload:
+  `{run_id, approval_id, response, authorized_by}` —
   `authorized_by` valida contra `override:apply:<scope>` (§8/§10). Módulo:
   `blite.gateway.approval`.
-- **`run.created`** (ya frozen, §3) gana dos campos ADITIVOS — **PENDIENTE-Steven**:
+- **`run.created`** (ya frozen, §3) gana dos campos ADITIVOS — **[S3 2026-07-30: era
+  PENDIENTE-Steven, sin gate por persona (#94); implementado en
+  `engine/src/blite/runtime/loop.py` (el payload de `run.created` ya lleva ambos) y
+  portado al freeze §3 (marca «(c) Ceremonia #66»)]**:
   `max_turns: int` (default `30`) y `budget: {tokens?: int, cost_usd?: float}`, mismo lugar
   que `max_steps`/`policy_digest` ya obligatorios ahí.
 - **`run.failed {error_kind: "exhausted"}`** — valor nuevo de un campo ya abierto (`str`
@@ -144,14 +171,14 @@ request_digest, expected_response_digest, actual_response_digest, step_id?}`. M�
 
 ## Interfaces con otros dominios
 
-| Interfaz                                     | Dominio                                                     | Estado                                         |
-| -------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------- |
-| `plan.created` / `plan.item_updated`         | D (Studio · timeline) + E (endpoint SSE · proyección)       | SPEC                                           |
-| `approval.requested` / `approval.responded`  | D (Studio · card inline bloqueante) + E (endpoint SSE)      | SPEC                                           |
-| `replay.divergence`                          | E (SSE) + confianza (certificado — `check_bundle` punto 8)  | SPEC                                           |
-| `●ClaimEmitted` + campo `sub_run_id`         | confianza (predicate §7 / bundle)                           | PENDIENTE (campo a añadir — no es supersesión) |
-| `ModelServer` + backends `replay`/`record`   | frontera Dylan + Steven (§15.7)                             | SPEC (puerto listo, adapter no)                |
-| `POST /runs` modo misión (arranque del loop) | E (`endpoints-studio.md` §"POST /runs — modo misión") ↔ A↔D | CONTRATO (checkpoint 5, 2026-07-29)            |
+| Interfaz                                     | Dominio                                                     | Estado                                                                            |
+| -------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `plan.created` / `plan.item_updated`         | D (Studio · timeline) + E (endpoint SSE · proyección)       | SPEC                                                                              |
+| `approval.requested` / `approval.responded`  | D (Studio · card inline bloqueante) + E (endpoint SSE)      | SPEC                                                                              |
+| `replay.divergence`                          | E (SSE) + confianza (certificado — `check_bundle` punto 8)  | SPEC                                                                              |
+| `●ClaimEmitted` + campo `sub_run_id`         | confianza (predicate §7 / bundle)                           | **[S3 2026-07-30]** HECHO — `claim.py:59` (era «PENDIENTE, campo a añadir»; D-N2) |
+| `ModelServer` + backends `replay`/`record`   | frontera Dylan + Steven (§15.7)                             | SPEC (puerto listo, adapter no)                                                   |
+| `POST /runs` modo misión (arranque del loop) | E (`endpoints-studio.md` §"POST /runs — modo misión") ↔ A↔D | CONTRATO (checkpoint 5, 2026-07-29)                                               |
 
 ## Fronteras (qué NO decide esta spec)
 
@@ -164,6 +191,8 @@ request_digest, expected_response_digest, actual_response_digest, step_id?}`. M�
   Steven — esta spec fija la FORMA del payload, no quién lo llena ni cuándo exactamente.
 - **La ratificación del supersede A1** (freeze §13/§8 → loop agéntico) es de Steven,
   decisión #66 — esta spec es el material que ratifica o rechaza, no se auto-ratifica.
+  **[S3 2026-07-30:** la ratificación por persona murió con #94; el supersede quedó
+  APLICADO en el freeze §13 con la marca `[MEJORADO #102]` — esta frontera está cerrada.**]**
 
 ## Tests de contrato (fixtures de costura)
 

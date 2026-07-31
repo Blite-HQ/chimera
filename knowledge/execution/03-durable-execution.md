@@ -15,6 +15,14 @@ de jobs (ej. patrón genérico de cola + workers, sin nombrar un producto concre
 
 ---
 
+> **[S3 · 2026-07-30] Nota de drift:** la proyección `RunState` que esta nota
+> propone (§8.2, §9, §11) no existe con ese nombre — lo real es la proyección de
+> runs por replay puro: `project_runs()` → `RunRow` (tabla `runs_projection`) en
+> `engine/src/blite/runtime/projection.py`, exactamente el mecanismo que esta nota
+> eligió (replay del log, cero estado lateral, idempotente). Las menciones
+> «rung 7» del cuerpo quedaron traducidas inline: la escalera quedó supersedida (freeze §4) —
+> el escalamiento a humano es hoy la clase `human_expert`, sin número de escalón.
+
 ## 1 · Patrón / mecanismo
 
 ### 1.1 La pregunta que responde esta nota
@@ -51,7 +59,7 @@ el paso que estaba a medias?". Aquí es donde `side_effects` del `CapabilityMani
 importa directamente a este plano: un paso `pure` o `reversible-external` puede reintentarse
 automáticamente sin daño; un paso `irreversible-external` (ej. algo que ya envió una notificación externa
 real) NO puede reintentarse a ciegas — necesita una estrategia explícita (idempotency key, verificación de
-si el efecto ya ocurrió, o escalar a rung 7 / intervención humana). Esta nota señala el problema y su
+si el efecto ya ocurrió, o escalar a intervención humana — clase `human_expert`, [S3] antes «rung 7»). Esta nota señala el problema y su
 enganche con `side_effects`; no propone todavía el mecanismo exacto de idempotencia.
 
 > **ADDENDUM (2026-07-20, S-F — el porqué del cambio que el freeze §13 hizo sobre esta
@@ -180,6 +188,12 @@ No se propone ninguna dependencia nueva en esta nota.
 
 ## 10 · Supuestos y preguntas abiertas
 
+> **[S3 · 2026-07-30 · #116] Registro de valor (§6/§10):** el snapshot/checkpoint
+> por volumen de eventos (§6, «costo de replay creciente») y el mecanismo fino de
+> idempotencia (§10) quedaron registrados como **KB curada** del censo (#116); el
+> mecanismo grueso ya es regla congelada (freeze §13 — sin idempotencia garantizada
+> no hay reintento automático; addendum S-F en §1.4).
+
 **Supuestos:**
 
 - El event log (trust/01) es suficientemente rápido de leer/replay-ear para runs de duración razonable en
@@ -192,7 +206,8 @@ No se propone ninguna dependencia nueva en esta nota.
 
 - ¿Cuál es el mecanismo concreto de idempotencia para pasos `reversible-external`/`irreversible-external`
   tras un crash a medias? (idempotency key por paso, verificación activa contra el sistema externo, o
-  escalamiento obligatorio a revisión humana — rung 7 de la escalera de verificación, trust/03). No
+  escalamiento obligatorio a revisión humana — clase `human_expert` del freeze §4; [S3] antes «rung 7»
+  de la escalera, trust/03 SUPERSEDIDA). No
   decidido — este es el modo de falla más grave de §6 y no tiene mitigación diseñada todavía.
 - ¿A partir de qué volumen de eventos por run se vuelve necesario un snapshot/checkpoint en vez de replay
   completo desde el inicio del stream? No investigado — depende de datos que no existen todavía.
@@ -222,7 +237,8 @@ infraestructura mayor, no un cambio incremental, y debería evaluarse con licenc
 verificadas en vivo (no como en esta nota). Para el problema de idempotencia (§10, sin resolver), la
 dirección más probable es una combinación de idempotency keys por paso (generadas determinísticamente a
 partir de `step_id`) y, para el subconjunto de pasos que no puedan garantizar idempotencia por diseño,
-escalamiento obligatorio a revisión humana (rung 7, trust/03) en vez de reintento automático — pero esto
+escalamiento obligatorio a revisión humana (clase `human_expert`, freeze §4 — [S3] antes «rung 7»,
+trust/03) en vez de reintento automático — pero esto
 requiere validación con Dylan por su relación con `VerificationPolicy` (trust/05).
 
 ## 13 · Reconciliación contra la base lógica (`docs/invariants.md`)

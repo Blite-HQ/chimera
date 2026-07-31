@@ -8,6 +8,8 @@ Chimera is a sovereign, open-source AI substrate with anchored verification and 
 
 The MVP Nivel-1 (closed 2026-07-24) ships that thesis end to end: a runtime API (`POST /runs` → SSE event stream → verifiable DSSE certificate), real anchor verifiers (CP-SAT exact solver + pandapower execution), a React Studio, and a docker-compose walking skeleton — exercised live by the reto-1 deliverable in `challenges/reto1/`.
 
+The Planeado phase (closed 2026-07-28, decision #100) extended that Nivel-1 with mission mode (agentic loop: mission → plan → approvals), six read-only GET routes consumed by the Studio, and a real model-backed proposer wired behind `CHIMERA_MODEL_BACKEND` (replay / record / live sessions).
+
 ## Monorepo layout
 
 ```
@@ -23,7 +25,9 @@ chimera/
 │  ├─ sim/               Physics simulators (pandapower) — anchor
 │  ├─ ml/                Classical ML (scikit-learn, XGBoost) — baseline
 │  ├─ smt/               Formal verification (Z3) — anchor (stub, not yet implemented)
-│  └─ quantum/           Quantum tools (Qiskit QAOA proposer)
+│  ├─ quantum/           Quantum tools (Qiskit QAOA proposer)
+│  ├─ ingesta/           Ingestion: snapshot capture + GeoJSON → generic graph topology
+│  └─ report/            Deterministic figure/report derivation (matplotlib, typst) — recompute-and-compare anchor
 ├─ apps/studio/          Chimera Studio — React/Vite research UI
 ├─ packages/             Shared web packages (@chimera/assurance-ui)
 ├─ challenges/reto1/     Reto-1 deliverable: run_all.py reproducible entry point + report

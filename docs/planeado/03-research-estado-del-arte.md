@@ -55,7 +55,10 @@ repetir`; el modelo propone, el harness es el único que ejecuta. Cada transici�
    capability); demo sirve por digest; mismatch ⇒ evento `replay.divergence` tipado ⇒ el
    certificado NO verifica. Propiedad resultante, exclusiva de Chimera: **el certificado
    DSSE verifica ⟺ el replay fue fiel**. (Lección langchain-replay: grabar decisiones
-   del modelo en la frontera del router — donde ya está `MODEL_ROUTER_BACKEND` — no HTTP;
+   del modelo en la frontera del router — donde ya está `MODEL_ROUTER_BACKEND` **[S3
+   2026-07-30: el nombre real es `CHIMERA_MODEL_BACKEND` (N12) — el código jamás usó el
+   nombre viejo (`api/src/chimera_api/runs.py`); el freeze §15.7 lleva la nota de
+   reconciliación [MEJORADO N12]]** — no HTTP;
    vcrpy/cassettes descartados.)
 5. **Gobernanza con semántica tripwire**: veredictos de guardrail/authz como eventos
    tipados con causa (no excepciones opacas); policies registradas y versionadas por
