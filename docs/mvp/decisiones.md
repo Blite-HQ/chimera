@@ -1193,3 +1193,32 @@ letra dejó abierto para aterrizarlo en `blite_capability.manifest`:
 6. Fixture declarado: `tests/fixtures/contract/manifest/capability-manifest-v2.json`
    (dataclass → `asdict`; lo genera C1 al existir el campo). Seed:
    `tests/seeds/test_seed_manifest_v2.py`.
+
+### #127 — S-F: proyector de observabilidad (`docs/specs/observabilidad-proyeccion.md`, spec NUEVA)
+
+Materializa C-11 (#106: consumer standalone FUERA de `blite.*`) como contrato:
+
+1. **Home**: miembro nuevo `projectors/otel/` (paquete `chimera_otel`) — fuera
+   de `blite.*` y de los 13 contratos import-linter por construcción; NO
+   importa el engine: parsea los eventos como JSON (el wire ES el contrato).
+2. **Fuente**: lectura READ-ONLY de la tabla `events` con usuario Postgres
+   SOLO-SELECT + catch-up por `global_seq` con cursor PROPIO fuera del event
+   store (misma doctrina notify-then-catchup §2). No toca Inv-E/INV-6: el
+   proyector deriva, jamás gobierna; exporta DIGESTS, jamás contenido
+   (hash-first §2 — un span jamás carga prompt/respuesta en claro).
+3. **IDs deterministas** (replay/re-proyección ⇒ trazas byte-idénticas):
+   `trace_id = SHA-256("blite/otel-trace/v1\n" + run_id)[:16 bytes]`;
+   `span_id = SHA-256("blite/otel-span/v1\n" + run_id + ":" + <ancla del
+span>)[:8 bytes]` (ancla = `step_id`/`job_id`/tipo según la tabla de
+   mapeo); timestamps = `occurred_at` del evento, jamás el reloj de la
+   proyección. Prefijos de dominio versionados (misma disciplina del anexo).
+4. **Semconv GenAI PINNEADA y ESTAMPADA**: la versión exacta la pinnea O3 al
+   implementar (con registro); la REGLA es contrato: cada span porta
+   `chimera.semconv_version` + `chimera.projector_version` — dos proyecciones
+   con semconv distinta jamás se confunden.
+5. **Langfuse = perfil OPCIONAL** del compose (consumidor OTLP aguas abajo,
+   herramienta interna de debugging del proposer) — jamás «backend».
+6. Fixture declarado: `tests/fixtures/contract/observabilidad/trace-example.json`
+   (golden trace del proyector sobre un stream fixture — lo genera O3). Seed:
+   `tests/seeds/test_seed_observabilidad_proyector.py` (derivación de ids
+   recomputada de forma independiente).
