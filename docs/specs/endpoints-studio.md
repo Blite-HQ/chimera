@@ -70,6 +70,13 @@ campos, o con ninguno, falla la validación de los dos lados de la unión → `4
 **Respuesta:** `202 {run_id}` — idéntica al modo claim-first; el resultado vive en el stream,
 jamás en la respuesta HTTP.
 
+> **[Fase 0 Mejorado · 2026-07-31, decisión #122]** El body de misión gana dos campos
+> ADITIVOS opcionales — `thread_id?: str` (enhebrado conversacional post-terminal: run
+> nuevo que continúa un hilo) y `project_id?: str` (pertenencia a la fila relacional de
+> M15) — que viajan al payload de `run.created` (marca (d) del freeze §3). Forma y
+> semántica completas: `docs/specs/chat-conversacion.md` §Contrato-4; esta spec no las
+> duplica.
+
 ### Semántica del arranque (costura A↔E)
 
 - El modo misión agenda `execute_run` en **modo agéntico** (`proposer` inyectado —

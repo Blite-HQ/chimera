@@ -1003,3 +1003,43 @@ del scope — es dato arbitrario del gate de hashing: el scope real es el
 ScopeExpr canónico del certificado (freeze §4), cuyas claves dependen del claim.
 Edición aditiva con marca `[MEJORADO #121]` tras la nota existente; los vectores
 y sus hashes quedan intactos byte a byte.
+
+### #122 — S-A: contrato de chat/conversación (`docs/specs/chat-conversacion.md`, spec NUEVA)
+
+Cierra M1-c/M1-d como CONTRATO (la implementación es P3/P6 de Fase 1). Decisiones
+de forma, cada una con su porqué:
+
+1. **`mission.message` ↔ `●MissionMessage`** materializa la reserva explícita del
+   catálogo §14 (marca [MEJORADO #102]: «entra cuando M1/P3 lo traiga») — cero
+   supersede nuevo. Payload `{run_id, message_id, author, text}`, módulo propuesto
+   `blite.runtime.mission`. El evento entra al stream ANTES del terminal ⇒ queda
+   DENTRO del `provenance_hash`: la conversación que dirigió el run es parte de lo
+   que el certificado ampara.
+2. **`POST /runs/{id}/messages`**: `202 {message_id}` / 404 / **409 post-terminal**
+   (el §2 ya rechaza appends post-terminales — el 409 es la cara HTTP de esa regla,
+   no una política nueva). `author` NO viaja en el body: lo estampa la identidad del
+   request (hoy `_API_ACTOR`; C2/M2 lo vuelve real — mismo patrón AX1).
+3. **`POST /runs/{id}/cancel`**: emite `run.cancelled` YA congelado (§3);
+   `reason` default `"user_requested"` (`"parent_cancelled"` queda reservado a la
+   cascada §13). 202/404/409.
+4. **`run.created` gana `thread_id?`/`project_id?` ADITIVOS** — extensión de la
+   forma exacta de §3 ⇒ ceremonia: esta decisión + marca «(d)» en el bloque de
+   supersedes de §3 (mismo patrón que max_turns/budget vía #66). `thread_id` =
+   `run_id` del run RAÍZ del hilo (ausente ⇒ este run abre hilo); el enhebrado
+   post-terminal se hace creando un run NUEVO con `thread_id`, jamás apendeando al
+   stream muerto. `project_id` = referencia opaca a la fila relacional de M15
+   (FUERA del event store; el evento no valida FK — la valida el API cuando P6
+   exista). `MissionRequest` gana los mismos dos campos opcionales.
+5. **`TurnContext.pending_messages`** (queue-to-next-turn): tupla con default `()`
+   — aditivo compatible; los mensajes llegados DURANTE un turno se drenan al
+   `TurnContext` del turno siguiente, jamás interrumpen el turno en curso.
+6. **`PROMPT_PROTOCOL` v2 con historial**: `chimera/mission-proposer-prompt/v2` =
+   v1 + `messages: [{author, text}]` (la misión como primer mensaje + cada
+   `mission.message` en orden de stream). **`message_id` se EXCLUYE de la vista**
+   por la MISMA razón que `run_id` en v1 (freeze §15.7: la clave de replay jamás
+   repetiría entre sesión grabada y reproducción). Las sesiones v1 grabadas siguen
+   reproduciendo (el manifest pinnea digests; el campo `protocol` discrimina).
+7. **Zod espejo de approvals** (el hueco N2 lado contrato): `approvalRequested/
+RespondedSchema` + tests del Studio contra los fixtures `contract/harness/`
+   existentes — se entrega EN Fase 0 (es test anti-drift, no feature); la card
+   inline es P3-D.

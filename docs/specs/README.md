@@ -146,3 +146,13 @@ del API real. Regla: **el fixture de costura tiene UN solo origen y ambos lados 
 | [`informe-derivado.md`](informe-derivado.md)     | C↔B     | Dylan          | SPEC   |
 | [`superficie-visual.md`](superficie-visual.md)   | D↔E↔A   | Dylan          | SPEC   |
 | [`endpoints-studio.md`](endpoints-studio.md)     | E↔D     | Steven+Dylan   | SPEC   |
+
+### Specs de costura (Fase 0 · Mejorado, 2026-07-31) — sección ADITIVA
+
+> Producidas por la sesión Contratos de Mejorado (`05-plan-paralelo.md` §1; sin dueños por
+> #94 — los consumidores son sesiones de Fase 1). Misma convención de fixtures single-origin
+> de arriba; el ledger (`../mvp/decisiones.md` #121+) registra cada ceremonia.
+
+| Spec                                           | Costura | Consumen | Estado               |
+| ---------------------------------------------- | ------- | -------- | -------------------- |
+| [`chat-conversacion.md`](chat-conversacion.md) | A↔E↔D   | P3, P6   | SPEC (decisión #122) |
