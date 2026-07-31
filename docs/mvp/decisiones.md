@@ -1160,3 +1160,36 @@ Decisiones de forma para que los retos 2/3 corran EN la plataforma (G1–G4):
    `predicate-property-rule.json` (desde los predicates congelados); espejo
    Studio byte-idéntico con verificación Python (mismo precedente que
    ingesta/informe: sin consumidor Zod todavía).
+
+### #126 — S-E: manifest v2 en el SDK (`docs/specs/manifest-v2-sdk.md`, spec NUEVA)
+
+El §1 del freeze está congelado desde S-E; esta decisión fija SOLO lo que la
+letra dejó abierto para aterrizarlo en `blite_capability.manifest`:
+
+1. **Sin defaults para el riesgo**: `side_effects`/`required_permission`/
+   `interaction` son OBLIGATORIOS (la letra §1 solo da default a
+   `execution_profile = "in-process"`); defaultear `side_effects` mentiría el
+   eje de riesgo que la Policy y el reintento §13 consumen — un manifest sin
+   migrar FALLA al cargar (cae en `failed[]` del registry, visible, jamás
+   silencioso).
+2. **El dataclass se queda** (SDK-standalone sin deps — contrato import-linter);
+   los 3 literals se validan en `__post_init__` (`ValueError` fail-closed al
+   cargar el entry point).
+3. **Convención de `required_permission`**: baseline `capability:invoke`;
+   permisos finos donde el riesgo lo pida (los `capability:ingest:*` de la
+   tabla-workaround de ingesta se PORTAN tal cual). La etapa 2 del gateway lo
+   chequea contra la intersección efectiva (§8) — el manifest declara, no
+   autoriza.
+4. **Migración coordinada de las 13**: tabla completa en la spec (12 de 13 son
+   `pure`/`request_response`/`in-process`; la excepción es
+   `blite.ingesta.snapshot.fetch` = `reversible-external`/`job`). El
+   docstring-workaround de ingesta (`tool.py:8-30`) MUERE al migrar — sus
+   valores viajan al manifest y la tabla del docstring se borra.
+5. **Gate de genericidad EXTENDIDO**: `_manifest_text`
+   (`tests/invariants/test_capability_genericity.py`) pasa de serializar 4
+   campos a serializar el manifest COMPLETO (incl. `required_permission`,
+   `tags` y los 4 nuevos) — un permiso con vocabulario de escenario también es
+   fuga.
+6. Fixture declarado: `tests/fixtures/contract/manifest/capability-manifest-v2.json`
+   (dataclass → `asdict`; lo genera C1 al existir el campo). Seed:
+   `tests/seeds/test_seed_manifest_v2.py`.
