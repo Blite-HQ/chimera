@@ -1,4 +1,8 @@
-# Knowledge — Trust (plano de confianza e integración · Dylan)
+# Knowledge — Trust (plano de confianza e integración)
+
+> **Estado: VIGENTE (índice del área; marcado en S4 del saneamiento, 2026-07-30,
+> #109/#119).** El estado de cada nota vive en su propio header. La atribución por
+> persona del título original quedó abolida por la gobernanza #94.
 
 Notas de la investigación de semana 1 (2026-07-02/03) + sesiones de la Fase 1 (07-07→). Cada nota tiene los 4 campos obligatorios
 (patrón/mecanismo · decisión `integrar|portar|inspirar|descartar` · licencia · impacto en contrato)

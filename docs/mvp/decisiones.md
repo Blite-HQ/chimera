@@ -862,3 +862,67 @@ Docs-only salvo el barrido #115 (solo-comentarios, autorizado). Contratos tocado
 SOLO por las ceremonias ya decididas (#102-#106/C-9/C-10/N12); cero re-digests; ledger
 solo-anexado (este bloque es el anexo). Siguiente: **S4 valida contra el checklist §6
 de `06-saneamiento.md`** con esta evidencia y desbloquea la Fase 0.
+
+## Sesión control Mejorado — S4 validación del saneamiento (rama `mejorado/base`, 2026-07-30)
+
+### #119 — S4 VALIDADO con evidencia: merge de `mejorado/saneamiento` + FASE 0 DESBLOQUEADA
+
+**Merge**: fast-forward `8e69132..f6fd024` (7 commits S3) a `mejorado/base`, hecho por
+la sesión de control tras la forense del diff (abajo). Checklist §6 de
+`06-saneamiento.md`, punto por punto, contra evidencia VIVA (no contra el handoff):
+
+1. **Headers de estado + índice**: solo 2 archivos sin header
+   (`docs/mvp/auditoria-mvp.md`, `knowledge/trust/README.md`) — cerrados EN S4 por la
+   sesión de control (este commit; el segundo además cargaba atribución por persona
+   contraria a #94). El índice es `docs/README.md` reconstruido como mapa de
+   autoridad en capas (#108: jerarquía + tablas por área; los READMEs de área
+   indexan por archivo) — la letra original («cada doc nombrado en docs/README»)
+   queda satisfecha por el diseño en capas decidido en S2. ✓
+2. **Vocabulario muerto**: los residuos de `rung`/`MODEL_ROUTER_BACKEND`/
+   `PENDIENTE-{persona}`/«pipeline fijo» verificados uno a uno — TODOS viven en (a)
+   docs marcados HISTÓRICO/SUPERSEDIDO con mapa de traducción (trust/03),
+   (b) notas de vocabulario [S3] explícitas (quantum/04), (c) anotaciones «era
+   PENDIENTE-X, gate muerto por #94» (harness-agentico ×7), (d) headers de drift
+   que citan el delta (infra/03), o (e) docs de la propia fase que los citan como
+   dato. Conforme a la política #109/#118 (marcas temporales; traducción total =
+   refactoring final). «Pipeline fijo» además sigue siendo un MODO VIVO del código
+   (claim-first) — no es vocabulario muerto. ✓
+3. **Supersedes aplicados**: 10 marcas [MEJORADO] en el freeze; §15.3 con los 6
+   digests cr6/cr8/ice `-voltaje@v1` + procedencia; nota N12 de reconciliación
+   (`CHIMERA_MODEL_BACKEND`); `superficie-visual.md` §5 SUPERSEDIDA con marca
+   C-9/#106; M9 = Langfuse perfil opcional en la consolidación. ✓
+4. **Gate de docs VERDE sobre TODO el repo**: `docs:lint` 0 + `prettier --check` 0
+   (antes: 671 errores); CI con `push: branches: [main, 'mejorado/**']`;
+   `promote-demo.yml` placeholder eliminado. ✓
+5. **Gobernanza**: CODEOWNERS reescrito a catch-all sin dueños por plano (#94);
+   `.env.example` con `CHIMERA_MODEL_*` y sin `OLLAMA_API_KEY` (solo la nota de su
+   remoción); era-dueños en `docs/archivo/` (19 archivos) con los 4 rescates
+   aplicados ANTES (#112: registro ADR en `docs/adr/registro-adr-historico.md`,
+   QUBO en islanding/01 §6). ✓
+6. **Líneas rojas**: paths sensibles intactos (fixtures/corpus/nexus-data/sql: solo
+   un README NUEVO en `knowledge/nexus/`); ledger solo-anexado (única línea
+   «borrada» = puntero al doc archivado #112); 61 archivos de código con diff
+   SOLO-comentarios/docstrings (#115, muestreado + probado por gates idénticos);
+   cero re-digests. ✓
+7. **Gates SIN regresión (corridos en vivo sobre el merge)**: 804 passed / 9
+   skipped / 5 xpassed / cov 90.96% — IDÉNTICO al baseline (la contabilidad
+   «799+5» del handoff S3 era imprecisa) · 13 contratos lint-imports · ruff 0 ·
+   pyright 0 · 221 studio · eslint 0. ✓
+8. **FASE 0 DESBLOQUEADA** — esta decisión. El prompt de la sesión Contratos
+   (05-plan-paralelo §4) queda ajustado: su ítem (1) ola-0 está HECHO, arranca
+   en (2). ✓
+
+**Verificado además**: codename de marca interna = 0 hits repo-wide (el hallazgo del
+handoff quedó resuelto). **Quedan ABIERTOS por diseño, no como deuda del
+saneamiento**: los 12 hallazgos de handoff registrados por S3 (sin decisión — se
+triagean en Fase 0/backlog), la migración a inglés (carril propio post-S4, #114/#118),
+el refactoring documental integral y el traslado del ledger (parqueados al cierre de
+Mejorado, #118), y la licencia del vendorizado quantathon (O2 pre-flip, #113).
+
+### Tabla de interacciones (regla #3)
+
+| Interfaz tocada                              | Dominio afectado | Estado del contrato                           |
+| -------------------------------------------- | ---------------- | --------------------------------------------- |
+| merge `mejorado/saneamiento`→`mejorado/base` | TODOS (docs)     | ff limpio; gates verdes citados arriba        |
+| headers de estado ×2 + título trust/README   | docs             | cierre del checklist 1 (#109)                 |
+| prompt Contratos en `05-plan-paralelo.md` §4 | Fase 0           | ola-0 marcada HECHA — evita trabajo duplicado |

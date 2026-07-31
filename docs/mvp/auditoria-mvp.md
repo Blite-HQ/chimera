@@ -1,5 +1,9 @@
 # Auditoría E2E del MVP — etapa 3 (Fable) · 2026-07-23/24
 
+> **Estado: HISTÓRICO (marcado en S4 del saneamiento, 2026-07-30, #109/#119).**
+> Registro de la auditoría del MVP; sus condiciones (F1, F4) se resolvieron en las
+> fases posteriores. Se conserva íntegro como registro.
+
 **Veredicto: MVP APROBADO CON CONDICIONES** — el flujo completo funciona integrado y el
 reto está resuelto en el nivel "provincia" con el criterio oficial cumplido. Dos
 condiciones antes del día D (F1, F4) y el pulido de demo pasa a Planeado por decisión

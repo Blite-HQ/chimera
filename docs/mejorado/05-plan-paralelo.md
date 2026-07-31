@@ -130,13 +130,10 @@ single-origin y tests anti-drift, y ejecutas la ola 0 documental. Lee PRIMERO
 docs/mejorado/{01-criterio,04-consolidacion,05-plan-paralelo}.md y
 docs/specs/README.md (reglas de fixtures single-origin).
 
-ALCANCE en orden: (1) ola 0 — supersede [MEJORADO] de contract-freeze.md §13 +
-eventos #68 al catálogo §14 (decisión #102), estampado §15.3 de cr6/cr8 -voltaje@v1
-con nota de procedencia (C-10/#106), fix del gate de docs de CI (excluir
-knowledge/quantum/quantathon/ de markdownlint+prettier en package.json y
-.prettierignore — verifica: npx markdownlint '**/*.md' --ignore node_modules --ignore
-'knowledge/quantum/quantathon/**' debe dar 0), CI corre en push a mejorado/*,
-CODEOWNERS alineado a #94, nota N12 (MODEL_ROUTER_BACKEND→CHIMERA_MODEL_BACKEND).
+ALCANCE en orden: (1) ola 0 — YA EJECUTADA por la sesión de saneamiento S3 y
+validada en S4 (decisión #119 en el ledger): supersedes del freeze, estampado
+§15.3, gate de docs, CI en mejorado/**, CODEOWNERS y N12 están HECHOS — verifica
+en el ledger y NO lo repitas; tu alcance real empieza en (2).
 (2) S-A chat-conversacion.md. (3) S-B supersedes §3 (discarded_streams #104 +
 metrics C-4) + GatewayContext aditivo (C-5) + regla independence_group (C-6).
 (4) S-C generalidad-retos.md. (5) S-D supersede superficie-visual §5 + branch-ids
