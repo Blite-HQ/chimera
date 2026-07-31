@@ -1,0 +1,20 @@
+{
+  "generator_version": "hypothesis-6",
+  "method": "property_rule",
+  "properties": [
+    {
+      "examples_run": 200,
+      "name": "kernel-psd-lambda-min",
+      "passed": true
+    }
+  ],
+  "relations": [
+    {
+      "expected_relation": "invariant",
+      "held": true,
+      "name": "simetria-kernel",
+      "transform_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "seed": 7
+}

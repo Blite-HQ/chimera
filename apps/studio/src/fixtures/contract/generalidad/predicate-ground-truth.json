@@ -1,0 +1,9 @@
+{
+  "case_id": "chain-n8-h10",
+  "dataset_id": "tfim-corpus/chain-n8-h10@v1",
+  "expected_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "match": true,
+  "method": "ground_truth",
+  "observed_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "tolerance": 0.05
+}

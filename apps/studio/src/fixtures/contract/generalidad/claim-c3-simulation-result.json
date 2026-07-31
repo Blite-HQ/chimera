@@ -1,0 +1,10 @@
+{
+  "affects_third_party": false,
+  "claim_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "claim_type": "simulation_result",
+  "irreversible": false,
+  "is_conclusion": true,
+  "sub_run_id": "sub-run-1",
+  "sub_run_provenance_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "world": false
+}

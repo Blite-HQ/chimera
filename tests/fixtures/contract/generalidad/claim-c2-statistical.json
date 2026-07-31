@@ -1,0 +1,8 @@
+{
+  "affects_third_party": false,
+  "claim_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "claim_type": "statistical",
+  "irreversible": false,
+  "is_conclusion": true,
+  "world": false
+}
