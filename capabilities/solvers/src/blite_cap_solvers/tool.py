@@ -12,6 +12,14 @@ from typing import Any
 
 from blite_capability.manifest import CapabilityManifest
 
+# UNA sola fuente para el eje `backend`: el enum del manifest y el guard de
+# `_invoke_impl` se derivan de esta tupla. Antes divergian — el manifest
+# anunciaba "gurobi" e `invoke` lo rechazaba (hallazgo 12 del handoff S3):
+# un manifest que promete lo que la implementacion niega es una mentira de
+# contrato, y el planner elige sobre el manifest. El extra `gurobi` del
+# pyproject queda como bundle de dependencia declarado, sin prometer despacho.
+_BACKENDS_SOPORTADOS = ("auto", "ortools")
+
 _MANIFEST = CapabilityManifest(
     id="blite.solvers.qubo",
     description="Solve a QUBO (Quadratic Unconstrained Binary Optimization) matrix to a binary assignment.",
@@ -24,7 +32,7 @@ _MANIFEST = CapabilityManifest(
             },
             "backend": {
                 "type": "string",
-                "enum": ["auto", "ortools", "gurobi"],
+                "enum": list(_BACKENDS_SOPORTADOS),
                 "default": "auto",
             },
         },
@@ -76,7 +84,8 @@ class QuboSolver:
         from blite_cap_solvers.qubo import solve_qubo
 
         backend = inputs.get("backend", "auto")
-        if backend not in ("auto", "ortools"):
-            msg = f"QuboSolver: backend {backend!r} no implementado — use 'auto' u 'ortools'"
+        if backend not in _BACKENDS_SOPORTADOS:
+            soportados = " u ".join(repr(b) for b in _BACKENDS_SOPORTADOS)
+            msg = f"QuboSolver: backend {backend!r} no implementado — use {soportados}"
             raise ValueError(msg)
         return solve_qubo(inputs.get("matrix"))

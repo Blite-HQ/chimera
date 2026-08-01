@@ -109,3 +109,27 @@ class TestInputValidation:
         result = QuboSolver().invoke({"matrix": [[2.0, 0.0], [0.0, -3.0]]})
 
         assert result["energy"] == 2
+
+
+class TestManifestSinDriftDeBackend:
+    """Hallazgo 12 del handoff S3: el manifest anunciaba un backend que
+    `invoke` rechazaba. El planner ELIGE sobre el manifest, así que un enum
+    que promete lo que la implementación niega es una mentira de contrato.
+    El enum y el guard salen ahora de la misma tupla — este test lo fija."""
+
+    def test_todo_valor_del_enum_es_aceptado_por_invoke(self) -> None:
+        enum = QuboSolver().manifest.input_schema["properties"]["backend"]["enum"]
+
+        assert enum, "el manifest declara el eje backend sin valores"
+        for backend in enum:
+            resultado = QuboSolver().invoke({"matrix": _G6, "backend": backend})
+            assert len(resultado["assignment"]) == 3
+
+    def test_el_default_del_enum_esta_en_el_enum(self) -> None:
+        esquema = QuboSolver().manifest.input_schema["properties"]["backend"]
+
+        assert esquema["default"] in esquema["enum"]
+
+    def test_backend_fuera_del_enum_falla_fuerte(self) -> None:
+        with pytest.raises(ValueError, match="no implementado"):
+            QuboSolver().invoke({"matrix": _G6, "backend": "gurobi"})
