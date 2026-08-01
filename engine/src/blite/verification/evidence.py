@@ -21,7 +21,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 CpSatStatus = Literal["OPTIMAL", "FEASIBLE", "INFEASIBLE", "MODEL_INVALID", "UNKNOWN"]
 
+DifferentialStatus = CpSatStatus | Literal["EXACT_DIAGONALIZATION"]
+"""Aditivo a `CpSatStatus` (C-14, freeze §3 / docs/specs/generalidad-retos.md
+§Contrato-2): `EXACT_DIAGONALIZATION` NO es de proceso — mapea a verdict por
+comparación, igual que `OPTIMAL`. `CpSatStatus` en sí NUNCA se toca — el
+código de CP-SAT lo sigue usando intacto."""
+
 _PROCESS_ERROR_STATUSES = frozenset({"INFEASIBLE", "MODEL_INVALID"})
+_TOLERANCE_REQUIRED_STATUSES = frozenset({"EXACT_DIAGONALIZATION"})
 
 
 class Proof(BaseModel):
@@ -35,13 +42,18 @@ class Proof(BaseModel):
 
 
 class Differential(BaseModel):
-    """Comparación contra solver exacto independiente (CP-SAT)."""
+    """Comparación contra solver exacto independiente (CP-SAT) o contra
+    diagonalización exacta (C-14, freeze §3 / docs/specs/generalidad-retos.md
+    §Contrato-2 — extensión aditiva, `CpSatStatus` intacto)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    status: CpSatStatus
+    status: DifferentialStatus
     objective: float
     reference_objective: float
+    relative_tolerance: float | None = None
+    """Criterio de aceptación por tolerancia relativa (C3: ≤5% ⇒ 0.05).
+    `None` para CP-SAT, que sigue exacto (`abs_tol: 0`) — §Contrato-2."""
 
     @field_validator("status")
     @classmethod
@@ -50,6 +62,33 @@ class Differential(BaseModel):
             msg = f"{v}: error de proceso — NO emite Attestation (freeze §4, error ≠ fail)"
             raise ValueError(msg)
         return v
+
+    @model_validator(mode="after")
+    def _relative_tolerance_exclusiva_de_diagonalizacion(self) -> Differential:
+        requiere_tolerancia = self.status in _TOLERANCE_REQUIRED_STATUSES
+        if requiere_tolerancia and self.relative_tolerance is None:
+            msg = (
+                f"{self.status}: relative_tolerance es obligatoria — un status "
+                "por comparación de tolerancia sin su criterio de aceptación es "
+                "inauditable (docs/specs/generalidad-retos.md §Contrato-2)"
+            )
+            raise ValueError(msg)
+        if not requiere_tolerancia and self.relative_tolerance is not None:
+            msg = (
+                f"{self.status}: relative_tolerance debe ser None — CP-SAT sigue "
+                "exacto (abs_tol: 0), la tolerancia relativa es exclusiva de "
+                "EXACT_DIAGONALIZATION (docs/specs/generalidad-retos.md §Contrato-2)"
+            )
+            raise ValueError(msg)
+        if self.relative_tolerance is not None and not (
+            0 < self.relative_tolerance <= 1
+        ):
+            msg = (
+                f"relative_tolerance={self.relative_tolerance}: debe estar en "
+                "(0, 1] (docs/specs/generalidad-retos.md §Contrato-2)"
+            )
+            raise ValueError(msg)
+        return self
 
 
 class FormalExactPredicate(BaseModel):
