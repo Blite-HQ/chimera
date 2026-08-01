@@ -109,7 +109,9 @@ espejo Studio; generador nuevo `gen-contract-fixtures-manifest.py` al existir lo
 
 ## Tests semilla
 
-- `tests/seeds/test_seed_manifest_v2.py` — **SEED, xfail(strict=False)**: los 4 campos
+- `tests/seeds/test_seed_manifest_v2.py` — **VERDE (C-1, 2026-07-31)**: los 4 campos
   existen con la forma §1 (`execution_profile` default `"in-process"`); construir sin
   `side_effects` explota (obligatorio, #127); un literal inválido explota en
-  `__post_init__`. Verde cuando C1 migre el SDK.
+  `__post_init__`. El xfail se retiró con la migración (decisión #130): SDK + 13
+  capabilities en el mismo checkpoint, workaround de ingesta muerto, gate de
+  genericidad sobre el manifest completo, fixture `contract/manifest/` generado.

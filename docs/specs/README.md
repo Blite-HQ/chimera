@@ -26,9 +26,11 @@ Convención de archivo: `docs/specs/<plano>-<tema>.md` (ej. `confianza-verify-bu
 
 **El desacoplador es el contrato en código.** Cada quien programa contra los Protocols, los
 modelos Pydantic, el SQL de `engine/sql/init_v2.sql` y los fixtures — **nunca contra la
-implementación de otro dueño.** Las fronteras las vigilan `import-linter` (13 contratos —
-**[S3 2026-07-30]** el doc decía 12; el 13º es `ADR-008-report`, `pyproject.toml:194`; D-N9)
-y CODEOWNERS; si `lint-imports` falla, se arregla el código, no el contrato.
+implementación de otro dueño.** Las fronteras las vigilan `import-linter` (14 contratos —
+**[S3 2026-07-30]** el doc decía 12; el 13º es `ADR-008-report`, `pyproject.toml:194`; D-N9;
+**[C-1 2026-07-31]** el 14º es `M2/C-5: layers gateway/runtime` — el Pipeline se inyecta,
+el runtime jamás importa gateway) y CODEOWNERS; si `lint-imports` falla, se arregla el
+código, no el contrato.
 
 > **[S3 2026-07-30]** La tabla de dueños de abajo (y la columna «Dueño (Fase 1)» del índice
 > de specs de costura al final) opera sobre el modelo de dueños DEROGADO por la decisión #94:

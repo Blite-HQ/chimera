@@ -1321,3 +1321,160 @@ de control.
 | Interfaz tocada                            | Dominio afectado  | Estado del contrato                    |
 | ------------------------------------------ | ----------------- | -------------------------------------- |
 | merge `mejorado/contratos`→`mejorado/base` | TODOS (contratos) | ff limpio; gates verdes citados arriba |
+
+## Sesión CONFIANZA-1 Mejorado — C1 manifest v2 + C2 gateway por step (rama `mejorado/confianza-1`, 2026-07-31)
+
+> Numeración #130–#133 tomada al cierre de esta sesión; si otra sesión de Fase 1
+> colisiona, se renumera al merge (precedente #122–#128).
+
+### #130 — C1 EJECUTADO: manifest v2 en el SDK + migración coordinada de las 13
+
+La letra de S-E (#127) aterrizó tal cual: `side_effects`/`required_permission`/
+`interaction` obligatorios + `execution_profile` default `"in-process"`, literals
+validados en `__post_init__` (`ValueError` fail-closed); las 13 capabilities
+migradas EXACTAMENTE según la tabla de S-E en el mismo checkpoint; el
+docstring-workaround de ingesta MURIÓ (una sola fuente: el manifest). Decisiones
+propias de la ejecución:
+
+- **El despacho consume el manifest**: `loop.py` y `MediationStage` resuelven
+  `dispatcher.resolve(manifest.execution_profile)` — el TODO «hasta que el
+  manifest exponga execution_profile» se cerró; un perfil sin estrategia falla
+  el run/cruce, jamás fallback silencioso (test nuevo con capability
+  `remote-job`).
+- **Hallazgo + fix del gate de genericidad**: los entry points registran
+  CLASES (ADR-008) y el gate previo hacía `getattr(clase, "manifest")` → un
+  `property object` → escaneaba `""` — **el gate ADR-029 corría sobre texto
+  vacío para toda capability registrada como clase**. Fix: instanciar antes de
+  leer; `_manifest_text` ahora serializa el manifest COMPLETO vía
+  `dataclasses.asdict` (permisos/tags/versión incluidos, letra #127) y un
+  self-test fija la cobertura del propio gate.
+- Fixture de contrato `contract/manifest/capability-manifest-v2.json`
+  (generador `gen-contract-fixtures-manifest.py`, espejo Studio, anti-drift
+  falla-fuerte) + seed `test_seed_manifest_v2` VERDE (xfail retirado).
+
+### #131 — C2 EJECUTADO: cruce del gateway por step — inyección, 6 etapas reales, mapeo de eventos
+
+`GatewayContext` ganó `run_id`/`step_id`/`domain_id` opcionales (ceremonia C-5
+cumplida — aditivo puro, frozen/forbid intactos; seed retirado). Las 6 etapas
+que faltaban son REALES según los deberes de execution/01 §1.2; `mediation`/
+`egress` quedaron intactas salvo extensión journalizadora. Decisiones de diseño
+registradas:
+
+- **UN cruce por invocación** (interpretación §13 de C-5): el loop llama el
+  cruce una vez por par resolve→invoke; resolve es parte de mediation. El seam
+  runtime-side (`CrossingRequest`/`CrossingRejected`/`GatewayCrossing`) vive en
+  `blite.runtime.loop`; el adapter (`RunCrossing` + `build_run_pipeline`) en
+  `blite.gateway.crossing` — **contrato import-linter `layers` nuevo (14º)**:
+  gateway importa runtime, runtime JAMÁS gateway.
+- **Semántica de actores (elaboración de §13 cascada)**: los eventos DEL CRUCE
+  (`capability.job.*`, `signal.recorded`) llevan el actor REAL de la Identity
+  del cruce (AX1); los eventos del RUNTIME fuera del cruce (`run.started`,
+  `run.step.*`, terminales) conservan `service:runtime` con `run.created`
+  estampando el actor del caller — la regla de §13 se escribió cuando el cruce
+  no existía; esta partición la honra sin reescribirla.
+- **Mapeo `Rejection`→eventos**: `run.step.failed` (RunStep status=failed) +
+  `run.failed {error_kind: "GatewayRejection", stage, reason}` — claves
+  ADITIVAS del payload (la proyección solo lee `error_kind`). `mediation` con
+  store journaliza `capability.job.failed` ANTES de su Rejection (INV-4).
+- **Etapas y sus límites**: `identity` rechaza SOLO identidad inválida
+  (coherencia de dominio del cruce); `authorization` evalúa
+  `manifest.required_permission` (manifest v2 — por eso C1 fue primero) contra
+  los permisos de la Identity y corta ANTES de gastar despacho; `guardrails`
+  registra `Signal`s como `signal.recorded` (●SignalRecorded §14) y JAMÁS
+  decide (INV-3) — detector roto sí es Rejection fail-closed; `provenance:pre/
+post` emiten `capability.job.submitted/completed` (PR1: submitted ANTES de
+  ejecutar) con digests por la MISMA puerta canónica que el loop (módulo nuevo
+  `blite.runtime.digests` — dos canonicalizaciones divergentes envenenarían la
+  procedencia; test de igualdad step↔job); `verification` es el seam POR
+  INVOCACIÓN con consistencia fail-closed (outputs presentes) — la verificación
+  DECISORIA del run sigue en el delegate post-invoke (INV-2/R-Pol1 intactos).
+- **Sin cruce inyectado** (`crossing=None`): comportamiento byte-idéntico al
+  previo — la superficie de tests/API existente no cambió (mismo patrón que
+  `proposer`).
+
+### #132 — la sesión de seguridad del API: JWT en cookie (P1-9) + flip AX1
+
+`blite.identity.jwt`: JWS compacto EdDSA (jamás HS256) firmado VÍA el puerto
+`KeyProvider` del §7 (la llave no sale de la custodia; escalón 1 = llave
+efímera en memoria del API — Transit es C8/C-2); claims exactos del freeze §8
+(`iss/sub/kind/domain_id/permissions/act/iat/exp`); verificación solo con la
+llave pública (S2). `POST /auth/session` emite la cookie HttpOnly del OPERADOR
+del despliegue (`CHIMERA_OPERATOR_ID`/`CHIMERA_OPERATOR_PERMISSIONS`; doctrina
+§7: quién actúa es dato del despliegue). Reglas:
+
+- cookie INVÁLIDA ⇒ **401 fail-closed** — un token roto jamás degrada al
+  default (sería bypass silencioso).
+- cookie AUSENTE ⇒ la identidad default del operador local (la MISMA que
+  `/auth/session` emitiría) — **frontera registrada**: el flip a
+  401-obligatorio (incluido el SSE, letra P1-9) espera a que el Studio
+  bootstrapee su sesión (P-ui/P6); imponerlo hoy rompería el Studio vivo sin
+  su mitad del contrato. `_API_ACTOR = "user:api"` MURIÓ.
+- **AX1 volteado**: `test_types.py::test_event_has_non_null_actor_id` perdió el
+  xfail y ganó la aserción ENDURECIDA a procedencia del actor (un cruce real
+  journalizado debe estampar la identidad verificada en cada evento del job);
+  el test jamás se borra. `docs/invariants.md` §AX1 pasa a **ENFORCED** con la
+  historia del placeholder preservada.
+
+### #133 — rollback de la decisión #6 (claim del body): NO ejecutado
+
+Mandato del prompt: evaluar el rollback SOLO si el cruce lo habilita. Análisis:
+el cruce media INVOCACIONES de capability (resolve+invoke) — no toca el origen
+del claim ni su verificación; derivar el claim server-side seguiría siendo
+inferencia sin actor atribuible del lado del enunciado. **#6 sigue vigente**: el
+claim viaja completo en el request; nada se infiere server-side. Registrado
+aparte como manda el prompt.
+
+### Registro de cierre — C1+C2 (2026-07-31)
+
+- Commits: `17f455c` (C1) · `735b539` (C2 cruce) · `1bd10ab` (C2 sesión/AX1),
+  sobre `bdde94e` en `mejorado/confianza-1` (sin push).
+- Gates en el worktree (venv del principal + PYTHONPATH del worktree, TODAS las
+  rutas de capabilities — con PYTHONPATH corto los entry points resuelven al
+  código v1 del principal y los 13 caen en `failed[]`; artefacto de entorno,
+  no defecto): **861 passed / 14 skipped / 24 xfailed / 4 xpassed / cov
+  91.24%** · lint-imports **14 kept / 0 broken** · ruff 0 · pyright 0 ·
+  studio 227. Los 14 skipped = sin `CHIMERA_TEST_DATABASE_URL` ni espejo
+  reto1-vanilla en el entorno; los 4 xpassed son previos (informe×3 +
+  cvxpy/HIGHS), AX1 ya no xpassa: pasa DURO.
+- Contabilidad de seeds: 29 xfailed del baseline − 3 (manifest v2) − 2 (ctx
+  aditivo) = 24; +38 tests netos nuevos (823→861).
+- **CP4/CP5 VIVOS contra compose (2026-07-31, stack del worktree
+  `mejorado-confianza-1`, imagen construida desde la rama):**
+  - `scripts/smoke_infra.sh` **PASS** completo (smoke 2.5 verde): postgres
+    healthy + api /health + **13 entry points en el contenedor** + integración
+    Postgres 8/8 + evento E2E engine→postgres→SSE + proyección ilesa.
+  - **CP4**: dentro del contenedor api, los 13 entry points CARGAN y sus
+    manifests portan los 4 campos v2 EXACTOS de la tabla S-E (verificado campo
+    por campo; `snapshot.fetch` = reversible-external/ingest:external-source/
+    job, `geojson.to_graph` = pure/ingest:derive, resto pure/invoke/
+    request_response; los 13 in-process).
+  - **CP5**: `POST /auth/session` emitió la cookie JWT (`user:local-operator`)
+    → `POST /runs` modo misión sobre `cr6-uniforme` (registry real,
+    `blite.solvers.qubo`) → run `run-8b76d14c…` con 2 turnos REALES: los 4
+    `capability.job.submitted/completed` del rastro los emitió el CRUCE con
+    `actor_id: user:local-operator` (el actor del JWT), `run.created` estampa
+    el mismo actor, los `run.*`/`run.step.*` del runtime conservan
+    `service:runtime` (partición #131), terminal `run.failed {exhausted}`
+    exacto al §Contrato-3. Cookie manipulada ⇒ **HTTP 401** en vivo.
+
+### Tabla de interacciones (regla #3)
+
+| Interfaz tocada                                                        | Dominio afectado | Estado del contrato                                        |
+| ---------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------- |
+| `blite_capability.manifest` v2 (4 campos §1)                           | SDK↔B↔ejecución  | **VERDE** — letra S-E/#127; seed retirado                  |
+| 13 capabilities migradas + muerte del workaround ingesta               | B                | **VERDE** — tabla S-E exacta                               |
+| `loop.py`/`MediationStage` despachan por `manifest.execution_profile`  | ejecución        | VIGENTE — sin fallback silencioso                          |
+| Gate ADR-029 `_manifest_text` (asdict + instanciación)                 | invariantes      | **VERDE** — fix: antes escaneaba texto vacío               |
+| `contract/manifest/capability-manifest-v2.json` + generador + espejo   | SDK↔D            | **VERDE** — byte-idéntico + anti-drift                     |
+| `GatewayContext` +`run_id`/`step_id`/`domain_id` (C-5)                 | gateway          | VIGENTE — ceremonia cumplida; seed retirado                |
+| 6 etapas reales + extensión journalizadora de `mediation`              | gateway          | **VERDE** — deberes execution/01 §1.2                      |
+| `execute_run(crossing=...)` + `CrossingRequest/Rejected`               | ejecución        | Aditivo — default None = byte-idéntico previo              |
+| `blite.gateway.crossing` (`RunCrossing`/`build_run_pipeline`)          | gateway          | NUEVO — adapter del lado alto de la capa                   |
+| Contrato import-linter `layers` gateway/runtime (14º)                  | repo             | NUEVO — 14 kept / 0 broken                                 |
+| `run.failed` payload aditivo `{stage, reason}` en GatewayRejection     | E↔D              | Aditivo — proyección/Studio leen `error_kind` como siempre |
+| `signal.recorded` emitido por guardrails (●SignalRecorded §14)         | confianza        | VIGENTE — catálogo ya lo declaraba; primer emisor real     |
+| `blite.identity.jwt` (JWS EdDSA vía KeyProvider)                       | confianza        | NUEVO — claims freeze §8                                   |
+| `POST /auth/session` + cookie `chimera_session` (P1-9)                 | E↔D              | NUEVO — 401 fail-closed con cookie inválida                |
+| `POST /runs` deriva actor de la sesión; `_API_ACTOR` muere             | E                | VIGENTE — frontera P-ui: flip a 401-obligatorio pendiente  |
+| `tests/invariants/test_types.py` AX1 endurecido + `invariants.md` §AX1 | confianza        | **ENFORCED** — jamás borrado                               |
+| `blite.runtime.digests` (puerta canónica compartida)                   | ejecución        | NUEVO — igualdad step↔job testeada                         |
