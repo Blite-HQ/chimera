@@ -1,0 +1,43 @@
+{
+  "balance": {
+    "conteo_0": 2002,
+    "conteo_1": 1274,
+    "proporcion_0": 0.6111111111111112,
+    "proporcion_1": 0.3888888888888889
+  },
+  "caveats": [
+    "Estos datos son SINTETICOS, generados deterministicamente con numpy.random.default_rng(semilla fija) \u2014 no provienen de ningun CSV real ni de la fuente de datos oficial del reto (no obtenible sin red en este entorno).",
+    "Cualquier claim de un clasificador entrenado sobre este corpus es una afirmacion sobre ESTE CSV sellado (identificado por su digest), jamas una prediccion sobre un fenomeno del mundo real \u2014 de ahi procedencia=\"synthetic_generated\" y el techo AL3/GROUND_TRUTH (docs/mejorado/03-research.md R1).",
+    "Si el CSV oficial CC0 del reto se vuelve disponible en este entorno, su digest SUPERSEDE a este (se reporta, no se sobreescribe); el pipeline (blite.ml.tabular_prep -> blite.quantum.fidelity_kernel -> blite.ml.svm_precomputed / blite.ml.classifier_baseline) no cambia, porque el corpus es DATO, no codigo (docs/specs/generalidad-retos.md SS4)."
+  ],
+  "celdas_faltantes": {
+    "por_columna": {
+      "feature_1": 164,
+      "feature_4": 164,
+      "feature_7": 164
+    },
+    "total": 492
+  },
+  "columna_etiqueta": "label",
+  "columnas": [
+    "feature_0",
+    "feature_1",
+    "feature_2",
+    "feature_3",
+    "feature_4",
+    "feature_5",
+    "feature_6",
+    "feature_7",
+    "feature_8",
+    "label"
+  ],
+  "corpus": "tabular-corpus",
+  "csv_digest": "567dc9e3cf18c19b7376012d1efc60502562ddfd54d5ff8b3d36ea984204db4e",
+  "dataset_id": "tabular-corpus/synthetic-binary@v1",
+  "digest": "ec2ca00a91a073d523a1eb10d62b49490d7ab7d97e32a181927aa55d1f8871b8",
+  "instancia": "synthetic-binary",
+  "n_columnas": 10,
+  "n_filas": 3276,
+  "procedencia": "synthetic_generated",
+  "semilla": 1
+}

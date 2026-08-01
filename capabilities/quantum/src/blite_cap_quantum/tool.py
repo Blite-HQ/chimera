@@ -264,3 +264,92 @@ class TrotterEvolve:
         from blite_cap_quantum.trotter import trotter_evolve
 
         return trotter_evolve(inputs)
+
+
+_FIDELITY_KERNEL_MANIFEST = CapabilityManifest(
+    id="blite.quantum.fidelity_kernel",
+    description=(
+        "Compute a fidelity-based quantum kernel (Gram matrix) between sets "
+        "of feature vectors via statevector overlaps — one matrix product "
+        "over cached statevectors, never one circuit per pair."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "x": {"type": "array", "description": "List of feature vectors"},
+            "y": {
+                "type": "array",
+                "description": (
+                    "Optional second list of feature vectors; when absent, "
+                    "the symmetric Gram matrix of x with itself is computed"
+                ),
+            },
+            "feature_map": {
+                "type": "string",
+                "enum": ["angle"],
+                "default": "angle",
+            },
+            "reps": {
+                "type": "integer",
+                "default": 1,
+                "description": "Number of feature-map repetition layers",
+            },
+            "psd_repair": {
+                "type": "string",
+                "enum": ["clip", "none"],
+                "default": "clip",
+                "description": "PSD repair method applied to the self-Gram matrix",
+            },
+        },
+        "required": ["x"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "kernel": {"type": "array", "description": "The kernel (Gram) matrix"},
+            "lambda_min": {
+                "type": ["number", "null"],
+                "description": "Smallest eigenvalue before repair (self-Gram only)",
+            },
+            "psd_repair": {
+                "type": "string",
+                "description": "PSD repair method actually applied",
+            },
+            "repaired": {"type": "boolean"},
+            "n_qubits": {"type": "integer"},
+        },
+        "required": ["kernel", "lambda_min", "psd_repair", "repaired", "n_qubits"],
+    },
+    tags=("quantum", "kernel", "machine-learning", "fidelity"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
+)
+
+
+class FidelityKernel:
+    """Generic capability: fidelity-based quantum kernel via statevector
+    overlaps (Qiskit `Statevector`, one matrix product — no per-pair
+    circuits)."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return _FIDELITY_KERNEL_MANIFEST
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        """Invoke the capability. Heavy deps loaded lazily on first call."""
+        return self._run(inputs)
+
+    def _run(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return self._invoke_impl(inputs)
+        except ImportError as exc:
+            raise ImportError(
+                f"FidelityKernel: optional dependency missing. "
+                f"Install blite-cap-quantum[qaoa]: {exc}"
+            ) from exc
+
+    def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        from blite_cap_quantum.fidelity_kernel import fidelity_kernel
+
+        return fidelity_kernel(inputs)

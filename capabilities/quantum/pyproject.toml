@@ -21,6 +21,7 @@ dependencies = [
 [project.entry-points."blite.capabilities"]
 "blite.quantum.qaoa" = "blite_cap_quantum:QaoaSolver"
 "blite.quantum.trotter_evolve" = "blite_cap_quantum:TrotterEvolve"
+"blite.quantum.fidelity_kernel" = "blite_cap_quantum:FidelityKernel"
 
 [build-system]
 requires = ["hatchling"]

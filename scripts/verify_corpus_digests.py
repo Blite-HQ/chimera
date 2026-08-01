@@ -6,8 +6,9 @@ de instancias conocidas.
 Correr desde la raiz del repo:  uv run python scripts/verify_corpus_digests.py
 Regla 15.3: el digest manda (no los bytes del archivo - fines de linea no cuentan).
 
-Directorios cubiertos (`DIRECTORIOS_CORPUS`): el corpus de islanding (reto 1) y
-el corpus TFIM del reto 3 (generado por scripts/gen_corpus_tfim.py). Todos usan
+Directorios cubiertos (`DIRECTORIOS_CORPUS`): el corpus de islanding (reto 1),
+el corpus TFIM del reto 3 (generado por scripts/gen_corpus_tfim.py) y el corpus
+tabular del reto 2 (generado por scripts/gen_corpus_tabular.py). Todos usan
 el MISMO algoritmo de digest embebido — SHA-256 del JSON canonico sin el campo
 `digest` — porque la regla de identidad de S-C generalizo la de islanding sin
 cambiarle el algoritmo.
@@ -26,6 +27,11 @@ Tablas de identidad pinneada, disjuntas por nombre de archivo:
   `scripts/gen_corpus_tfim.py` a traves de `blite.numeric.exact_evolve`. Pinneada:
   un cambio en la convencion del operador, en el protocolo de quench o en el
   tiempo de evolucion mueve las series y debe romper este guard.
+- `ESPERADOS_TABULAR_C2` — la instancia sintetica sellada del corpus C2
+  (generada por `scripts/gen_corpus_tabular.py`; `procedencia:
+  "synthetic_generated"` — ver docs/mejorado/03-research.md R1). Pinneada: un
+  cambio en la semilla, la frontera de decision o el ruido/faltantes movería
+  el CSV y el registro, y debe romper este guard.
 
 Cualquier archivo del corpus que NO aparezca en ninguna tabla solo se
 verifica por self-consistencia interna (nunca fue una suposicion de "deben
@@ -40,6 +46,7 @@ import json
 DIRECTORIOS_CORPUS = (
     "knowledge/islanding/corpus",
     "knowledge/tfim/corpus",
+    "knowledge/tabular/corpus",
 )
 
 ESPERADOS_FREEZE_15_3 = {
@@ -75,6 +82,10 @@ ESPERADOS_TFIM_C3 = {
     "chain-n12-h20": "3afefe46a97fe18494c9680c5519b502105046707e68205f69a7d6ca75a8fb2a",
 }
 
+ESPERADOS_TABULAR_C2 = {
+    "synthetic-binary": "ec2ca00a91a073d523a1eb10d62b49490d7ab7d97e32a181927aa55d1f8871b8",
+}
+
 
 def _dirs_txt() -> str:
     """Los directorios del corpus como los espera `git restore`."""
@@ -90,6 +101,8 @@ def _tabla_pin(nombre: str) -> tuple[str, str | None]:
         return "chimera-b2", ESPERADOS_CHIMERA_B2[nombre]
     if nombre in ESPERADOS_TFIM_C3:
         return "tfim-c3", ESPERADOS_TFIM_C3[nombre]
+    if nombre in ESPERADOS_TABULAR_C2:
+        return "tabular-c2", ESPERADOS_TABULAR_C2[nombre]
     return "sin-tabla", None
 
 
@@ -128,6 +141,7 @@ def main() -> int:
             "freeze-15.3": "freeze OK" if pin_ok else "!= FREEZE",
             "chimera-b2": "b2 OK" if pin_ok else "!= B2",
             "tfim-c3": "tfim OK" if pin_ok else "!= TFIM",
+            "tabular-c2": "tabular OK" if pin_ok else "!= TABULAR",
             "sin-tabla": "sin tabla pinneada",
         }[tabla]
         print(f"{nombre:18s} {interno_txt}  {pin_txt}")
@@ -137,7 +151,8 @@ def main() -> int:
         f"internos: {internos_ok}/{len(archivos)}   "
         f"pinneados: {pinneados_ok}/{pinneados_total} "
         f"(freeze-15.3={len(ESPERADOS_FREEZE_15_3)}, "
-        f"chimera-b2={len(ESPERADOS_CHIMERA_B2)}, tfim-c3={len(ESPERADOS_TFIM_C3)})"
+        f"chimera-b2={len(ESPERADOS_CHIMERA_B2)}, tfim-c3={len(ESPERADOS_TFIM_C3)}, "
+        f"tabular-c2={len(ESPERADOS_TABULAR_C2)})"
     )
     if ok:
         print(

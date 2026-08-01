@@ -16,6 +16,9 @@ dependencies = [
 
 [project.entry-points."blite.capabilities"]
 "blite.ml.classify" = "blite_cap_ml:Classifier"
+"blite.ml.tabular_prep" = "blite_cap_ml:TabularPrep"
+"blite.ml.svm_precomputed" = "blite_cap_ml:SvmPrecomputed"
+"blite.ml.classifier_baseline" = "blite_cap_ml:ClassifierBaseline"
 
 [build-system]
 requires = ["hatchling"]
