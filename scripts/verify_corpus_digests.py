@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Verifica TODO `knowledge/islanding/corpus/*.json`: digest interno
-(islanding/01 SS1.6, self-consistencia) sobre cada archivo, más identidad
-pinneada para dos tablas de instancias conocidas.
+"""Verifica TODOS los corpus versionados: digest interno (islanding/01 SS1.6,
+self-consistencia) sobre cada archivo, más identidad pinneada para las tablas
+de instancias conocidas.
 
 Correr desde la raiz del repo:  uv run python scripts/verify_corpus_digests.py
 Regla 15.3: el digest manda (no los bytes del archivo - fines de linea no cuentan).
 
-Dos tablas de identidad pinneada, disjuntas por nombre de archivo:
+Directorios cubiertos (`DIRECTORIOS_CORPUS`): el corpus de islanding (reto 1) y
+el corpus TFIM del reto 3 (generado por scripts/gen_corpus_tfim.py). Todos usan
+el MISMO algoritmo de digest embebido — SHA-256 del JSON canonico sin el campo
+`digest` — porque la regla de identidad de S-C generalizo la de islanding sin
+cambiarle el algoritmo.
+
+Tablas de identidad pinneada, disjuntas por nombre de archivo:
 - `ESPERADOS_FREEZE_15_3` — los 8 IEEE del freeze SS15.3. CONGELADA/INMUTABLE:
   jamas se le agrega ni se le edita una fila (regla del freeze: un cambio
   aqui se REPORTA, nunca se sobreescribe el corpus para que combine).
@@ -16,6 +22,10 @@ Dos tablas de identidad pinneada, disjuntas por nombre de archivo:
   `blite.ingesta.geojson.to_graph`). Pinneada tambien: un cambio silencioso
   en la derivacion (o una regeneracion con otro snapshot) debe romper este
   guard, no pasar inadvertido.
+- `ESPERADOS_TFIM_C3` — los 9 puntos del corpus C3 (3 N x 3 h/J) generados por
+  `scripts/gen_corpus_tfim.py` a traves de `blite.numeric.exact_evolve`. Pinneada:
+  un cambio en la convencion del operador, en el protocolo de quench o en el
+  tiempo de evolucion mueve las series y debe romper este guard.
 
 Cualquier archivo del corpus que NO aparezca en ninguna tabla solo se
 verifica por self-consistencia interna (nunca fue una suposicion de "deben
@@ -26,6 +36,11 @@ en el directorio).
 import glob
 import hashlib
 import json
+
+DIRECTORIOS_CORPUS = (
+    "knowledge/islanding/corpus",
+    "knowledge/tfim/corpus",
+)
 
 ESPERADOS_FREEZE_15_3 = {
     "ieee6-uniforme": "bcce660e0dac057db322999496612bb48b1f51e947180b7f8c77af5b4bca2928",
@@ -48,6 +63,24 @@ ESPERADOS_CHIMERA_B2 = {
 }
 
 
+ESPERADOS_TFIM_C3 = {
+    "chain-n6-h05": "d273194d0483d01c27653d91e6d8ad610939ab58c786b128cf309ab8aeee0a7b",
+    "chain-n6-h10": "71b7330aa355e7d66db13e64d1f9ab222f51611ade62410a9fec1915f3068658",
+    "chain-n6-h20": "f986afda7bba169f225667298c8764372b351097782749a9ec8f8bb518f6cbe6",
+    "chain-n8-h05": "6f5830ecc8b2d1e30f3e37714ffcda66cb2f604514d17510fa054cbb64e2b785",
+    "chain-n8-h10": "ef3764daa9ad9a4bf75bc3ad472609b7872a320fe073985bcfa9f9648b3771d5",
+    "chain-n8-h20": "9bd7354e2ce3ffe747ac2086180d2f8f20b30761a5446a1a422f1aac8cd5ffcd",
+    "chain-n12-h05": "ba46885f3acaf1b5972afd6404c5de7ad10a8cd6aab702fa6ee8a8ef6554e0fd",
+    "chain-n12-h10": "c12a862ef2c3f80275481f217f2658fe6e042cb0021117758abe7497bdb9ed3f",
+    "chain-n12-h20": "3afefe46a97fe18494c9680c5519b502105046707e68205f69a7d6ca75a8fb2a",
+}
+
+
+def _dirs_txt() -> str:
+    """Los directorios del corpus como los espera `git restore`."""
+    return " ".join(f"{d}/" for d in DIRECTORIOS_CORPUS)
+
+
 def _tabla_pin(nombre: str) -> tuple[str, str | None]:
     """(etiqueta de la tabla, digest esperado) — None si el archivo no esta
     pinneado en ninguna tabla (solo se le exige self-consistencia)."""
@@ -55,12 +88,16 @@ def _tabla_pin(nombre: str) -> tuple[str, str | None]:
         return "freeze-15.3", ESPERADOS_FREEZE_15_3[nombre]
     if nombre in ESPERADOS_CHIMERA_B2:
         return "chimera-b2", ESPERADOS_CHIMERA_B2[nombre]
+    if nombre in ESPERADOS_TFIM_C3:
+        return "tfim-c3", ESPERADOS_TFIM_C3[nombre]
     return "sin-tabla", None
 
 
 def main() -> int:
     ok = True
-    archivos = sorted(glob.glob("knowledge/islanding/corpus/*.json"))
+    archivos = sorted(
+        f for d in DIRECTORIOS_CORPUS for f in glob.glob(f"{d}/*.json")
+    )
     internos_ok = 0
     pinneados_ok = 0
     pinneados_total = 0
@@ -90,6 +127,7 @@ def main() -> int:
         pin_txt = {
             "freeze-15.3": "freeze OK" if pin_ok else "!= FREEZE",
             "chimera-b2": "b2 OK" if pin_ok else "!= B2",
+            "tfim-c3": "tfim OK" if pin_ok else "!= TFIM",
             "sin-tabla": "sin tabla pinneada",
         }[tabla]
         print(f"{nombre:18s} {interno_txt}  {pin_txt}")
@@ -98,7 +136,8 @@ def main() -> int:
     print(
         f"internos: {internos_ok}/{len(archivos)}   "
         f"pinneados: {pinneados_ok}/{pinneados_total} "
-        f"(freeze-15.3={len(ESPERADOS_FREEZE_15_3)}, chimera-b2={len(ESPERADOS_CHIMERA_B2)})"
+        f"(freeze-15.3={len(ESPERADOS_FREEZE_15_3)}, "
+        f"chimera-b2={len(ESPERADOS_CHIMERA_B2)}, tfim-c3={len(ESPERADOS_TFIM_C3)})"
     )
     if ok:
         print(
@@ -108,15 +147,13 @@ def main() -> int:
         print(
             "(si git marca los archivos como modified, es solo formato/fines de linea:"
         )
-        print(
-            " restauralos con  git restore knowledge/islanding/corpus/  - el congelado manda)"
-        )
+        print(f" restauralos con  git restore {_dirs_txt()} - el congelado manda)")
         return 0
 
     print(
         "VEREDICTO: HAY DIFERENCIAS - regla del freeze: se REPORTA, no se sobreescribe."
     )
-    print("Restaurar con:  git restore knowledge/islanding/corpus/")
+    print(f"Restaurar con:  git restore {_dirs_txt()}")
     return 1
 
 

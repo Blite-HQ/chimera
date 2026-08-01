@@ -258,10 +258,10 @@ vez se va a N > 14); condiciones periódicas (§1.1).
 El enunciado dice «⟨Zᵢ⟩ y ⟨ZᵢZᵢ₊₁⟩ dentro de 5% de la ED». Leído como error relativo
 **por elemento** el criterio está **mal planteado**, porque los observables cruzan cero.
 Caso real medido — N=8, h/J=1, t=1: `⟨Z₀⟩ = −0.033022` mientras
-`max_i|⟨Zᵢ⟩| = 0.343345`. Un criterio por elemento exigiría en ese sitio
-|Δ| ≤ 0.00165: **33× más estricto** que en el sitio de máxima magnitud, por el mero
-accidente de que la serie pasa por cero ahí. Un punto de la malla podría «fallar» por
-ruido de redondeo.
+`max_i|⟨Zᵢ⟩| = 0.343341`. Un criterio por elemento exigiría en el sitio 0
+|Δ| ≤ 0.00165, contra |Δ| ≤ 0.01717 en el sitio de máxima magnitud: **10× más
+estricto** en un sitio que en otro, por el mero accidente de que la serie pasa cerca de
+cero ahí. Un punto de la malla podría «fallar» por ruido de redondeo.
 
 **Definición congelada — error relativo a la escala de la serie (norma L∞):**
 
@@ -364,12 +364,28 @@ sería exactamente el «código compartido» que el control negativo de §4.3 bu
 generador es determinista y air-gapped. Procedencia = `curated_internal` con el script y
 su digest ⇒ **techo AL3 sin `proof`** (decisión #103 intacta).
 
-Hecho medido que sirve de chequeo de cordura del generador: a t = 1 los valores de
-**borde** y de **bulk** coinciden a 6 cifras entre N = 6, 8 y 12 (⟨Z₀⟩ = 0.672315 y
-⟨Z_bulk⟩ = 0.868053 a h/J = 0.5 en los tres N). Es el **cono de luz de Lieb–Robinson**:
-a t = 1 la correlación todavía no distingue una cadena de 6 de una de 12. Si el
-generador produjera dependencia en N a este tiempo, el bug está en el generador — y de
-paso confirma que t = 1 no está midiendo artefactos de tamaño finito.
+Hecho medido que sirve de chequeo de cordura del generador — y que hay que enunciar con
+precisión, porque **el borde y el bulk NO se comportan igual**:
+
+| h/J | ⟨Z₀⟩ (borde)  | ⟨Z_bulk⟩ N=6 | ⟨Z_bulk⟩ N=8 | ⟨Z_bulk⟩ N=12 |
+| --- | ------------- | ------------ | ------------ | ------------- |
+| 0.5 |  0.672315358  | 0.868022662  | 0.868053451  | 0.868053494   |
+| 1.0 | −0.033021664  | 0.342568234  | 0.343341166  | 0.343345464   |
+| 2.0 | −0.436531883  | 0.436531883  | 0.436531883  | 0.436531883   |
+
+- **El valor de BORDE es independiente de N a 9 cifras** en los tres puntos del barrido.
+  Es el **cono de luz de Lieb–Robinson**: a t = 1 la información del borde opuesto aún
+  no ha llegado, así que el sitio 0 de una cadena de 6 y el de una de 12 son
+  literalmente el mismo problema. **Este es el chequeo que el generador ejecuta** (a
+  1e−6, sobre `serie_z[0]`): si fallara, el bug está en el generador.
+- **El valor de BULK converge con N, no es constante**: N=6 todavía siente ambos bordes
+  (difiere de N=12 en ~8e−4 a h/J=1), y N=8 ya coincide con N=12 a ~4e−6. Es decir,
+  **N=6 es el tamaño marginal** de la malla y N=8 ya está en el régimen convergido.
+  Comparar valores de bulk entre tamaños como si fueran iguales sería un chequeo mal
+  planteado — y quedaría verde por casualidad a h/J=2, donde el máximo cae en el borde.
+
+Ambos hechos juntos confirman que t = 1 no está midiendo artefactos de tamaño finito en
+el borde, y cuantifican cuánto los mide en el bulk.
 
 ---
 

@@ -19,6 +19,7 @@ import contextlib
 import hashlib
 import io
 import json
+import re
 import runpy
 from pathlib import Path
 from typing import Any
@@ -156,10 +157,15 @@ class TestIceInstances:
 
 class TestVerifyCorpusDigestsGuard:
     """`scripts/verify_corpus_digests.py` generalizado — debe terminar en
-    verde sobre TODO el corpus (8 IEEE + 4 cr + 2 ice = 14), sin la
-    suposición vieja de "exactamente 8 archivos". Se corre in-process vía
-    `runpy` (evita `subprocess` sobre un path fijo — S603 — y de paso deja
-    `main()` instrumentado por `coverage`)."""
+    verde sobre TODO el corpus versionado, sin suposiciones de cardinalidad.
+    Se corre in-process vía `runpy` (evita `subprocess` sobre un path fijo —
+    S603 — y de paso deja `main()` instrumentado por `coverage`).
+
+    [G1 2026-07-31] Este test PINNEABA "internos: 14/14" y se rompió al entrar
+    el corpus C3 (9 puntos ⇒ 23) — la misma fragilidad de cardinalidad que la
+    clase existe para prohibir, un piso más arriba. Ahora asserta el
+    INVARIANTE (todo archivo self-consistente, todo pin que exista coincide)
+    y que la cobertura incluye ambos directorios."""
 
     @staticmethod
     def _run_guard() -> tuple[int, str]:
@@ -173,12 +179,26 @@ class TestVerifyCorpusDigestsGuard:
         exit_code, stdout = self._run_guard()
 
         assert exit_code == 0, stdout
-        assert "internos: 14/14" in stdout
-        assert "pinneados: 14/14" in stdout
+        internos = re.search(r"internos: (\d+)/(\d+)", stdout)
+        pinneados = re.search(r"pinneados: (\d+)/(\d+)", stdout)
+        assert internos is not None and pinneados is not None, stdout
+        # Todos self-consistentes y todos los pinneados coincidiendo — sin
+        # fijar CUANTOS son: el corpus crece por diseño.
+        assert internos.group(1) == internos.group(2), stdout
+        assert pinneados.group(1) == pinneados.group(2), stdout
+        assert int(internos.group(1)) >= 14, stdout
+
+    def test_guard_cubre_los_dos_corpus_versionados(self) -> None:
+        """Cobertura real, no solo cardinalidad: el guard corre sobre el
+        corpus de islanding (reto 1) Y el corpus TFIM (reto 3)."""
+        _, stdout = self._run_guard()
+
+        assert "ieee6-flujo" in stdout
+        assert "chain-n8-h10" in stdout
 
     def test_guard_no_longer_assumes_exactly_eight_files(self) -> None:
         """Regresión: el guard viejo tenia `if len(archivos) != 8` — verifica
-        que la fuente ya no la trae (el corpus creció a 14 sin romper el
+        que la fuente ya no la trae (el corpus creció sin romper el
         veredicto)."""
         source = _VERIFY_SCRIPT.read_text(encoding="utf-8")
 

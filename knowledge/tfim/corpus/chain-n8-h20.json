@@ -1,0 +1,164 @@
+{
+  "acoplamiento_j": 1.0,
+  "backend": "scipy-1.18.0",
+  "campo_h": 2.0,
+  "corpus": "tfim-corpus",
+  "dataset_id": "tfim-corpus/chain-n8-h20@v1",
+  "digest": "9bd7354e2ce3ffe747ac2086180d2f8f20b30761a5446a1a422f1aac8cd5ffcd",
+  "estado_inicial": "00000000",
+  "frontera": "abierta",
+  "instancia": "chain-n8-h20",
+  "metodos": [
+    "expm_multiply"
+  ],
+  "n_sitios": 8,
+  "observables_z": [
+    {
+      "label": "Z0",
+      "pauli": "ZIIIIIII"
+    },
+    {
+      "label": "Z1",
+      "pauli": "IZIIIIII"
+    },
+    {
+      "label": "Z2",
+      "pauli": "IIZIIIII"
+    },
+    {
+      "label": "Z3",
+      "pauli": "IIIZIIII"
+    },
+    {
+      "label": "Z4",
+      "pauli": "IIIIZIII"
+    },
+    {
+      "label": "Z5",
+      "pauli": "IIIIIZII"
+    },
+    {
+      "label": "Z6",
+      "pauli": "IIIIIIZI"
+    },
+    {
+      "label": "Z7",
+      "pauli": "IIIIIIIZ"
+    }
+  ],
+  "observables_zz": [
+    {
+      "label": "ZZ0",
+      "pauli": "ZZIIIIII"
+    },
+    {
+      "label": "ZZ1",
+      "pauli": "IZZIIIII"
+    },
+    {
+      "label": "ZZ2",
+      "pauli": "IIZZIIII"
+    },
+    {
+      "label": "ZZ3",
+      "pauli": "IIIZZIII"
+    },
+    {
+      "label": "ZZ4",
+      "pauli": "IIIIZZII"
+    },
+    {
+      "label": "ZZ5",
+      "pauli": "IIIIIZZI"
+    },
+    {
+      "label": "ZZ6",
+      "pauli": "IIIIIIZZ"
+    }
+  ],
+  "procedencia": "curated_internal",
+  "razon_h_j": 2.0,
+  "serie_z": [
+    -0.43653188340376636,
+    -0.4181494096545866,
+    -0.4006157673220051,
+    -0.4080366711571991,
+    -0.4080366711571998,
+    -0.4006157673220055,
+    -0.4181494096545875,
+    -0.436531883403766
+  ],
+  "serie_zz": [
+    0.4790505261426345,
+    0.587910480601066,
+    0.5209170959651988,
+    0.5240340394937273,
+    0.5209170959651985,
+    0.5879104806010653,
+    0.4790505261426337
+  ],
+  "terminos": [
+    {
+      "coefficient": -1.0,
+      "pauli": "ZZIIIIII"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IZZIIIII"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IIZZIIII"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IIIZZIII"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IIIIZZII"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IIIIIZZI"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IIIIIIZZ"
+    },
+    {
+      "coefficient": -2.0,
+      "pauli": "XIIIIIII"
+    },
+    {
+      "coefficient": -2.0,
+      "pauli": "IXIIIIII"
+    },
+    {
+      "coefficient": -2.0,
+      "pauli": "IIXIIIII"
+    },
+    {
+      "coefficient": -2.0,
+      "pauli": "IIIXIIII"
+    },
+    {
+      "coefficient": -2.0,
+      "pauli": "IIIIXIII"
+    },
+    {
+      "coefficient": -2.0,
+      "pauli": "IIIIIXII"
+    },
+    {
+      "coefficient": -2.0,
+      "pauli": "IIIIIIXI"
+    },
+    {
+      "coefficient": -2.0,
+      "pauli": "IIIIIIIX"
+    }
+  ],
+  "tiempo": 1.0,
+  "tolerancia_relativa": 0.05
+}

@@ -1,0 +1,128 @@
+{
+  "acoplamiento_j": 1.0,
+  "backend": "scipy-1.18.0",
+  "campo_h": 0.5,
+  "corpus": "tfim-corpus",
+  "dataset_id": "tfim-corpus/chain-n6-h05@v1",
+  "digest": "d273194d0483d01c27653d91e6d8ad610939ab58c786b128cf309ab8aeee0a7b",
+  "estado_inicial": "000000",
+  "frontera": "abierta",
+  "instancia": "chain-n6-h05",
+  "metodos": [
+    "expm_multiply"
+  ],
+  "n_sitios": 6,
+  "observables_z": [
+    {
+      "label": "Z0",
+      "pauli": "ZIIIII"
+    },
+    {
+      "label": "Z1",
+      "pauli": "IZIIII"
+    },
+    {
+      "label": "Z2",
+      "pauli": "IIZIII"
+    },
+    {
+      "label": "Z3",
+      "pauli": "IIIZII"
+    },
+    {
+      "label": "Z4",
+      "pauli": "IIIIZI"
+    },
+    {
+      "label": "Z5",
+      "pauli": "IIIIIZ"
+    }
+  ],
+  "observables_zz": [
+    {
+      "label": "ZZ0",
+      "pauli": "ZZIIII"
+    },
+    {
+      "label": "ZZ1",
+      "pauli": "IZZIII"
+    },
+    {
+      "label": "ZZ2",
+      "pauli": "IIZZII"
+    },
+    {
+      "label": "ZZ3",
+      "pauli": "IIIZZI"
+    },
+    {
+      "label": "ZZ4",
+      "pauli": "IIIIZZ"
+    }
+  ],
+  "procedencia": "curated_internal",
+  "razon_h_j": 0.5,
+  "serie_z": [
+    0.6723153584363263,
+    0.861969880561398,
+    0.8680226617390302,
+    0.8680226617390301,
+    0.8619698805613981,
+    0.6723153584363266
+  ],
+  "serie_zz": [
+    0.6557374031229863,
+    0.8141190557085429,
+    0.8203658100052706,
+    0.8141190557085429,
+    0.6557374031229867
+  ],
+  "terminos": [
+    {
+      "coefficient": -1.0,
+      "pauli": "ZZIIII"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IZZIII"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IIZZII"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IIIZZI"
+    },
+    {
+      "coefficient": -1.0,
+      "pauli": "IIIIZZ"
+    },
+    {
+      "coefficient": -0.5,
+      "pauli": "XIIIII"
+    },
+    {
+      "coefficient": -0.5,
+      "pauli": "IXIIII"
+    },
+    {
+      "coefficient": -0.5,
+      "pauli": "IIXIII"
+    },
+    {
+      "coefficient": -0.5,
+      "pauli": "IIIXII"
+    },
+    {
+      "coefficient": -0.5,
+      "pauli": "IIIIXI"
+    },
+    {
+      "coefficient": -0.5,
+      "pauli": "IIIIIX"
+    }
+  ],
+  "tiempo": 1.0,
+  "tolerancia_relativa": 0.05
+}
