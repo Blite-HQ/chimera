@@ -43,7 +43,7 @@ from uuid import uuid4
 
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from blite.certificate.assemble import ConclusionDeclaration
 from blite.content import ContentStore
@@ -64,10 +64,9 @@ from blite.runtime.loop import (
 from blite.runtime.plan import PlanItem
 from blite.runtime.registry import Registry, load_registry
 from blite.serving.model_port import ModelPort
-from blite.verification.exact_solver import MaxCutInstance, OptimalityClaim
 from blite.verification.orchestrator import ClaimDeclaration, make_verification_delegate
 from chimera_api.auth import SessionAuth
-from chimera_api.instance_verifiers import resolve_verifiers
+from chimera_api.instance_verifiers import CLAIM_TYPE_VERIFIERS, resolve_verifiers
 from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import load_session
 
@@ -113,15 +112,68 @@ class InstanceRequest(BaseModel):
 
 
 class ClaimRequest(BaseModel):
-    """Claim completo en el request (decisión #6) — nada se infiere server-side."""
+    """Claim completo en el request (decisión #6) — nada se infiere
+    server-side. Generalizado (spec `docs/specs/generalidad-retos.md`
+    §Contrato-6 Part 2): dos formas MUTUAMENTE EXCLUYENTES —
+
+    - legacy (reto 1, INTACTA): `instance` + `assignment`, ambos presentes;
+    - `payload` (claim_types nuevos): un dict libre con los campos
+      específicos de la clase (p. ej. `n_sites`/`terms`/... de
+      `SimulationSeriesClaim` para `simulation_result`).
+
+    Nunca ambas, nunca ninguna — `_forma_unica` lo exige fail-closed. La
+    normalización a UN solo payload (`resolved_payload`) es lo que le
+    permite a `chimera_api.runs` tener un solo camino de dispatch río abajo
+    (el registro `CLAIM_TYPE_VERIFIERS`), en vez de una rama por forma."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    instance: InstanceRequest
-    assignment: tuple[int, ...]
+    instance: InstanceRequest | None = None
+    assignment: tuple[int, ...] | None = None
+    payload: dict[str, Any] | None = None
     canonical_statement: str
     scope: dict[str, Any]
     claim_type: str
+
+    @model_validator(mode="after")
+    def _forma_unica(self) -> ClaimRequest:
+        tiene_instance = self.instance is not None
+        tiene_assignment = self.assignment is not None
+        if tiene_instance != tiene_assignment:
+            msg = (
+                "ClaimRequest: 'instance' y 'assignment' son la forma "
+                "legacy — deben venir JUNTOS, nunca uno sin el otro"
+            )
+            raise ValueError(msg)
+
+        tiene_legacy = tiene_instance and tiene_assignment
+        tiene_payload = self.payload is not None
+        if tiene_payload == tiene_legacy:
+            msg = (
+                "ClaimRequest: exactamente una forma — 'payload', o AMBOS "
+                "'instance'+'assignment' (legacy) — nunca las dos a la "
+                "vez, nunca ninguna"
+            )
+            raise ValueError(msg)
+        return self
+
+    def resolved_payload(self) -> dict[str, Any]:
+        """Normaliza a UN solo dict de payload (§Contrato-6 Part 2): la
+        forma legacy se convierte en `{"instance": {...}, "assignment":
+        [...]}` — el MISMO shape que `payload` trae directo para
+        claim_types nuevos, así que río abajo hay un solo camino."""
+        if self.payload is not None:
+            return self.payload
+        if self.instance is None or self.assignment is None:
+            # Invariante garantizado por `_forma_unica` — nunca llega aquí
+            # con la forma legacy incompleta; explícito en vez de `assert`
+            # (S101: los asserts se pueden optimizar fuera con `-O`).
+            msg = "ClaimRequest.resolved_payload(): forma legacy incompleta"
+            raise ValueError(msg)
+        return {
+            "instance": self.instance.model_dump(),
+            "assignment": list(self.assignment),
+        }
 
 
 class CreateRunRequest(BaseModel):
@@ -315,20 +367,22 @@ def _make_crossing(resources: RunResources, identity: Identity) -> GatewayCrossi
     )
 
 
-def _build_domain_claim(claim_request: ClaimRequest) -> OptimalityClaim:
-    """Construye el claim de dominio o levanta 400 — un claim mal formado
-    (instancia inconsistente, assignment de largo incorrecto, etc.) es un
-    error del REQUEST, no del run."""
-    try:
-        return OptimalityClaim(
-            instance=MaxCutInstance(
-                n_nodes=claim_request.instance.n_nodes,
-                edges=claim_request.instance.edges,
+def _build_domain_claim(claim_type: str, payload: dict[str, Any]) -> Any:
+    """Construye el claim de dominio vía el registro `CLAIM_TYPE_VERIFIERS`
+    (§Contrato-6 Part 2) — un `claim_type` sin entrada NUNCA llega aquí (el
+    caller ya cortó fail-closed vía `resolve_verifiers`, decisión #7); un
+    `payload` que no valida contra el modelo pydantic de su clase es un
+    error del REQUEST (400, con el mensaje de validación), no del run."""
+    entry = CLAIM_TYPE_VERIFIERS.get(claim_type)
+    if entry is None:  # pragma: no cover - invariante: ya filtrado arriba
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "instancia sin verifiers — jamás un run sin verificación (fail-closed)"
             ),
-            assignment=claim_request.assignment,
-            canonical_statement=claim_request.canonical_statement,
-            scope=claim_request.scope,
         )
+    try:
+        return entry.build_claim(payload)
     except (ValidationError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -441,13 +495,15 @@ def _start_claim_run(
     background_tasks: BackgroundTasks,
     identity: Identity,
 ) -> CreateRunResponse:
-    """Arranque claim-first (decisión #6) — INTACTO desde el Nivel-1."""
-    claim = _build_domain_claim(body.claim)
-
+    """Arranque claim-first (decisión #6) — compat total reto 1 (Nivel-1);
+    generalizado a claim_types nuevos vía el registro `CLAIM_TYPE_VERIFIERS`
+    (§Contrato-6 Part 2). El orden importa: se resuelve ANTES de construir
+    el claim de dominio — un `claim_type` fuera del registro, o una
+    instancia que su entrada no ampare, corta fail-closed sin intentar
+    construir nada (mismo 400, mismo mensaje, para ambos casos)."""
+    claim_type = body.claim.claim_type
     instance_id = str(body.claim.scope.get("instancia", ""))
-    resolution = resolve_verifiers(
-        claim_type=body.claim.claim_type, instance_id=instance_id
-    )
+    resolution = resolve_verifiers(claim_type=claim_type, instance_id=instance_id)
     if not resolution.verifiers:
         raise HTTPException(
             status_code=400,
@@ -456,11 +512,18 @@ def _start_claim_run(
             ),
         )
 
+    payload = {
+        **body.claim.resolved_payload(),
+        "canonical_statement": body.claim.canonical_statement,
+        "scope": body.claim.scope,
+    }
+    claim = _build_domain_claim(claim_type, payload)
+
     declaration = ClaimDeclaration(
         claim=claim,
         canonical_statement=body.claim.canonical_statement,
         scope=body.claim.scope,
-        claim_type=body.claim.claim_type,
+        claim_type=claim_type,
         is_conclusion=True,
     )
     delegate = make_verification_delegate(

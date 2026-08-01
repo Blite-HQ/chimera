@@ -12,12 +12,26 @@ datos, jamás aquí).
 
 Dos reglas duras que distinguen esto de una simple comparación de dicts:
 
-1. **Auto-consistencia del ancla es un error de PROCESO, no un veredicto**
-   (receta 11 §5.1, misma doctrina que el corpus de islanding: «se reporta,
-   NUNCA se sobreescribe»). Antes de comparar nada se recomputa el digest
-   embebido del record; si no coincide, el ancla está envenenada y el fallo
-   es del verificador, jamás del proponente — un `fail` ahí acusaría al
-   candidato por la corrupción del propio dataset.
+1. **Auto-consistencia del REGISTRO es un error de PROCESO, no un
+   veredicto** (receta 11 §5.1, misma doctrina que el corpus de islanding:
+   «se reporta, NUNCA se sobreescribe»). Antes de comparar nada se recomputa
+   el digest de auto-consistencia del record (`embedded_digest`, sobre los
+   campos propios del record — incluido `source_digest`); si no coincide,
+   el record fue MUTADO o RECONSTRUIDO de forma inconsistente entre su
+   construcción y su verificación, y el fallo es del verificador, jamás del
+   proponente — un `fail` ahí acusaría al candidato por un defecto de quien
+   construyó el record.
+
+   Esto es DISTINTO de que el ARTEFACTO FUENTE (el archivo del corpus) haya
+   sido tamperado: un chequeo que recomputa un digest sobre los campos del
+   PROPIO record y lo compara contra un digest embebido en ESE MISMO record
+   es circular — si el mismo código que construyó el record también computa
+   el digest de comparación, jamás puede detectar que el ARCHIVO de origen
+   fue manipulado (solo detecta que el objeto en memoria es internamente
+   consistente consigo mismo). Esa garantía la da `source_digest` — el
+   digest embebido del propio archivo del corpus — verificado al CARGARLO
+   (no aquí; Part 1 / `chimera_api.instance_verifiers`, fail-closed), y es
+   lo que la Attestation ancla vía `anchor_digest`.
 2. **Un desacuerdo en el CONJUNTO de labels también es un error de
    PROCESO**: un label que el candidato reporta y el record no define (o
    viceversa) significa que no hay nada que comparar — no es que el
@@ -66,7 +80,21 @@ class GroundTruthRecord(BaseModel):
     """NO es una tolerancia absoluta — se compara con la MISMA semántica
     L∞-relativa de `relative_series_error` (receta §4.1), reusada como
     scoring compartido (ver docstring del módulo)."""
+    source_digest: str
+    """El digest EMBEBIDO del artefacto CONGELADO de origen (p. ej. el
+    campo `digest` del JSON del corpus C3) — LO QUE la Attestation ancla
+    (`anchor_digest`, más abajo). Su verificación — que el archivo fuente no
+    fue tamperado — ocurre al CARGAR el corpus, no en este verificador
+    (Part 1, `chimera_api.instance_verifiers`, fail-closed)."""
     embedded_digest: str
+    """Digest de auto-consistencia del REGISTRO en memoria (record-
+    integrity, NO integridad de la fuente): recomputado por `_record_digest`
+    sobre los campos propios del record (incluido `source_digest`) y
+    comparado en `verify()`. Detecta que el record fue mutado o
+    reconstruido de forma inconsistente entre su construcción y su
+    verificación — por ejemplo, un `model_copy(update=...)` que tocó un
+    campo sin recomputar el digest. NO detecta manipulación del artefacto
+    de origen: esa garantía la da `source_digest` (ver arriba)."""
 
 
 class GroundTruthClaim(BaseModel):
@@ -82,16 +110,48 @@ class GroundTruthClaim(BaseModel):
 
 
 def _record_digest(record: GroundTruthRecord) -> str:
-    """SHA-256 del JSON canónico del record SIN `embedded_digest` — mismo
-    algoritmo/doctrina que el corpus de islanding
-    (`scripts/verify_corpus_digests.py`): se reporta, jamás se sobreescribe."""
+    """SHA-256 del JSON canónico del record SIN `embedded_digest` — chequeo
+    de auto-consistencia del REGISTRO (record-integrity): detecta que el
+    record en memoria fue mutado o reconstruido de forma distinta entre su
+    construcción original y el momento de `verify()`. Incluye
+    `source_digest` en la vista — si alguien reconstruye el record con OTRO
+    `source_digest` sin recomputar `embedded_digest`, esto también lo caza.
+
+    NO detecta ni pretende detectar manipulación del artefacto CONGELADO de
+    origen (el archivo del corpus): esa garantía la da `source_digest`
+    (verificado al cargar el corpus, no aquí — Part 1 del dispatcher)."""
     view: dict[str, JSONValue] = {
         "dataset_id": record.dataset_id,
         "case_id": record.case_id,
         "expected": dict(record.expected),
         "tolerance": record.tolerance,
+        "source_digest": record.source_digest,
     }
     return hashlib.sha256(canonicalize(view)).hexdigest()
+
+
+def build_ground_truth_record(
+    *,
+    dataset_id: str,
+    case_id: str,
+    expected: dict[str, float],
+    tolerance: float,
+    source_digest: str,
+) -> GroundTruthRecord:
+    """Constructor conveniente: computa `embedded_digest` (auto-consistencia
+    del record) con el MISMO algoritmo que `_record_digest` recomputa en
+    `verify()` — un caller externo (p. ej. el dispatcher de
+    `chimera_api.instance_verifiers`) no reimplementa la vista canónica a
+    mano, así que no puede dejarla divergir por accidente."""
+    draft = GroundTruthRecord(
+        dataset_id=dataset_id,
+        case_id=case_id,
+        expected=expected,
+        tolerance=tolerance,
+        source_digest=source_digest,
+        embedded_digest="",
+    )
+    return draft.model_copy(update={"embedded_digest": _record_digest(draft)})
 
 
 def claim_digest_of(claim: GroundTruthClaim) -> str:
@@ -134,12 +194,16 @@ class GroundTruthVerifier:
 
     @property
     def anchor_digest(self) -> str:
-        """El ancla ES el record — su propio digest embebido, no un
-        identificador separado inventado por el verificador (a diferencia de
-        `ExactSolverVerifier`/`ExactDiagonalizationVerifier`, donde el ancla
-        es un MÉTODO vivo, no un dato, y por eso ahí sí es un parámetro de
-        construcción independiente)."""
-        return self.record.embedded_digest
+        """El ancla es el artefacto FUENTE congelado — `source_digest` del
+        record, NO `embedded_digest` (ese es el chequeo de auto-consistencia
+        del record EN MEMORIA, ver docstring de `GroundTruthRecord` — un
+        chequeo circular si se usara como ancla: el mismo código que
+        construye el record también lo recomputaría). Bindear la Attestation
+        a `source_digest` es lo que hace que el ancla corresponda a los
+        bytes EXACTOS del corpus verificados al cargarlo (Part 1 del
+        dispatcher), a diferencia de un dato que el propio verificador
+        podría reconstruir de cualquier forma internamente consistente."""
+        return self.record.source_digest
 
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         if not isinstance(claim, GroundTruthClaim):
@@ -152,7 +216,11 @@ class GroundTruthVerifier:
                 f"GroundTruthRecord {self.record.dataset_id}/"
                 f"{self.record.case_id}: digest embebido "
                 f"{self.record.embedded_digest} no coincide con el "
-                f"recomputado {recomputed} — ancla envenenada, jamás un "
+                f"recomputado {recomputed} — el record fue mutado o "
+                "reconstruido de forma inconsistente entre construcción y "
+                "verificación (chequeo de record-integrity; NO detecta "
+                "tampering del artefacto fuente — eso lo cubre "
+                "source_digest, verificado al cargar el corpus), jamás un "
                 "fail del candidato"
             )
             raise VerificationProcessError(msg)

@@ -25,6 +25,7 @@ from blite.verification.ground_truth import (
     GroundTruthClaim,
     GroundTruthRecord,
     GroundTruthVerifier,
+    build_ground_truth_record,
 )
 from blite.verification.verifier import Verifier
 
@@ -34,6 +35,7 @@ CTX = InvocationContext(
 
 _DATASET_ID = "tfim-corpus/chain-n8-h10@v1"
 _CASE_ID = "chain-n8-h10"
+_SOURCE_DIGEST = "s" * 64
 
 
 def _record(
@@ -41,6 +43,7 @@ def _record(
     tolerance: float = 0.05,
     dataset_id: str = _DATASET_ID,
     case_id: str = _CASE_ID,
+    source_digest: str = _SOURCE_DIGEST,
 ) -> GroundTruthRecord:
     """Construye un record con digest embebido self-consistente — MISMA
     vista/algoritmo que `ground_truth._record_digest` (no se importa: el
@@ -51,6 +54,7 @@ def _record(
         "case_id": case_id,
         "expected": dict(expected),
         "tolerance": tolerance,
+        "source_digest": source_digest,
     }
     digest = hashlib.sha256(canonicalize(view)).hexdigest()
     return GroundTruthRecord(
@@ -58,6 +62,7 @@ def _record(
         case_id=case_id,
         expected=expected,
         tolerance=tolerance,
+        source_digest=source_digest,
         embedded_digest=digest,
     )
 
@@ -101,7 +106,7 @@ class TestVeredictoPass:
 
         assert att.verdict == "pass"
         assert att.level == "AL3"
-        assert att.anchor_digest == record.embedded_digest
+        assert att.anchor_digest == record.source_digest
         pred = predicate_of(att)
         assert pred.match is True
         assert pred.tolerance == 0.05
@@ -121,10 +126,14 @@ class TestVeredictoFail:
         assert predicate_of(att).match is False
 
 
-class TestAnclaEnvenenada:
-    """Auto-consistencia del ancla es un error de PROCESO, no un veredicto
-    (docstring del módulo) — un digest embebido manipulado jamás produce un
-    `fail` silencioso que acuse al candidato."""
+class TestAutoConsistenciaDelRegistro:
+    """Auto-consistencia del REGISTRO es un error de PROCESO, no un
+    veredicto (docstring del módulo) — un `embedded_digest` que no coincide
+    con el recomputado sobre los campos propios del record (incluido
+    `source_digest`) jamás produce un `fail` silencioso que acuse al
+    candidato. Esto es record-integrity, DISTINTO de detectar tampering del
+    artefacto fuente (eso lo cubre `source_digest`, Part 1 del dispatcher —
+    ver `TestAnclaEsElSourceDigest` para la distinción con `anchor_digest`)."""
 
     def test_digest_embebido_manipulado_levanta_process_error(self) -> None:
         record = _record({"Z0": 0.5})
@@ -132,6 +141,37 @@ class TestAnclaEnvenenada:
 
         with pytest.raises(VerificationProcessError):
             make_verifier(tampered).verify(claim_for({"Z0": 0.5}), CTX)
+
+    def test_source_digest_reconstruido_sin_recomputar_embedded_levanta(
+        self,
+    ) -> None:
+        """Reconstruir el record con OTRO `source_digest` (p. ej. un
+        artefacto fuente distinto) sin recomputar `embedded_digest` también
+        es una inconsistencia del registro — `source_digest` entra a la
+        vista que `_record_digest` hashea (docstring de `_record_digest`)."""
+        record = _record({"Z0": 0.5}, source_digest="a" * 64)
+        drifted = record.model_copy(update={"source_digest": "b" * 64})
+
+        with pytest.raises(VerificationProcessError):
+            make_verifier(drifted).verify(claim_for({"Z0": 0.5}), CTX)
+
+
+class TestAnclaEsElSourceDigest:
+    """El `anchor_digest` de la Attestation es `record.source_digest` (el
+    artefacto fuente congelado), NUNCA `record.embedded_digest` (el chequeo
+    de auto-consistencia del registro en memoria) — el fix del defecto
+    circular (Part 0): la Attestation debe bindear a los bytes exactos del
+    corpus, no a un dato que el propio código que construye el record podría
+    reconstruir de cualquier forma internamente consistente."""
+
+    def test_anchor_digest_es_source_digest_no_embedded_digest(self) -> None:
+        record = _record({"Z0": 0.5}, source_digest="c" * 64)
+        assert record.source_digest != record.embedded_digest
+
+        att = make_verifier(record).verify(claim_for({"Z0": 0.5}), CTX)
+
+        assert att.anchor_digest == record.source_digest
+        assert att.anchor_digest != record.embedded_digest
 
 
 class TestConjuntoDeLabels:
@@ -230,6 +270,7 @@ class TestValidacionDeEntrada:
                     "case_id": _CASE_ID,
                     "expected": {"Z0": 0.5},
                     "tolerance": 0.05,
+                    "source_digest": "0" * 64,
                     "embedded_digest": "0" * 64,
                     "campo_inesperado": True,
                 }
@@ -246,3 +287,41 @@ class TestValidacionDeEntrada:
                     "campo_inesperado": True,
                 }
             )
+
+
+class TestBuildGroundTruthRecord:
+    """`build_ground_truth_record` computa `embedded_digest` con el MISMO
+    algoritmo que `verify()` recomputa — un caller externo (el dispatcher de
+    `chimera_api.instance_verifiers`) nunca lo reimplementa a mano."""
+
+    def test_record_construido_pasa_su_propia_verificacion(self) -> None:
+        record = build_ground_truth_record(
+            dataset_id=_DATASET_ID,
+            case_id=_CASE_ID,
+            expected=dict(_EXPECTED_N8_H10),
+            tolerance=0.05,
+            source_digest="d" * 64,
+        )
+
+        att = make_verifier(record).verify(claim_for(dict(_EXPECTED_N8_H10)), CTX)
+
+        assert att.verdict == "pass"
+        assert att.anchor_digest == "d" * 64
+
+    def test_dos_construcciones_iguales_dan_el_mismo_embedded_digest(self) -> None:
+        a = build_ground_truth_record(
+            dataset_id=_DATASET_ID,
+            case_id=_CASE_ID,
+            expected=dict(_EXPECTED_N8_H10),
+            tolerance=0.05,
+            source_digest="e" * 64,
+        )
+        b = build_ground_truth_record(
+            dataset_id=_DATASET_ID,
+            case_id=_CASE_ID,
+            expected=dict(_EXPECTED_N8_H10),
+            tolerance=0.05,
+            source_digest="e" * 64,
+        )
+
+        assert a.embedded_digest == b.embedded_digest
