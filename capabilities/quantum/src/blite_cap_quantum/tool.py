@@ -126,3 +126,141 @@ class QaoaSolver:
             seed=seed,
             reference_optimum=reference,
         )
+
+
+_TROTTER_MANIFEST = CapabilityManifest(
+    id="blite.quantum.trotter_evolve",
+    description=(
+        "Evolve a quantum state under a fixed Hermitian operator (given as "
+        "Pauli terms) using a Trotter-Suzuki product-formula circuit."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "n_sites": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 14,
+                "description": "Number of sites the operator acts on",
+            },
+            "terms": {
+                "type": "array",
+                "description": (
+                    "Operator terms as Pauli strings with coefficients; "
+                    "index i (left to right) is site i"
+                ),
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "pauli": {"type": "string"},
+                        "coefficient": {"type": "number"},
+                    },
+                    "required": ["pauli", "coefficient"],
+                },
+            },
+            "time": {"type": "number", "description": "Evolution time"},
+            "initial_bitstring": {
+                "type": "string",
+                "description": (
+                    "Initial computational-basis state, one character per "
+                    "site ('0'/'1'); defaults to all-zero"
+                ),
+            },
+            "observables": {
+                "type": "array",
+                "description": "Observables to evaluate at the evolved state",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "label": {"type": "string"},
+                        "pauli": {"type": "string"},
+                    },
+                    "required": ["label", "pauli"],
+                },
+            },
+            "steps": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 16,
+                "description": "Number of Trotter steps",
+            },
+            "order": {
+                "type": "integer",
+                "enum": [1, 2],
+                "default": 1,
+                "description": "Trotter-Suzuki product-formula order",
+            },
+        },
+        "required": ["n_sites", "terms", "time", "observables"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "expectations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "label": {"type": "string"},
+                        "value": {"type": "number"},
+                    },
+                    "required": ["label", "value"],
+                },
+            },
+            "norm": {
+                "type": "number",
+                "description": "State vector norm after evolution (unitarity check)",
+            },
+            "method": {"type": "string"},
+            "backend": {"type": "string"},
+            "steps": {"type": "integer"},
+            "order": {"type": "integer"},
+            "circuit_depth": {"type": "integer"},
+            "circuit_digest": {
+                "type": "string",
+                "description": "sha256 hex digest of the synthesized circuit's QASM3 export",
+            },
+        },
+        "required": [
+            "expectations",
+            "norm",
+            "method",
+            "backend",
+            "steps",
+            "order",
+            "circuit_depth",
+            "circuit_digest",
+        ],
+    },
+    tags=("quantum", "time-evolution", "trotter", "circuit"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
+)
+
+
+class TrotterEvolve:
+    """Generic capability: circuit-based time evolution of a Hermitian
+    operator via a Trotter-Suzuki product formula (Qiskit + Statevector)."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return _TROTTER_MANIFEST
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        """Invoke the capability. Heavy deps loaded lazily on first call."""
+        return self._run(inputs)
+
+    def _run(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return self._invoke_impl(inputs)
+        except ImportError as exc:
+            raise ImportError(
+                f"TrotterEvolve: optional dependency missing. "
+                f"Install blite-cap-quantum[qaoa]: {exc}"
+            ) from exc
+
+    def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        from blite_cap_quantum.trotter import trotter_evolve
+
+        return trotter_evolve(inputs)

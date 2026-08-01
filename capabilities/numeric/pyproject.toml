@@ -20,6 +20,7 @@ dependencies = [
 
 [project.entry-points."blite.capabilities"]
 "blite.numeric.matrix_ops" = "blite_cap_numeric:MatrixOps"
+"blite.numeric.exact_evolve" = "blite_cap_numeric:ExactEvolve"
 
 [build-system]
 requires = ["hatchling"]

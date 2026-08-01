@@ -1,5 +1,5 @@
 """Numerical computation and data preprocessing utilities."""
 
-from .tool import MatrixOps
+from .tool import ExactEvolve, MatrixOps
 
-__all__ = ["MatrixOps"]
+__all__ = ["ExactEvolve", "MatrixOps"]
