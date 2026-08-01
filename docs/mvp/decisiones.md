@@ -1478,3 +1478,21 @@ aparte como manda el prompt.
 | `POST /runs` deriva actor de la sesión; `_API_ACTOR` muere             | E                | VIGENTE — frontera P-ui: flip a 401-obligatorio pendiente  |
 | `tests/invariants/test_types.py` AX1 endurecido + `invariants.md` §AX1 | confianza        | **ENFORCED** — jamás borrado                               |
 | `blite.runtime.digests` (puerta canónica compartida)                   | ejecución        | NUEVO — igualdad step↔job testeada                         |
+
+### Adenda — ronda de revisión de código de la sesión (2026-07-31)
+
+Revisión independiente sobre el diff completo de la rama (agente code-reviewer):
+JWT (firma/expiración/confusión de alg), etapas fail-closed, integridad del
+rastro y compat `crossing=None` confirmados sin hallazgos de alta confianza.
+UN hallazgo importante, corregido en `37063cb`: la cookie de sesión sin
+atributo `Secure`. `secure=True` incondicional rompería el walking skeleton
+local (una cookie Secure en http plano se DESCARTA en silencio ⇒ degradación
+al operador default sin error) — el atributo pasa a dato del despliegue:
+**`CHIMERA_SESSION_COOKIE_SECURE=1` obligatorio en despliegues TLS (Fargate)**,
+apagado en local. Nota registrada para quien cablee el `verification_hook`
+(hoy seam sin consumidor): `VerificationStage` deberá recibir `store` para
+journalizar el rastro del job si el hook explota.
+
+| Interfaz tocada                                              | Dominio afectado | Estado del contrato                            |
+| ------------------------------------------------------------ | ---------------- | ---------------------------------------------- |
+| Env `CHIMERA_SESSION_COOKIE_SECURE` (+`.env.example` sesión) | E/infra          | NUEVO — knob del despliegue; default local off |
