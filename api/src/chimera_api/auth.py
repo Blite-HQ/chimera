@@ -42,6 +42,8 @@ SESSION_ISSUER = "chimera-api"
 
 _OPERATOR_ID_ENV = "CHIMERA_OPERATOR_ID"
 _OPERATOR_PERMISSIONS_ENV = "CHIMERA_OPERATOR_PERMISSIONS"
+_COOKIE_SECURE_ENV = "CHIMERA_SESSION_COOKIE_SECURE"
+_TRUTHY = frozenset({"1", "true", "yes"})
 _DEFAULT_OPERATOR_ID = "user:local-operator"
 _DEFAULT_OPERATOR_PERMISSIONS = (
     "capability:invoke",
@@ -130,6 +132,11 @@ class SessionAuth:
             samesite="lax",
             max_age=DEFAULT_TTL_SECONDS,
             path="/",
+            # `Secure` es dato del despliegue (revisión C-1): en http plano
+            # (walking skeleton local) el navegador/curl DESCARTA cookies
+            # Secure — degradación silenciosa al operador default; un
+            # despliegue TLS (Fargate) DEBE encender el env.
+            secure=os.environ.get(_COOKIE_SECURE_ENV, "").lower() in _TRUTHY,
         )
         return {
             "actor_id": identity.id,

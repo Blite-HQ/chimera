@@ -132,3 +132,19 @@ def test_operador_configurable_por_despliegue(monkeypatch: pytest.MonkeyPatch) -
     run_id = response.json()["run_id"]
     created = next(e for e in store.read_stream(run_id) if e.type == "run.created")
     assert created.actor_id == "user:dylan"
+
+
+def test_cookie_secure_por_env_para_despliegues_tls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Revisión C-1: `Secure` es dato del despliegue — el walking skeleton
+    local corre http://localhost (curl/navegador DESCARTAN cookies Secure en
+    http plano ⇒ degradación silenciosa al default); un despliegue TLS
+    (Fargate) DEBE encender CHIMERA_SESSION_COOKIE_SECURE=1."""
+    client = _make_client()
+    plain = _post(client, "/auth/session").headers["set-cookie"]
+    assert "Secure" not in plain
+
+    monkeypatch.setenv("CHIMERA_SESSION_COOKIE_SECURE", "1")
+    secured = _post(_make_client(), "/auth/session").headers["set-cookie"]
+    assert "Secure" in secured
