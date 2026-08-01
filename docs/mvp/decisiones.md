@@ -1496,3 +1496,213 @@ journalizar el rastro del job si el hook explota.
 | Interfaz tocada                                              | Dominio afectado | Estado del contrato                            |
 | ------------------------------------------------------------ | ---------------- | ---------------------------------------------- |
 | Env `CHIMERA_SESSION_COOKIE_SECURE` (+`.env.example` sesión) | E/infra          | NUEVO — knob del despliegue; default local off |
+
+## Sesión GENERALIDAD Mejorado — G1 reto 3 (TFIM/Trotter) (rama `mejorado/generalidad`, 2026-07-31)
+
+> Numeración #134+ tomada al cierre de esta sesión; si otra sesión de Fase 1
+> colisiona, se renumera al merge (precedente #122–#128, #130–#133).
+>
+> **Base de la rama — decisión previa a todo lo demás**: `mejorado/generalidad`
+> sale de **`mejorado/confianza-1` (@8f7145c)**, no de `mejorado/base`.
+> `docs/specs/manifest-v2-sdk.md` §Consumen dice literalmente «G1/G2
+> (capabilities nuevas nacen v2)», y el manifest v2 solo existe en C-1. C-1 es
+> descendiente ESTRICTO de base (merge-base == punta de base), así que si
+> control mergea C-1 primero esta rama entra sin divergencia. **Si control
+> decidiera NO mergear C-1, esta rama hay que rebasarla y los 6 manifests
+> nuevos vuelven a v1** — frontera declarada, no supuesto.
+
+### #134 — G1: la receta C3 y sus tres hallazgos (nota KB 11 completa)
+
+El STUB `knowledge/quantum/11-receta-c3-tfim-trotter.md` pasa a nota completa
+al estilo de la 02 §1. Convención congelada:
+`H = −J Σ Z_iZ_{i+1} − h Σ X_i` (cadena ABIERTA, J=1), quench desde |0⟩^⊗N,
+t = 1.0, malla N∈{6,8,12} × h/J∈{0.5,1,2}. Todos los números de la nota se
+computaron en vivo; ninguno se cita de memoria. Tres hallazgos que cambian
+decisiones de implementación:
+
+- **El orden 1 de Trotter converge O(dt²) aquí — y le GANA al orden 2.**
+  Medido (N=8, h/J=1): razón de error ≈ 4.0 al partir dt en orden 1, y el
+  orden 2 (Strang) da ~2× MÁS error a igual número de pasos. El mecanismo está
+  verificado, no conjeturado: la corrección BCH líder es ∝ `i[A,B]`, operador
+  hermítico **puramente imaginario** en la base Z, cuyo valor esperado sobre
+  estados REALES se anula idénticamente (⟨ψ|i·M|ψ⟩ = i·ψᵀMψ = 0 con M real
+  antisimétrico). Control que cierra el argumento: con estado inicial COMPLEJO
+  el mismo conmutador vale **−2.000** (contra **+0.000e+00** en el real) y la
+  razón de convergencia cae a **2.00** = O(dt). Consecuencias: **el circuito
+  usa orden 1** (una capa RX por paso en vez de dos, y más preciso), y la
+  relación metamórfica «razón ≈ 4 ⇒ orden 2» queda registrada como **FALSA en
+  este montaje** — la cumple también el orden 1. Se llama
+  `trotter_convergence_ratio` con esa semántica escrita; nombrarla «verifica el
+  orden» sería un verificador que miente.
+- **El criterio oficial «≤5%» está mal planteado leído por elemento**, porque
+  los observables cruzan cero: a N=8, h/J=1, `⟨Z₀⟩ = −0.033022` contra
+  `max_i|⟨Zᵢ⟩| = 0.343341` — un criterio por elemento sería **10× más
+  estricto** en el sitio 0 que en el de máxima magnitud, por puro accidente.
+  Definición CONGELADA: error relativo a la escala L∞ de la serie,
+  `max_i|cand_i − ref_i| / max(max_i|ref_i|, 1e−12)`, evaluado **por separado**
+  para ⟨Zᵢ⟩ y ⟨ZᵢZᵢ₊₁⟩, **ambas** ≤ 0.05.
+- **Las dos series se verifican, no una.** En el punto más ordenado de la malla
+  (h/J=0.5) con el control negativo r=2, la serie ⟨Zᵢ⟩ **pasaría** (0.04569 <
+  0.05) y solo el correlador lo caza (0.07867). Un verificador de una sola
+  serie daría un falso «pass» ahí.
+
+Parámetros del corpus fijados con margen medido: **r = 16** (dt = 0.0625) deja
+el peor punto de la malla (h/J=2) en 0.00903/0.00496, margen ~5.5× bajo el
+criterio — suficiente para no depender de la versión de BLAS, ajustado para
+seguir cazando regresiones. **Control negativo r = 2**: falla en los tres h/J.
+
+### #135 — capabilities del reto 3: cero deps nuevas y una trampa de Qiskit
+
+`blite.quantum.trotter_evolve` (proponente, circuito) y
+`blite.numeric.exact_evolve` (ancla, `scipy.sparse.linalg.expm_multiply`)
+entran como hermanas de los paquetes existentes — **sin tocar ninguna
+dependencia**: reusan los extras ya declarados (`blite-cap-numeric[full]` ya
+trae scipy; `blite-cap-quantum[qaoa]` ya trae qiskit). `uv.lock` byte-intacto,
+verificado. Decisiones:
+
+- **Wire genérico compartido** (ADR-029): el operador viaja como cadenas de
+  Pauli con coeficientes y **el índice i, de izquierda a derecha, es el sitio
+  i** — deliberadamente NO el little-endian de Qiskit; la inversión explícita
+  (`label[::-1]`) vive del lado del circuito y tiene test propio con estado
+  inicial ASIMÉTRICO (con `"00"` un bug de inversión global pasaría en verde).
+  El TFIM, el barrido h/J y el protocolo de quench viven en `knowledge/` y en
+  los datos — jamás en el manifest.
+- **`PauliEvolutionGate` devuelve en silencio la exponencial EXACTA si el
+  circuito no se transpila** — ignora `reps`. Sin `transpile(...)` previo, el
+  control negativo (dt grande ⇒ debe divergir) habría pasado en verde para
+  siempre y la «independencia proponente/verificador» habría sido decorativa.
+  Documentado en el código; es el modo de fallo exacto que S-C §Contrato-3
+  manda cazar.
+- **El manifest jamás anuncia lo que `invoke` rechaza**: `trotter_evolve` NO
+  declara `shots` porque no lo implementa (ver #137).
+
+### #136 — verificadores C3: independencia POR ALGORITMO, con presupuesto declarado
+
+`ExactDiagonalizationVerifier` (`formal_exact`/`solver`) y `GroundTruthVerifier`
+(`ground_truth`/`dataset`), grupos de independencia distintos = las dos patas
+que la policy C3 exige. Decisiones:
+
+- **El ancla usa un algoritmo DISTINTO al de la capability**: diagonalización
+  densa (`numpy.linalg.eigh`, la ED literal del enunciado) contra el Krylov
+  disperso de `exact_evolve`. No es cosmético: ADR-008 prohíbe que el engine
+  importe capabilities, así que la reimplementación era obligatoria — y se
+  aprovechó para que además sea otro método. numpy se usa por estar garantizado
+  vía `pandapower` (dependencia DIRECTA del engine que lo exige); pinearlo
+  directo queda como follow-up para no mover `uv.lock`.
+- **Presupuesto de dimensión declarado, no cambio silencioso de método**:
+  `max_dense_dimension = 1024` (medido: eigh tarda 0.084 s a N=8 y **70 s con
+  537 MB a N=12**). Por encima del presupuesto el verificador devuelve
+  `inconclusive`/`budget_exhausted`/AL0 — **jamás cae a otro algoritmo**, que
+  es justo lo que destruiría la independencia que esta clase promete. Ambos
+  parámetros entran al `verifier_params_digest` (la letra de C-14: dos corridas
+  con tolerancia distinta jamás comparten digest de params).
+- **Consecuencia declarada**: el certificado del reto 3 se emite en **N=8** —
+  que es el punto de referencia del propio enunciado — mientras el corpus y el
+  experimento cubren la malla completa. Es el MISMO precedente que el reto 1
+  (experimento sobre `ieee6-flujo`, certificado sobre `sintetica-4bus`).
+  Certificar N=12 exige subir el presupuesto o una segunda ancla escalable.
+- **`objective`/`reference_objective` del `Differential`** cargan (peor error
+  relativo observado, 0.0) porque este claim no tiene UN objetivo escalar: son
+  dos series. `pass ⟺ objective ≤ relative_tolerance` mantiene el par legible
+  sin inventar campo nuevo.
+- **Defecto encontrado en revisión y corregido**: el chequeo de digest del
+  record de ground-truth era **circular** (recomputaba sobre los campos del
+  propio record, así que jamás podía detectar manipulación del corpus) pero su
+  mensaje decía «ancla envenenada». Se separan las dos preguntas: `source_digest`
+  (digest del artefacto congelado, lo que el `anchor_digest` de la attestation
+  debe portar) y el chequeo de integridad del record; la verificación del
+  archivo del corpus ocurre al cargarlo, fail-closed.
+
+### #137 — corpus C3 y el fix del drift código↔manifest
+
+- **Corpus C3**: 9 puntos en `knowledge/tfim/corpus/`, identidad
+  `tfim-corpus/chain-n<N>-h<h·10>@v1` — forma **adoptada, no elegida**: ya la
+  congeló el fixture de costura de Fase 0
+  (`predicate-ground-truth.json` pinnea `tfim-corpus/chain-n8-h10@v1`). Digest
+  embebido self-consistente con el MISMO algoritmo del corpus de islanding.
+  `scripts/verify_corpus_digests.py` se generaliza a varios directorios y gana
+  la tabla pinneada `ESPERADOS_TFIM_C3`: **23/23 internos, 23/23 pinneados**.
+- **Honestidad del generador**: el corpus se GENERA por la capability ED, así
+  que la pata «serie congelada» y la pata «recompute vivo» son independientes
+  por **algoritmo** (Krylov vs eigh) e **inmutabilidad**, no por método
+  físico. La diversidad metodológica real del C3 llega con G6 (BdG analítico)
+  — y ese checker cubre ⟨ZᵢZᵢ₊₁⟩, **no ⟨Zᵢ⟩** (operador de cuerda: exige
+  Pfaffianos). Escrito ANTES de implementarlo para que nadie prometa AL4 sobre
+  ⟨Zᵢ⟩ por esa vía.
+- **Chequeo físico del generador**: a t=1 el valor de BORDE es independiente de
+  N a 9 cifras (cono de luz de Lieb-Robinson) y el generador aborta si no lo
+  es. El valor de BULK **sí** depende de N (N=6 difiere de N=12 en ~8e−4);
+  la nota lo tabula. Un chequeo de N-independencia sobre el bulk habría estado
+  mal planteado y habría pasado en verde por casualidad a h/J=2.
+- **Hallazgo 12 del handoff S3 corregido**: el manifest de `blite.solvers.qubo`
+  anunciaba el backend `"gurobi"` que `invoke` rechazaba. El enum y el guard
+  salen ahora de UNA tupla (`_BACKENDS_SOPORTADOS`) y un test estructural
+  recorre el enum invocando cada valor — el drift deja de ser posible, no solo
+  deja de existir. El extra `gurobi` del pyproject queda como bundle de
+  dependencia declarado, sin prometer despacho.
+- **Corrección de un test frágil ajeno**: `TestVerifyCorpusDigestsGuard`
+  pinneaba `"internos: 14/14"` — la misma fragilidad de cardinalidad que esa
+  clase existe para prohibir, un piso más arriba. Pasa a assertar el
+  INVARIANTE (todos self-consistentes, todos los pins coincidiendo) y la
+  cobertura de ambos corpus.
+
+### #138 — G3 dispatch por clase + G4 policies por reto: muere el Reto-1-only
+
+**Dispatch (G3).** `resolve_verifiers(*, claim_type, instance_id)` conserva firma
+y fail-closed; lo que muere es la FUENTE: `_OPTIMALITY_CLAIM_TYPES = {"solution"}`
++ `ELECTRICAL_DATA` de un slug se reemplazan por `CLAIM_TYPE_VERIFIERS`, un
+registro declarativo donde cada entrada aporta constructor de claim + resolución
+de instancia. Reto 1 se re-expresa como la primera entrada, **compat total**
+(mismos `verifier:cpsat-differential` / `verifier:pandapower-islanding`, mismos
+grupos e ids). Decisiones propias:
+
+- **`statistical` se registra VACÍO con `TODO(G2)`**, no con un verificador de
+  mentira: la clave existe (el seed la exige) pero la resolución vacía sigue
+  dando 400. Prometer una pata que no existe sería peor que no tenerla.
+- **El corpus se verifica al CARGARLO, fail-closed**: slug validado por regex
+  antes de tocar el filesystem (traversal), y el digest embebido del archivo se
+  recomputa con la regla del corpus. Un corpus manipulado jamás llega a un
+  verificador — y no puede convertirse en un `fail` que culparía al proponente
+  por la corrupción del ancla.
+- **Las dos patas C3 examinan el MISMO claim candidato**: un adapter privado
+  traduce el `SimulationSeriesClaim` a `GroundTruthClaim`, en vez de pedirle al
+  llamador que mande dos claims distintas (que podrían divergir).
+
+**Cuerpo del claim (G3, parte 2).** `ClaimRequest` era Reto-1-only
+(`instance` + `assignment` obligatorios). Gana `payload: dict | None` y un
+validador que exige **exactamente una** forma: payload, o el par legacy — nunca
+ambas, nunca ninguna. El par legacy se NORMALIZA a payload antes del dispatch,
+así que río abajo hay **un solo camino**. `challenges/reto1/run_all.py` y los
+tests existentes siguen mandando la forma legacy sin cambios.
+
+**Policies (G4).** Dos plantillas versionadas nuevas
+(`reto3-simulation.yaml`, `reto2-statistical.yaml`), cargables cada una por
+separado, y COMPUESTAS en `verification-default.yaml` — «una policy por
+distribución sigue siendo la forma» (S-C §Contrato-5). Bump a **0.3.0** con nota
+de supersede en el estilo del `[S-F 2026-07-20]` existente; las reglas
+`solution`/`intermediate` quedan byte-intactas. `policy_digest` cambia por
+diseño; los bundles ya estampados conservan el suyo. Test nuevo: cada plantilla
+debe ser byte-equivalente a su regla dentro de la policy compuesta — si no, las
+plantillas driftean en silencio.
+
+### #139 — CP2 VIVO: el reto 3 corre punta a punta
+
+`challenges/reto3/run_all.py` (un solo comando, mismo patrón que reto 1). Medido
+en esta sesión, no proyectado:
+
+- **Malla completa del enunciado en verde**: los 9 puntos (N∈{6,8,12} ×
+  h/J∈{0.5,1,2}) con Trotter orden 1, r=16, contra las series de ED del corpus:
+  peor punto `chain-n*-h20` con err ⟨Zᵢ⟩ = 0.00903 y err ⟨ZᵢZᵢ₊₁⟩ = 0.00496
+  (margen ~5.5× bajo el 5%).
+- **Control negativo FALLA como debe** en los tres h/J (0.07867 / 0.32550 /
+  1.03393). El script **aborta** si alguno pasa: un error chico con dt grande
+  sería sospecha de código compartido, no un éxito.
+- **Barrido de dt**: razón 4.46 → 4.10 → 4.03 → 4.01 (O(dt²), #134).
+- **Certificado REAL**: misión → claim `simulation_result` → 2 verificadores
+  (anclas `solver` + `dataset`) → `titular_level` **AL3**, veredicto
+  **verified** → `check_bundle` **8/8** en proceso → `verify-bundle.py`
+  **8/8 offline**. El certificado se emite en **N=8** por la causa de #136.
+
+Gates al cierre de esta pieza: **1073 passed / 14 skipped / 21 xfailed /
+4 xpassed, 91.88%**; **14 contratos kept, 0 broken**; ruff limpio; pyright 0;
+guard de corpus **24/24 internos y pinneados**.
