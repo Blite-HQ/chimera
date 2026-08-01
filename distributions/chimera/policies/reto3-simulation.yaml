@@ -1,0 +1,21 @@
+# VerificationPolicy — plantilla de UNA regla (reto 3, `simulation_result`).
+# docs/specs/generalidad-retos.md §Contrato-5 (G4/#138): "una policy por
+# distribución sigue siendo la forma" — esta plantilla se COMPONE verbatim en
+# distributions/chimera/policies/verification-default.yaml (regla `simulation_result`);
+# vive SOLA aquí para que valide standalone contra el mismo esquema
+# VerificationPolicy 0.2.0 (engine/src/blite/verification/policy.py) sin
+# arrastrar las reglas de otros retos/distribuciones.
+#
+# Dos patas C3 por construcción (§Contrato-3): recompute vivo por
+# diagonalización exacta (`ExactDiagonalizationVerifier`, ancla `solver`) +
+# serie congelada del corpus (`GroundTruthVerifier`, ancla `dataset`) — dos
+# grupos de independencia DISTINTOS, nunca el mismo método invocado dos veces.
+policy_id: chimera-reto3-simulation
+version: 0.2.0
+rules:
+  - match: { claim_type: simulation_result }
+    criticality: C3
+    min_level: AL3
+    required_legs: 2
+    required_anchors: [solver, dataset]
+    on_inconclusive: mark

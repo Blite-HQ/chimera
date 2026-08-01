@@ -7,8 +7,17 @@
 # La 0.1.0 hablaba `min_rung`: vocabulario que el freeze SS4 eliminó (la escalera 1-7 quedó
 # supersedida por clases decisorias + AL0-AL4 + criticidad C0-C3). Un `policy_digest`
 # estampado con la 0.1.0 habría pinneado política de vocabulario muerto en cada run.
+#
+# [G4 2026-08-01] v0.3.0 supersede a v0.2.0 — causa: docs/specs/generalidad-retos.md
+# §Contrato-5 (G4/#138): agrega las reglas `simulation_result` (reto 3) y `statistical`
+# (reto 2), compuestas verbatim desde reto3-simulation.yaml / reto2-statistical.yaml (mismo
+# directorio — "una policy por distribución sigue siendo la forma", spec §Contrato-5 punto
+# 3). Las reglas `solution`/`intermediate`/`irreversible-external` que YA existían quedan
+# BYTE-INTACTAS — aditivo puro. `policy_digest` cambia por diseño (SHA-256 de los bytes
+# exactos del YAML): cualquier bundle YA estampado con la 0.2.0 conserva su digest viejo —
+# este bump nunca lo invalida retroactivamente.
 policy_id: chimera-default
-version: 0.2.0
+version: 0.3.0
 rules:
   - match: { side_effects: pure, claim_type: solution }
     criticality: C3 # el resultado final del demo: AL3 minimo + 2 patas independientes
@@ -27,3 +36,15 @@ rules:
     required_anchors: [solver, execution]
     escalation: human # la esquina se satisface por no-accion (PR4)
     on_inconclusive: hold_run
+  - match: { claim_type: simulation_result } # reto 3 — docs/specs/generalidad-retos.md §Contrato-5
+    criticality: C3 # dos patas independientes: recompute ED (solver) + serie congelada (dataset)
+    min_level: AL3
+    required_legs: 2
+    required_anchors: [solver, dataset]
+    on_inconclusive: mark
+  - match: { claim_type: statistical } # reto 2 — docs/specs/generalidad-retos.md §Contrato-5
+    criticality: C3 # techo GROUND_TRUTH AL3 del plan; sin ancla ex-ante => certificacion amortizada
+    min_level: AL3
+    required_legs: 2
+    required_anchors: [dataset, rule]
+    on_inconclusive: mark

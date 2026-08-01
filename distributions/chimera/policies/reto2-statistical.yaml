@@ -1,0 +1,23 @@
+# VerificationPolicy — plantilla de UNA regla (reto 2, `statistical`).
+# docs/specs/generalidad-retos.md §Contrato-5 (G4/#138): "una policy por
+# distribución sigue siendo la forma" — esta plantilla se COMPONE verbatim en
+# distributions/chimera/policies/verification-default.yaml (regla `statistical`);
+# vive SOLA aquí para que valide standalone contra el mismo esquema
+# VerificationPolicy 0.2.0 (engine/src/blite/verification/policy.py) sin
+# arrastrar las reglas de otros retos/distribuciones.
+#
+# Techo GROUND_TRUTH AL3 del plan (§Contrato-5): sin ancla ex-ante para
+# generalización futura ⇒ certificación amortizada (perfil §4.7), jamás
+# verificación por-resultado. `PropertyRuleVerifier` (ancla `rule`) y el
+# corpus C2 aún no existen (G2, TODO) — esta regla exige la forma final
+# desde ya para que el fail-closed del dispatcher (G3) sea el único gate
+# visible mientras tanto.
+policy_id: chimera-reto2-statistical
+version: 0.2.0
+rules:
+  - match: { claim_type: statistical }
+    criticality: C3
+    min_level: AL3
+    required_legs: 2
+    required_anchors: [dataset, rule]
+    on_inconclusive: mark
