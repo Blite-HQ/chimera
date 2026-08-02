@@ -1706,3 +1706,138 @@ en esta sesión, no proyectado:
 Gates al cierre de esta pieza: **1073 passed / 14 skipped / 21 xfailed /
 4 xpassed, 91.88%**; **14 contratos kept, 0 broken**; ruff limpio; pyright 0;
 guard de corpus **24/24 internos y pinneados**.
+
+### Tabla de interacciones — sesión GENERALIDAD
+
+| Interfaz tocada                                                                                    | Dominio afectado | Estado del contrato                                                        |
+| -------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------- |
+| `Differential`: status `EXACT_DIAGONALIZATION` + `relative_tolerance` (C-14)                       | confianza        | ADITIVO — `CpSatStatus` intacto; seed de C-14 VERDE                        |
+| `DifferentialStatus` exportado desde `blite.verification`                                          | confianza        | NUEVO — alias público                                                      |
+| `blite.verification.exact_diagonalization` (verificador + `SimulationSeriesClaim`)                 | confianza        | NUEVO — `formal_exact`/`solver`, AL3 sin `proof`                           |
+| `blite.verification.ground_truth` (+ `source_digest`, `build_ground_truth_record`)                 | confianza        | NUEVO — `ground_truth`/`dataset`; `anchor_digest` = digest del artefacto   |
+| `blite.verification.property_rule` (`PROPERTY_RULES`/`METAMORPHIC_RULES`)                          | confianza        | NUEVO — `property_rule`/`rule`, techo AL2 honesto                          |
+| `CLAIM_TYPE_VERIFIERS` en `chimera_api.instance_verifiers`                                         | E (api)          | NUEVO — `resolve_verifiers` conserva firma y fail-closed                   |
+| `ClaimRequest.payload` (+ `instance`/`assignment` opcionales, validador de forma única)            | E↔D              | ADITIVO — la forma legacy se normaliza; reto 1 sin cambios                 |
+| Entry points `blite.numeric.exact_evolve`, `blite.quantum.trotter_evolve`                          | B (capabilities) | NUEVOS — manifest v2, cero dependencias nuevas                             |
+| Entry points `blite.ml.{tabular_prep,svm_precomputed,classifier_baseline}`, `quantum.fidelity_kernel` | B (capabilities) | NUEVOS — manifest v2, cero dependencias nuevas                             |
+| `blite.solvers.qubo` — enum `backend` deja de anunciar `gurobi`                                    | B (capabilities) | CORREGIDO — hallazgo 12; enum y guard con UNA fuente                       |
+| `distributions/chimera/policies/verification-default.yaml` 0.2.0 → **0.3.0**                       | distribución     | SUPERSEDE — `policy_digest` CAMBIA; reglas viejas byte-intactas            |
+| `distributions/chimera/policies/reto{2,3}-*.yaml` (plantillas)                                     | distribución     | NUEVAS — cargables solas; byte-equivalentes a su regla compuesta           |
+| `knowledge/tfim/corpus/` (9 puntos) y `knowledge/tabular/corpus/` (1 + CSV)                        | knowledge/datos  | NUEVOS — digests embebidos y pinneados                                     |
+| `scripts/verify_corpus_digests.py` multi-directorio + `ESPERADOS_TFIM_C3`/`ESPERADOS_TABULAR_C2`   | invariantes      | EXTENDIDO — 24/24                                                          |
+| `challenges/reto3/` (y `challenges/reto2/`)                                                        | producto         | NUEVOS — entry point único, mismo patrón que reto 1                        |
+
+### #140 — CP3 vivo, y la comparación que estaba amañada
+
+`challenges/reto2/run_all.py` cierra el reto 2 punta a punta sobre el corpus
+COMPLETO (3276 filas, 5 folds, 27.6 s): folds sellados con `folds_digest`
+emitido ANTES de cualquier `fit` (compromiso previo, Dwork et al.) → kernel de
+fidelidad por statevector → SVM precomputado → baseline SVM-RBF CV-5 → McNemar
+→ certificado `statistical` con anclas `dataset` + `rule` → `check_bundle` 8/8
+→ `verify-bundle` **8/8 offline**.
+
+**El hallazgo de la sesión.** La primera corrida concluía que el brazo cuántico
+**superaba** al clásico con **McNemar p = 2.00e-15** y Δaccuracy = +0.0812. El
+número era real; la conclusión, no. Los dos brazos no recibían los mismos datos:
+el cuántico corría sobre `prepared` (4 features seleccionadas por importancia RF
+ajustada en train, imputadas y escaladas a [0, π]) y el clásico sobre las 9
+features CRUDAS, imputadas pero **sin escalar y sin selección**. Eso viola la
+letra del baseline (`knowledge/quantum/07` §1.3: «el baseline directo: **mismo
+pipeline**, kernel gaussiano») y convierte el McNemar en «pipeline preparado de
+4 features vs pipeline crudo de 9», no en «kernel cuántico vs kernel RBF».
+
+Corrección: `ClassifierBaseline` gana un modo `prepared_folds` para que los dos
+brazos difieran SOLO en el kernel. Números reales tras la corrección:
+
+| brazo | accuracy OOF |
+| --- | --- |
+| cuántico (kernel de fidelidad) | 0.6807 |
+| clásico MISMO pipeline (certificado) | 0.6838 |
+| clásico sobre features crudas (informativo, NO certificado) | 0.5995 |
+
+**Δaccuracy = −0.0031, McNemar p = 0.4655 (b=81, c=71) ⇒ NO significativo ⇒ la
+lectura correcta es «competitivo»**, jamás «supera». El p=2e-15 era artefacto
+del confundido, y desapareció al igualar el preprocesamiento. Se conserva la
+fila de features crudas como dato honesto — muestra que el preprocesamiento
+aporta ~8 puntos, más que el kernel — pero **no participa del McNemar
+certificado**: compararse contra ella confundiría kernel con preprocesamiento.
+
+Guarda puesta para que el sesgo no vuelva en silencio: un test con fixture donde
+las filas crudas no tienen NINGUNA señal sobre la etiqueta y `prepared_folds` sí
+— si la capability alguna vez ignorara `prepared_folds` y reajustara desde
+`rows`, la accuracy colapsaría de 1.0 a ~0.5 y el test lo caza.
+
+λ_min del kernel antes de reparar: ~−4e−13 en los 5 folds (PSD por construcción
+en statevector exacto, teorema de Schur); la reparación `clip` se aplica y se
+REPORTA como dato, jamás en silencio.
+
+### Handoff de la sesión GENERALIDAD — qué queda y qué NO se verificó
+
+**Cerrado (con gates citados, no «debería pasar»).** Gates sobre la punta de la
+rama al momento de escribir: **1098 passed / 14 skipped / 20 xfailed / 4 xpassed,
+92.08%**; **14 contratos kept, 0 broken**; ruff limpio; pyright 0; guard de corpus
+**24/24**. El seed `test_seed_generalidad_retos.py` quedó **completamente verde**
+(sus 4 xfail retirados pieza por pieza: C-14 → verificadores → dispatch).
+
+- **G1** (reto 3): receta KB 11, C-14, `trotter_evolve`/`exact_evolve`, corpus C3.
+- **G3** (dispatch por clase) y **G4** (policies por reto, 0.3.0).
+- **G2 parcial** (reto 2): las 4 capabilities, el corpus sellado y
+  `PropertyRuleVerifier`.
+- **G8 parcial**: el fix del drift enum de solvers (hallazgo 12).
+- **CP2 vivo**: reto 3 punta a punta con certificado AL3 y `verify-bundle` 8/8.
+
+**NO hecho — entra al handoff, con causa:**
+
+| Ítem | Estado | Causa |
+| --- | --- | --- |
+| **G5** (M11 baseline SA, `method:"sa"`) | NO empezado | `dwave-samplers` 1.8.0 está instalado (`neal` NO — el adapter va contra `dwave.samplers`). C-15 exige extensión COORDINADA de `baselines` (schema + tipo TS + fixture + chart en el MISMO checkpoint) y eso cruza al Studio; no cabía en el presupuesto de esta sesión sin dejarlo a medias |
+| **G6** (doble ancla BdG, stretch) | NO empezado | Declarado en la receta §2 con su alcance honesto: el checker de fermiones libres cubre ⟨ZᵢZᵢ₊₁⟩ pero **NO ⟨Zᵢ⟩** (operador de cuerda ⇒ Pfaffianos). Quien lo tome no debe prometer AL4 sobre ⟨Zᵢ⟩ por esa vía |
+| **G8** (reparación M.3/M.4 REGRID-QAOA + feasibility-feedback DFS + pesos desde flujo) | NO empezado | Solo se hizo el fix del enum del mismo ítem |
+| **DoD «contra compose»** | **NO verificado** | Ver abajo — es la brecha más importante de este handoff |
+
+**Brecha 1 — la verificación viva fue EN PROCESO, no contra compose.** CP2 (y CP3)
+se verificaron con `TestClient` in-process + `check_bundle` + `verify-bundle.py`
+offline. El DoD pide además el stack de `docker compose`. No se corrió, y hay una
+razón estructural que quien lo intente debe conocer primero (brecha 2).
+
+**Brecha 2 — los entry points nuevos NO están vivos en el venv local.**
+`entry_points(group="blite.capabilities")` lee metadatos de la instalación, no el
+código: los 6 entry points nuevos (`exact_evolve`, `trotter_evolve`,
+`tabular_prep`, `fidelity_kernel`, `svm_precomputed`, `classifier_baseline`) no
+aparecen hasta reinstalar los paquetes (`uv sync --locked --all-packages
+--all-extras` tras el merge). Consecuencias concretas:
+
+- `tests/invariants/test_capability_genericity.py` recorre entry points
+  INSTALADOS ⇒ **hoy no escanea los 6 manifests nuevos**. Mitigación puesta en su
+  lugar: cada capability nueva trae su propia clase `TestGenericitySelfCheck` que
+  corre la denylist sobre su manifest serializado. No es lo mismo que el gate
+  global: **al mergear, re-sincronizar y volver a correr el gate global** es
+  obligatorio.
+- El smoke 2.5 debe pasar de **13 a 19 entry points** en el contenedor. Si sigue
+  diciendo 13, la imagen no se reconstruyó.
+
+**Brecha 3 — tensión de la policy del reto 2 (AL2 vs AL3), heredada de la spec.**
+`reto2-statistical.yaml` declara `min_level: AL3`, pero las DOS patas que S-C
+§Contrato-3 prescribe para ese reto son `ground_truth` (techo AL3) y
+`property_rule` (**techo AL2**, decisión #103). Como `titular_level =
+mín(level_efectivo)`, cualquier claim `statistical` verificado por esas dos patas
+queda en **AL2, jamás AL3**. El bundle igual pasa `check_bundle` 8/8 porque el
+punto 7 exige `required_legs`/`required_anchors` pero **no** `min_level` — que es
+exactamente el hallazgo **C15** ya en el backlog (`04-consolidacion.md` §7.2:
+«una conclusión AL1 bajo regla AL3 pasa el punto 7»). Esta sesión **no** bajó el
+`min_level` para que cerrara: se deja la contradicción visible. Las salidas son
+(a) bajar la regla a AL2 con causa, (b) darle al reto 2 una tercera pata que
+alcance AL3, o (c) resolver C15 primero y dejar que el punto 7 lo reporte. Es
+decisión de la sesión de control, no de esta.
+
+**Frontera 4 — la base de la rama.** Repetido aquí porque condiciona el merge:
+esta rama sale de `mejorado/confianza-1`, no de `mejorado/base`. Si control
+mergea C-1 primero, entra limpio; si no, hay que rebasar y los 6 manifests nuevos
+vuelven a v1.
+
+**Frontera 5 — honestidad del corpus C2.** El CSV oficial CC0 del reto no es
+obtenible sin red en este entorno. El corpus es **sintético declarado**
+(`procedencia: "synthetic_generated"`, con caveats explícitos en el propio
+registro): todo claim es sobre ESE CSV sellado y nada dice del fenómeno del mundo
+real. Cuando el CSV oficial aparezca, su digest supersede y **el pipeline no
+cambia**, porque el corpus es DATO.
