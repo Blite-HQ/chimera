@@ -8,6 +8,24 @@ modelo que NUNCA la vio en train) — precisamente para que sean comparables
 PUNTO A PUNTO contra las predicciones de cualquier otro brazo sobre las
 MISMAS filas (docs/mejorado/03-research.md R1, capability #4).
 
+**Modo `prepared_folds` (mismo pipeline que el brazo cuantico):** por
+default esta capability corre su PROPIO split + imputacion sobre `rows`
+crudas ("standalone", protocolo oficial CV-5 sin mas contrato que ese). Pero
+comparar un brazo que corre sobre features seleccionadas+escaladas (el
+kernel cuantico, via `blite.ml.tabular_prep`) contra un brazo que corre
+sobre features CRUDAS sin escalar confunde "que kernel es mejor" con "que
+preprocesamiento es mejor" (un RBF con `gamma="scale"` normaliza por la
+varianza GLOBAL, no por feature — una sola columna con escala mucho mayor
+domina la distancia). El input OPCIONAL `prepared_folds` (mismo shape que
+el campo `prepared` que devuelve `tabular_prep`) + `folds` (la asignacion
+fila->fold, mismo shape que su campo `folds`) hacen que el SVM-RBF ajuste
+EXACTAMENTE sobre esas matrices ya preparadas — el unico grado de libertad
+que queda entre los dos brazos es el KERNEL (fidelidad cuantica vs
+gaussiano), no el preprocesamiento. Ausentes ambos ⇒ camino standalone
+INTACTO (compat total); solo uno de los dos ⇒ error de validacion (deben
+viajar juntos, `folds` es lo que permite reensamblar las predicciones
+out-of-fold en el orden GLOBAL de `rows`/`labels`).
+
 McNemar (knowledge/quantum/04-estadistica-evidencia.md SS6): cuando se
 suministra `compare_predictions` (predicciones de otro modelo, alineadas
 fila a fila con `rows`/`labels`), el output agrega `mcnemar` con los pares
@@ -91,6 +109,69 @@ def _validate_binary_list(raw: Any, name: str, n_rows: int) -> list[int]:
     return validated
 
 
+def _validate_prepared_folds(
+    raw: Any, n_folds: int
+) -> list[dict[str, dict[str, Any]]] | None:
+    """Valida el `prepared_folds` OPCIONAL (modo mismo-pipeline, ver
+    docstring del modulo): mismo shape que el campo `prepared` de
+    `blite.ml.tabular_prep` — una entrada por fold, cada una
+    `{"train": {"features", "labels"}, "test": {"features", "labels"}}`.
+    Ausente ⇒ `None` (camino standalone intacto)."""
+    if raw is None:
+        return None
+    if not isinstance(raw, list) or len(raw) != n_folds:
+        msg = (
+            f"ClassifierBaseline: 'prepared_folds' debe ser una lista de "
+            f"longitud {n_folds} (uno por fold), no {raw!r}"
+        )
+        raise ValueError(msg)
+    validated: list[dict[str, dict[str, Any]]] = []
+    for fold_idx, entry in enumerate(raw):
+        if not isinstance(entry, dict) or "train" not in entry or "test" not in entry:
+            msg = (
+                f"ClassifierBaseline: prepared_folds[{fold_idx}] debe ser "
+                "{'train': {...}, 'test': {...}}"
+            )
+            raise ValueError(msg)
+        split: dict[str, dict[str, Any]] = {}
+        for part in ("train", "test"):
+            block = entry[part]
+            if not isinstance(block, dict):
+                msg = (
+                    f"ClassifierBaseline: prepared_folds[{fold_idx}]['{part}'] "
+                    "debe ser un dict con 'features'/'labels'"
+                )
+                raise ValueError(msg)
+            features = _validate_rows(block.get("features"))
+            labels = _validate_binary_list(
+                block.get("labels"),
+                f"prepared_folds[{fold_idx}].{part}.labels",
+                len(features),
+            )
+            split[part] = {"features": features, "labels": labels}
+        validated.append(split)
+    return validated
+
+
+def _validate_fold_assignment(raw: Any, n_rows: int, n_folds: int) -> list[int]:
+    """Valida `folds` (fila -> indice de fold, mismo shape que el campo
+    `folds` de `blite.ml.tabular_prep`) — el mapeo que reensambla las
+    predicciones de `prepared_folds` en el orden GLOBAL de `rows`/`labels`."""
+    if not isinstance(raw, list) or len(raw) != n_rows:
+        msg = f"ClassifierBaseline: 'folds' debe ser una lista de longitud {n_rows}, no {raw!r}"
+        raise ValueError(msg)
+    validated: list[int] = []
+    for idx, value in enumerate(raw):
+        if isinstance(value, bool) or not isinstance(value, int) or not (0 <= value < n_folds):
+            msg = (
+                f"ClassifierBaseline: folds[{idx}] debe ser entero en "
+                f"[0, {n_folds}), no {value!r}"
+            )
+            raise ValueError(msg)
+        validated.append(value)
+    return validated
+
+
 def _validate_int_at_least(raw: Any, name: str, minimum: int) -> int:
     if isinstance(raw, bool) or not isinstance(raw, int) or raw < minimum:
         msg = f"ClassifierBaseline: {name} debe ser entero >= {minimum}, no {raw!r}"
@@ -148,20 +229,145 @@ def _mcnemar(
     return {"b": b, "c": c, "p_value": float(p_value)}
 
 
-def classifier_baseline(inputs: dict[str, Any]) -> dict[str, Any]:
-    """CV-5 estratificado de `SVC(kernel="rbf", class_weight="balanced")`
-    sobre `rows`/`labels` (imputacion de mediana EN-FOLD, fit solo en train
-    — misma disciplina anti-fuga que `blite.ml.tabular_prep`). Devuelve
-    metricas por fold, metricas agregadas (sobre las predicciones OOF
-    concatenadas) y las propias predicciones OOF."""
+def _fit_predict_rbf(
+    train_features: Any, train_labels: Any, test_features: Any, *, c: float, gamma: str | float, seed: int
+) -> Any:
+    """Un SVM-RBF ajustado sobre `(train_features, train_labels)` y
+    evaluado sobre `test_features` — el ÚNICO lugar donde este modulo
+    construye un `SVC`, compartido por los dos caminos (standalone y
+    `prepared_folds`) para que jamas diverjan en hiperparametros."""
+    from sklearn.svm import SVC
+
+    # SVC.gamma accepts 'scale'/'auto' OR a positive float at runtime; the
+    # installed stub infers `str` from the default value only.
+    model = SVC(
+        kernel="rbf",
+        class_weight="balanced",
+        C=c,
+        gamma=gamma,  # pyright: ignore[reportArgumentType]
+        random_state=seed,
+    )
+    model.fit(train_features, train_labels)
+    return model.predict(test_features)
+
+
+def _cv_standalone(
+    features_arr: Any, labels_arr: Any, *, n_folds: int, seed: int, c: float, gamma: str | float
+) -> tuple[Any, list[dict[str, Any]]]:
+    """Camino OFICIAL sin contrato adicional (compat total): su PROPIO
+    split estratificado + imputacion de mediana EN-FOLD sobre `rows`
+    crudas — protocolo CV-5 standalone, intacto."""
     import numpy as np
     from sklearn.model_selection import StratifiedKFold
-    from sklearn.svm import SVC
 
     from blite_cap_ml._shared import (
         binary_classification_metrics,
         impute_median_fit_train,
     )
+
+    n_rows = features_arr.shape[0]
+    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+    oof_predictions = np.empty(n_rows, dtype=int)
+    fold_metrics: list[dict[str, Any]] = []
+
+    for fold_idx, (train_idx, test_idx) in enumerate(skf.split(features_arr, labels_arr)):
+        train_raw = features_arr[train_idx]
+        test_raw = features_arr[test_idx]
+        train_imputed, test_imputed = impute_median_fit_train(train_raw, test_raw)
+
+        fold_predictions = _fit_predict_rbf(
+            train_imputed, labels_arr[train_idx], test_imputed, c=c, gamma=gamma, seed=seed
+        )
+        oof_predictions[test_idx] = fold_predictions
+
+        fold_labels = labels_arr[test_idx]
+        fold_metrics.append(
+            {"fold": fold_idx, **binary_classification_metrics(fold_labels, fold_predictions)}
+        )
+    return oof_predictions, fold_metrics
+
+
+def _cv_over_prepared_folds(
+    prepared_folds: list[dict[str, dict[str, Any]]],
+    folds: list[int],
+    labels_arr: Any,
+    *,
+    n_rows: int,
+    c: float,
+    gamma: str | float,
+    seed: int,
+) -> tuple[Any, list[dict[str, Any]]]:
+    """Camino mismo-pipeline (ver docstring del modulo): ajusta el SVM-RBF
+    EXACTAMENTE sobre las matrices de `prepared_folds` -- nunca recalcula
+    imputacion/split desde `rows`. `folds` reensambla las predicciones en el
+    orden GLOBAL de `rows`/`labels`; un desacuerdo entre las labels que
+    `prepared_folds` trae y las labels GLOBALES en esas mismas posiciones es
+    un error de sincronizacion entre los dos argumentos (fail-loud, nunca
+    una metrica silenciosamente mal calculada)."""
+    import numpy as np
+
+    from blite_cap_ml._shared import binary_classification_metrics
+
+    oof_predictions = np.empty(n_rows, dtype=int)
+    fold_metrics: list[dict[str, Any]] = []
+
+    test_indices_by_fold: dict[int, list[int]] = {}
+    for row_idx, fold_idx in enumerate(folds):
+        test_indices_by_fold.setdefault(fold_idx, []).append(row_idx)
+
+    for fold_idx, split in enumerate(prepared_folds):
+        train_features = np.array(split["train"]["features"], dtype=float)
+        train_labels = np.array(split["train"]["labels"], dtype=int)
+        test_features = np.array(split["test"]["features"], dtype=float)
+        test_labels_declared = split["test"]["labels"]
+
+        test_indices = test_indices_by_fold.get(fold_idx, [])
+        expected_test_labels = [int(labels_arr[i]) for i in test_indices]
+        if [int(v) for v in test_labels_declared] != expected_test_labels:
+            msg = (
+                f"ClassifierBaseline: fold {fold_idx} -- prepared_folds"
+                "[fold]['test']['labels'] no coincide con labels[] en las "
+                "posiciones que 'folds' declara para este fold ('folds' y "
+                "'prepared_folds' desincronizados)"
+            )
+            raise ValueError(msg)
+
+        fold_predictions = _fit_predict_rbf(
+            train_features, train_labels, test_features, c=c, gamma=gamma, seed=seed
+        )
+        if len(test_indices) != len(fold_predictions):
+            msg = (
+                f"ClassifierBaseline: fold {fold_idx} -- 'folds' declara "
+                f"{len(test_indices)} filas de test pero prepared_folds trae "
+                f"{len(fold_predictions)}"
+            )
+            raise ValueError(msg)
+        for row_idx, prediction in zip(test_indices, fold_predictions, strict=True):
+            oof_predictions[row_idx] = prediction
+
+        fold_metrics.append(
+            {
+                "fold": fold_idx,
+                **binary_classification_metrics(
+                    np.array(expected_test_labels, dtype=int), fold_predictions
+                ),
+            }
+        )
+    return oof_predictions, fold_metrics
+
+
+def classifier_baseline(inputs: dict[str, Any]) -> dict[str, Any]:
+    """CV-5 estratificado de `SVC(kernel="rbf", class_weight="balanced")`.
+    Por default corre su PROPIO split + imputacion de mediana EN-FOLD sobre
+    `rows` crudas (protocolo OFICIAL standalone, misma disciplina anti-fuga
+    que `blite.ml.tabular_prep`). Si el caller trae `prepared_folds` +
+    `folds`, ajusta en cambio sobre esas matrices ya preparadas (modo
+    mismo-pipeline — ver docstring del modulo). En ambos casos devuelve
+    metricas por fold, metricas agregadas (sobre las predicciones OOF
+    concatenadas) y las propias predicciones OOF."""
+    import numpy as np
+
+    from blite_cap_ml._shared import binary_classification_metrics
 
     rows = _validate_rows(inputs.get("rows"))
     n_rows = len(rows)
@@ -180,34 +386,32 @@ def classifier_baseline(inputs: dict[str, Any]) -> dict[str, Any]:
         else None
     )
 
+    prepared_folds = _validate_prepared_folds(inputs.get("prepared_folds"), n_folds)
+    folds_raw = inputs.get("folds")
+    if (prepared_folds is None) != (folds_raw is None):
+        msg = (
+            "ClassifierBaseline: 'prepared_folds' y 'folds' deben venir "
+            "JUNTOS (o ninguno) -- 'folds' es lo que reensambla las "
+            "predicciones out-of-fold en el orden global (ver docstring "
+            "del modulo)"
+        )
+        raise ValueError(msg)
+    folds = (
+        _validate_fold_assignment(folds_raw, n_rows, n_folds)
+        if folds_raw is not None
+        else None
+    )
+
     labels_arr = np.array(labels, dtype=int)
     features_arr = np.array(rows, dtype=float)
 
-    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
-    oof_predictions = np.empty(n_rows, dtype=int)
-    fold_metrics: list[dict[str, Any]] = []
-
-    for fold_idx, (train_idx, test_idx) in enumerate(skf.split(features_arr, labels_arr)):
-        train_raw = features_arr[train_idx]
-        test_raw = features_arr[test_idx]
-        train_imputed, test_imputed = impute_median_fit_train(train_raw, test_raw)
-
-        # SVC.gamma accepts 'scale'/'auto' OR a positive float at runtime;
-        # the installed stub infers `str` from the default value only.
-        model = SVC(
-            kernel="rbf",
-            class_weight="balanced",
-            C=c,
-            gamma=gamma,  # pyright: ignore[reportArgumentType]
-            random_state=seed,
+    if prepared_folds is not None and folds is not None:
+        oof_predictions, fold_metrics = _cv_over_prepared_folds(
+            prepared_folds, folds, labels_arr, n_rows=n_rows, c=c, gamma=gamma, seed=seed
         )
-        model.fit(train_imputed, labels_arr[train_idx])
-        fold_predictions = model.predict(test_imputed)
-        oof_predictions[test_idx] = fold_predictions
-
-        fold_labels = labels_arr[test_idx]
-        fold_metrics.append(
-            {"fold": fold_idx, **binary_classification_metrics(fold_labels, fold_predictions)}
+    else:
+        oof_predictions, fold_metrics = _cv_standalone(
+            features_arr, labels_arr, n_folds=n_folds, seed=seed, c=c, gamma=gamma
         )
 
     aggregate = binary_classification_metrics(labels_arr, oof_predictions)

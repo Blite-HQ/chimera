@@ -7,6 +7,7 @@ from __future__ import annotations
 import dataclasses
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -174,6 +175,157 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="compare_predictions"):
             ClassifierBaseline().invoke(
                 {"rows": rows, "labels": labels, "compare_predictions": [0, 1]}
+            )
+
+
+def _prepared_folds_fixture() -> tuple[
+    list[list[float]], list[int], list[dict[str, dict[str, list[Any]]]], list[int]
+]:
+    """8 filas, 2 folds. `rows` (features CRUDAS) llevan CERO informacion
+    sobre `labels` (el valor 1.0/2.0 aparece con ambas etiquetas por igual)
+    -- un SVM entrenado sobre `rows` no puede superar el azar (~0.5). Las
+    features de `prepared_folds`, en cambio, codifican la etiqueta
+    exactamente (0.0/1.0) -- perfectamente separables (accuracy 1.0). Si
+    `ClassifierBaseline` alguna vez ignorase `prepared_folds` y recalculase
+    desde `rows` en silencio, la accuracy agregada caeria a ~0.5 en vez de
+    1.0 -- la propiedad que `TestPreparedFoldsSharedPipeline` fija."""
+    rows: list[list[float]] = [[1.0], [1.0], [2.0], [2.0], [1.0], [1.0], [2.0], [2.0]]
+    labels = [0, 1, 0, 1, 0, 1, 0, 1]
+    folds = [0, 0, 0, 0, 1, 1, 1, 1]
+
+    fold0_train = {"features": [[0.0], [1.0], [0.0], [1.0]], "labels": [0, 1, 0, 1]}
+    fold0_test = {"features": [[0.0], [1.0], [0.0], [1.0]], "labels": [0, 1, 0, 1]}
+    fold1_train = {"features": [[0.0], [1.0], [0.0], [1.0]], "labels": [0, 1, 0, 1]}
+    fold1_test = {"features": [[0.0], [1.0], [0.0], [1.0]], "labels": [0, 1, 0, 1]}
+    prepared_folds = [
+        {"train": fold0_train, "test": fold0_test},
+        {"train": fold1_train, "test": fold1_test},
+    ]
+    return rows, labels, prepared_folds, folds
+
+
+class TestPreparedFoldsSharedPipeline:
+    """Regresion de sesgo mismo-pipeline: cuando el caller trae
+    `prepared_folds` (mismo shape que `blite.ml.tabular_prep`), el SVM-RBF
+    DEBE ajustar exactamente sobre esas matrices -- nunca recalcular su
+    propio split/imputacion sobre `rows` en silencio. Sin esto, comparar el
+    brazo que SI usa el pipeline preparado (kernel cuantico) contra este
+    baseline seria un McNemar entre dos PIPELINES distintos, no entre dos
+    modelos sobre los mismos datos."""
+
+    def test_svm_ve_exactamente_las_matrices_de_prepared_folds(self) -> None:
+        rows, labels, prepared_folds, folds = _prepared_folds_fixture()
+
+        result = ClassifierBaseline().invoke(
+            {
+                "rows": rows,
+                "labels": labels,
+                "n_folds": 2,
+                "seed": _SEED,
+                "prepared_folds": prepared_folds,
+                "folds": folds,
+            }
+        )
+
+        # Si el capability hubiera ignorado `prepared_folds` y recalculado
+        # desde `rows` (sin señal alguna sobre el label), la accuracy
+        # agregada rondaria el azar (~0.5), jamas 1.0.
+        assert result["aggregate"]["accuracy"] == 1.0
+        assert len(result["predictions"]) == len(rows)
+        assert len(result["fold_metrics"]) == 2
+
+    def test_mcnemar_funciona_junto_con_prepared_folds(self) -> None:
+        rows, labels, prepared_folds, folds = _prepared_folds_fixture()
+        always_wrong = [1 - label for label in labels]
+
+        result = ClassifierBaseline().invoke(
+            {
+                "rows": rows,
+                "labels": labels,
+                "n_folds": 2,
+                "seed": _SEED,
+                "prepared_folds": prepared_folds,
+                "folds": folds,
+                "compare_predictions": always_wrong,
+            }
+        )
+
+        # El propio modelo acierta las 8 (fixture perfectamente separable);
+        # el comparador falla las 8 -> b=8, c=0.
+        assert result["mcnemar"]["b"] == 8
+        assert result["mcnemar"]["c"] == 0
+
+    def test_prepared_folds_sin_folds_raises_value_error(self) -> None:
+        rows, labels, prepared_folds, _folds = _prepared_folds_fixture()
+
+        with pytest.raises(ValueError, match="prepared_folds.*folds|folds.*prepared_folds"):
+            ClassifierBaseline().invoke(
+                {
+                    "rows": rows,
+                    "labels": labels,
+                    "n_folds": 2,
+                    "prepared_folds": prepared_folds,
+                }
+            )
+
+    def test_folds_sin_prepared_folds_raises_value_error(self) -> None:
+        rows, labels, _prepared_folds, folds = _prepared_folds_fixture()
+
+        with pytest.raises(ValueError, match="prepared_folds.*folds|folds.*prepared_folds"):
+            ClassifierBaseline().invoke(
+                {"rows": rows, "labels": labels, "n_folds": 2, "folds": folds}
+            )
+
+    def test_prepared_folds_longitud_incorrecta_raises_value_error(self) -> None:
+        rows, labels, prepared_folds, folds = _prepared_folds_fixture()
+
+        with pytest.raises(ValueError, match="prepared_folds"):
+            ClassifierBaseline().invoke(
+                {
+                    "rows": rows,
+                    "labels": labels,
+                    "n_folds": 2,
+                    "prepared_folds": prepared_folds[:1],
+                    "folds": folds,
+                }
+            )
+
+    def test_folds_fuera_de_rango_raises_value_error(self) -> None:
+        rows, labels, prepared_folds, folds = _prepared_folds_fixture()
+        folds_malos = [*folds[:-1], 99]
+
+        with pytest.raises(ValueError, match="folds"):
+            ClassifierBaseline().invoke(
+                {
+                    "rows": rows,
+                    "labels": labels,
+                    "n_folds": 2,
+                    "prepared_folds": prepared_folds,
+                    "folds": folds_malos,
+                }
+            )
+
+    def test_labels_desincronizadas_entre_folds_y_prepared_folds_raises_value_error(
+        self,
+    ) -> None:
+        rows, labels, prepared_folds, folds = _prepared_folds_fixture()
+        # Tamperar las labels declaradas del test de fold 0 -- ya NO
+        # coinciden con `labels[]` en las filas que `folds` asigna a fold 0.
+        tampered = [dict(entry) for entry in prepared_folds]
+        tampered[0] = {
+            "train": tampered[0]["train"],
+            "test": {"features": tampered[0]["test"]["features"], "labels": [1, 1, 1, 1]},
+        }
+
+        with pytest.raises(ValueError, match="desincronizados"):
+            ClassifierBaseline().invoke(
+                {
+                    "rows": rows,
+                    "labels": labels,
+                    "n_folds": 2,
+                    "prepared_folds": tampered,
+                    "folds": folds,
+                }
             )
 
 

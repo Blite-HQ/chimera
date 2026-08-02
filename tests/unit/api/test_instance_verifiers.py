@@ -24,6 +24,7 @@ from blite.verification.execution import ExecutionVerifier
 from blite.verification.verifier import Verifier
 
 _TFIM_SLUG_REAL = "chain-n8-h10"
+_TABULAR_SLUG_REAL = "synthetic-binary"
 
 
 class TestClaimDeOptimalidadConDatoElectrico:
@@ -227,5 +228,164 @@ class TestSimulationResultFailClosed:
         monkeypatch.setattr(instance_verifiers, "_TFIM_CORPUS_DIR", tmp_path)
 
         resolution = resolve_verifiers(claim_type="simulation_result", instance_id="fake")
+
+        assert len(resolution.verifiers) == 2
+
+
+class TestStatisticalCorpusReal:
+    """`statistical` (reto 2) sobre el corpus C2 real (read-only,
+    `knowledge/tabular/corpus/`) — dos patas C2 por construcción (accuracy
+    recomputada vs baseline trivial congelado + invariantes estructurales
+    del pipeline), grupos de independencia DISTINTOS."""
+
+    def test_slug_real_ampara_dos_verifiers_con_grupos_distintos(self) -> None:
+        # Arrange / Act
+        resolution = resolve_verifiers(
+            claim_type="statistical", instance_id=_TABULAR_SLUG_REAL
+        )
+
+        # Assert
+        assert len(resolution.verifiers) == 2
+        kinds = {d["kind"] for d in resolution.anchor_descriptors}
+        assert kinds == {"dataset", "rule"}
+
+        gt_verifier, rule_verifier = resolution.verifiers
+        assert isinstance(gt_verifier, Verifier)
+        assert isinstance(rule_verifier, Verifier)
+        assert gt_verifier.verifier_class == "ground_truth"
+        assert gt_verifier.anchor_kind == "dataset"
+        assert rule_verifier.verifier_class == "property_rule"
+        assert rule_verifier.anchor_kind == "rule"
+        # `independence_group` no es parte del Protocol `Verifier` (solo lo
+        # llevan los adapters concretos, para poblar la Attestation).
+        gt_group: str = gt_verifier.independence_group  # pyright: ignore
+        rule_group: str = rule_verifier.independence_group  # pyright: ignore
+        assert gt_group != rule_group
+
+
+class TestStatisticalFailClosed:
+    def test_slug_desconocido_da_resolucion_vacia(self) -> None:
+        # Arrange / Act
+        resolution = resolve_verifiers(
+            claim_type="statistical", instance_id="instancia-fantasma"
+        )
+
+        # Assert
+        assert resolution.verifiers == ()
+        assert resolution.anchor_descriptors == ()
+
+    def test_slug_con_traversal_da_vacio_sin_tocar_el_filesystem(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class _ExplodingPath:
+            """Cualquier uso de `/` sobre esto es un intento de tocar el
+            filesystem — el guard de regex debe cortar ANTES de llegar
+            aquí (path traversal, validación en frontera)."""
+
+            def __truediv__(self, _other: object) -> Any:
+                raise AssertionError(
+                    "no debía tocar el filesystem con un slug fuera de forma"
+                )
+
+        monkeypatch.setattr(
+            instance_verifiers, "_TABULAR_CORPUS_DIR", _ExplodingPath()
+        )
+
+        # Act
+        resolution = resolve_verifiers(
+            claim_type="statistical", instance_id="../etc/passwd"
+        )
+
+        # Assert
+        assert resolution.verifiers == ()
+        assert resolution.anchor_descriptors == ()
+
+    def test_record_con_digest_tamperado_da_vacio(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange — corpus fake en tmp_path, JAMÁS el corpus real congelado.
+        record = {
+            "dataset_id": "tabular-corpus/fake@v1",
+            "instancia": "fake",
+            "csv_digest": "0" * 64,
+            "columna_etiqueta": "label",
+            "digest": "0" * 64,  # NO corresponde al resto del record
+        }
+        (tmp_path / "fake.json").write_text(json.dumps(record), encoding="utf-8")
+        monkeypatch.setattr(instance_verifiers, "_TABULAR_CORPUS_DIR", tmp_path)
+
+        # Act
+        resolution = resolve_verifiers(claim_type="statistical", instance_id="fake")
+
+        # Assert — fail-closed: jamás llega a un verificador
+        assert resolution.verifiers == ()
+        assert resolution.anchor_descriptors == ()
+
+    def test_csv_hermano_tamperado_da_vacio(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Record AUTO-consistente (digest correcto sobre su propio
+        contenido) pero cuyo CSV hermano NO coincide con `csv_digest` — el
+        record pinnea el CSV, así que un CSV swapeado (mismo JSON, otro
+        contenido) debe fallar cerrado aquí, no solo un JSON tamperado."""
+        import hashlib
+
+        record_sin_digest = {
+            "dataset_id": "tabular-corpus/fake@v1",
+            "instancia": "fake",
+            "csv_digest": hashlib.sha256(b"contenido-original-sellado").hexdigest(),
+            "columna_etiqueta": "label",
+        }
+        digest = hashlib.sha256(
+            json.dumps(
+                record_sin_digest,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+            ).encode()
+        ).hexdigest()
+        record = {**record_sin_digest, "digest": digest}
+        (tmp_path / "fake.json").write_text(json.dumps(record), encoding="utf-8")
+        (tmp_path / "fake.csv").write_text(
+            "feature_0,label\n1.0,0\n", encoding="utf-8"
+        )
+        monkeypatch.setattr(instance_verifiers, "_TABULAR_CORPUS_DIR", tmp_path)
+
+        # Act
+        resolution = resolve_verifiers(claim_type="statistical", instance_id="fake")
+
+        # Assert — fail-closed: el CSV en disco no es el que el record pinnea
+        assert resolution.verifiers == ()
+        assert resolution.anchor_descriptors == ()
+
+    def test_corpus_y_csv_correctos_en_tmp_path_si_amparan(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Control positivo de los dos tests anteriores: el MISMO shape, con
+        ambos digests recomputados correctamente, sí debe amparar — descarta
+        que el fail-closed sea por otra razón (p.ej. un campo mal nombrado)."""
+        import hashlib
+
+        csv_bytes = b"feature_0,label\n1.0,0\n2.0,1\n3.0,0\n4.0,1\n"
+        record_sin_digest = {
+            "dataset_id": "tabular-corpus/fake@v1",
+            "instancia": "fake",
+            "csv_digest": hashlib.sha256(csv_bytes).hexdigest(),
+            "columna_etiqueta": "label",
+        }
+        digest = hashlib.sha256(
+            json.dumps(
+                record_sin_digest,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+            ).encode()
+        ).hexdigest()
+        record = {**record_sin_digest, "digest": digest}
+        (tmp_path / "fake.json").write_text(json.dumps(record), encoding="utf-8")
+        (tmp_path / "fake.csv").write_bytes(csv_bytes)
+        monkeypatch.setattr(instance_verifiers, "_TABULAR_CORPUS_DIR", tmp_path)
+
+        resolution = resolve_verifiers(claim_type="statistical", instance_id="fake")
 
         assert len(resolution.verifiers) == 2

@@ -241,7 +241,10 @@ _CLASSIFIER_BASELINE_MANIFEST = CapabilityManifest(
         "Official cross-validated RBF-SVM baseline for binary tabular "
         "classification: stratified 5-fold CV, out-of-fold predictions, "
         "per-fold and aggregate metrics, and an optional exact McNemar "
-        "comparison against a second model's predictions."
+        "comparison against a second model's predictions. Optionally fits "
+        "over externally prepared per-fold matrices (same shape as another "
+        "pipeline's precomputed features) so that a comparison isolates the "
+        "kernel/model, not the preprocessing."
     ),
     input_schema={
         "type": "object",
@@ -265,6 +268,26 @@ _CLASSIFIER_BASELINE_MANIFEST = CapabilityManifest(
                     "Optional binary predictions from another model, aligned "
                     "row-for-row with 'rows'/'labels' — triggers the McNemar "
                     "comparison in the output"
+                ),
+            },
+            "prepared_folds": {
+                "type": "array",
+                "description": (
+                    "Optional: one entry per fold, each "
+                    "{'train': {'features','labels'}, 'test': {'features',"
+                    "'labels'}} — same shape as another preprocessing "
+                    "pipeline's per-fold output. When given (together with "
+                    "'folds'), the model fits directly on these matrices "
+                    "instead of recomputing its own split/imputation from "
+                    "'rows'."
+                ),
+            },
+            "folds": {
+                "type": "array",
+                "description": (
+                    "Required alongside 'prepared_folds': the row-to-fold "
+                    "assignment used to reassemble out-of-fold predictions "
+                    "in the same order as 'rows'/'labels'."
                 ),
             },
         },
@@ -294,7 +317,9 @@ _CLASSIFIER_BASELINE_MANIFEST = CapabilityManifest(
 
 class ClassifierBaseline:
     """Generic capability: official CV-5 RBF-SVM baseline with optional
-    McNemar comparison against another model's predictions."""
+    McNemar comparison against another model's predictions; optionally fits
+    over externally prepared per-fold matrices so the comparison isolates
+    the model, not the preprocessing."""
 
     @property
     def manifest(self) -> CapabilityManifest:

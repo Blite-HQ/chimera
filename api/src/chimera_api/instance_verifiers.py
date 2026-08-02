@@ -18,10 +18,44 @@ Reto 1 (`solution`) se re-expresa como la primera entrada del registro
 `verifier:pandapower-islanding`, mismos grupos de independencia, mismo
 `ELECTRICAL_DATA`). Reto 3 (`simulation_result`) resuelve contra el corpus
 `knowledge/tfim/corpus/<slug>.json` (Part 1 de la spec — carga+digest fail-
-closed, jamás toca el filesystem con un slug fuera de forma). Reto 2
-(`statistical`) registra la CLAVE sin verificadores reales todavía
-(TODO(G2): `property_rule` + corpus C2 no existen aún) — su resolución es
-SIEMPRE vacía, así que el fail-closed corta antes de construir ningún claim.
+closed, jamás toca el filesystem con un slug fuera de forma).
+
+Reto 2 (`statistical`) resuelve contra el corpus `knowledge/tabular/corpus/
+<slug>.json` + su CSV hermano (`<slug>.csv`) — MISMA disciplina fail-closed
+de Part 1 (slug fuera de forma, archivo ausente, digest de record que no
+coincide con su propio contenido ⇒ resolución vacía), MÁS un chequeo que C3
+no necesita: el `csv_digest` embebido en el record se recomputa contra los
+BYTES del CSV hermano — el record pinnea el CSV, así que un CSV swapeado se
+detecta ahí, no solo un JSON tamperado.
+
+**Decisión de diseño (leg `ground_truth` de `statistical`, documentada aquí
+porque es la pieza que este módulo decide y no la spec):** un leg
+GROUND_TRUTH necesita valores esperados CONGELADOS. La fuente honesta son
+los folds sellados + las etiquetas selladas — el claim transporta las
+predicciones out-of-fold del modelo (`StatisticalClaim.predictions`); el
+lado esperado es el vector de etiquetas congelado, cargado DIRECTO del CSV
+verificado (`_load_tabular_labels`, jamás las etiquetas que el propio claim
+pudiera declarar — el claim ni siquiera tiene un campo `labels`). El
+adapter `_GroundTruthOverStatistical` RECOMPUTA la accuracy a partir de
+`(predictions, frozen_labels)` — nunca toma la palabra del proponente sobre
+su propia métrica. La referencia congelada contra la que se contrasta esa
+accuracy recomputada es el baseline trivial "predecir siempre la clase
+mayoritaria" (`_majority_baseline_accuracy`): un número que se computa con
+CERO ajustes de modelo, directo del mismo vector de etiquetas congelado —
+"committed BEFORE any fit" en el sentido más literal posible, sin inventar
+un segundo artefacto de corpus que esta spec no pidió. La tolerancia
+(`_STATISTICAL_ACCURACY_TOLERANCE`) es deliberadamente ancha (peso relativo
+0.5): este leg es un piso de cordura ("el pipeline no es un clasificador
+degenerado/invertido"), NO un gate de desempeño — la pregunta "¿el brazo
+cuántico es competitivo frente al clásico?" es la del test de McNemar
+(`knowledge/quantum/04-estadistica-evidencia.md` §6), que vive en el
+resumen del reto, no en este verificador. La segunda pata
+(`PropertyRuleVerifier`, ancla `rule`) corre las invariantes estructurales
+baratas del catálogo C2 que no requieren la matriz de kernel completa:
+`labels_binary` (sobre las etiquetas congeladas), `folds_partition` (sobre
+el `folds` que el claim declara) y `predictions_aligned` — grupo de
+independencia DISTINTO del leg `dataset` (dos métodos, no dos islas de la
+misma corrida).
 
 Dato semilla `sintetica-4bus` (decisión #8): la misma topología de 4 buses /
 dos islas que prueba el golden path real en
@@ -31,6 +65,7 @@ con el único camino ya probado de punta a punta con anclas reales.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import re
@@ -39,7 +74,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from blite.verification.anchor import AnchorKind
 from blite.verification.attestation import Attestation, VerifierClass
@@ -59,6 +94,7 @@ from blite.verification.ground_truth import (
     GroundTruthVerifier,
     build_ground_truth_record,
 )
+from blite.verification.property_rule import PropertyRuleClaim, PropertyRuleVerifier
 from blite.verification.verifier import Determinism, Verifier
 
 # api/src/chimera_api/instance_verifiers.py -> parents[3] es la raíz del
@@ -66,6 +102,7 @@ from blite.verification.verifier import Determinism, Verifier
 # profundidad de directorio).
 _REPO_ROOT = Path(__file__).parents[3]
 _TFIM_CORPUS_DIR = _REPO_ROOT / "knowledge" / "tfim" / "corpus"
+_TABULAR_CORPUS_DIR = _REPO_ROOT / "knowledge" / "tabular" / "corpus"
 
 # Mismo patrón de slug que `chimera_api.runs._load_corpus_matrix` — un
 # `instance_id` que viaja en el body HTTP jamás se interpola en una ruta de
@@ -93,6 +130,28 @@ _ED_VERIFIER_ID = "verifier:ed-dense"
 _ED_INDEPENDENCE_GROUP = "leg-formal-ed"
 _GT_VERIFIER_ID = "verifier:tfim-corpus"
 _GT_INDEPENDENCE_GROUP = "leg-dataset-tfim"
+
+# Reto 2 (§Contrato-3/5, ver docstring del módulo para el diseño completo):
+# dos patas C2 por construcción — accuracy recomputada vs baseline trivial
+# congelado (`dataset`) + invariantes estructurales del pipeline (`rule`).
+_TABULAR_GT_VERIFIER_ID = "verifier:tabular-corpus"
+_TABULAR_GT_INDEPENDENCE_GROUP = "leg-dataset-tabular"
+_TABULAR_RULE_VERIFIER_ID = "verifier:pipeline-rules"
+_TABULAR_RULE_INDEPENDENCE_GROUP = "leg-rule-pipeline"
+_TABULAR_RULE_ANCHOR_PROVENANCE = "property-rule-builtin-v1"
+_TABULAR_RULE_ANCHOR_DIGEST = hashlib.sha256(
+    f"anchor:{_TABULAR_RULE_ANCHOR_PROVENANCE}".encode()
+).hexdigest()
+_STATISTICAL_PROPERTIES: tuple[str, ...] = (
+    "labels_binary",
+    "folds_partition",
+    "predictions_aligned",
+)
+_STATISTICAL_ACCURACY_TOLERANCE = 0.5
+"""Tolerancia relativa (L∞, `relative_series_error`) del leg ground_truth de
+`statistical` — deliberadamente ANCHA (ver docstring del módulo): es un piso
+de cordura contra un pipeline degenerado, no un gate de desempeño frente al
+baseline clásico (eso es McNemar, fuera de este verificador)."""
 
 
 @dataclass(frozen=True)
@@ -227,15 +286,17 @@ def _corpus_record_digest(record_without_digest: dict[str, Any]) -> str:
     ).hexdigest()
 
 
-def _load_tfim_corpus_record(slug: str) -> dict[str, Any] | None:
-    """Carga+valida el corpus C3 `<slug>.json` — fail-closed en CUALQUIER
-    anomalía (slug fuera de forma, archivo ausente, digest que no coincide
-    con su propio contenido): devuelve `None`, jamás deja pasar un dato no
-    verificado a un verificador. El slug se valida ANTES de tocar el
-    filesystem (path traversal)."""
+def _load_json_corpus_record(directory: Path, slug: str) -> dict[str, Any] | None:
+    """Carga+valida CUALQUIER corpus `<slug>.json` bajo `directory` con la
+    MISMA disciplina de identidad (§15.3 generalizada, spec §Contrato-4):
+    slug fuera de forma, archivo ausente, o digest que no coincide con su
+    propio contenido ⇒ `None`, fail-closed — jamás deja pasar un dato no
+    verificado a un verificador, y jamás toca el filesystem con un slug
+    fuera de forma (path traversal). Compartido entre C3 (`tfim-corpus/`) y
+    C2 (`tabular-corpus/`) — la regla de identidad de corpus es UNA sola."""
     if not _CORPUS_SLUG_PATTERN.fullmatch(slug):
         return None
-    path = _TFIM_CORPUS_DIR / f"{slug}.json"
+    path = directory / f"{slug}.json"
     if not path.is_file():
         return None
     try:
@@ -252,6 +313,58 @@ def _load_tfim_corpus_record(slug: str) -> dict[str, Any] | None:
         # un 500 por un dato de conocimiento corrupto.
         return None
     return record
+
+
+def _load_tfim_corpus_record(slug: str) -> dict[str, Any] | None:
+    """Corpus C3 (`knowledge/tfim/corpus/`) — ver `_load_json_corpus_record`."""
+    return _load_json_corpus_record(_TFIM_CORPUS_DIR, slug)
+
+
+def _load_tabular_corpus_record(slug: str) -> dict[str, Any] | None:
+    """Corpus C2 (`knowledge/tabular/corpus/`) — ver `_load_json_corpus_record`."""
+    return _load_json_corpus_record(_TABULAR_CORPUS_DIR, slug)
+
+
+def _load_tabular_labels(slug: str, record: dict[str, Any]) -> tuple[int, ...] | None:
+    """Carga los labels CRUDOS del CSV hermano (`<slug>.csv`) tras verificar
+    sus BYTES contra `csv_digest` — el record pinnea el CSV, así que un CSV
+    swapeado (mismo JSON, otro contenido) se detecta aquí, no solo un JSON
+    tamperado (eso ya lo cubre `_load_tabular_corpus_record`). Fail-closed en
+    cualquier anomalía: `None`, jamás deja pasar bytes no verificados.
+
+    Los labels jamás viajan en el `StatisticalClaim` — son la mitad
+    congelada del leg `ground_truth` (ver docstring del módulo, diseño C2);
+    cargarlos aquí, server-side, es precisamente lo que evita que el
+    verificador tenga que tomarle la palabra al proponente."""
+    path = _TABULAR_CORPUS_DIR / f"{slug}.csv"
+    if not path.is_file():
+        return None
+    try:
+        expected_csv_digest = str(record["csv_digest"])
+        label_column = str(record["columna_etiqueta"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != expected_csv_digest:
+        return None
+    try:
+        reader = csv.reader(raw.decode("utf-8").splitlines())
+        header = next(reader)
+        label_index = header.index(label_column)
+        labels = tuple(int(row[label_index]) for row in reader)
+    except (StopIteration, ValueError, IndexError):
+        return None
+    return labels
+
+
+def _majority_baseline_accuracy(labels: tuple[int, ...]) -> float:
+    """Baseline trivial "predecir SIEMPRE la clase mayoritaria" — computable
+    con CERO ajustes de modelo, directo del vector de etiquetas congelado
+    (ver diseño en el docstring del módulo). La referencia que el leg
+    ground_truth de `statistical` usa como `expected`."""
+    ones = sum(labels)
+    zeros = len(labels) - ones
+    return max(zeros, ones) / len(labels)
 
 
 def _expected_from_tfim_corpus(record: dict[str, Any]) -> dict[str, float]:
@@ -371,22 +484,197 @@ def _resolve_simulation_result(instance_id: str) -> VerifierResolution:
     return VerifierResolution(verifiers, descriptors)
 
 
-def _build_statistical_claim_stub(payload: dict[str, Any]) -> Any:
-    # TODO(G2): sin `GroundTruthPredicate`/`property_rule` de C2 todavía
-    # (docs/specs/generalidad-retos.md §Contrato-3) — este `build_claim`
-    # NUNCA se invoca en la práctica: `_resolve_statistical` devuelve
-    # resolución vacía SIEMPRE, así que el fail-closed de
-    # `chimera_api.runs._start_claim_run` corta antes de construir nada.
-    msg = "claim_type 'statistical' aún no tiene verificadores (G2 pendiente)"
-    raise NotImplementedError(msg)
+class StatisticalClaim(BaseModel):
+    """Claim de `statistical` (reto 2): «las predicciones out-of-fold del
+    modelo concuerdan con las etiquetas selladas dentro de tolerancia y
+    sostienen las invariantes estructurales del pipeline». Deliberadamente
+    SIN campo `labels`: el lado esperado es SIEMPRE el vector congelado que
+    `_load_tabular_labels` carga server-side (ver docstring del módulo) —
+    un claim que pudiera declarar sus propias etiquetas podría fabricar el
+    "ground truth" que lo verifica, exactamente lo que este diseño evita."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    case_id: str
+    predictions: tuple[int, ...]
+    folds: tuple[int, ...]
+    canonical_statement: str
+    scope: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class _GroundTruthOverStatistical:
+    """Adapta un `GroundTruthVerifier` para verificar un `StatisticalClaim`
+    (reto 2, leg `dataset`) — ver el diseño completo en el docstring del
+    módulo. RECOMPUTA la accuracy a partir de `(predictions, frozen_labels)`
+    (`frozen_labels` cerrado en construcción, cargado del CSV sellado en
+    `_resolve_statistical` — jamás del claim): nunca toma la palabra del
+    proponente sobre su propia métrica."""
+
+    inner: GroundTruthVerifier
+    frozen_labels: tuple[int, ...]
+
+    @property
+    def verifier_id(self) -> str:
+        return self.inner.verifier_id
+
+    @property
+    def independence_group(self) -> str:
+        return self.inner.independence_group
+
+    @property
+    def verifier_class(self) -> VerifierClass:
+        return self.inner.verifier_class
+
+    @property
+    def anchor_kind(self) -> AnchorKind:
+        return self.inner.anchor_kind
+
+    @property
+    def determinism(self) -> Determinism:
+        return self.inner.determinism
+
+    def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
+        if not isinstance(claim, StatisticalClaim):
+            msg = f"claim {type(claim).__name__} no es un StatisticalClaim"
+            raise VerificationProcessError(msg)
+        if len(claim.predictions) != len(self.frozen_labels):
+            msg = (
+                f"predictions ({len(claim.predictions)}) y las etiquetas "
+                f"congeladas ({len(self.frozen_labels)}) tienen largo "
+                "distinto — no hay accuracy bien planteada, no es un fail"
+            )
+            raise VerificationProcessError(msg)
+        correct = sum(
+            1
+            for predicted, true in zip(
+                claim.predictions, self.frozen_labels, strict=True
+            )
+            if predicted == true
+        )
+        accuracy = correct / len(self.frozen_labels)
+        translated = GroundTruthClaim(
+            case_id=self.inner.record.case_id,
+            observed={"accuracy": accuracy},
+            canonical_statement=claim.canonical_statement,
+            scope=claim.scope,
+        )
+        return self.inner.verify(translated, ctx)
+
+
+@dataclass(frozen=True)
+class _PropertyRuleOverStatistical:
+    """Adapta un `PropertyRuleVerifier` para verificar el MISMO
+    `StatisticalClaim` — segunda pata C2 (`rule`), grupo de independencia
+    DISTINTO del leg `dataset` (dos métodos, no dos islas de la misma
+    corrida). Corre las invariantes estructurales baratas del catálogo C2
+    que no requieren la matriz de kernel completa (`_STATISTICAL_
+    PROPERTIES`): etiquetas binarias sobre `frozen_labels` (jamás las del
+    claim — no las tiene), partición de folds y alineación predicciones↔
+    etiquetas sobre lo que el claim SÍ declara."""
+
+    inner: PropertyRuleVerifier
+    frozen_labels: tuple[int, ...]
+
+    @property
+    def verifier_id(self) -> str:
+        return self.inner.verifier_id
+
+    @property
+    def independence_group(self) -> str:
+        return self.inner.independence_group
+
+    @property
+    def verifier_class(self) -> VerifierClass:
+        return self.inner.verifier_class
+
+    @property
+    def anchor_kind(self) -> AnchorKind:
+        return self.inner.anchor_kind
+
+    @property
+    def determinism(self) -> Determinism:
+        return self.inner.determinism
+
+    def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
+        if not isinstance(claim, StatisticalClaim):
+            msg = f"claim {type(claim).__name__} no es un StatisticalClaim"
+            raise VerificationProcessError(msg)
+        subject: dict[str, Any] = {
+            "labels": self.frozen_labels,
+            "folds": claim.folds,
+            "predictions": claim.predictions,
+        }
+        translated = PropertyRuleClaim(
+            subject=subject,
+            properties=_STATISTICAL_PROPERTIES,
+            relations=(),
+            canonical_statement=claim.canonical_statement,
+            scope=claim.scope,
+        )
+        return self.inner.verify(translated, ctx)
 
 
 def _resolve_statistical(instance_id: str) -> VerifierResolution:
-    # TODO(G2): corpus C2 (`tabular-corpus/...`) y `PropertyRuleVerifier` no
-    # existen todavía — resolución SIEMPRE vacía, fail-closed por diseño
-    # (docs/specs/generalidad-retos.md §Contrato-6 Part 1, punto 3).
-    del instance_id
-    return VerifierResolution((), ())
+    """Reto 2 (`statistical`, §Contrato-6 Part 1 punto 3): `instance_id` es
+    un slug del corpus `knowledge/tabular/corpus/<slug>.json`. Fail-closed:
+    slug desconocido, fuera de forma, corpus con digest tamperado, o CSV
+    hermano cuyos bytes no coinciden con `csv_digest` ⇒ resolución vacía —
+    el caller (`chimera_api.runs`) responde 400, jamás un 500. Ver el
+    docstring del módulo para el diseño completo del leg ground_truth."""
+    record = _load_tabular_corpus_record(instance_id)
+    if record is None:
+        return VerifierResolution((), ())
+
+    frozen_labels = _load_tabular_labels(instance_id, record)
+    if not frozen_labels:
+        return VerifierResolution((), ())
+
+    try:
+        dataset_id = str(record["dataset_id"])
+        case_id = str(record["instancia"])
+        source_digest = str(record["digest"])
+    except (KeyError, TypeError, ValueError):
+        return VerifierResolution((), ())
+
+    ground_truth_record = build_ground_truth_record(
+        dataset_id=dataset_id,
+        case_id=case_id,
+        expected={"accuracy": _majority_baseline_accuracy(frozen_labels)},
+        tolerance=_STATISTICAL_ACCURACY_TOLERANCE,
+        source_digest=source_digest,
+    )
+    gt_verifier: Verifier = _GroundTruthOverStatistical(
+        inner=GroundTruthVerifier(
+            verifier_id=_TABULAR_GT_VERIFIER_ID,
+            independence_group=_TABULAR_GT_INDEPENDENCE_GROUP,
+            record=ground_truth_record,
+        ),
+        frozen_labels=frozen_labels,
+    )
+    rule_verifier: Verifier = _PropertyRuleOverStatistical(
+        inner=PropertyRuleVerifier(
+            verifier_id=_TABULAR_RULE_VERIFIER_ID,
+            independence_group=_TABULAR_RULE_INDEPENDENCE_GROUP,
+            anchor_digest=_TABULAR_RULE_ANCHOR_DIGEST,
+        ),
+        frozen_labels=frozen_labels,
+    )
+
+    verifiers = (gt_verifier, rule_verifier)
+    descriptors = (
+        {
+            "anchor_digest": source_digest,
+            "kind": "dataset",
+            "provenance": dataset_id,
+        },
+        {
+            "anchor_digest": _TABULAR_RULE_ANCHOR_DIGEST,
+            "kind": "rule",
+            "provenance": _TABULAR_RULE_ANCHOR_PROVENANCE,
+        },
+    )
+    return VerifierResolution(verifiers, descriptors)
 
 
 CLAIM_TYPE_VERIFIERS: dict[str, ClaimTypeEntry] = {
@@ -398,12 +686,8 @@ CLAIM_TYPE_VERIFIERS: dict[str, ClaimTypeEntry] = {
         build_claim=_model_validating_builder(SimulationSeriesClaim),
         resolve=_resolve_simulation_result,
     ),
-    # TODO(G2): sin corpus C2 (`tabular-corpus/...`) ni `PropertyRuleVerifier`
-    # todavía — la CLAVE existe (§Contrato-6 Part 1, punto 3: la mission del
-    # reto 2 debe fallar 400, no 404-por-claim_type-desconocido) pero
-    # `resolve` es SIEMPRE vacía y `build_claim` nunca llega a invocarse.
     "statistical": ClaimTypeEntry(
-        build_claim=_build_statistical_claim_stub,
+        build_claim=_model_validating_builder(StatisticalClaim),
         resolve=_resolve_statistical,
     ),
 }
