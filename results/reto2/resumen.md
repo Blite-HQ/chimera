@@ -13,12 +13,12 @@ Comprometido por labels+seed SOLAMENTE, declarado ANTES de correr cualquiera de 
 ## 2 · Brazo cuantico (kernel de fidelidad + SVM precomputado)
 
 | fold | m_train | m_test | λ_min (pre-reparacion) | reparacion PSD | accuracy |
-| --- | --- | --- | --- | --- | --- |
-| 0 | 2620 | 656 | -4.43e-13 | clip | 0.6616 |
-| 1 | 2621 | 655 | -4.57e-13 | clip | 0.6870 |
-| 2 | 2621 | 655 | -3.82e-13 | clip | 0.6718 |
-| 3 | 2621 | 655 | -5.71e-13 | clip | 0.6824 |
-| 4 | 2621 | 655 | -2.32e-13 | clip | 0.7008 |
+| ---- | ------- | ------ | ---------------------- | -------------- | -------- |
+| 0    | 2620    | 656    | -4.43e-13              | clip           | 0.6616   |
+| 1    | 2621    | 655    | -4.57e-13              | clip           | 0.6870   |
+| 2    | 2621    | 655    | -3.82e-13              | clip           | 0.6718   |
+| 3    | 2621    | 655    | -5.71e-13              | clip           | 0.6824   |
+| 4    | 2621    | 655    | -2.32e-13              | clip           | 0.7008   |
 
 Accuracy OOF agregada (brazo cuantico, 3276 filas): **0.6807**.
 

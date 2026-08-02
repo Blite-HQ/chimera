@@ -33,9 +33,11 @@ def test_example_yaml_loads_as_a_valid_verification_policy() -> None:
     policy = VerificationPolicy.model_validate(raw)
 
     assert policy.policy_id == "chimera-default"
-    # [G4/#138] 0.3.0: adds the reto-2/reto-3 rules (generalidad-retos.md §Contrato-5);
-    # the pre-existing 0.2.0 rules are byte-unchanged.
-    assert policy.version == "0.3.0"
+    # [G4/#138] 0.3.0: adds the reto-2/reto-3 rules (generalidad-retos.md §Contrato-5).
+    # [#141] 0.3.1: the statistical rule drops min_level AL3→AL2 (truth of today:
+    # the property_rule leg is AL2-capped by freeze §4; AL3 aspiration recorded
+    # in the template). Pre-existing rules stay byte-unchanged.
+    assert policy.version == "0.3.1"
     assert len(policy.rules) == 5
 
 
@@ -88,7 +90,9 @@ def test_example_yaml_statistical_rule_is_c3_dataset_rule() -> None:
     assert rule.match.claim_type == "statistical"
     assert rule.match.side_effects is None
     assert rule.criticality == "C3"
-    assert rule.min_level == "AL3"
+    # [#141] AL2 = la verdad de hoy (pata property_rule con techo AL2, freeze §4);
+    # la aspiración AL3 vive en la plantilla y sube cuando exista 2ª pata AL3.
+    assert rule.min_level == "AL2"
     assert rule.required_legs == 2
     assert rule.required_anchors == ("dataset", "rule")
     assert rule.on_inconclusive == "mark"

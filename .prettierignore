@@ -20,3 +20,7 @@ capabilities/ingesta/tests/fixtures/
 # rompe el anti-drift en cada commit. El generador es el dueño, no prettier.
 tests/fixtures/contract/
 apps/studio/src/fixtures/contract/
+
+# Corpus congelados de Mejorado (digest embebido sobre bytes exactos — el congelado manda, jamas reformatear)
+knowledge/tfim/corpus/
+knowledge/tabular/corpus/

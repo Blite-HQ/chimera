@@ -8,16 +8,22 @@
 #
 # Techo GROUND_TRUTH AL3 del plan (§Contrato-5): sin ancla ex-ante para
 # generalización futura ⇒ certificación amortizada (perfil §4.7), jamás
-# verificación por-resultado. `PropertyRuleVerifier` (ancla `rule`) y el
-# corpus C2 aún no existen (G2, TODO) — esta regla exige la forma final
-# desde ya para que el fail-closed del dispatcher (G3) sea el único gate
-# visible mientras tanto.
+# verificación por-resultado.
+#
+# [#141 2026-07-31] v0.2.1 supersede a v0.2.0 — causa: min_level baja AL3→AL2
+# para decir la verdad de HOY (decisión de Dylan, ledger #141): las dos patas
+# son ground_truth (AL3) y property_rule (techo AL2 congelado, freeze §4) ⇒ el
+# titular queda SIEMPRE en AL2; pedir AL3 era una regla incumplible que C15
+# (evaluador de min_level en check_bundle) convertiría en falla retroactiva.
+# ASPIRACIÓN registrada: la regla vuelve a AL3 cuando exista una segunda pata
+# AL3 real (ruta formal_exact+proof de #103, o ancla dataset adicional
+# independiente) — subirla entonces es aditivo y honesto.
 policy_id: chimera-reto2-statistical
-version: 0.2.0
+version: 0.2.1
 rules:
   - match: { claim_type: statistical }
     criticality: C3
-    min_level: AL3
+    min_level: AL2
     required_legs: 2
     required_anchors: [dataset, rule]
     on_inconclusive: mark

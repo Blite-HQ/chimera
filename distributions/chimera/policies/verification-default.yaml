@@ -16,8 +16,14 @@
 # BYTE-INTACTAS — aditivo puro. `policy_digest` cambia por diseño (SHA-256 de los bytes
 # exactos del YAML): cualquier bundle YA estampado con la 0.2.0 conserva su digest viejo —
 # este bump nunca lo invalida retroactivamente.
+#
+# [#141 2026-07-31] v0.3.1 supersede a v0.3.0 — causa: la regla `statistical` baja
+# min_level AL3→AL2 (decisión de Dylan, ledger #141; espejo de reto2-statistical.yaml
+# v0.2.1): con patas ground_truth (AL3) + property_rule (techo AL2, freeze §4) el
+# titular queda SIEMPRE en AL2 — AL3 era incumplible y C15 la volvería falla
+# retroactiva. Aspiración AL3 registrada en la plantilla. Resto de reglas BYTE-INTACTAS.
 policy_id: chimera-default
-version: 0.3.0
+version: 0.3.1
 rules:
   - match: { side_effects: pure, claim_type: solution }
     criticality: C3 # el resultado final del demo: AL3 minimo + 2 patas independientes
@@ -44,7 +50,7 @@ rules:
     on_inconclusive: mark
   - match: { claim_type: statistical } # reto 2 — docs/specs/generalidad-retos.md §Contrato-5
     criticality: C3 # techo GROUND_TRUTH AL3 del plan; sin ancla ex-ante => certificacion amortizada
-    min_level: AL3
+    min_level: AL2 # [#141] verdad de HOY: pata property_rule tiene techo AL2; aspiración AL3 en la plantilla
     required_legs: 2
     required_anchors: [dataset, rule]
     on_inconclusive: mark

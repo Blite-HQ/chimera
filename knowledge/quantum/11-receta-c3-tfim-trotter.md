@@ -147,13 +147,13 @@ que este reto mide — por la razón del punto siguiente.
 
 Medición (N=8, h/J=1, t=1, orden 1, error relativo de la serie ⟨Zᵢ⟩ — definición §4.1):
 
-| pasos r | dt     | error       | razón vs. anterior |
-| ------- | ------ | ----------- | ------------------ |
-| 2       | 0.5    | 0.32550     | —                  |
-| 4       | 0.25   | 0.07305     | 4.46               |
-| 8       | 0.125  | 0.01780     | 4.10               |
-| 16      | 0.0625 | 0.00442     | 4.03               |
-| 32      | 0.031  | 0.00110     | 4.02               |
+| pasos r | dt     | error   | razón vs. anterior |
+| ------- | ------ | ------- | ------------------ |
+| 2       | 0.5    | 0.32550 | —                  |
+| 4       | 0.25   | 0.07305 | 4.46               |
+| 8       | 0.125  | 0.01780 | 4.10               |
+| 16      | 0.0625 | 0.00442 | 4.03               |
+| 32      | 0.031  | 0.00110 | 4.02               |
 
 Razón **≈ 4 al partir dt ⇒ O(dt²)**, no el O(dt) que §1.4 promete para orden 1. Y el
 orden 2 (Strang), en la misma malla y con el mismo número de pasos, es **~2× PEOR**
@@ -204,26 +204,26 @@ predicción**, y le da al control negativo de §4.3 su justificación física.
 
 ## 2 · Decisión (qué se congela)
 
-| Parámetro                    | Valor congelado                       | Causa                                                                 |
-| ---------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
-| Hamiltoniano                 | `−J ΣZ_iZ_{i+1} − h ΣX_i`, abierto    | §1.1 — observables diagonales en la base de acoplamiento              |
-| J                            | 1.0 (unidad)                          | el barrido es sobre h/J adimensional                                  |
-| h/J                          | {0.5, 1, 2}                           | enunciado — ordenada / crítica / desordenada                          |
-| N                            | {6, 8, 12}                            | enunciado; N=12 ⇒ 4096 dim, ED en 0.08 s                              |
-| Estado inicial               | \|0⟩^⊗N                                | §1.2 — \|+⟩^⊗N anularía ⟨Zᵢ⟩ por paridad                               |
-| t                            | 1.0                                   | dinámica visible; cono de luz sin tocar el borde (§5.3)               |
-| Fórmula de Trotter           | **Lie–Trotter orden 1**               | §1.5 — más barata Y más precisa aquí                                  |
-| Pasos del corpus             | **r = 16** (dt = 0.0625)              | §4.2 — margen ≈5.5× bajo el criterio oficial en el peor punto         |
-| Control negativo             | **r = 2** (dt = 0.5)                  | §4.3 — falla el criterio de forma inequívoca                          |
-| Tolerancia relativa          | **0.05** (criterio oficial ≤5%)       | C-14 (#106); entra al `verifier_params_digest`                        |
-| Definición de error relativo | normalizada por la escala L∞ de la serie | §4.1 — la por-elemento es indefinida donde ⟨Zᵢ⟩ cruza cero           |
+| Parámetro                    | Valor congelado                          | Causa                                                         |
+| ---------------------------- | ---------------------------------------- | ------------------------------------------------------------- |
+| Hamiltoniano                 | `−J ΣZ_iZ_{i+1} − h ΣX_i`, abierto       | §1.1 — observables diagonales en la base de acoplamiento      |
+| J                            | 1.0 (unidad)                             | el barrido es sobre h/J adimensional                          |
+| h/J                          | {0.5, 1, 2}                              | enunciado — ordenada / crítica / desordenada                  |
+| N                            | {6, 8, 12}                               | enunciado; N=12 ⇒ 4096 dim, ED en 0.08 s                      |
+| Estado inicial               | \|0⟩^⊗N                                  | §1.2 — \|+⟩^⊗N anularía ⟨Zᵢ⟩ por paridad                      |
+| t                            | 1.0                                      | dinámica visible; cono de luz sin tocar el borde (§5.3)       |
+| Fórmula de Trotter           | **Lie–Trotter orden 1**                  | §1.5 — más barata Y más precisa aquí                          |
+| Pasos del corpus             | **r = 16** (dt = 0.0625)                 | §4.2 — margen ≈5.5× bajo el criterio oficial en el peor punto |
+| Control negativo             | **r = 2** (dt = 0.5)                     | §4.3 — falla el criterio de forma inequívoca                  |
+| Tolerancia relativa          | **0.05** (criterio oficial ≤5%)          | C-14 (#106); entra al `verifier_params_digest`                |
+| Definición de error relativo | normalizada por la escala L∞ de la serie | §4.1 — la por-elemento es indefinida donde ⟨Zᵢ⟩ cruza cero    |
 
 **Las anclas (el análogo del par CP-SAT + fuerza bruta del reto 1):**
 
 1. **ED — `scipy.sparse.linalg.expm_multiply`** sobre el MISMO H, sin construir el
    propagador denso. Determinista, air-gapped, cero dependencias nuevas. Es el rol
    FORMAL_EXACT del criterio oficial → `ExactDiagonalizationVerifier` (`anchor_kind:
-   solver`, recompute VIVO).
+solver`, recompute VIVO).
 2. **Series congeladas del corpus** — la misma verdad grabada con digest, contrastada
    por `GroundTruthVerifier` (`anchor_kind: dataset`). **Grupo de independencia
    DISTINTO** al de la ED: recompute vivo y dato congelado son métodos distintos, no
@@ -276,14 +276,14 @@ promedio (que escondería un sitio malo entre muchos buenos).
 
 ### 4.2 Márgenes reales en la malla (medido, r = 16, orden 1)
 
-| N | h/J | err ⟨Zᵢ⟩    | err ⟨ZᵢZᵢ₊₁⟩ | margen vs. 5% |
-| - | --- | ----------- | ------------ | ------------- |
-| 6 | 0.5 | 0.00060     | 0.00101      | ~50×          |
-| 6 | 1.0 | 0.00429     | 0.00295      | ~12×          |
-| 6 | 2.0 | 0.00903     | 0.00489      | ~5.5×         |
-| 8 | 0.5 | 0.00060     | 0.00102      | ~50×          |
-| 8 | 1.0 | 0.00442     | 0.00321      | ~11×          |
-| 8 | 2.0 | **0.00903** | 0.00496      | **~5.5×**     |
+| N   | h/J | err ⟨Zᵢ⟩    | err ⟨ZᵢZᵢ₊₁⟩ | margen vs. 5% |
+| --- | --- | ----------- | ------------ | ------------- |
+| 6   | 0.5 | 0.00060     | 0.00101      | ~50×          |
+| 6   | 1.0 | 0.00429     | 0.00295      | ~12×          |
+| 6   | 2.0 | 0.00903     | 0.00489      | ~5.5×         |
+| 8   | 0.5 | 0.00060     | 0.00102      | ~50×          |
+| 8   | 1.0 | 0.00442     | 0.00321      | ~11×          |
+| 8   | 2.0 | **0.00903** | 0.00496      | **~5.5×**     |
 
 El peor punto de la malla es **h/J = 2** (campo fuerte ⇒ el término que no conmuta pesa
 más). El margen mínimo es ~5.5×: suficiente para que el criterio no dependa de la
@@ -295,11 +295,11 @@ real — un criterio con margen 1000× no verifica nada.
 S-C §3 lo exige literalmente: «error 0.0000 con dt grande = sospecha de código
 compartido». Con **r = 2 (dt = 0.5)** el proponente debe **FALLAR** el criterio:
 
-| N | h/J | err ⟨Zᵢ⟩    | err ⟨ZᵢZᵢ₊₁⟩ | veredicto esperado     |
-| - | --- | ----------- | ------------ | ---------------------- |
-| 8 | 0.5 | 0.04569     | **0.07867**  | fail (por la serie ZZ) |
-| 8 | 1.0 | **0.32550** | 0.23746      | fail                   |
-| 8 | 2.0 | **1.03393** | 0.40682      | fail                   |
+| N   | h/J | err ⟨Zᵢ⟩    | err ⟨ZᵢZᵢ₊₁⟩ | veredicto esperado     |
+| --- | --- | ----------- | ------------ | ---------------------- |
+| 8   | 0.5 | 0.04569     | **0.07867**  | fail (por la serie ZZ) |
+| 8   | 1.0 | **0.32550** | 0.23746      | fail                   |
+| 8   | 2.0 | **1.03393** | 0.40682      | fail                   |
 
 Nótese h/J = 0.5: la serie ⟨Zᵢ⟩ **pasaría** (0.04569 < 0.05) y solo el correlador lo
 caza. **Las dos series se verifican, no una** — el punto más ordenado de la malla es
@@ -309,14 +309,14 @@ precisamente donde un verificador de una sola serie daría un falso «pass».
 
 Deterministas, independientes del ancla, computables sobre la salida del proponente:
 
-| Propiedad                   | Enunciado                                          | Qué caza                                              |
-| --------------------------- | -------------------------------------------------- | ----------------------------------------------------- |
-| `norm_preserved`            | ‖ψ‖ = 1 (unitariedad)                              | compuerta mal armada / normalización rota             |
-| `parity_conserved`          | ⟨Π_i X_i⟩ constante en el tiempo                   | bug — **jamás** error de Trotter (ver abajo)          |
-| `observable_bounds`         | \|⟨Zᵢ⟩\| ≤ 1 y \|⟨ZᵢZᵢ₊₁⟩\| ≤ 1                       | salida fuera del espectro                             |
-| `initial_condition`         | a t=0: ⟨Zᵢ⟩ = 1 y ⟨ZᵢZᵢ₊₁⟩ = 1                     | estado inicial equivocado                             |
-| `echo_identity`             | U(−dt)·U(dt) = 1 a tolerancia numérica             | signo de ángulo invertido (§1.3)                      |
-| `trotter_convergence_ratio` | err(dt/2)/err(dt) → ≈ 4                            | convergencia rota — **NO** «prueba orden 2» (§1.5)    |
+| Propiedad                   | Enunciado                              | Qué caza                                           |
+| --------------------------- | -------------------------------------- | -------------------------------------------------- |
+| `norm_preserved`            | ‖ψ‖ = 1 (unitariedad)                  | compuerta mal armada / normalización rota          |
+| `parity_conserved`          | ⟨Π_i X_i⟩ constante en el tiempo       | bug — **jamás** error de Trotter (ver abajo)       |
+| `observable_bounds`         | \|⟨Zᵢ⟩\| ≤ 1 y \|⟨ZᵢZᵢ₊₁⟩\| ≤ 1        | salida fuera del espectro                          |
+| `initial_condition`         | a t=0: ⟨Zᵢ⟩ = 1 y ⟨ZᵢZᵢ₊₁⟩ = 1         | estado inicial equivocado                          |
+| `echo_identity`             | U(−dt)·U(dt) = 1 a tolerancia numérica | signo de ángulo invertido (§1.3)                   |
+| `trotter_convergence_ratio` | err(dt/2)/err(dt) → ≈ 4                | convergencia rota — **NO** «prueba orden 2» (§1.5) |
 
 `parity_conserved` es la más valiosa: la paridad Z₂ se conserva **exactamente** bajo cada
 capa del circuito (ambas capas conmutan con P), así que una violación no admite la
@@ -367,11 +367,11 @@ su digest ⇒ **techo AL3 sin `proof`** (decisión #103 intacta).
 Hecho medido que sirve de chequeo de cordura del generador — y que hay que enunciar con
 precisión, porque **el borde y el bulk NO se comportan igual**:
 
-| h/J | ⟨Z₀⟩ (borde)  | ⟨Z_bulk⟩ N=6 | ⟨Z_bulk⟩ N=8 | ⟨Z_bulk⟩ N=12 |
-| --- | ------------- | ------------ | ------------ | ------------- |
-| 0.5 |  0.672315358  | 0.868022662  | 0.868053451  | 0.868053494   |
-| 1.0 | −0.033021664  | 0.342568234  | 0.343341166  | 0.343345464   |
-| 2.0 | −0.436531883  | 0.436531883  | 0.436531883  | 0.436531883   |
+| h/J | ⟨Z₀⟩ (borde) | ⟨Z_bulk⟩ N=6 | ⟨Z_bulk⟩ N=8 | ⟨Z_bulk⟩ N=12 |
+| --- | ------------ | ------------ | ------------ | ------------- |
+| 0.5 | 0.672315358  | 0.868022662  | 0.868053451  | 0.868053494   |
+| 1.0 | −0.033021664 | 0.342568234  | 0.343341166  | 0.343345464   |
+| 2.0 | −0.436531883 | 0.436531883  | 0.436531883  | 0.436531883   |
 
 - **El valor de BORDE es independiente de N a 9 cifras** en los tres puntos del barrido.
   Es el **cono de luz de Lieb–Robinson**: a t = 1 la información del borde opuesto aún

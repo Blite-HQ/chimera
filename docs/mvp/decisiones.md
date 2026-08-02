@@ -1650,11 +1650,12 @@ que la policy C3 exige. Decisiones:
 
 **Dispatch (G3).** `resolve_verifiers(*, claim_type, instance_id)` conserva firma
 y fail-closed; lo que muere es la FUENTE: `_OPTIMALITY_CLAIM_TYPES = {"solution"}`
-+ `ELECTRICAL_DATA` de un slug se reemplazan por `CLAIM_TYPE_VERIFIERS`, un
-registro declarativo donde cada entrada aporta constructor de claim + resolución
-de instancia. Reto 1 se re-expresa como la primera entrada, **compat total**
-(mismos `verifier:cpsat-differential` / `verifier:pandapower-islanding`, mismos
-grupos e ids). Decisiones propias:
+
+- `ELECTRICAL_DATA` de un slug se reemplazan por `CLAIM_TYPE_VERIFIERS`, un
+  registro declarativo donde cada entrada aporta constructor de claim + resolución
+  de instancia. Reto 1 se re-expresa como la primera entrada, **compat total**
+  (mismos `verifier:cpsat-differential` / `verifier:pandapower-islanding`, mismos
+  grupos e ids). Decisiones propias:
 
 - **`statistical` se registra VACÍO con `TODO(G2)`**, no con un verificador de
   mentira: la clave existe (el seed la exige) pero la resolución vacía sigue
@@ -1709,23 +1710,23 @@ guard de corpus **24/24 internos y pinneados**.
 
 ### Tabla de interacciones — sesión GENERALIDAD
 
-| Interfaz tocada                                                                                    | Dominio afectado | Estado del contrato                                                        |
-| -------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------- |
-| `Differential`: status `EXACT_DIAGONALIZATION` + `relative_tolerance` (C-14)                       | confianza        | ADITIVO — `CpSatStatus` intacto; seed de C-14 VERDE                        |
-| `DifferentialStatus` exportado desde `blite.verification`                                          | confianza        | NUEVO — alias público                                                      |
-| `blite.verification.exact_diagonalization` (verificador + `SimulationSeriesClaim`)                 | confianza        | NUEVO — `formal_exact`/`solver`, AL3 sin `proof`                           |
-| `blite.verification.ground_truth` (+ `source_digest`, `build_ground_truth_record`)                 | confianza        | NUEVO — `ground_truth`/`dataset`; `anchor_digest` = digest del artefacto   |
-| `blite.verification.property_rule` (`PROPERTY_RULES`/`METAMORPHIC_RULES`)                          | confianza        | NUEVO — `property_rule`/`rule`, techo AL2 honesto                          |
-| `CLAIM_TYPE_VERIFIERS` en `chimera_api.instance_verifiers`                                         | E (api)          | NUEVO — `resolve_verifiers` conserva firma y fail-closed                   |
-| `ClaimRequest.payload` (+ `instance`/`assignment` opcionales, validador de forma única)            | E↔D              | ADITIVO — la forma legacy se normaliza; reto 1 sin cambios                 |
-| Entry points `blite.numeric.exact_evolve`, `blite.quantum.trotter_evolve`                          | B (capabilities) | NUEVOS — manifest v2, cero dependencias nuevas                             |
-| Entry points `blite.ml.{tabular_prep,svm_precomputed,classifier_baseline}`, `quantum.fidelity_kernel` | B (capabilities) | NUEVOS — manifest v2, cero dependencias nuevas                             |
-| `blite.solvers.qubo` — enum `backend` deja de anunciar `gurobi`                                    | B (capabilities) | CORREGIDO — hallazgo 12; enum y guard con UNA fuente                       |
-| `distributions/chimera/policies/verification-default.yaml` 0.2.0 → **0.3.0**                       | distribución     | SUPERSEDE — `policy_digest` CAMBIA; reglas viejas byte-intactas            |
-| `distributions/chimera/policies/reto{2,3}-*.yaml` (plantillas)                                     | distribución     | NUEVAS — cargables solas; byte-equivalentes a su regla compuesta           |
-| `knowledge/tfim/corpus/` (9 puntos) y `knowledge/tabular/corpus/` (1 + CSV)                        | knowledge/datos  | NUEVOS — digests embebidos y pinneados                                     |
-| `scripts/verify_corpus_digests.py` multi-directorio + `ESPERADOS_TFIM_C3`/`ESPERADOS_TABULAR_C2`   | invariantes      | EXTENDIDO — 24/24                                                          |
-| `challenges/reto3/` (y `challenges/reto2/`)                                                        | producto         | NUEVOS — entry point único, mismo patrón que reto 1                        |
+| Interfaz tocada                                                                                       | Dominio afectado | Estado del contrato                                                      |
+| ----------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| `Differential`: status `EXACT_DIAGONALIZATION` + `relative_tolerance` (C-14)                          | confianza        | ADITIVO — `CpSatStatus` intacto; seed de C-14 VERDE                      |
+| `DifferentialStatus` exportado desde `blite.verification`                                             | confianza        | NUEVO — alias público                                                    |
+| `blite.verification.exact_diagonalization` (verificador + `SimulationSeriesClaim`)                    | confianza        | NUEVO — `formal_exact`/`solver`, AL3 sin `proof`                         |
+| `blite.verification.ground_truth` (+ `source_digest`, `build_ground_truth_record`)                    | confianza        | NUEVO — `ground_truth`/`dataset`; `anchor_digest` = digest del artefacto |
+| `blite.verification.property_rule` (`PROPERTY_RULES`/`METAMORPHIC_RULES`)                             | confianza        | NUEVO — `property_rule`/`rule`, techo AL2 honesto                        |
+| `CLAIM_TYPE_VERIFIERS` en `chimera_api.instance_verifiers`                                            | E (api)          | NUEVO — `resolve_verifiers` conserva firma y fail-closed                 |
+| `ClaimRequest.payload` (+ `instance`/`assignment` opcionales, validador de forma única)               | E↔D              | ADITIVO — la forma legacy se normaliza; reto 1 sin cambios               |
+| Entry points `blite.numeric.exact_evolve`, `blite.quantum.trotter_evolve`                             | B (capabilities) | NUEVOS — manifest v2, cero dependencias nuevas                           |
+| Entry points `blite.ml.{tabular_prep,svm_precomputed,classifier_baseline}`, `quantum.fidelity_kernel` | B (capabilities) | NUEVOS — manifest v2, cero dependencias nuevas                           |
+| `blite.solvers.qubo` — enum `backend` deja de anunciar `gurobi`                                       | B (capabilities) | CORREGIDO — hallazgo 12; enum y guard con UNA fuente                     |
+| `distributions/chimera/policies/verification-default.yaml` 0.2.0 → **0.3.0**                          | distribución     | SUPERSEDE — `policy_digest` CAMBIA; reglas viejas byte-intactas          |
+| `distributions/chimera/policies/reto{2,3}-*.yaml` (plantillas)                                        | distribución     | NUEVAS — cargables solas; byte-equivalentes a su regla compuesta         |
+| `knowledge/tfim/corpus/` (9 puntos) y `knowledge/tabular/corpus/` (1 + CSV)                           | knowledge/datos  | NUEVOS — digests embebidos y pinneados                                   |
+| `scripts/verify_corpus_digests.py` multi-directorio + `ESPERADOS_TFIM_C3`/`ESPERADOS_TABULAR_C2`      | invariantes      | EXTENDIDO — 24/24                                                        |
+| `challenges/reto3/` (y `challenges/reto2/`)                                                           | producto         | NUEVOS — entry point único, mismo patrón que reto 1                      |
 
 ### #140 — CP3 vivo, y la comparación que estaba amañada
 
@@ -1749,11 +1750,11 @@ pipeline**, kernel gaussiano») y convierte el McNemar en «pipeline preparado d
 Corrección: `ClassifierBaseline` gana un modo `prepared_folds` para que los dos
 brazos difieran SOLO en el kernel. Números reales tras la corrección:
 
-| brazo | accuracy OOF |
-| --- | --- |
-| cuántico (kernel de fidelidad) | 0.6807 |
-| clásico MISMO pipeline (certificado) | 0.6838 |
-| clásico sobre features crudas (informativo, NO certificado) | 0.5995 |
+| brazo                                                       | accuracy OOF |
+| ----------------------------------------------------------- | ------------ |
+| cuántico (kernel de fidelidad)                              | 0.6807       |
+| clásico MISMO pipeline (certificado)                        | 0.6838       |
+| clásico sobre features crudas (informativo, NO certificado) | 0.5995       |
 
 **Δaccuracy = −0.0031, McNemar p = 0.4655 (b=81, c=71) ⇒ NO significativo ⇒ la
 lectura correcta es «competitivo»**, jamás «supera». El p=2e-15 era artefacto
@@ -1788,12 +1789,12 @@ rama al momento de escribir: **1098 passed / 14 skipped / 20 xfailed / 4 xpassed
 
 **NO hecho — entra al handoff, con causa:**
 
-| Ítem | Estado | Causa |
-| --- | --- | --- |
-| **G5** (M11 baseline SA, `method:"sa"`) | NO empezado | `dwave-samplers` 1.8.0 está instalado (`neal` NO — el adapter va contra `dwave.samplers`). C-15 exige extensión COORDINADA de `baselines` (schema + tipo TS + fixture + chart en el MISMO checkpoint) y eso cruza al Studio; no cabía en el presupuesto de esta sesión sin dejarlo a medias |
-| **G6** (doble ancla BdG, stretch) | NO empezado | Declarado en la receta §2 con su alcance honesto: el checker de fermiones libres cubre ⟨ZᵢZᵢ₊₁⟩ pero **NO ⟨Zᵢ⟩** (operador de cuerda ⇒ Pfaffianos). Quien lo tome no debe prometer AL4 sobre ⟨Zᵢ⟩ por esa vía |
-| **G8** (reparación M.3/M.4 REGRID-QAOA + feasibility-feedback DFS + pesos desde flujo) | NO empezado | Solo se hizo el fix del enum del mismo ítem |
-| **DoD «contra compose»** | **NO verificado** | Ver abajo — es la brecha más importante de este handoff |
+| Ítem                                                                                   | Estado            | Causa                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **G5** (M11 baseline SA, `method:"sa"`)                                                | NO empezado       | `dwave-samplers` 1.8.0 está instalado (`neal` NO — el adapter va contra `dwave.samplers`). C-15 exige extensión COORDINADA de `baselines` (schema + tipo TS + fixture + chart en el MISMO checkpoint) y eso cruza al Studio; no cabía en el presupuesto de esta sesión sin dejarlo a medias |
+| **G6** (doble ancla BdG, stretch)                                                      | NO empezado       | Declarado en la receta §2 con su alcance honesto: el checker de fermiones libres cubre ⟨ZᵢZᵢ₊₁⟩ pero **NO ⟨Zᵢ⟩** (operador de cuerda ⇒ Pfaffianos). Quien lo tome no debe prometer AL4 sobre ⟨Zᵢ⟩ por esa vía                                                                               |
+| **G8** (reparación M.3/M.4 REGRID-QAOA + feasibility-feedback DFS + pesos desde flujo) | NO empezado       | Solo se hizo el fix del enum del mismo ítem                                                                                                                                                                                                                                                 |
+| **DoD «contra compose»**                                                               | **NO verificado** | Ver abajo — es la brecha más importante de este handoff                                                                                                                                                                                                                                     |
 
 **Brecha 1 — la verificación viva fue EN PROCESO, no contra compose.** CP2 (y CP3)
 se verificaron con `TestClient` in-process + `check_bundle` + `verify-bundle.py`
@@ -1841,3 +1842,53 @@ obtenible sin red en este entorno. El corpus es **sintético declarado**
 registro): todo claim es sobre ESE CSV sellado y nada dice del fenómeno del mundo
 real. Cuando el CSV oficial aparezca, su digest supersede y **el pipeline no
 cambia**, porque el corpus es DATO.
+
+## Sesión control Mejorado — validación y merge de C-1 + G (rama `mejorado/base`, 2026-07-31)
+
+### #141 — C-1 (CP4/CP5) y G (CP2/CP3) VALIDADOS Y MERGEADOS + decisión AL2 del reto 2
+
+**Merge**: ff `bdde94e..60af544` (5 commits C-1 + 14 G; topología lineal
+base→C-1→G — la dependencia de rama que G declaró se resolvió mergeando ambos en
+orden). **Forense**: paths sensibles intactos; «diff del runtime = 0» de G
+VERIFICADO (cero cambios engine runtime/gateway/events en su segmento); AX1
+endurecido y jamás borrado; `uv.lock` byte-intacto; 116 archivos +18084/−306.
+
+**Gates EN VIVO sobre el merge (tras `uv sync` — los 6 entry points nuevos no
+viven sin reinstalar): 1116 passed / 9 skipped / 20 xfailed / 4 xpassed / cov
+91.77%** · lint-imports **14 kept** (nuevo contrato layers gateway/runtime) ·
+ruff 0 · pyright 0 · studio 227 · **19 entry points** en el venv · corpus guard
+verde. Mejor que lo reportado por las sesiones (sus 14 skipped eran artefacto
+del entorno worktree).
+
+**Integración hecha por control al merge** (huecos menores):
+
+1. **Gate de docs estaba ROJO en el árbol mergeado**: los 9 JSON del corpus TFIM
+   son artefactos CONGELADOS que G no añadió a `.prettierignore` (+ `knowledge/
+tabular/corpus/`, defensivo) — jamás se reformatean, el congelado manda; +
+   formato menor en 4 md (prettier/markdownlint --fix). Docs gate VERDE.
+2. **Decisión de Dylan — AL2 del reto 2**: `reto2-statistical.yaml` v0.2.1 y
+   `verification-default.yaml` v0.3.1 bajan `min_level` AL3→AL2 (la verdad de
+   HOY: la pata property_rule tiene techo AL2 congelado ⇒ AL3 era incumplible y
+   C15 la volvería falla retroactiva). ASPIRACIÓN AL3 registrada en la plantilla
+   (sube cuando exista 2ª pata AL3 — ruta #103 o ancla adicional). Tests de
+   policy actualizados a los pins nuevos (17/17).
+3. **Validación compose de G (CP2/CP3 contra compose, aprobada por Dylan):
+   BLOQUEADA por entorno** — Docker no disponible en el WSL en este momento
+   (Docker Desktop apagado/sin integración). C-1 SÍ validó CP4/CP5 contra
+   compose desde su rama (smoke PASS + cruce con actor JWT vivo + 401).
+   PENDIENTE-ENTORNO registrado: con Docker arriba, correr
+   `docker compose build api && KEEP_STACK=1 bash scripts/smoke_infra.sh` —
+   debe imprimir «capabilidades instaladas: 19» — + misión E2E. Es el único
+   residuo del checkpoint.
+
+**Pendientes de G con causa (registrados por la sesión)**: G5 (SA), G6 (doble
+ancla BdG), G8 (REGRID) — siguen en el backlog del dominio G.
+
+### Tabla de interacciones (regla #3)
+
+| Interfaz tocada                                            | Dominio afectado | Estado del contrato                                   |
+| ---------------------------------------------------------- | ---------------- | ----------------------------------------------------- |
+| merge `mejorado/generalidad` (incluye C-1)→`mejorado/base` | TODOS            | ff limpio; gates vivos citados arriba                 |
+| `.prettierignore` + corpus tfim/tabular congelados         | docs/infra       | VERDE — el congelado jamás se reformatea              |
+| policies reto2 v0.2.1 / default v0.3.1 (`min_level` AL2)   | confianza        | SUPERSEDE con causa #141; bundles previos intactos    |
+| Validación compose CP2/CP3                                 | infra            | PENDIENTE-ENTORNO (Docker apagado) — paso documentado |
