@@ -2398,3 +2398,70 @@ worktree que declare `extraPaths` a sus `src` (excluido localmente vía
 | `canonicalize` (anexo congelado)         | confianza        | **NO TOCADO** — recibe la entrada válida que siempre exigió    |
 | `GET /runs` — skip cubre el resumen      | E↔D              | ENDURECIDO — segunda mitad de #104                             |
 | `/runs` y `/runs/discarded`              | E↔D              | UN solo cómputo — el reporte no puede divergir del listado     |
+
+### Handoff de la sesión PRODUCTO-RUNTIME — qué queda y qué NO se verificó
+
+**Gates al cierre** (worktree `mejorado/producto-rt`, 8 commits sobre `mejorado/base`
+@c4b44a5, sin push):
+
+| Gate                           | Resultado                                                |
+| ------------------------------ | -------------------------------------------------------- |
+| `pytest`                       | **1166 passed**, 14 skipped, **9 xfailed**, 4 xpassed    |
+| cobertura                      | **91.62 %** (mínimo exigido 30 %)                        |
+| `lint-imports`                 | **14 contratos kept, 0 broken**                          |
+| `ruff check`                   | limpio                                                   |
+| `pyright`                      | **0 errores** (con `extraPaths` del worktree — ver #149) |
+| `pnpm -C apps/studio test:run` | **224 passed** / 27 files                                |
+| `pnpm -C apps/studio lint`     | limpio                                                   |
+
+Baseline al abrir: 1111 passed / 20 xfailed. Los **11 xfailed que desaparecieron** son
+los seeds S-A y S-B puestos en verde (chat 8 + lectura descartada 3) — ninguno borrado:
+quedan como regresión permanente de su contrato.
+
+**Alcance cerrado**: P1, P2, P3, P4, P5, P11 y la ruta fantasma `/invoke` (hallazgo 7).
+
+**NO cerrado — P12 (ingesta RAG/KB con procedencia DSSE).** No se empezó, y la razón es
+de coordinación, no de tiempo: el enunciado la declara **«coordina con O»**, y la sesión
+O no se ha lanzado. La frontera SÍ está congelada y es precisa (freeze §7: contenido
+recuperado entra como `assumptions[{statement, ref{name, digest}}]`, **jamás** como
+`Attestation` ni dentro de `conclusions`), y hay dos insumos previos
+(`capabilities/ingesta/`, `docs/research/arquitectura-ingesta-kg-fase2.md`). Sugerencia
+para quien la tome: el pedazo de mayor valor y menor acoplamiento es **volver ejecutable
+la frontera** —un guard que impida que contenido recuperado termine en `conclusions` o
+como `Attestation`— antes de construir el retrieval; hoy esa regla solo vive en prosa.
+El freeze también avisa un delta real: bajo `replay`, la llamada de embeddings del
+retrieval **es** una llamada de modelo y necesita sus propios fixtures (mismo patrón
+§15.7) — con P4 esto ya es más barato, porque `model.call.*` se emite de verdad.
+
+**Bloqueado por entorno (no por decisión):**
+
+1. **CP1 completo** exige el lado D (sesión P-ui, no lanzada). Lo verificable sin ella
+   —el wire E: `mission.message` en el stream, `run.cancelled`, approvals, códigos
+   409/422/404— quedó verificado en vivo (#149).
+2. **Compose**: Docker no está disponible en este WSL (mismo bloqueo que dejó G). Con
+   Docker: `docker compose up -d --build` debe levantar **postgres + api + studio**
+   (el `worker` YA NO arranca por defecto — perfil `queue`, ver #146) y
+   `bash scripts/smoke_infra.sh` sigue siendo el checkpoint. **El DoD de fondo —«un run
+   live con proposer que falla muere con run.failed, jamás colgado»— SÍ se verificó**,
+   contra un uvicorn real (no `TestClient`), que es donde el camino de `BackgroundTasks`
+   se ejercita de verdad (#149).
+3. **Grabación de la sesión real (P4)**: bloqueada-por-Dylan (necesita su API key). El
+   runbook quedó listo y probado en su parte mecánica (#145), con el aviso de que la
+   vista v2 incluye la misión y su autor: grabar con otra misión produce otro digest.
+
+**Fronteras que dejo declaradas para la sesión de control:**
+
+- **`ApprovalGate` sin adapter**: el puerto existe y el loop lo consulta, pero **cómo se
+  ESPERA la respuesta humana** (bloquear el worker, suspender, reanudar por cola) es del
+  adapter. Con `BackgroundTasks` un gate bloqueante retiene un hilo: su casa natural es
+  la cola durable (P11), cuyo **puerto** ya está cerrado y probado.
+- **Adapter Procrastinate + flip del perfil `queue`**: pendientes por entorno (exige
+  Postgres vivo). El puerto —la decisión arquitectónica— está cerrado; el adapter es
+  mecánico detrás de él.
+- **`api/src` fuera del `include` de pyright**: al incluirlo aparecen **45 errores
+  preexistentes** que el gate del repo nunca revisó. No los toqué (cambiar el alcance de
+  un gate es decisión de plataforma/O, no mía), pero conviene saberlo: hoy el tipado
+  estricto **no** cubre el API.
+- **`docs/USO.md` §8 declara cuatro límites reales** (sin multi-tenancy, cola no
+  cableada, approvals requieren permiso explícito, revocación no implementada). Si
+  alguno se cierra, ese doc es el que hay que actualizar — es lo que un tercero lee.
