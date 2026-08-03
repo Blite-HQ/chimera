@@ -128,9 +128,9 @@ exacta): son la mejor referencia de cómo se ve un dominio nuevo bien hecho.
 ## 8 · Lo que hoy NO hace (para que no lo descubras a los tropiezos)
 
 - **No hay multi-tenancy.** Un despliegue = un espacio de trabajo.
-- **La cola de trabajos no está cableada**: el contenedor `worker` está inerte, y los
-  runs corren en el proceso de la API (bien para cargas locales, no para trabajos de
-  horas).
+- **La cola de trabajos no está cableada**: el servicio `worker` del compose está tras
+  el perfil `queue` y no arranca por defecto (sin app registrada, falla). Los runs
+  corren en el proceso de la API — bien para cargas locales, no para trabajos de horas.
 - **Las aprobaciones humanas necesitan permiso explícito**: el operador por defecto no
   puede autorizarlas (403). Es a propósito: nadie aprueba por accidente.
 - **La revocación de certificados no está implementada**: un bundle dice

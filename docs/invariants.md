@@ -17,7 +17,16 @@
 **Gate:** import-linter (Python boundary) + dependency-cruiser (Studio egress)
 
 <!-- enforced: apps/studio/.dependency-cruiser.cjs::INV-1 -->
-<!-- enforced: apps/studio/src/gatewayClient.ts::invokeCapability -->
+<!-- enforced: apps/studio/src/gatewayClient.ts::GatewayResponse -->
+
+> **Nota de ancla (P-rt, 2026-08-02 · hallazgo 7).** El ancla del lado Studio apuntaba a
+> `invokeCapability`, la función que posteaba a la ruta FANTASMA `POST /invoke` (el
+> Studio la llamaba, nginx la proxeaba, ningún servidor la servía; ningún componente la
+> usaba salvo su propio test). Se mató en vez de implementarla: una segunda vía de
+> invocar capabilities habría evadido run/claim/verificación — resultado sin evidencia
+> ni certificado, contra la doctrina fail-closed. El ancla pasa a `GatewayResponse`, el
+> tipo que TODAS las funciones de egress del módulo devuelven: el invariante lo sostiene
+> que todo egress cruce ESTE módulo, no una función en particular.
 
 ---
 

@@ -5,7 +5,7 @@
  * This enforces Invariant 1 (gateway chokepoint) and Invariant 6 (egress
  * only by authorization) at the Studio boundary.
  *
- * <!-- enforced: apps/studio/src/gatewayClient.ts::invokeCapability -->
+ * <!-- enforced: apps/studio/src/gatewayClient.ts::GatewayResponse -->
  */
 
 import { apiBaseUrl } from './data/env';
@@ -13,14 +13,11 @@ import { sseProjectedEventSchema, toProjectedEvent } from './data/schemas';
 
 import type { ProjectedEvent } from './views/types';
 
-const GATEWAY_BASE_URL: string =
-  (import.meta.env as Record<string, string>)['VITE_GATEWAY_URL'] ?? 'http://localhost:8000';
-
-export interface GatewayRequest {
-  readonly capability: string;
-  readonly inputs: Readonly<Record<string, unknown>>;
-}
-
+/**
+ * La forma que devuelve TODA función de egress de este módulo — el ancla del
+ * Invariante 1 del lado Studio (`docs/invariants.md`): si una respuesta del
+ * exterior no pasó por acá, no tiene esta forma.
+ */
 export interface GatewayResponse<T = unknown> {
   readonly success: boolean;
   readonly data: T | null;
@@ -28,41 +25,28 @@ export interface GatewayResponse<T = unknown> {
 }
 
 /**
- * Invoke a capability through the engine gateway.
+ * Nota de la ruta `/invoke` (hallazgo 7 · decidido en P-rt, 2026-08-02).
  *
- * This is the single egress function for the Studio — all capability
- * calls, regardless of feature, must go through invokeCapability().
+ * Este módulo exportaba `invokeCapability()`, que posteaba a `POST /invoke`.
+ * Esa ruta **nunca existió en el servidor**: el Studio la llamaba (solo desde
+ * su propio test — ningún componente la usaba), nginx la proxeaba, y nadie la
+ * servía. Se MATÓ en vez de implementarla, con causa:
+ *
+ * implementarla habría creado una SEGUNDA vía de invocar una capability que
+ * evade run, claim y verificación — un resultado sin evidencia ni certificado,
+ * exactamente lo que la doctrina fail-closed prohíbe («jamás un run sin
+ * verificación», decisión #7). El camino real y único es `POST /runs`.
+ *
+ * El Invariante 1 (gateway como chokepoint) sigue intacto: lo garantiza que
+ * TODO egress del Studio pase por ESTE módulo, no una función en particular.
+ *
+ * **En cascada:** `VITE_GATEWAY_URL` (y su constante `GATEWAY_BASE_URL`) existían
+ * ÚNICAMENTE para armar esa URL. Todas las funciones vivas usan `apiBaseUrl`
+ * (`./data/env`, gobernada por `VITE_API_URL`), así que la variable quedó sin
+ * lector y se retira también — de compose.yaml, studio.Dockerfile y
+ * .env.example. Una env var documentada que nadie lee es documentación de una
+ * mentira.
  */
-export async function invokeCapability<T = unknown>(
-  request: GatewayRequest
-): Promise<GatewayResponse<T>> {
-  let response: Response;
-
-  try {
-    response = await fetch(`${GATEWAY_BASE_URL}/invoke`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request)
-    });
-  } catch (networkErr) {
-    return {
-      success: false,
-      data: null,
-      error: `Network error: ${networkErr instanceof Error ? networkErr.message : String(networkErr)}`
-    };
-  }
-
-  if (!response.ok) {
-    return {
-      success: false,
-      data: null,
-      error: `Gateway error: ${response.status} ${response.statusText}`
-    };
-  }
-
-  const body = (await response.json()) as GatewayResponse<T>;
-  return body;
-}
 
 /**
  * Contrato claim-first de `POST /runs` (plan-01, decisión #6) — INTACTO:

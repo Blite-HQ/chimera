@@ -14,9 +14,10 @@ RUN corepack enable
 COPY . .
 RUN pnpm install --frozen-lockfile
 
-ARG VITE_GATEWAY_URL=""
 ARG VITE_API_URL=""
-RUN VITE_GATEWAY_URL=$VITE_GATEWAY_URL VITE_API_URL=$VITE_API_URL pnpm -C apps/studio run build
+# VITE_GATEWAY_URL murió con la ruta fantasma /invoke (hallazgo 7, 2026-08-08):
+# ningún módulo del Studio la lee. La única var del build es VITE_API_URL.
+RUN VITE_API_URL=$VITE_API_URL pnpm -C apps/studio run build
 
 FROM nginx:1.27-alpine AS runtime
 

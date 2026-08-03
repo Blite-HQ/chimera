@@ -2236,3 +2236,51 @@ por la que existe.
 | `compose.yaml` — `worker` → perfil `queue` | infra            | **CAMBIO DE COMPORTAMIENTO**: `up` ya no intenta arrancarlo (arregla el crash-loop) |
 | `scripts/install-dev.sh`                   | infra/dev        | CAMBIO — el efecto en `~/.claude` es opt-in; CI lo salta                            |
 | `.env.example`                             | infra/config     | COMPLETADO — las 2 vars de P4 documentadas con su porqué                            |
+
+### #147 — hallazgo 7: la ruta fantasma `/invoke` se MATA (no se implementa), con causa
+
+**El hallazgo.** `apps/studio/src/gatewayClient.ts` exportaba `invokeCapability()`, que
+posteaba a `POST /invoke`; `docker/studio-nginx.conf` proxeaba ese prefijo al api; y
+**ningún servidor implementaba la ruta**. Verificado antes de decidir: el único caller
+de esa función en todo el repo era su propio test — cero componentes del Studio la usan
+(el camino real de datos es `POST /runs` + SSE, por el mismo módulo).
+
+**La decisión: matarla.** El criterio no es «es código muerto» (que también), sino la
+autoridad 3:
+
+> Implementarla habría creado una **SEGUNDA vía de invocar una capability que evade
+> run, claim y verificación** — un resultado sin evidencia, sin attestation y sin
+> certificado. Eso contradice de frente la doctrina fail-closed que sostiene el
+> diferenciador («jamás un run sin verificación», decisión #7). Una ruta que produce
+> resultados sin rastro no es una funcionalidad faltante: es un agujero en el plano de
+> confianza que por suerte nadie había cavado todavía.
+
+**Lo retirado, en cascada** (cada pieza verificada sin lectores antes de tocarla):
+
+1. `invokeCapability()` + `GatewayRequest` (`gatewayClient.ts`) y sus 3 tests;
+2. el prefijo `invoke` del `location` de nginx — proxear lo que nadie sirve es
+   superficie de ataque gratis y una pista falsa para quien lea la config;
+3. **`VITE_GATEWAY_URL`** y su constante `GATEWAY_BASE_URL`: existían ÚNICAMENTE para
+   armar esa URL (todas las funciones vivas usan `apiBaseUrl`/`VITE_API_URL`). Se
+   retiran de `compose.yaml`, `docker/studio.Dockerfile` y `.env.example` — **una env
+   var documentada que nadie lee es documentación de una mentira**.
+
+**El ancla del Invariante 1, reapuntada.** `docs/invariants.md` anclaba INV-1 (gateway
+como chokepoint) a `gatewayClient.ts::invokeCapability` — o sea, el invariante estaba
+anclado a la función muerta. Ahora apunta a `GatewayResponse`, el tipo que TODAS las
+funciones de egress devuelven: **el invariante lo sostiene que todo egress cruce ESE
+módulo, no una función en particular.** El ancla es más fuerte después del cambio, no
+más débil.
+
+**El test de nginx se ACTUALIZA, no se borra**: `test_nginx_conf_proxies_los_prefijos_
+vivos_y_ninguno_mas` fija los dos prefijos vivos **y** que `invoke` no reaparezca.
+
+### Tabla de interacciones — hallazgo 7
+
+| Interfaz tocada                                   | Dominio afectado | Estado del contrato                                           |
+| ------------------------------------------------- | ---------------- | ------------------------------------------------------------- |
+| `POST /invoke`                                    | E↔D              | **MUERTA** con causa — jamás existió del lado servidor        |
+| `gatewayClient.invokeCapability`/`GatewayRequest` | D (studio)       | ELIMINADOS — `GatewayResponse` y el resto del módulo intactos |
+| `docker/studio-nginx.conf` `location`             | infra            | `^/(invoke\|runs\|health)` → `^/(runs\|health)`               |
+| `VITE_GATEWAY_URL` (compose/Dockerfile/.env)      | infra/config     | RETIRADA — sin lectores tras (1)                              |
+| ancla INV-1 en `docs/invariants.md`               | confianza        | REAPUNTADA a `GatewayResponse` — más fuerte, no más débil     |

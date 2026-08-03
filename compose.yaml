@@ -107,12 +107,10 @@ services:
       context: .
       dockerfile: docker/studio.Dockerfile
       args:
-        # Vacío → same-origin (nginx reverse-proxea /invoke,/runs,/health al
-        # api) → sin CORS. Ver docker/studio-nginx.conf (Task 2).
-        VITE_GATEWAY_URL: ''
         # VITE_API_URL es la var que de verdad prende el modo vivo del Studio
-        # (isLiveMode() en apps/studio/src/data/env.ts); VITE_GATEWAY_URL solo
-        # afecta el path /invoke. http://localhost:3000 es la URL same-origin
+        # (isLiveMode() en apps/studio/src/data/env.ts). VITE_GATEWAY_URL murió
+        # con la ruta fantasma /invoke (hallazgo 7, P-rt 2026-08-02): nginx ahora
+        # reverse-proxea solo /runs,/health. http://localhost:3000 es la URL same-origin
         # del propio servicio `studio` vista desde el navegador (puerto
         # publicado 3000:80); nginx reverse-proxea /runs,/health,/invoke al
         # `api` → sin CORS. No puede quedar vacía o el modo vivo nunca se

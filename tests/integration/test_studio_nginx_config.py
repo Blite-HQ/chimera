@@ -45,12 +45,20 @@ def test_nginx_conf_disables_proxy_buffering_for_sse() -> None:
     assert "proxy_buffering off;" in text
 
 
-def test_nginx_conf_proxies_the_three_gateway_prefixes() -> None:
+def test_nginx_conf_proxies_los_prefijos_vivos_y_ninguno_mas() -> None:
+    """P-rt 2026-08-02 (hallazgo 7): eran TRES prefijos y ahora son DOS.
+
+    `/invoke` se retiró del proxy junto con la ruta fantasma que lo motivaba
+    (ningún servidor la implementó jamás; `apps/studio/src/gatewayClient.ts`
+    documenta por qué se mató en vez de implementarla). Proxear un prefijo
+    que nadie sirve es superficie de ataque gratis y una pista falsa para
+    quien lea la config."""
     # Arrange
     text = _load_nginx_conf_text()
 
     # Assert
-    assert "location ~ ^/(invoke|runs|health)" in text
+    assert "location ~ ^/(runs|health)" in text
+    assert "invoke" not in text
 
 
 def test_nginx_conf_has_the_spa_fallback_to_index_html() -> None:
