@@ -97,12 +97,18 @@ class ProfileDispatcher:
     nunca fallback silencioso a in-process, porque escondería el modo de falla
     central de la nota 06 §6 (tratar `remote-job` como síncrono). Valor fuera
     del vocabulario congelado ⇒ `ValueError` (jamás aceptar y ver).
+
+    `remote-job` gana estrategia SOLO si se inyecta una cola (P11): sin cola
+    sigue siendo `NotImplementedError` — un despliegue sin cola no puede
+    fingir que corre trabajos largos.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, remote_job: DispatchStrategy | None = None) -> None:
         self._strategies: dict[str, DispatchStrategy] = {
             "in-process": InProcessStrategy(),
         }
+        if remote_job is not None:
+            self._strategies["remote-job"] = remote_job
 
     def resolve(self, execution_profile: str) -> DispatchStrategy:
         if execution_profile not in EXECUTION_PROFILES:

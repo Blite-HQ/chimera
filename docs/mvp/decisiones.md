@@ -2284,3 +2284,47 @@ vivos_y_ninguno_mas` fija los dos prefijos vivos **y** que `invoke` no reaparezc
 | `docker/studio-nginx.conf` `location`             | infra            | `^/(invoke\|runs\|health)` → `^/(runs\|health)`               |
 | `VITE_GATEWAY_URL` (compose/Dockerfile/.env)      | infra/config     | RETIRADA — sin lectores tras (1)                              |
 | ancla INV-1 en `docs/invariants.md`               | confianza        | REAPUNTADA a `GatewayResponse` — más fuerte, no más débil     |
+
+### #148 — P11: el puerto `JobQueue` — `interaction: job` por fin tiene dónde correr
+
+**El hueco.** El manifest v2 congela `interaction: job` y `execution_profile:
+remote-job` (freeze §1), pero `ProfileDispatcher` los rechazaba con
+`NotImplementedError`: el vocabulario existía y **no tenía casa**. La dependencia
+(`procrastinate`, en `engine/pyproject.toml`) y el servicio (`worker` del compose)
+estaban pagados desde el MVP, sin nadie detrás.
+
+**Lo entregado — el puerto, hexagonal como el resto.** `blite.runtime.jobs`:
+
+- **`JobQueue`** (Protocol `runtime_checkable`): `enqueue(capability_id, inputs) ->
+job_id`. Se encola la **id**, no el objeto: el worker la resuelve contra SU registry
+  — mandar la capability exigiría serializar código, justo lo que el patrón de entry
+  points evita.
+- **`RemoteJobStrategy`**: devuelve `JobRef`, **nunca** un `Result`. Encolar no es
+  ejecutar; un trabajo que va a tardar no puede fingir haber terminado. La capability
+  NO se invoca en este proceso (test lo estampa: `invocaciones == 0`).
+- **`InMemoryJobQueue`**: respaldo etiquetado con honestidad — NO es durable, no
+  reintenta, no sobrevive al proceso. Existe para ejercitar la costura sin base de
+  datos (mismo rol que `InMemoryReplayManifest` para el modelo).
+- **`ProfileDispatcher(remote_job=...)`**: inyección ADITIVA. **Sin cola inyectada,
+  `remote-job` sigue siendo `NotImplementedError`** — un despliegue sin cola no puede
+  fingir que corre trabajos largos (nota execution/06 §6: tratar `remote-job` como
+  síncrono es EL modo de falla que este diseño evita). Hay test de regresión.
+
+`blite.runtime` no importa `procrastinate` — mismo principio que `ModelPort` con
+litellm (AX3-b): la casa legítima del SDK está afuera del runtime.
+
+**Lo que NO se entregó, y por qué (frontera declarada).** El **adapter Procrastinate
+concreto** y el flip del perfil `queue` del compose quedan pendientes: registrar la app
+y probar que un worker levanta y consume exige **Postgres vivo**, y el entorno de esta
+sesión no tiene Docker (misma restricción que dejó pendiente el compose de G). Escribir
+el adapter sin poder ejecutarlo sería entregar código no verificado en la pieza cuyo
+único valor es que corra de verdad. El puerto —que es la decisión arquitectónica— está
+cerrado y probado; el adapter es mecánico detrás de él.
+
+### Tabla de interacciones — P11
+
+| Interfaz tocada                          | Dominio afectado | Estado del contrato                                          |
+| ---------------------------------------- | ---------------- | ------------------------------------------------------------ |
+| `blite.runtime.jobs` (`JobQueue` + cía.) | A (runtime)      | NUEVO puerto — cero imports de procrastinate en el runtime   |
+| `ProfileDispatcher(remote_job=)`         | A (runtime)      | ADITIVO — sin cola, `NotImplementedError` intacto            |
+| adapter Procrastinate + perfil `queue`   | infra            | **PENDIENTE-ENTORNO** — exige Postgres vivo para verificarse |
