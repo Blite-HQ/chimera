@@ -5,27 +5,22 @@ desde `TurnContext` (determinista: mismos bytes ⇒ mismo `replay_key`), llama
 `ModelPort.call`, y parsea la respuesta con un protocolo JSON ESTRICTO
 (reusa `ProposedStep` como el wire — `extra="forbid"` ya lo hace estricto).
 
-Frontera declarada (ver `docs/specs/harness-agentico.md` sección aditiva):
-`_run_agentic_turn` (`engine/src/blite/runtime/loop.py`, fuera del alcance
-de este módulo)
-NO envuelve la llamada al `proposer` en try/except — un `raise` ahí tumba el
-turno ANTES de journalizar nada (verificado empíricamente: `execute_run`
-propaga la excepción sin emitir `run.failed`). Por eso este adapter JAMÁS deja
-escapar una excepción cruda: toda falla del seam modelo (miss de replay,
-respuesta no parseable, digest no visible) se traduce a un `ProposedStep` con
-una capability CENTINELA que el registry real nunca registrará — el turno
-sigue su curso normal por `_run_resolve_and_invoke`, que SÍ está protegido
-(KeyError del registry ⇒ `run.step.failed` + `run.failed` fail-loud, MISMO
-contrato que una capability desconocida cualquiera, `TestCapabilityDesconocida`
-en `test_runs.py`). No es tolerancia: es canalizar el error por el ÚNICO paso
-del loop que ya es fail-loud por contrato.
+Frontera CERRADA EN LA RAÍZ (P1/M32, 2026-08-02): `_run_agentic_turn`
+(`engine/src/blite/runtime/loop.py`) YA envuelve la llamada al `proposer` en
+try/except y journaliza `plan.item_updated {failed}` + `run.failed
+{error_kind}` antes de cortar. Por eso este adapter DEJA ESCAPAR sus
+excepciones (miss de replay, respuesta no parseable, digest no visible) en vez
+de traducirlas a la capability CENTINELA que existía para esquivar el hueco:
+el `error_kind` del stream nombra ahora la causa REAL (`ReplayMissError`,
+`ModelResponseProtocolError`) en vez del `KeyError` genérico de una capability
+inexistente, y el rastro deja de fabricar un `run.step.*` de resolve que nunca
+ocurrió. Ver docstring de `chimera_api.model_proposer`.
 """
 
 from __future__ import annotations
 
 import pytest
 from chimera_api.model_proposer import (
-    PROTOCOL_VIOLATION_CAPABILITY_ID,
     ModelResponseProtocolError,
     make_model_proposer,
     parse_proposed_step,
@@ -35,6 +30,7 @@ from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
 from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.loop import ProposedStep, TurnContext
 from blite.runtime.registry import EntryPointRegistry
+from blite.serving.model_port import ReplayMissError
 from blite_capability.manifest import CapabilityManifest
 
 _CTX = {"domain_id": "domain-default"}
@@ -210,7 +206,7 @@ class TestMakeModelProposerReplay:
             first == second == ProposedStep(capability_id="cap.mission-echo", inputs={})
         )
 
-    def test_replay_miss_no_levanta_deja_un_proposed_step_centinela(self) -> None:
+    def test_replay_miss_sube_fail_loud_con_su_causa_real(self) -> None:
         # Arrange — manifest vacío: CUALQUIER request es un miss.
         store = InMemoryContentStore()
         proposer = make_model_proposer(
@@ -226,15 +222,13 @@ class TestMakeModelProposerReplay:
             backend_id=_BACKEND_ID,
         )
 
-        # Act — NO debe lanzar (ver docstring del módulo: el seam del
-        # proposer no está protegido por loop.py).
-        step = proposer(_turn())
+        # Act + Assert — sube tal cual: el guard del proposer en loop.py lo
+        # journaliza como `run.failed {error_kind: "ReplayMissError"}`, con
+        # la causa REAL en vez del KeyError de una capability centinela.
+        with pytest.raises(ReplayMissError):
+            proposer(_turn())
 
-        # Assert — capability centinela, jamás registrada de verdad.
-        assert step.capability_id == PROTOCOL_VIOLATION_CAPABILITY_ID
-        assert step.inputs["error_kind"] == "ReplayMissError"
-
-    def test_respuesta_grabada_corrupta_deja_un_proposed_step_centinela(self) -> None:
+    def test_respuesta_grabada_corrupta_sube_fail_loud_con_su_causa_real(self) -> None:
         # Arrange — el backend `record` graba BYTES que no son el protocolo
         # JSON estricto (p.ej. el modelo devolvió prosa, no un ProposedStep).
         store = InMemoryContentStore()
@@ -263,14 +257,16 @@ class TestMakeModelProposerReplay:
             backend_id=_BACKEND_ID,
         )
         turn = _turn()
-        record_proposer(turn)
+        # La grabación SÍ ocurre (el manifest queda con su entrada); lo que
+        # falla es el parseo de los bytes grabados — el parser estricto es
+        # el mismo en record y en replay.
+        with pytest.raises(ModelResponseProtocolError):
+            record_proposer(turn)
 
-        # Act
-        step = replay_proposer(turn)
-
-        # Assert
-        assert step.capability_id == PROTOCOL_VIOLATION_CAPABILITY_ID
-        assert step.inputs["error_kind"] == "ModelResponseProtocolError"
+        # Act + Assert — el parser estricto sube su causa clara; loop.py la
+        # convierte en `run.failed {error_kind: "ModelResponseProtocolError"}`.
+        with pytest.raises(ModelResponseProtocolError):
+            replay_proposer(turn)
 
 
 class TestMakeModelProposerLive:

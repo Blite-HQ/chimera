@@ -1892,3 +1892,70 @@ ancla BdG), G8 (REGRID) — siguen en el backlog del dominio G.
 | `.prettierignore` + corpus tfim/tabular congelados         | docs/infra       | VERDE — el congelado jamás se reformatea              |
 | policies reto2 v0.2.1 / default v0.3.1 (`min_level` AL2)   | confianza        | SUPERSEDE con causa #141; bundles previos intactos    |
 | Validación compose CP2/CP3                                 | infra            | PENDIENTE-ENTORNO (Docker apagado) — paso documentado |
+
+## Sesión PRODUCTO-RUNTIME Mejorado — P1 frontera del proposer (rama `mejorado/producto-rt`, 2026-08-02)
+
+### #142 — P1/M32 EJECUTADO: el seam del proposer deja de colgar runs, y el centinela muere
+
+**El hueco.** `_run_agentic_turn` (`engine/src/blite/runtime/loop.py`) llamaba
+`proposer(TurnContext(...))` SIN try/except. Un `raise` ahí propagaba la excepción
+cruda fuera de `execute_run` — y `starlette.background.BackgroundTask.__call__`
+tampoco atrapa nada — ANTES de journalizar ningún evento: el run quedaba en el
+stream **sin terminal, para siempre**. Con el placeholder determinista eso no se
+notaba (no puede fallar); con el agente real es el modo de falla NORMAL (miss de
+replay, respuesta no parseable, red caída). Por eso bloqueaba todo M1.
+
+**Lo ejecutado (dos guards, dos alturas).**
+
+1. **Guard del proposer** (`loop.py`, la raíz): try/except alrededor de la llamada,
+   con `plan.item_updated {status: failed, cause}` **ANTES** del terminal (orden
+   #100.1 — jamás post-terminal, fuera del corte de `provenance_slice`, freeze §2) y
+   `run.failed {error_kind: type(exc).__name__}`. El caso `step_id is None` del par
+   resolve→invoke **no existe** acá: el proposer explota antes de que ningún step
+   arranque, así que nadie más journalizó — `fail_run` es de este caller, exactamente
+   una vez (test del turno tardío lo fija: `run.failed` cuenta 1).
+2. **Guard de nivel TASK** (`chimera_api.runs.run_in_background`): último recurso para
+   lo que escape de `execute_run` por una frontera que aún no tenga guard. Cierra el
+   run con `run.failed` **solo si el stream no tiene terminal** — la comprobación es
+   de este guard, no del writer (§2 solo rechaza `run.step.*`/`capability.job.*`
+   post-terminales, así que un `run.failed` duplicado SÍ entraría). Nunca relanza: una
+   tarea de fondo no tumba el worker; lo que no se puede escribir se registra con
+   `logging.exception`, jamás se traga en silencio.
+
+### #142.1 — la capability CENTINELA `PROTOCOL_VIOLATION_CAPABILITY_ID` MURIÓ (con causa)
+
+`chimera_api.model_proposer` traducía toda falla del seam modelo a un `ProposedStep`
+con una capability que ningún registry conoce, para que el turno cayera por el único
+paso que YA era fail-loud (`registry.get` ⇒ `KeyError`). Era un rodeo del hueco de
+arriba, y la propia `harness-agentico.md` lo anticipó literal: envolver la llamada
+«volvería innecesaria la traducción a capability centinela».
+
+Con el guard en la raíz, el rodeo se retira. **Por qué esto es estrictamente mejor
+para la confianza** (el criterio que decide, no la comodidad):
+
+1. **`error_kind` nombra la causa real** — `ReplayMissError` /
+   `ModelResponseProtocolError` en el stream, en vez de un `KeyError` prestado que
+   escondía qué falló de verdad.
+2. **El rastro deja de fabricar un paso que nunca ocurrió** — el centinela provocaba
+   un `run.step.*` de resolve contra una capability inexistente: evidencia inventada
+   DENTRO del corte que el certificado ampara. Eso es un mock sin etiqueta en el
+   plano de confianza, la regla dura #1 del plan paralelo.
+3. **Un concepto menos**: el seam del proposer falla como cualquier otra frontera
+   delegada del loop (`post_invoke` ya lo hacía así).
+
+`parse_proposed_step` sigue siendo ESTRICTO — cambia a dónde va su excepción, no su
+rigor. Efecto observable estampado en el test de integración
+(`TestModoMisionProposerReal::test_replay_miss_falla_fail_loud_en_el_primer_turno`):
+antes `1 run.step.started` + `error_kind: "KeyError"`; ahora **cero** `run.step.*` +
+`error_kind: "ReplayMissError"`, con `plan.item_updated` inmediatamente antes del
+terminal.
+
+### Tabla de interacciones — P1
+
+| Interfaz tocada                                                   | Dominio afectado | Estado del contrato                                                     |
+| ----------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `_run_agentic_turn` — guard del `proposer`                        | A (runtime)      | ADITIVO — cero cambio de firma; solo camino de error nuevo              |
+| `chimera_api.runs.run_in_background` (+ ambos `add_task`)         | E (api)          | NUEVO — público para test; envuelve `execute_run`, sin cambio HTTP      |
+| `chimera_api.model_proposer.PROTOCOL_VIOLATION_CAPABILITY_ID`     | E (api)          | **ELIMINADO** con causa (#142.1) — el adapter ahora es fail-loud        |
+| `make_model_proposer` — deja escapar `ReplayMiss`/`ProtocolError` | E (api)          | CAMBIO OBSERVABLE — `error_kind` del stream nombra la causa real        |
+| `docs/specs/harness-agentico.md` §"Frontera declarada"            | spec             | MARCA [MEJORADO P1/M32] — la letra histórica se conserva, manda la marca |

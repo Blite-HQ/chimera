@@ -692,17 +692,48 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
     ejecutar → journalizar → verificar`. El MODELO (vía `proposer`) SOLO
     propone; este helper es el único que ejecuta y journaliza (INV-2)."""
     # ── proponer: el MODELO (vía el proposer) propone el candidato ──
-    proposal = proposer(
-        TurnContext(
-            run_id=run_id,
-            domain_id=domain_id,
-            turn=turn,
-            goal_capability_id=goal_capability_id,
-            goal_inputs=goal_inputs,
-            plan_item_id=plan_item.id if plan_item is not None else None,
-            previous_output_digest=previous_output_digest,
+    #
+    # P1/M32: el seam del proposer es una FRONTERA DELEGADA (código ajeno al
+    # runtime: el adapter del modelo, la red, un SDK), igual que `post_invoke`
+    # — y como aquélla, su falla se REGISTRA como eventos, jamás tumba el
+    # runtime. Antes de este guard un `raise` acá propagaba crudo fuera de
+    # `execute_run` (y de `BackgroundTasks`, que tampoco atrapa nada) ANTES
+    # de journalizar cualquier evento: el run quedaba colgado en el stream,
+    # sin terminal, para siempre. Orden #100.1: `plan.item_updated {failed}`
+    # ANTES del terminal — jamás post-terminal (fuera del corte de
+    # `provenance_slice`, freeze §2). Aquí no existe el caso `step_id is
+    # None` del par resolve→invoke: el proposer explota ANTES de que ningún
+    # step arranque, así que NADIE más journalizó — `fail_run` es siempre de
+    # este caller, exactamente una vez.
+    try:
+        proposal = proposer(
+            TurnContext(
+                run_id=run_id,
+                domain_id=domain_id,
+                turn=turn,
+                goal_capability_id=goal_capability_id,
+                goal_inputs=goal_inputs,
+                plan_item_id=plan_item.id if plan_item is not None else None,
+                previous_output_digest=previous_output_digest,
+            )
         )
-    )
+    except Exception as exc:  # noqa: BLE001 — frontera delegada: el fallo del seam del modelo se registra como eventos, jamás tumba el runtime
+        _emit_plan_item_update(
+            recorder,
+            plan_item,
+            plan_id=plan_id,
+            run_id=run_id,
+            status="failed",
+            cause=type(exc).__name__,
+        )
+        recorder.fail_run(type(exc).__name__)
+        return _TurnResult(
+            terminal=True,
+            done=False,
+            spent_tokens=spent_tokens,
+            spent_cost_usd=spent_cost_usd,
+            output_digest=previous_output_digest,
+        )
 
     # ── gobernar: el budget se chequea ANTES de ejecutar (fail-closed, mismo
     # espíritu que el guard de max_steps) ──

@@ -532,8 +532,7 @@ class TestModoMisionProposerReal:
         # si el placeholder determinista corriera (regresión — sin wiring
         # real), completaría los 5 turnos sin fallar, agotando `max_turns`
         # SOLO tras 5 turnos (>=5 `run.step.started`). El proposer real debe
-        # fallar YA en el turno 1 (1 solo `run.step.started`, el resolve de
-        # la capability centinela) — esto es lo que discrimina el test.
+        # fallar YA en el turno 1 — esto es lo que discrimina el test.
         session_dir = tmp_path / "sesion-vacia"
         write_session(
             session_dir,
@@ -558,16 +557,21 @@ class TestModoMisionProposerReal:
             },
         )
 
-        # Assert — falla YA en el turno 1 (nunca agota los 5 turnos): la
-        # capability centinela nunca está registrada ⇒ KeyError fail-loud,
-        # MISMO contrato que `TestCapabilityDesconocida`.
+        # Assert — falla YA en el turno 1 (nunca agota los 5 turnos), y desde
+        # P1/M32 lo hace SIN fabricar rastro: el guard del proposer en
+        # `loop.py` journaliza el terminal con la causa REAL antes de que
+        # ningún step arranque. Cero `run.step.*` (el centinela que provocaba
+        # un resolve inventado murió con P1) y `error_kind` = la excepción
+        # verdadera del seam del modelo, no un `KeyError` prestado.
         assert response.status_code == 202
         run_id = response.json()["run_id"]
         frames = _events_of(client, run_id)
         types = [f["event"] for f in frames]
-        assert types.count("run.step.started") == 1
-        assert frames[-1]["event"] == "run.failed"
-        assert json.loads(frames[-1]["data"])["payload"]["error_kind"] == "KeyError"
+        assert types.count("run.step.started") == 0
+        assert types[-2:] == ["plan.item_updated", "run.failed"]
+        assert (
+            json.loads(frames[-1]["data"])["payload"]["error_kind"] == "ReplayMissError"
+        )
 
     def test_backend_invalido_levanta_value_error_al_construir_la_app(
         self, monkeypatch: pytest.MonkeyPatch
@@ -693,3 +697,92 @@ class TestMissionInstancePathGuard:
 
         with pytest.raises(ValueError, match="instance_id"):
             _load_corpus_matrix("../cr6-uniforme")
+
+
+class TestGuardDeNivelTask:
+    """P1/M32 — el guard de nivel TASK de `BackgroundTasks`.
+
+    `starlette.background.BackgroundTask.__call__` no atrapa nada: una
+    excepción que escape de `execute_run` (por una frontera que el loop
+    todavía no cubra, o por el propio store) dejaría el run COLGADO en el
+    stream, sin terminal, para siempre. Este guard es el último recurso:
+    cierra el run con `run.failed {error_kind}` — y jamás duplica un
+    terminal que la tarea ya haya journalizado.
+    """
+
+    def test_excepcion_que_escapa_de_la_tarea_cierra_el_run(self) -> None:
+        from chimera_api.runs import run_in_background
+
+        store = create_event_store()
+        store.append(
+            stream_id="run-colgado",
+            type="run.created",
+            actor_id="user:dylan",
+            domain_id="domain-default",
+            payload={
+                "run_id": "run-colgado",
+                "actor_id": "user:dylan",
+                "domain_id": "domain-default",
+                "max_steps": 4,
+                "policy_digest": "d" * 64,
+            },
+            expected_seq=0,
+        )
+
+        def _tarea_que_explota() -> None:
+            msg = "frontera no cubierta por el loop"
+            raise RuntimeError(msg)
+
+        # Act — el guard NO relanza: la tarea de fondo jamás tumba el worker.
+        run_in_background(store, "run-colgado", _tarea_que_explota)
+
+        # Assert
+        eventos = store.read_stream("run-colgado")
+        assert [e.type for e in eventos] == ["run.created", "run.failed"]
+        assert eventos[-1].payload["error_kind"] == "RuntimeError"
+
+    def test_no_duplica_el_terminal_que_la_tarea_ya_journalizo(self) -> None:
+        from chimera_api.runs import run_in_background
+
+        store = create_event_store()
+        store.append(
+            stream_id="run-ya-terminal",
+            type="run.created",
+            actor_id="user:dylan",
+            domain_id="domain-default",
+            payload={
+                "run_id": "run-ya-terminal",
+                "actor_id": "user:dylan",
+                "domain_id": "domain-default",
+                "max_steps": 4,
+                "policy_digest": "d" * 64,
+            },
+            expected_seq=0,
+        )
+
+        def _tarea_que_cierra_y_luego_explota() -> None:
+            store.append(
+                stream_id="run-ya-terminal",
+                type="run.failed",
+                actor_id="service:runtime",
+                domain_id="domain-default",
+                payload={"error_kind": "ValueError"},
+                expected_seq=1,
+            )
+            msg = "explota DESPUÉS del terminal"
+            raise RuntimeError(msg)
+
+        run_in_background(store, "run-ya-terminal", _tarea_que_cierra_y_luego_explota)
+
+        tipos = [e.type for e in store.read_stream("run-ya-terminal")]
+        assert tipos.count("run.failed") == 1
+        assert tipos == ["run.created", "run.failed"]
+
+    def test_tarea_que_termina_bien_no_agrega_nada(self) -> None:
+        from chimera_api.runs import run_in_background
+
+        store = create_event_store()
+        corridas: list[int] = []
+        run_in_background(store, "run-inexistente", lambda: corridas.append(1))
+        assert corridas == [1]
+        assert store.read_stream("run-inexistente") == ()

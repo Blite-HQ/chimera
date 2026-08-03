@@ -393,3 +393,83 @@ def test_default_execute_run_without_proposer_ignores_max_turns_and_budget() -> 
         "run.step.completed",
         "run.completed",
     ]
+
+
+class _ExplodingProposer:
+    """Fake determinista y explícito: el seam del proposer LEVANTA en vez de
+    devolver un `ProposedStep` — el modo de falla real del agente vivo
+    (adapter de modelo con un bug propio, red caída, SDK que rompe una
+    invariante), distinto de `_ExplodingCapability` (que falla DENTRO del
+    paso resolve→invoke, ya protegido)."""
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self._error = error if error is not None else RuntimeError("proposer caído")
+        self.calls = 0
+
+    def __call__(self, ctx: TurnContext) -> ProposedStep:
+        self.calls += 1
+        raise self._error
+
+
+def test_proposer_que_levanta_cierra_el_run_con_run_failed() -> None:
+    """P1/M32 — frontera del proposer (harness-agentico.md §"Frontera
+    declarada contra loop.py"): un `raise` en el seam del proposer ya NO
+    propaga fuera de `execute_run` dejando el run colgado sin terminal; se
+    journaliza `plan.item_updated {failed}` ANTES del terminal (patrón
+    #100.1) y el run cierra `run.failed {error_kind}` como cualquier otra
+    falla del turno. Sin esto, el modo live cuelga runs."""
+    item = PlanItem(
+        id="item-1",
+        description="turno cuyo proposer explota",
+        verification="delegate",
+        status="pending",
+    )
+    proposer = _ExplodingProposer()
+
+    row, store = _run(proposer=proposer, plan_items=(item,))
+
+    assert proposer.calls == 1
+    assert row.status == "failed"
+    assert row.error_kind == "RuntimeError"
+    events = store.read_stream("run-agentic")
+    types = [e.type for e in events]
+    # El proposer explota ANTES de gobernar/ejecutar: cero `run.step.*`.
+    assert types == [
+        "run.created",
+        "run.started",
+        "plan.created",
+        "plan.item_updated",
+        "run.failed",
+    ]
+    assert types[-1] == "run.failed"
+    plan_update = events[-2]
+    assert plan_update.payload["item_id"] == "item-1"
+    assert plan_update.payload["status"] == "failed"
+    assert plan_update.payload["cause"] == "RuntimeError"
+    assert events[-1].payload["error_kind"] == "RuntimeError"
+
+
+def test_proposer_que_levanta_en_turno_tardio_no_duplica_terminal() -> None:
+    """La falla del proposer en el turno N>1 cierra el run UNA sola vez —
+    jamás un `run.failed` doble (el turno previo ya journalizó sus steps)."""
+
+    class _FallaEnElSegundoTurno:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def __call__(self, ctx: TurnContext) -> ProposedStep:
+            self.calls += 1
+            if self.calls == 1:
+                return ProposedStep(capability_id="cap.echo", inputs={"x": 1})
+            msg = "el adapter del modelo rompió en el turno 2"
+            raise ValueError(msg)
+
+    row, store = _run(
+        proposer=_FallaEnElSegundoTurno(), post_invoke=_NeverDoneGate(), max_turns=3
+    )
+
+    assert row.status == "failed"
+    assert row.error_kind == "ValueError"
+    types = [e.type for e in store.read_stream("run-agentic")]
+    assert types.count("run.failed") == 1
+    assert types[-1] == "run.failed"

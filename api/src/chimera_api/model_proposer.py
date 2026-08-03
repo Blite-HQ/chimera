@@ -19,26 +19,34 @@ canonicalización del proyecto) ⇒ mismo `prompt_digest` ⇒ mismo `replay_key`
 2). El prompt en sí se `put()` en el `ContentStore` — el `ModelPort` solo
 viaja por digest (freeze §3, `model.call.requested`).
 
-**Frontera declarada contra `loop.py` (fuera del alcance de este módulo):**
-`_run_agentic_turn` llama `proposer(TurnContext(...))` SIN try/except — un
-`raise` ahí tumba el turno completo antes de journalizar cualquier evento
-(verificado empíricamente: `execute_run` propaga la excepción cruda, ningún
-`run.failed` queda en el stream). El único paso del loop agéntico que SÍ es
-fail-loud por contrato es `_run_resolve_and_invoke` (`registry.get` /
-`dispatcher.execute`, ambos con try/except). Por eso este adapter NUNCA deja
-escapar una excepción cruda de la función que satisface `Proposer`: toda
-falla del seam modelo (`ReplayMissError`, protocolo no parseable, digest no
-visible en el `ContentStore`) se traduce a un `ProposedStep` con la
-capability centinela `PROTOCOL_VIOLATION_CAPABILITY_ID` — que ningún registry
-real registrará jamás — de modo que el turno sigue su curso normal por el
-paso YA protegido y el run cierra `run.failed {error_kind: "KeyError"}`,
-MISMO contrato que una capability desconocida cualquiera
-(`TestCapabilityDesconocida`, `tests/unit/api/test_runs.py`). Esto no es
-tolerancia: `parse_proposed_step` (el parser en sí) SIGUE siendo estricto y
-levanta `ModelResponseProtocolError` con causa clara — lo que cambia es que
-el WRAPPER que arma el `Proposer` inyectable atrapa esa excepción para
-canalizarla por el único camino del loop que ya es fail-loud, en vez de
-dejarla escapar hacia un camino que hoy no journaliza nada.
+**Frontera contra `loop.py` — CERRADA EN LA RAÍZ (P1/M32, 2026-08-02).**
+Histórico: `_run_agentic_turn` llamaba `proposer(TurnContext(...))` SIN
+try/except, así que un `raise` acá propagaba crudo fuera de `execute_run`
+antes de journalizar nada y el run quedaba colgado sin terminal. Para
+esquivarlo, este adapter traducía toda falla del seam modelo a un
+`ProposedStep` con una capability CENTINELA que ningún registry conoce, de
+modo que el turno cayera por el único paso ya protegido (`registry.get` ⇒
+`KeyError`).
+
+Ese rodeo MURIÓ con el guard del proposer en `loop.py` (la propia
+`harness-agentico.md` §"Frontera declarada contra `loop.py`" lo anticipa
+literal: envolver la llamada "volvería innecesaria la traducción a capability
+centinela"). Hoy el adapter DEJA ESCAPAR la excepción y el loop la journaliza
+como `run.failed {error_kind: type(exc).__name__}`. Por qué esto es
+estrictamente mejor para la confianza:
+
+1. **`error_kind` nombra la causa real** — `ReplayMissError` /
+   `ModelResponseProtocolError`, en vez del `KeyError` genérico que
+   escondía qué falló de verdad detrás de una capability inexistente.
+2. **El stream deja de fabricar un paso que nunca ocurrió** — el centinela
+   provocaba un `run.step.*` de resolve contra una capability que ningún
+   registry registró jamás; evidencia inventada en el rastro que el
+   certificado ampara (regla "cero mocks sin etiqueta").
+3. **Un concepto menos**: el seam del proposer falla como cualquier otra
+   frontera delegada del loop (`post_invoke` ya lo hacía así).
+
+`parse_proposed_step` sigue siendo ESTRICTO, igual que antes — lo que cambia
+es a dónde va su excepción.
 """
 
 from __future__ import annotations
@@ -49,7 +57,7 @@ from blite.certificate.canonical import JSONValue, canonicalize
 from blite.content import ContentStore
 from blite.runtime.loop import ProposedStep, Proposer, TurnContext
 from blite.runtime.registry import Registry
-from blite.serving.model_port import ModelPort, ModelRequest, ReplayMissError
+from blite.serving.model_port import ModelPort, ModelRequest
 from blite_capability.manifest import CapabilityManifest
 
 PROMPT_PROTOCOL = "chimera/mission-proposer-prompt/v1"
@@ -58,17 +66,7 @@ PROMPT_PROTOCOL = "chimera/mission-proposer-prompt/v1"
 freeze/loop.py). Cambiar la forma de `_prompt_view` es una supersesión de
 ESTA constante, documentada en harness-agentico.md."""
 
-PROTOCOL_VIOLATION_CAPABILITY_ID = "chimera.model_proposer.protocol_violation"
-"""Capability CENTINELA — jamás registrada por ningún `Registry` real (no es
-reverse-domain de ningún dominio de cómputo, ADR-029). Ver docstring del
-módulo: el registry.get() de `_run_resolve_and_invoke` la rechaza con
-`KeyError`, que SÍ es fail-loud por contrato (a diferencia de un `raise`
-crudo desde el `Proposer`)."""
-
 _PROMPT_MEDIA_TYPE = "application/json"
-_MAX_ERROR_MESSAGE_LEN = 500
-"""Tope del mensaje de error empacado en `inputs` del `ProposedStep`
-centinela — evidencia para debug, no un log ilimitado."""
 
 
 class ModelResponseProtocolError(Exception):
@@ -128,19 +126,6 @@ def _prompt_view(
     }
 
 
-def _protocol_violation_step(exc: Exception) -> ProposedStep:
-    """El `ProposedStep` centinela que canaliza CUALQUIER falla del seam
-    modelo hacia el único paso del loop que ya es fail-loud por contrato
-    (ver docstring del módulo — frontera contra `loop.py`)."""
-    return ProposedStep(
-        capability_id=PROTOCOL_VIOLATION_CAPABILITY_ID,
-        inputs={
-            "error_kind": type(exc).__name__,
-            "error": str(exc)[:_MAX_ERROR_MESSAGE_LEN],
-        },
-    )
-
-
 def make_model_proposer(
     *,
     model_server: ModelPort,
@@ -155,24 +140,25 @@ def make_model_proposer(
     cambio de contrato HTTP (decisión #92)."""
 
     def _propose(turn: TurnContext) -> ProposedStep:
+        """Fail-loud sin red de seguridad propia: `ReplayMissError`,
+        `ModelResponseProtocolError` o el `KeyError` de un digest ausente
+        del `ContentStore` suben tal cual — el guard del proposer en
+        `loop.py` los journaliza como `run.failed {error_kind}` con la causa
+        REAL (P1/M32, ver docstring del módulo)."""
         view = _prompt_view(turn, registry.list())
         prompt_artifact = content_store.put(canonicalize(view), _PROMPT_MEDIA_TYPE, ctx)
         request = ModelRequest(
             backend_id=backend_id, local=local, prompt_digest=prompt_artifact.digest
         )
-        try:
-            response = model_server.call(request)
-            response_bytes = content_store.get(response.response_digest, ctx)
-            return parse_proposed_step(response_bytes)
-        except (ReplayMissError, ModelResponseProtocolError, KeyError) as exc:
-            return _protocol_violation_step(exc)
+        response = model_server.call(request)
+        response_bytes = content_store.get(response.response_digest, ctx)
+        return parse_proposed_step(response_bytes)
 
     return _propose
 
 
 __all__ = [
     "PROMPT_PROTOCOL",
-    "PROTOCOL_VIOLATION_CAPABILITY_ID",
     "ModelResponseProtocolError",
     "make_model_proposer",
     "parse_proposed_step",

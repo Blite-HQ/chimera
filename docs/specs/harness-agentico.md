@@ -283,6 +283,25 @@ silenciosa.
 
 ### Frontera declarada contra `loop.py` — el seam del proposer no es fail-loud por sí solo
 
+> **[MEJORADO P1/M32 · 2026-08-02 — CERRADA EN LA RAÍZ].** Esta sección describe el estado
+> ANTERIOR y su rodeo; queda como historia, la manda esta marca. Lo ejecutado, exactamente
+> lo que el último párrafo pedía: `_run_agentic_turn` envuelve la llamada al `proposer` en
+> try/except y journaliza `plan.item_updated {failed, cause}` + `run.failed
+> {error_kind: type(exc).__name__}` ANTES de cortar (orden #100.1 — el terminal siempre
+> último, jamás post-terminal). Consecuencias registradas:
+>
+> - **La capability CENTINELA `PROTOCOL_VIOLATION_CAPABILITY_ID` MURIÓ** — el propio párrafo
+>   de abajo anticipaba que el guard «volvería innecesaria la traducción». `make_model_proposer`
+>   deja escapar `ReplayMissError`/`ModelResponseProtocolError`/`KeyError` y el loop los
+>   journaliza con su causa REAL: el `error_kind` deja de ser un `KeyError` prestado, y el
+>   stream deja de fabricar un `run.step.*` de resolve contra una capability que ningún
+>   registry registró jamás (evidencia inventada dentro del corte que el certificado ampara).
+> - **Guard de nivel TASK** (`chimera_api.runs.run_in_background`): `BackgroundTasks` no
+>   atrapa nada, así que lo que escape de `execute_run` por una frontera aún sin guard cierra
+>   el run con `run.failed` de último recurso — y jamás duplica un terminal ya journalizado.
+> - Regresión: `tests/unit/runtime/test_agentic_loop.py::test_proposer_que_levanta_*` y
+>   `tests/unit/api/test_runs.py::TestGuardDeNivelTask`.
+
 Verificado empíricamente (no es una suposición): `_run_agentic_turn` (`engine/src/blite/
 runtime/loop.py`, fuera del carril P4) llama `proposer(TurnContext(...))` SIN try/except —
 un `raise` ahí propaga la excepción cruda fuera de `execute_run` (agendado vía

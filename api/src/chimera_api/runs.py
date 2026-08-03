@@ -32,10 +32,13 @@ verificación termina `run.failed {error_kind: "exhausted"}` — jamás un
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
+import logging
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -47,6 +50,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from blite.certificate.assemble import ConclusionDeclaration
 from blite.content import ContentStore
+from blite.events.rules import TERMINAL_RUN_EVENTS
 from blite.events.store import EventStore
 from blite.gateway.crossing import RunCrossing, build_run_pipeline
 from blite.identity.identity import Identity
@@ -353,6 +357,61 @@ def build_run_resources(
     )
 
 
+_LOGGER = logging.getLogger(__name__)
+
+_LAST_RESORT_ERROR_KIND_UNKNOWN = "BackgroundTaskError"
+"""`error_kind` cuando ni el tipo de la excepción es legible — nunca un
+terminal sin causa."""
+
+_RUNTIME_ACTOR = "service:runtime"
+"""Mismo actor que journaliza el runtime (`blite.runtime.loop`): el terminal
+de último recurso lo escribe el servicio, jamás el usuario de la request."""
+
+
+def run_in_background(
+    store: EventStore, run_id: str, task: Callable[[], object]
+) -> None:
+    """Guard de nivel TASK (P1/M32) — el último recurso que garantiza que
+    NINGÚN run queda colgado sin terminal.
+
+    `starlette.background.BackgroundTask.__call__` no tiene try/except: una
+    excepción que escape de `execute_run` sube al event loop de Starlette y
+    el stream del run se queda para siempre sin evento terminal (el modo
+    live colgando runs — el hueco que P1 cierra). El guard del proposer en
+    `loop.py` cubre la frontera CONOCIDA; éste cubre las que no lo son (el
+    propio store, el cruce del gateway, una frontera nueva sin guard).
+
+    Jamás duplica un terminal: si la tarea ya journalizó el suyo (el caso
+    normal — `execute_run` cierra todos sus caminos), esto es no-op. El
+    `run.failed` de último recurso NO se rechaza por el store (§2 solo
+    rechaza `run.step.*`/`capability.job.*` post-terminales), así que la
+    comprobación del terminal es de ESTE guard, no del writer."""
+    try:
+        task()
+    except Exception as exc:  # noqa: BLE001 — último recurso: una tarea de fondo jamás tumba el worker, y el run jamás queda sin terminal
+        _LOGGER.exception("run %s: excepción escapada de la tarea de fondo", run_id)
+        _fail_run_last_resort(store, run_id, exc)
+
+
+def _fail_run_last_resort(store: EventStore, run_id: str, exc: Exception) -> None:
+    """Cierra un run que quedó sin terminal — y SOLO en ese caso."""
+    try:
+        stream = store.read_stream(run_id)
+        if not stream or any(e.type in TERMINAL_RUN_EVENTS for e in stream):
+            return
+        store.append(
+            stream_id=run_id,
+            type="run.failed",
+            actor_id=_RUNTIME_ACTOR,
+            domain_id=_DEFAULT_DOMAIN,
+            payload={
+                "error_kind": type(exc).__name__ or _LAST_RESORT_ERROR_KIND_UNKNOWN
+            },
+        )
+    except Exception:  # noqa: BLE001 — si ni el terminal de último recurso se puede escribir, el store está caído: se registra y se sigue
+        _LOGGER.exception("run %s: falló el terminal de último recurso", run_id)
+
+
 def _make_crossing(resources: RunResources, identity: Identity) -> GatewayCrossing:
     """El cruce completo del gateway para ESTE actor (C2/M2): las 8 etapas
     reales sobre la infra de vida-de-app — UN cruce por invocación (§13)."""
@@ -544,21 +603,28 @@ def _start_claim_run(
 
     # Agendado, jamás inline (decisión #11): el POST responde 202 en
     # cuanto el claim y sus verifiers son válidos — el run corre después.
+    # Envuelto en el guard de nivel task (P1/M32): lo que escape de
+    # `execute_run` cierra el run, jamás lo deja colgado sin terminal.
     background_tasks.add_task(
-        execute_run,
+        run_in_background,
         resources.store,
-        resources.registry(),
-        resources.dispatcher,
-        resources.content,
-        run_id=run_id,
-        actor_id=identity.id,
-        domain_id=_DEFAULT_DOMAIN,
-        max_steps=body.max_steps,
-        policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
-        capability_id=body.capability_id,
-        inputs=body.inputs,
-        post_invoke=delegate,
-        crossing=_make_crossing(resources, identity),
+        run_id,
+        functools.partial(
+            execute_run,
+            resources.store,
+            resources.registry(),
+            resources.dispatcher,
+            resources.content,
+            run_id=run_id,
+            actor_id=identity.id,
+            domain_id=_DEFAULT_DOMAIN,
+            max_steps=body.max_steps,
+            policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
+            capability_id=body.capability_id,
+            inputs=body.inputs,
+            post_invoke=delegate,
+            crossing=_make_crossing(resources, identity),
+        ),
     )
 
     return CreateRunResponse(run_id=run_id)
@@ -600,30 +666,35 @@ def _start_mission_run(
     )
 
     background_tasks.add_task(
-        execute_run,
+        run_in_background,
         resources.store,
-        resources.registry(),
-        resources.dispatcher,
-        resources.content,
-        run_id=run_id,
-        actor_id=identity.id,
-        domain_id=_DEFAULT_DOMAIN,
-        max_steps=body.max_turns * _STEPS_PER_TURN,
-        policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
-        capability_id=capability_id,
-        inputs=inputs,
-        max_turns=body.max_turns,
-        budget=budget,
-        proposer=_resolve_proposer(resources, capability_id, inputs),
-        plan_items=(
-            PlanItem(
-                id="mission-1",
-                description=body.mission,
-                verification="delegate",
-                status="pending",
+        run_id,
+        functools.partial(
+            execute_run,
+            resources.store,
+            resources.registry(),
+            resources.dispatcher,
+            resources.content,
+            run_id=run_id,
+            actor_id=identity.id,
+            domain_id=_DEFAULT_DOMAIN,
+            max_steps=body.max_turns * _STEPS_PER_TURN,
+            policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
+            capability_id=capability_id,
+            inputs=inputs,
+            max_turns=body.max_turns,
+            budget=budget,
+            proposer=_resolve_proposer(resources, capability_id, inputs),
+            plan_items=(
+                PlanItem(
+                    id="mission-1",
+                    description=body.mission,
+                    verification="delegate",
+                    status="pending",
+                ),
             ),
+            crossing=_make_crossing(resources, identity),
         ),
-        crossing=_make_crossing(resources, identity),
     )
 
     return CreateRunResponse(run_id=run_id)
