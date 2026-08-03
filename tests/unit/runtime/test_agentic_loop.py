@@ -570,3 +570,32 @@ def test_el_payload_emitido_valida_contra_el_wire_congelado() -> None:
     assert payload.approval_id == "apr-1"
     assert payload.json_schema == {"type": "boolean"}
     assert payload.prompt
+
+
+def test_el_payload_de_plan_created_es_json_nativo() -> None:
+    """Regresión de un 500 REAL cazado contra un servidor uvicorn vivo
+    (P-rt, 2026-08-02): `PlanCreatedPayload.model_dump()` emitía `items` como
+    **tupla**, y `canonicalize` (anexo CONGELADO) solo trata `list` — una
+    tupla caía en la rama de dict e intentaba `.encode()` sobre cada ítem
+    (`AttributeError: 'dict' object has no attribute 'encode'`).
+
+    Efecto: CUALQUIER run de misión reventaba el ensamblado de su certificado,
+    y con él `GET /runs` entero (500). Los tests no lo veían porque el store
+    de Postgres serializa a JSON en el camino (la tupla vuelve como lista) —
+    solo el store en memoria conservaba el tipo Python. Divergencia
+    in-memory ↔ Postgres: exactamente la clase de bug que un test de unidad
+    con store en memoria no puede cazar solo.
+
+    El invariante que fija este test: lo que entra al stream es JSON NATIVO."""
+    from blite.certificate.canonical import canonicalize
+
+    _, store = _run(proposer=_FixedProposer(), post_invoke=_GateAtTurn(1))
+
+    for evento in store.read_stream("run-agentic"):
+        # No explota: cada payload journalizado es canonicalizable tal cual.
+        canonicalize(evento.payload)
+        for valor in evento.payload.values():
+            assert not isinstance(valor, tuple), (
+                f"{evento.type}: {valor!r} es tupla — el stream debe llevar "
+                "JSON nativo (listas), no tipos de Python"
+            )

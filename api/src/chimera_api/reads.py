@@ -430,23 +430,41 @@ def create_reads_router(resources: RunResources) -> APIRouter:
     por app — mismo `store`, mismos `run_tickets`)."""
     router = APIRouter()
 
+    def _listar() -> tuple[list[RunSummary], tuple[DiscardedStream, ...]]:
+        """Las DOS rutas salen del mismo cómputo — una sola definición de qué
+        se lista y qué se descartó (si divergieran, `GET /runs/discarded`
+        dejaría de explicar lo que `GET /runs` omitió)."""
+        rows, descartados = _proyectar_salteando_envenenados(resources.store.read_all())
+        filas: list[RunSummary] = []
+        fallidos: list[DiscardedStream] = list(descartados)
+        for run_id, row in rows.items():
+            try:
+                filas.append(_run_summary(resources, run_id, row.actor_id))
+            except Exception as exc:  # noqa: BLE001 — segunda mitad del skip honesto: el RESUMEN también puede explotar, y tumbar el listado por un run ajeno es el mismo defecto que #104 cierra
+                fallidos.append(
+                    DiscardedStream(
+                        stream_id=run_id,
+                        error_kind=type(exc).__name__,
+                        detail=str(exc) or None,
+                    )
+                )
+        return filas, tuple(fallidos)
+
     @router.get("/runs")
     def list_runs() -> list[RunSummary]:
         """Forma INTACTA (array desnudo, byte-idéntica): lo único que cambia
-        es que un stream envenenado se omite en vez de tumbar el listado."""
-        rows, _ = _proyectar_salteando_envenenados(resources.store.read_all())
-        return [
-            _run_summary(resources, run_id, row.actor_id)
-            for run_id, row in rows.items()
-        ]
+        es que un run que no se puede resumir se omite en vez de tumbar el
+        listado entero."""
+        filas, _ = _listar()
+        return filas
 
     @router.get("/runs/discarded")
     def list_discarded_streams() -> DiscardedStreams:
         """Ruta hermana (#104/#124): qué omitió `GET /runs` y por qué. Vacío
         honesto cuando no se descartó nada — jamás filas fabricadas. El
         segmento literal `discarded` no colisiona con un `run_id` (uuid4)."""
-        _, discarded = _proyectar_salteando_envenenados(resources.store.read_all())
-        return DiscardedStreams(discarded_streams=discarded)
+        _, descartados = _listar()
+        return DiscardedStreams(discarded_streams=descartados)
 
     @router.get("/runs/{run_id}/artifacts")
     def get_run_artifacts(run_id: str) -> list[ProjectArtifact]:

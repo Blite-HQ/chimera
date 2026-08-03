@@ -2328,3 +2328,73 @@ cerrado y probado; el adapter es mecánico detrás de él.
 | `blite.runtime.jobs` (`JobQueue` + cía.) | A (runtime)      | NUEVO puerto — cero imports de procrastinate en el runtime   |
 | `ProfileDispatcher(remote_job=)`         | A (runtime)      | ADITIVO — sin cola, `NotImplementedError` intacto            |
 | adapter Procrastinate + perfil `queue`   | infra            | **PENDIENTE-ENTORNO** — exige Postgres vivo para verificarse |
+
+### #149 — la corrida VIVA cazó un 500 que 1157 tests verdes no vieron
+
+**Qué pasó.** El DoD pedía «un run live con proposer que falla muere con `run.failed`
+(jamás colgado)». Con Docker apagado (mismo bloqueo de entorno que G), se levantó un
+**uvicorn real** —no `TestClient`, que corre los `BackgroundTasks` INLINE y por eso no
+ejercita el camino que P1 arregla. El run live salió perfecto:
+
+```
+run.created · run.started · plan.created · model.call.requested ·
+model.call.failed · plan.item_updated · run.failed {error_kind: "ReplayMissError"}
+```
+
+Eso valida de una sola vez P1 (el proposer levantó y el run MURIÓ en vez de colgarse,
+con `plan.item_updated` antes del terminal), P4 (`model.call.*` emitidos, con el
+`failed` cerrando el efecto) y la muerte del centinela (`error_kind` nombra la causa
+REAL, cero `run.step.*` fabricados).
+
+**Pero `GET /runs` respondió 500.** Traceback:
+`AttributeError: 'dict' object has no attribute 'encode'` en `canonicalize`.
+
+**Causa raíz (PREEXISTENTE, no de esta sesión).** `PlanCreatedPayload.model_dump()`
+devuelve `items` como **tupla** (el campo se declara `tuple[PlanItem, ...]` para ser
+inmutable). `canonicalize` —anexo CONGELADO— implementa el modelo de datos JSON y solo
+trata `list`: la tupla caía en la rama de objeto e intentaba `.encode()` sobre cada
+ítem. Efecto: el certificado de **cualquier run de misión** explotaba, y con él el
+listado entero.
+
+**Por qué 1157 tests verdes no lo vieron.** El store Postgres serializa a JSON en el
+camino (la tupla vuelve como lista); **solo el store en memoria conservaba el tipo
+Python**. Es una divergencia in-memory ↔ Postgres: la clase de bug que ningún test de
+unidad con store en memoria puede cazar solo, porque el test y el defecto comparten el
+mismo entorno.
+
+**El arreglo, en la ÚNICA puerta de escritura.** `_RunRecorder.append` normaliza a JSON
+nativo (`_json_native`) antes de tocar el store. Se eligió ahí y no en cada call site
+porque cubre a todos los emisores presentes y futuros, y porque la propiedad que de
+verdad faltaba es que **ambos stores guarden lo mismo**. La canonicalización congelada
+no se toca: se le entrega la entrada válida que su contrato siempre exigió. Test de
+regresión: todo payload del stream es canonicalizable y ningún valor es tupla.
+
+**Segunda mitad de #104, encontrada por el mismo camino.** Mi skip honesto de P2 envolvía
+la PROYECCIÓN, pero el 500 venía de `_run_summary` (ensamblado del certificado) — o sea
+`GET /runs` seguía pudiendo morir por un run ajeno al pedido, que es exactamente el
+defecto que #104 cierra, una capa más abajo. Ahora ambas mitades están cubiertas y las
+DOS rutas (`/runs` y `/runs/discarded`) salen del **mismo cómputo**: si divergieran, el
+reporte dejaría de explicar lo que el listado omitió.
+
+**Verificación posterior al fix, en vivo:** `GET /runs` → **200** con el run listado;
+`GET /runs/discarded` → `{"discarded_streams": []}` (vacío honesto: ya no hay nada que
+descartar). Códigos del chat contra el servidor real: `messages` sobre terminal **409**,
+`cancel` sobre terminal **409**, `cancel reason=parent_cancelled` **422**, `messages` a
+run inexistente **404**, `approvals` sobre terminal **409**.
+
+**Hallazgo de arnés (para la próxima sesión en worktree).** La receta de gates en
+worktree tiene un punto ciego: **pyright resuelve `blite` desde el editable del repo
+PRINCIPAL**, no desde el `include` del worktree, así que un módulo NUEVO del worktree
+(`blite.runtime.mission`, `blite.runtime.jobs`) le resulta irresoluble a los tests y sus
+errores de tipo pasan inadvertidos. Se corrige con un `pyrightconfig.json` en el
+worktree que declare `extraPaths` a sus `src` (excluido localmente vía
+`.git/info/exclude` — jamás commiteado: lleva rutas absolutas de la máquina).
+
+### Tabla de interacciones — #149
+
+| Interfaz tocada                          | Dominio afectado | Estado del contrato                                            |
+| ---------------------------------------- | ---------------- | -------------------------------------------------------------- |
+| `_RunRecorder.append` — normaliza a JSON | A (runtime)      | **FIX de bug preexistente** — payloads del stream JSON-nativos |
+| `canonicalize` (anexo congelado)         | confianza        | **NO TOCADO** — recibe la entrada válida que siempre exigió    |
+| `GET /runs` — skip cubre el resumen      | E↔D              | ENDURECIDO — segunda mitad de #104                             |
+| `/runs` y `/runs/discarded`              | E↔D              | UN solo cómputo — el reporte no puede divergir del listado     |

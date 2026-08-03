@@ -262,6 +262,35 @@ class _TurnOutcome(BaseModel):
     failure_detail: dict[str, Any] | None = None
 
 
+def _json_native(value: Any) -> Any:
+    """Convierte tuplas en listas, recursivamente — el stream lleva JSON
+    NATIVO, jamás tipos de Python.
+
+    **Por qué existe (bug real, cazado contra un servidor vivo 2026-08-02):**
+    `PlanCreatedPayload.model_dump()` devuelve `items` como TUPLA (el campo se
+    declara `tuple[PlanItem, ...]` para ser inmutable). `canonicalize` (anexo
+    CONGELADO) implementa el modelo de datos JSON y solo trata `list`: una
+    tupla caía en la rama de objeto e intentaba `.encode()` sobre cada ítem.
+    Resultado: el certificado de CUALQUIER run de misión explotaba, y con él
+    `GET /runs` (500).
+
+    Por qué no se veía en los tests: el store Postgres serializa a JSON en el
+    camino, así que la tupla vuelve como lista; solo el store en memoria
+    conservaba el tipo. Normalizar acá —la ÚNICA puerta de escritura del
+    runtime— hace que ambos stores guarden lo MISMO, que es la propiedad que
+    de verdad faltaba: sin ella, in-memory y Postgres divergen en silencio.
+
+    No toca la canonicalización congelada: le entrega la entrada válida que
+    su contrato siempre exigió."""
+    if isinstance(value, tuple | list):
+        secuencia: list[Any] = list(value)  # pyright: ignore[reportUnknownArgumentType]
+        return [_json_native(item) for item in secuencia]
+    if isinstance(value, dict):
+        mapa: dict[str, Any] = dict(value)  # pyright: ignore[reportUnknownArgumentType]
+        return {clave: _json_native(item) for clave, item in mapa.items()}
+    return value
+
+
 class _RunRecorder:
     """Escritura del rastro de un run — cada helper es un evento del freeze §3."""
 
@@ -284,7 +313,7 @@ class _RunRecorder:
             type=type_,
             actor_id=actor_id,
             domain_id=self._domain_id,
-            payload=payload,
+            payload=_json_native(payload),
         )
 
     @property

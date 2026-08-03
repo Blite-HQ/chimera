@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 import httpx
+import pytest
 from chimera_api.app import create_app
 from fastapi.testclient import TestClient
 
@@ -49,6 +50,13 @@ def _store_abierto(run_id: str = _RUN) -> EventStore:
         expected_seq=1,
     )
     return store
+
+
+def _get(client: TestClient, url: str) -> httpx.Response:
+    return cast(
+        httpx.Response,
+        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+    )
 
 
 def _post(client: TestClient, url: str, body: dict[str, Any]) -> httpx.Response:
@@ -207,3 +215,86 @@ class TestDrenadoQueueToNextTurn:
             (2, ("cambiá de rumbo",)),
             (3, ()),
         ]
+
+
+class TestSkipHonestoCubreElResumen:
+    """Segunda mitad de #104, encontrada por una corrida VIVA (P-rt).
+
+    El skip por-stream cubría la PROYECCIÓN; pero `_run_summary` también
+    puede explotar (ensamblar el certificado de ese run), y entonces
+    `GET /runs` volvía a morir con 500 por un run ajeno al pedido — el mismo
+    defecto que #104 cierra, una capa más abajo."""
+
+    def test_un_resumen_que_explota_no_tumba_el_listado(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """El fallo se inyecta en `_run_summary` con un doble ETIQUETADO (no
+        un mock silencioso): así se ejercita la rama sin depender de que
+        exista hoy un stream capaz de romper el ensamblado — el que había
+        (la tupla de `plan.created`) quedó arreglado en la raíz."""
+        import chimera_api.reads as reads
+        from chimera_api.app import create_app
+
+        original = reads._run_summary  # pyright: ignore[reportPrivateUsage] — el doble tiene que envolver la MISMA función que la ruta usa
+
+        def _resumen_que_explota(
+            resources: object, run_id: str, actor_id: str
+        ) -> object:
+            if run_id == "run-que-rompe":
+                msg = "ensamblado imposible para este run"
+                raise RuntimeError(msg)
+            return original(resources, run_id, actor_id)  # pyright: ignore[reportArgumentType]
+
+        monkeypatch.setattr(reads, "_run_summary", _resumen_que_explota)
+
+        store = _store_abierto()
+        store.append(
+            stream_id="run-que-rompe",
+            type="run.created",
+            actor_id="user:dylan",
+            domain_id=_DOMINIO,
+            payload={
+                "run_id": "run-que-rompe",
+                "actor_id": "user:dylan",
+                "domain_id": _DOMINIO,
+                "max_steps": 4,
+                "policy_digest": "d" * 64,
+            },
+            expected_seq=0,
+        )
+        client = TestClient(create_app(store))
+
+        listado = _get(client, "/runs")
+        assert listado.status_code == 200
+        filas: list[dict[str, Any]] = listado.json()
+        assert [f["run_id"] for f in filas] == [_RUN]
+
+        reporte: dict[str, Any] = _get(client, "/runs/discarded").json()
+        descartados: list[dict[str, Any]] = reporte["discarded_streams"]
+        assert [f["stream_id"] for f in descartados] == ["run-que-rompe"]
+        assert descartados[0]["error_kind"] == "RuntimeError"
+
+    def test_las_dos_rutas_salen_del_mismo_computo(self) -> None:
+        """Si divergieran, `/runs/discarded` dejaría de explicar lo que
+        `/runs` omitió — y el reporte pasaría a ser decorativo."""
+        from chimera_api.app import create_app
+
+        store = _store_abierto()
+        store.append(
+            stream_id="run-envenenado",
+            type="run.created",
+            actor_id="user:dylan",
+            domain_id=_DOMINIO,
+            payload={"run_id": "run-envenenado"},
+            expected_seq=0,
+        )
+        client = TestClient(create_app(store))
+
+        filas: list[dict[str, Any]] = _get(client, "/runs").json()
+        reporte: dict[str, Any] = _get(client, "/runs/discarded").json()
+        listados = [f["run_id"] for f in filas]
+        descartados = [f["stream_id"] for f in reporte["discarded_streams"]]
+
+        assert _RUN in listados
+        assert descartados == ["run-envenenado"]
+        assert not set(listados) & set(descartados)
