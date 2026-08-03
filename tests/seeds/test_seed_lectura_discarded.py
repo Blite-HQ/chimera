@@ -3,7 +3,12 @@
 Contrato: docs/specs/endpoints-studio.md §"GET /runs/discarded". La ruta de
 LECTURA descarta streams envenenados sin tumbar el listado; la ruta hermana
 los reporta. Escritura/certificados/provenance siguen fail-loud (línea roja
-de #104) — este seed NO toca ese camino. Implementación = ítem P2 (Fase 1).
+de #104) — este seed NO toca ese camino.
+
+**VERDE desde P2 (#143, 2026-08-02)**: el xfail se retiró — `chimera_api.reads`
+implementa el skip por-stream (`_proyectar_salteando_envenenados`) y la ruta
+`GET /runs/discarded`. El test NO se borra: pasa a ser la regresión permanente
+de la píldora #96 (ciclo SPEC→SEED→VERDE del README de specs).
 """
 
 from __future__ import annotations
@@ -12,16 +17,7 @@ from typing import Any
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 P2: el skip por-stream y GET /runs/discarded no existen — "
-            "docs/specs/endpoints-studio.md §GET /runs/discarded (#104/#124)"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 
 def _store_con_pildora() -> Any:

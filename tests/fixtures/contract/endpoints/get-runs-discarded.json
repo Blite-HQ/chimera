@@ -1,0 +1,9 @@
+{
+  "discarded_streams": [
+    {
+      "detail": "'max_steps'",
+      "error_kind": "KeyError",
+      "stream_id": "run-envenenado"
+    }
+  ]
+}

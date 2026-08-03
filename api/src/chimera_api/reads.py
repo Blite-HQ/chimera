@@ -39,7 +39,7 @@ from blite.certificate.assemble import AssembleError, assemble_bundle
 from blite.certificate.predicate import AssuranceLevel, ConclusionVerdict
 from blite.events.event import Event
 from blite.events.rules import TERMINAL_RUN_EVENTS
-from blite.runtime.projection import project_runs
+from blite.runtime.projection import RunRow, project_runs
 from chimera_api.runs import RunResources
 
 RunStatusWire = Literal["en_curso", "completado", "fallido", "cancelado"]
@@ -75,6 +75,28 @@ class RunSummary(BaseModel):
     events_count: int
     actor: str
     completed_at: str | None = None
+
+
+class DiscardedStream(BaseModel):
+    """Una fila del reporte de `GET /runs/discarded` (#104/#124) — qué stream
+    se omitió del listado y por qué. `error_kind` reusa el vocabulario de
+    `run.failed` (`type(exc).__name__`); `detail` es legible, opcional."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    stream_id: str
+    error_kind: str
+    detail: str | None = None
+
+
+class DiscardedStreams(BaseModel):
+    """Envelope OBJETO de la ruta nueva (#124): el array desnudo de
+    `GET /runs` no admite un campo hermano sin romper E↔D, así que el reporte
+    vive en su propia ruta — extensible sin tocar el contrato existente."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    discarded_streams: tuple[DiscardedStream, ...] = ()
 
 
 class ProjectArtifact(BaseModel):
@@ -362,6 +384,46 @@ def _project_topology(stream: tuple[Event, ...]) -> dict[str, Any]:
     return _empty_topology()
 
 
+def _events_por_stream(events: tuple[Event, ...]) -> dict[str, list[Event]]:
+    """Agrupa preservando el orden del log dentro de cada stream (el fold de
+    `project_runs` depende del orden, no del `global_seq` absoluto)."""
+    agrupados: dict[str, list[Event]] = {}
+    for event in events:
+        agrupados.setdefault(event.stream_id, []).append(event)
+    return agrupados
+
+
+def _proyectar_salteando_envenenados(
+    events: tuple[Event, ...],
+) -> tuple[dict[str, RunRow], tuple[DiscardedStream, ...]]:
+    """Skip honesto de la ruta de LECTURA (#104): proyecta stream POR STREAM
+    y omite el que explote, en vez de perder el listado entero.
+
+    La píldora #96 lo probó en vivo: UN `run.created` sin `policy_digest`/
+    `max_steps` (payload que el freeze §3 declara obligatorio, así que
+    `_row_from_created` explota POR DISEÑO) tumbaba `GET /runs` con 500 —
+    un stream ajeno al pedido dejaba ciego al Studio completo.
+
+    `project_runs` se reusa TAL CUAL, sin tocar su semántica: el camino de
+    escritura, los certificados y el `provenance_hash` siguen fail-loud
+    (línea roja de #104 — este skip es de lectura y NADA más; la ruta
+    hermana `GET /runs/discarded` lo REPORTA, no lo cura)."""
+    rows: dict[str, RunRow] = {}
+    discarded: list[DiscardedStream] = []
+    for stream_id, stream_events in _events_por_stream(events).items():
+        try:
+            rows.update(project_runs(tuple(stream_events)))
+        except Exception as exc:  # noqa: BLE001 — skip honesto de lectura: CUALQUIER falla de proyección de un stream se reporta, jamás tumba el listado
+            discarded.append(
+                DiscardedStream(
+                    stream_id=stream_id,
+                    error_kind=type(exc).__name__,
+                    detail=str(exc) or None,
+                )
+            )
+    return rows, tuple(discarded)
+
+
 def create_reads_router(resources: RunResources) -> APIRouter:
     """Router de los 6 GETs de lectura, cerrado sobre la MISMA infra de
     vida-de-app que `/runs`/`/runs/{run_id}/certificate` (un `RunResources`
@@ -370,11 +432,21 @@ def create_reads_router(resources: RunResources) -> APIRouter:
 
     @router.get("/runs")
     def list_runs() -> list[RunSummary]:
-        rows = project_runs(resources.store.read_all())
+        """Forma INTACTA (array desnudo, byte-idéntica): lo único que cambia
+        es que un stream envenenado se omite en vez de tumbar el listado."""
+        rows, _ = _proyectar_salteando_envenenados(resources.store.read_all())
         return [
             _run_summary(resources, run_id, row.actor_id)
             for run_id, row in rows.items()
         ]
+
+    @router.get("/runs/discarded")
+    def list_discarded_streams() -> DiscardedStreams:
+        """Ruta hermana (#104/#124): qué omitió `GET /runs` y por qué. Vacío
+        honesto cuando no se descartó nada — jamás filas fabricadas. El
+        segmento literal `discarded` no colisiona con un `run_id` (uuid4)."""
+        _, discarded = _proyectar_salteando_envenenados(resources.store.read_all())
+        return DiscardedStreams(discarded_streams=discarded)
 
     @router.get("/runs/{run_id}/artifacts")
     def get_run_artifacts(run_id: str) -> list[ProjectArtifact]:

@@ -11,9 +11,14 @@ solo importa dentro de `src/`). El par [fixture JSON + comparación literal en
 `mutations.test.ts`] es el contrato — este script NO escribe TS (frontera D).
 Mismo patrón que `scripts/gen-contract-fixtures-harness.py`.
 
-Los campos con default del server (`max_turns`, `budget`) se EXCLUYEN del
-fixture: el Studio no los manda, el server los aplica — el fixture fija
-exactamente el wire que cruza la costura, no la forma interna del modelo.
+Los campos con default del server (`max_turns`, `budget`) se EXCLUYEN de los
+fixtures de REQUEST: el Studio no los manda, el server los aplica — el fixture
+fija exactamente el wire que cruza la costura, no la forma interna del modelo.
+
+**Extensión P2 (#143):** `chimera_api.reads.DiscardedStreams` es el segundo
+origen — lo que el server RESPONDE en `GET /runs/discarded` (#104/#124). Los
+fixtures de RESPUESTA no excluyen defaults: el server SÍ emite el campo
+(`{"discarded_streams": []}` es el vacío honesto literal del wire).
 """
 
 from __future__ import annotations
@@ -21,14 +26,22 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from chimera_api.reads import DiscardedStream, DiscardedStreams
 from chimera_api.runs import MissionRequest
+from pydantic import BaseModel
 
 REPO = Path(__file__).resolve().parent.parent
 CANONICAL_DIR = REPO / "tests" / "fixtures" / "contract" / "endpoints"
 STUDIO_DIR = REPO / "apps" / "studio" / "src" / "fixtures" / "contract" / "endpoints"
 
 
-def _cases() -> dict[str, MissionRequest]:
+_REQUEST_CASES = frozenset({"post-runs-mission"})
+"""Casos que fijan un body de REQUEST — sus defaults del server se excluyen
+(el Studio no los manda). Los demás fijan una RESPUESTA: se serializan
+completos."""
+
+
+def _cases() -> dict[str, BaseModel]:
     """Un ejemplo canónico por caso — el MISMO body que `toCreateRunBody`
     (apps/studio/src/data/mutations.ts) produce para el form canónico
     (instancia ieee14 + proposer qaoa)."""
@@ -46,13 +59,31 @@ def _cases() -> dict[str, MissionRequest]:
             # `apps/studio/src/data/mutations.ts::PROPOSER_CAPABILITY`.
             capability_id="blite.quantum.qaoa",
         ),
+        # La píldora #96 vuelta contrato: el stream envenenado que `GET /runs`
+        # omite, reportado con el vocabulario de `run.failed` (`error_kind` =
+        # `type(exc).__name__`). `KeyError` es lo que `_row_from_created`
+        # levanta ante un `run.created` sin `max_steps`/`policy_digest`.
+        "get-runs-discarded": DiscardedStreams(
+            discarded_streams=(
+                DiscardedStream(
+                    stream_id="run-envenenado",
+                    error_kind="KeyError",
+                    detail="'max_steps'",
+                ),
+            )
+        ),
     }
 
 
-def serialize(payload: MissionRequest) -> str:
-    """Forma canónica del fixture (claves ordenadas; defaults del server y
-    optativos None omitidos — el wire de la costura, no el modelo interno)."""
-    data = payload.model_dump(exclude_none=True, exclude_defaults=True)
+def serialize(case: str, payload: BaseModel) -> str:
+    """Forma canónica del fixture (claves ordenadas). En los casos de REQUEST
+    se omiten defaults del server y optativos `None` — el wire de la costura,
+    no el modelo interno; en los de RESPUESTA se serializa lo que el server
+    emite de verdad (los defaults SÍ viajan)."""
+    if case in _REQUEST_CASES:
+        data = payload.model_dump(exclude_none=True, exclude_defaults=True)
+    else:
+        data = payload.model_dump(exclude_none=True)
     return json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
 
 
@@ -60,7 +91,7 @@ def main() -> int:
     CANONICAL_DIR.mkdir(parents=True, exist_ok=True)
     STUDIO_DIR.mkdir(parents=True, exist_ok=True)
     for case, payload in _cases().items():
-        text = serialize(payload)
+        text = serialize(case, payload)
         (CANONICAL_DIR / f"{case}.json").write_text(text, encoding="utf-8")
         (STUDIO_DIR / f"{case}.json").write_text(text, encoding="utf-8")
         print(f"  {case}.json -> tests/ + apps/studio/ (byte-idéntico)")

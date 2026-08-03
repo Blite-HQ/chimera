@@ -1952,10 +1952,56 @@ terminal.
 
 ### Tabla de interacciones — P1
 
-| Interfaz tocada                                                   | Dominio afectado | Estado del contrato                                                     |
-| ----------------------------------------------------------------- | ---------------- | ----------------------------------------------------------------------- |
-| `_run_agentic_turn` — guard del `proposer`                        | A (runtime)      | ADITIVO — cero cambio de firma; solo camino de error nuevo              |
-| `chimera_api.runs.run_in_background` (+ ambos `add_task`)         | E (api)          | NUEVO — público para test; envuelve `execute_run`, sin cambio HTTP      |
-| `chimera_api.model_proposer.PROTOCOL_VIOLATION_CAPABILITY_ID`     | E (api)          | **ELIMINADO** con causa (#142.1) — el adapter ahora es fail-loud        |
-| `make_model_proposer` — deja escapar `ReplayMiss`/`ProtocolError` | E (api)          | CAMBIO OBSERVABLE — `error_kind` del stream nombra la causa real        |
+| Interfaz tocada                                                   | Dominio afectado | Estado del contrato                                                      |
+| ----------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| `_run_agentic_turn` — guard del `proposer`                        | A (runtime)      | ADITIVO — cero cambio de firma; solo camino de error nuevo               |
+| `chimera_api.runs.run_in_background` (+ ambos `add_task`)         | E (api)          | NUEVO — público para test; envuelve `execute_run`, sin cambio HTTP       |
+| `chimera_api.model_proposer.PROTOCOL_VIOLATION_CAPABILITY_ID`     | E (api)          | **ELIMINADO** con causa (#142.1) — el adapter ahora es fail-loud         |
+| `make_model_proposer` — deja escapar `ReplayMiss`/`ProtocolError` | E (api)          | CAMBIO OBSERVABLE — `error_kind` del stream nombra la causa real         |
 | `docs/specs/harness-agentico.md` §"Frontera declarada"            | spec             | MARCA [MEJORADO P1/M32] — la letra histórica se conserva, manda la marca |
+
+### #143 — P2/#104 EJECUTADO: skip honesto de lectura, sin tocar el camino de escritura
+
+**El hueco (píldora #96, probado en vivo).** UN `run.created` sin `policy_digest`/
+`max_steps` — payload que el freeze §3 declara obligatorio, así que
+`_row_from_created` explota POR DISEÑO — tumbaba `GET /runs` entero con 500. Un
+stream ajeno al pedido dejaba ciego al Studio completo.
+
+**Lo ejecutado.** `chimera_api.reads._proyectar_salteando_envenenados` agrupa los
+eventos POR STREAM y proyecta cada uno por separado, omitiendo el que explote.
+Decisiones de diseño que importan:
+
+- **`project_runs` se reusa TAL CUAL** — cero cambio de semántica en el fold del
+  engine. El aislamiento vive en la ruta de lectura, que es exactamente donde #104
+  autoriza el skip. Escritura, certificados y `provenance_hash` siguen fail-loud: un
+  stream envenenado sigue reventando el recompute y cualquier emisión. Esta ruta lo
+  REPORTA, no lo cura (línea roja de #104, literal).
+- **`GET /runs` conserva su forma byte-idéntica** (array desnudo): lo único que cambia
+  es que un stream envenenado se omite en vez de tumbar el listado. El reporte vive en
+  la ruta hermana `GET /runs/discarded` con envelope OBJETO (#124: el array desnudo no
+  admite un campo hermano sin romper E↔D).
+- **`error_kind` reusa el vocabulario de `run.failed`** (`type(exc).__name__`), y
+  `detail` es opcional legible. Vacío honesto `{"discarded_streams": []}` cuando no se
+  descartó nada — jamás filas fabricadas.
+
+**Fixture single-origin.** `get-runs-discarded.json` generado desde
+`chimera_api.reads.DiscardedStreams` por `gen-contract-fixtures-endpoints.py` (que
+gana el concepto REQUEST vs RESPUESTA: los de respuesta NO excluyen defaults, porque
+el server sí emite el campo) + espejo byte-idéntico en el Studio + tres tests
+anti-drift + **un cuarto test que corre la píldora contra el endpoint VIVO y compara
+con el fixture** — si el wire y el fixture divergen, falla. El Zod espejo del Studio
+entra con la rama live (frontera D, sesión P-ui).
+
+**Seed a VERDE.** `tests/seeds/test_seed_lectura_discarded.py` pierde su `xfail` (los
+3 casos pasan) y queda como regresión permanente de la píldora #96 — el test NO se
+borra (ciclo SPEC→SEED→VERDE del README de specs).
+
+### Tabla de interacciones — P2
+
+| Interfaz tocada                                                   | Dominio afectado | Estado del contrato                                              |
+| ----------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------- |
+| `GET /runs`                                                       | E↔D              | FORMA INTACTA — solo deja de morir por un stream ajeno           |
+| `GET /runs/discarded` + `DiscardedStreams`/`DiscardedStream`      | E↔D              | NUEVO — envelope objeto, extensible; espejo Zod = frontera D     |
+| `tests/fixtures/contract/endpoints/get-runs-discarded.json`       | E↔D              | NUEVO single-origin — espejo Studio byte-idéntico verificado     |
+| `gen-contract-fixtures-endpoints.py` — casos REQUEST vs RESPUESTA | contratos        | EXTENDIDO — `serialize(case, payload)`; el caso viejo sin cambio |
+| `blite.runtime.projection.project_runs`                           | A (runtime)      | **NO TOCADO** — línea roja de #104 respetada por construcción    |
