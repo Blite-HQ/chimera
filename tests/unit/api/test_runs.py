@@ -805,3 +805,56 @@ class TestGuardDeNivelTask:
         run_in_background(store, "run-inexistente", lambda: corridas.append(1))
         assert corridas == [1]
         assert store.read_stream("run-inexistente") == ()
+
+
+class TestModelCallEmitido:
+    """P4/M31 — `model.call.*` (freeze §3) dejan de ser vocabulario muerto.
+
+    La llamada de modelo era el ÚNICO efecto del sistema sin rastro propio, y
+    por eso `extract_effects`/`find_replay_divergences` (`blite.runtime.replay`)
+    eran infraestructura sin uso. Vive acá y no en `test_model_call_events.py`
+    porque necesita los helpers de sesión/cliente de ESTE módulo."""
+
+    def test_un_run_de_mision_con_agente_real_deja_rastro_de_la_llamada(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mission = "una misión con rastro de modelo"
+        turn_ctx = TurnContext(
+            run_id="run-no-viaja",
+            domain_id="domain-default",
+            turn=1,
+            goal_capability_id="cap.mission-echo",
+            goal_inputs={"mission": mission},
+            plan_item_id="mission-1",
+        )
+        session_dir = tmp_path / "sesion"
+        _write_fake_session(
+            session_dir,
+            turn_contexts_and_responses=[
+                (turn_ctx, b'{"capability_id": "cap.mission-echo", "inputs": {}}')
+            ],
+            mission=mission,
+            mission_author=_LOCAL_OPERATOR,
+        )
+        monkeypatch.setenv("CHIMERA_MODEL_BACKEND", "replay")
+        monkeypatch.setenv("CHIMERA_MODEL_SESSION_DIR", str(session_dir))
+        client = _make_client()
+
+        response = _post(
+            client,
+            "/runs",
+            json_body={
+                "mission": mission,
+                "capability_id": "cap.mission-echo",
+                "max_turns": 1,
+            },
+        )
+
+        assert response.status_code == 202
+        run_id = response.json()["run_id"]
+        types = [f["event"] for f in _events_of(client, run_id)]
+        assert "model.call.requested" in types
+        assert "model.call.completed" in types
+        # El rastro del modelo precede al paso que su propuesta disparó — el
+        # orden real de los hechos, que es lo que `extract_effects` empareja.
+        assert types.index("model.call.requested") < types.index("run.step.started")

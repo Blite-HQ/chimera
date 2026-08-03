@@ -90,6 +90,17 @@ _MODEL_BACKEND_ENV = "CHIMERA_MODEL_BACKEND"
 _MODEL_SESSION_DIR_ENV = "CHIMERA_MODEL_SESSION_DIR"
 _MODEL_ID_ENV = "CHIMERA_MODEL_ID"
 _VALID_MODEL_BACKENDS = ("replay", "record", "live")
+_ALLOW_EPHEMERAL_RECORD_ENV = "CHIMERA_ALLOW_EPHEMERAL_RECORD"
+"""Escape hatch EXPLÍCITO del fail-fast de `record` (P4/M31) — quien lo
+declara sabe que la sesión no se persiste."""
+
+_MODEL_API_KEY_ENV = "CHIMERA_MODEL_API_KEY"
+_MODEL_API_KEY_FILE_ENV = "CHIMERA_MODEL_API_KEY_FILE"
+"""Secreto por ARCHIVO, no por env (P4/M31 · misma disciplina `*_FILE` que el
+resto del compose, que ya es `*_FILE`-only). Una API key en una env var se
+filtra por `docker inspect`, por el `/proc/<pid>/environ` de cualquier proceso
+del contenedor, y por los volcados de crash — un archivo montado con permisos
+tiene una superficie mucho más chica."""
 _DEFAULT_MODEL_ID = "anthropic/claude-sonnet-4-5"
 """Solo importa para `record`/`live` (identifica el modelo ante litellm); en
 `replay` el `backend_id` real viene del propio `manifest.json` de la sesión
@@ -269,6 +280,30 @@ class ModelBackendConfig:
     local: bool = False
 
 
+def load_model_api_key_from_file() -> None:
+    """`CHIMERA_MODEL_API_KEY_FILE` → `CHIMERA_MODEL_API_KEY` (P4/M31).
+
+    Solo `record`/`live` necesitan key (el modo `replay` es air-gapped por
+    construcción — ese es su punto). Lee UNA vez, al construir la app.
+
+    La env var explícita GANA sobre el archivo: quien la exporta a mano está
+    depurando y no quiere que un archivo montado se la pise en silencio. Un
+    `*_FILE` que apunta a algo ilegible es error de CONFIGURACIÓN — falla acá
+    (arranque), jamás a mitad de un run."""
+    key_file = os.environ.get(_MODEL_API_KEY_FILE_ENV)
+    if key_file is None or os.environ.get(_MODEL_API_KEY_ENV):
+        return
+    try:
+        secreto = Path(key_file).read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        msg = f"{_MODEL_API_KEY_FILE_ENV}={key_file!r} no se puede leer: {exc}"
+        raise ValueError(msg) from exc
+    if not secreto:
+        msg = f"{_MODEL_API_KEY_FILE_ENV}={key_file!r} está vacío"
+        raise ValueError(msg)
+    os.environ[_MODEL_API_KEY_ENV] = secreto
+
+
 def _build_model_backend(content: ContentStore) -> ModelBackendConfig | None:
     """Lee `CHIMERA_MODEL_BACKEND`/`CHIMERA_MODEL_SESSION_DIR`/`CHIMERA_MODEL_ID`
     UNA sola vez, al construir `RunResources` (arranque de la app, nunca por
@@ -306,10 +341,31 @@ def _build_model_backend(content: ContentStore) -> ModelBackendConfig | None:
         )
         return ModelBackendConfig(server=server, backend_id=backend_id, local=local)
 
+    if backend == "record":
+        # FAIL-FAST del `record` EFÍMERO (P4/M31). El manifest de `record`
+        # vive en MEMORIA y quien lo dumpea a disco es
+        # `scripts/record_session.py`, no la API: un operador que arranca el
+        # servicio con `CHIMERA_MODEL_BACKEND=record` creyendo que graba
+        # estaría quemando llamadas de modelo REALES —con su costo— para
+        # tirarlas al reiniciar el proceso. Antes eso pasaba en silencio.
+        # Ahora se declara: para grabar de verdad, el script; para forzarlo
+        # igual (tests, exploración), la env var explícita de abajo.
+        if os.environ.get(_ALLOW_EPHEMERAL_RECORD_ENV) != "1":
+            msg = (
+                f"{_MODEL_BACKEND_ENV}=record en la API graba a un manifest "
+                "EFÍMERO (en memoria): la sesión se pierde al reiniciar el "
+                "proceso y las llamadas de modelo se pagan igual. Para grabar "
+                "una sesión reproducible usá `scripts/record_session.py` "
+                "(escribe manifest.json + responses/ a disco). Si de verdad "
+                f"querés el modo efímero, declaralo: {_ALLOW_EPHEMERAL_RECORD_ENV}=1"
+            )
+            raise ValueError(msg)
+
     # record/live: backend_id configurable (identifica el modelo ante
     # litellm, `blite.protocols.model_server._default_live_caller`); manifest
     # en memoria — `record` lo llena por request, `scripts/record_session.py`
     # es quien lo dumpea a disco al terminar la corrida (no la API viva).
+    load_model_api_key_from_file()
     backend_id = os.environ.get(_MODEL_ID_ENV, _DEFAULT_MODEL_ID)
     server = ModelServer(
         mode=backend,
@@ -545,6 +601,7 @@ def _resolve_proposer(
     *,
     mission: str | None = None,
     mission_author: str | None = None,
+    emit: Callable[[str, dict[str, Any]], None] | None = None,
 ) -> Proposer:
     """Selecciona el proposer del turno — el agente real (P4, `ModelServer`
     tras `ModelPort`) si `CHIMERA_MODEL_BACKEND` está configurado, si no el
@@ -565,6 +622,7 @@ def _resolve_proposer(
         local=resources.model_backend.local,
         mission=mission,
         mission_author=mission_author,
+        emit=emit,
     )
 
 
@@ -710,6 +768,7 @@ def _start_mission_run(
                 inputs,
                 mission=body.mission,
                 mission_author=identity.id,
+                emit=_model_call_emitter(resources, run_id, identity),
             ),
             plan_items=(
                 PlanItem(
@@ -750,3 +809,27 @@ def create_runs_router(resources: RunResources) -> APIRouter:
         return _start_claim_run(resources, body, background_tasks, identity)
 
     return router
+
+
+def _model_call_emitter(
+    resources: RunResources, run_id: str, identity: Identity
+) -> Callable[[str, dict[str, Any]], None]:
+    """Ata los `model.call.*` del proposer al stream de ESTE run (P4/M31).
+
+    El adapter del modelo no conoce el store — recibe este callback, igual
+    que un delegate `post_invoke` recibe `recorder.append`. Los eventos caen
+    en el mismo stream, en el orden real en que ocurrieron: el
+    `model.call.requested` de un turno precede a los `run.step.*` de ese
+    turno, que es exactamente lo que `extract_effects` necesita para
+    emparejar el efecto."""
+
+    def _emit(type_: str, payload: dict[str, Any]) -> None:
+        resources.store.append(
+            stream_id=run_id,
+            type=type_,
+            actor_id=identity.id,
+            domain_id=_DEFAULT_DOMAIN,
+            payload=payload,
+        )
+
+    return _emit

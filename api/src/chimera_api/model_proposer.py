@@ -51,11 +51,13 @@ es a dónde va su excepción.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import ValidationError
 
 from blite.certificate.canonical import JSONValue, canonicalize
 from blite.content import ContentStore
-from blite.runtime.loop import ProposedStep, Proposer, TurnContext
+from blite.runtime.loop import AppendEvent, ProposedStep, Proposer, TurnContext
 from blite.runtime.registry import Registry
 from blite.serving.model_port import ModelPort, ModelRequest
 from blite_capability.manifest import CapabilityManifest
@@ -152,6 +154,7 @@ def make_model_proposer(
     local: bool = False,
     mission: str | None = None,
     mission_author: str | None = None,
+    emit: AppendEvent | None = None,
 ) -> Proposer:
     """Construye el `Proposer` real sobre un `ModelPort` ya configurado
     (replay/record/live, A2) — mismo seam que `_make_goal_proposer`, cero
@@ -186,11 +189,46 @@ def make_model_proposer(
         request = ModelRequest(
             backend_id=backend_id, local=local, prompt_digest=prompt_artifact.digest
         )
-        response = model_server.call(request)
+        # `model.call.*` (freeze §3): vocabulario congelado desde el día uno
+        # que NADIE emitía — la llamada de modelo era el único efecto del
+        # sistema sin rastro propio. Con estos tres eventos, `extract_effects`
+        # (`blite.runtime.replay`) puede emparejar `(request, response)` por
+        # digest y `find_replay_divergences` recomputar la fidelidad: la
+        # propiedad «el certificado verifica ⟺ el replay fue fiel» deja de
+        # ser infraestructura sin uso.
+        _emit(
+            emit,
+            "model.call.requested",
+            {
+                "backend_id": backend_id,
+                "local": local,
+                "prompt_digest": prompt_artifact.digest,
+            },
+        )
+        try:
+            response = model_server.call(request)
+        except Exception as exc:
+            # El terminal del run lo journaliza el guard del proposer en
+            # `loop.py` (P1); acá se cierra el rastro del EFECTO — sin esto,
+            # un `model.call.requested` quedaría colgado sin desenlace, que
+            # es justo lo que este par de eventos existe para evitar.
+            _emit(emit, "model.call.failed", {"error_kind": type(exc).__name__})
+            raise
+        _emit(
+            emit, "model.call.completed", {"response_digest": response.response_digest}
+        )
         response_bytes = content_store.get(response.response_digest, ctx)
         return parse_proposed_step(response_bytes)
 
     return _propose
+
+
+def _emit(emit: AppendEvent | None, type_: str, payload: dict[str, Any]) -> None:
+    """Sin emisor inyectado, los `model.call.*` no se emiten — el adapter no
+    inventa un store. Los callers de test que no pasan `emit` conservan su
+    comportamiento exacto."""
+    if emit is not None:
+        emit(type_, payload)
 
 
 __all__ = [

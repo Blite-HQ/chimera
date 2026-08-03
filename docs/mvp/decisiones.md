@@ -2092,3 +2092,84 @@ espera de verdad es la cola durable (P11/`JobQueue`).
 | `PROMPT_PROTOCOL` v1 → **v2**                                       | E ↔ proposer     | SUPERSEDE de la constante — sesiones v1 siguen reproduciendo        |
 | `make_model_proposer(mission=, mission_author=)`                    | E (api)          | ADITIVO — siembra el primer mensaje del historial                   |
 | `jsonschema>=4.26` (MIT)                                            | deps             | NUEVA declarada — antes solo transitiva                             |
+
+### #145 — P4/M31 EJECUTADO: la llamada de modelo deja rastro, y el replay se puede auditar
+
+**Cuatro huecos encadenados, cerrados en orden.**
+
+**1 · `model.call.*` no los emitía NADIE.** El vocabulario está congelado en el freeze
+§3 desde el día uno (`requested {backend_id, local, prompt_digest}` →
+`completed {response_digest} | failed {error_kind}`) y la llamada de modelo era **el
+único efecto del sistema sin rastro propio**. Ahora `chimera_api.model_proposer` los
+emite vía un `emit` inyectado (mismo patrón que un delegate `post_invoke` recibe
+`recorder.append` — el adapter no conoce el store, lo recibe). El `failed` cierra el
+rastro cuando la llamada revienta: sin él un `requested` quedaría colgado sin
+desenlace, que es justo lo que este par existe para evitar.
+
+**2 · `find_replay_divergences` era infraestructura sin uso.** El núcleo (A5) existía
+con un `Recomputer` inyectable y nadie que lo inyectara — porque sin (1) no había
+efectos de modelo que emparejar. `chimera_api.replay_fidelity` cierra el circuito:
+`session_recomputer` arma el recomputador contra el manifest de una sesión usando la
+MISMA derivación de `replay_key` que el backend `replay` en producción, y
+`check_run_fidelity` corre la comprobación sobre el stream. Con esto, «el certificado
+verifica ⟺ el replay fue fiel» deja de ser prosa: un test estampa que una respuesta
+cambiada produce un `replay.divergence` tipado con los tres digests.
+
+**Frontera honesta declarada**: el recomputador de `capability_job` NO vive ahí.
+Recomputar un job es re-ejecutar la capability (posibles efectos) — decisión de
+política. Se levanta `UnrecomputableEffectError` en vez de fabricar un digest: **un
+check que no se pudo hacer no es un check que pasó.**
+
+**3 · `SessionManifest` gana `version` + `entries_digest`.** El freeze §15.7 punto 4
+manda que «el SET de fixtures se pinnea por digest — el modo grabación no puede mutar
+la config del demo en silencio». Se verificaba cada respuesta INDIVIDUALMENTE pero
+nada miraba el conjunto: **quitarle o agregarle entradas a una sesión pasaba
+inadvertido**. Ahora `load_session` recomputa el digest del set (canonicalización
+única del proyecto, orden-independiente) y falla fail-loud. `version` convierte una
+sesión de formato futuro en un error legible en vez de una carga a medias.
+`entries_digest` vacío ⇒ sesión anterior al campo: se carga, sin esa garantía —
+compat DECLARADA, no silenciosa.
+
+**4 · Config: key por archivo y fail-fast del `record` efímero.**
+
+- `CHIMERA_MODEL_API_KEY_FILE` → env var (misma disciplina `*_FILE` del compose). Una
+  key en env se filtra por `docker inspect`, por `/proc/<pid>/environ` de cualquier
+  proceso del contenedor y por los volcados de crash. La env var explícita GANA sobre
+  el archivo: quien la exporta a mano está depurando.
+- **`CHIMERA_MODEL_BACKEND=record` en la API ahora FALLA al arrancar.** El manifest de
+  `record` vive en memoria y quien lo dumpea a disco es `scripts/record_session.py`,
+  no la API: un operador que arrancara el servicio creyendo que graba estaría quemando
+  llamadas de modelo REALES —con su costo— para tirarlas al reiniciar. Escape hatch
+  explícito: `CHIMERA_ALLOW_EPHEMERAL_RECORD=1`.
+
+**Runbook de grabación (listo; la grabación real queda BLOQUEADA-POR-DYLAN).** Con la
+key de Dylan, desde la raíz del repo:
+
+```bash
+export CHIMERA_MODEL_API_KEY_FILE=/ruta/segura/model.key   # nunca la key en el comando
+uv run python scripts/record_session.py \
+  --session-dir knowledge/sessions/<nombre> \
+  --mission "<la misión textual>" \
+  --instance-id cr8-uniforme \
+  --model-id anthropic/claude-sonnet-4-5 \
+  --max-turns 3
+```
+
+Produce `manifest.json` (con `version` y `entries_digest` estampados) + `responses/`.
+Reproducir: `CHIMERA_MODEL_BACKEND=replay CHIMERA_MODEL_SESSION_DIR=<dir>`.
+**Cuidado registrado**: la vista del prompt es v2 y el historial incluye la misión con
+su `author` — grabar con OTRA misión (o con otro operador) produce otro
+`prompt_digest` y el replay hace miss. Una sesión grabada es de UNA conversación
+concreta; eso es correcto, no un bug.
+
+### Tabla de interacciones — P4
+
+| Interfaz tocada                                     | Dominio afectado | Estado del contrato                                                     |
+| --------------------------------------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `model.call.requested/completed/failed` EMITIDOS    | E ↔ stream       | wire congelado §3 — primera emisión, cero forma nueva                   |
+| `make_model_proposer(emit=)`                        | E (api)          | ADITIVO — sin `emit` no se emite nada (tests intactos)                  |
+| `chimera_api.replay_fidelity`                       | E (api)          | NUEVO — conductor de `find_replay_divergences`                          |
+| `SessionManifest.version`/`entries_digest`          | E (api)          | ADITIVOS con default — sesiones viejas cargan (compat declarada)        |
+| `load_session` valida versión y digest del conjunto | E (api)          | ENDURECIDO — antes el set no se verificaba                              |
+| `CHIMERA_MODEL_API_KEY_FILE`                        | infra/config     | NUEVA — `*_FILE` como el resto del compose                              |
+| `CHIMERA_MODEL_BACKEND=record` en la API            | infra/config     | **ROMPE a propósito** — escape hatch `CHIMERA_ALLOW_EPHEMERAL_RECORD=1` |

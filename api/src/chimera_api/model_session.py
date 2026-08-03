@@ -27,10 +27,12 @@ algoritmo concreto del `ContentStore` inyectado.
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from blite.certificate.canonical import JSONValue, canonicalize
 from blite.content import ContentStore
 from blite.protocols.model_server import InMemoryReplayManifest
 
@@ -59,11 +61,32 @@ class SessionEntry(BaseModel):
     response_digest: str
 
 
+SESSION_MANIFEST_VERSION = "blite/model-session/v1"
+"""Versión del FORMATO de `manifest.json` (P4/M31) — no del modelo grabado.
+
+Sin esto, una sesión escrita por una versión futura del formato se cargaría a
+medias o fallaría con un error de validación críptico. Con esto, una versión
+desconocida es `SessionCorruptError` con causa legible. Sigue la MISMA
+convención de prefijo de dominio versionado que el resto del proyecto
+(`blite/model-replay/v1`, `blite/event/v1`)."""
+
+
 class SessionManifest(BaseModel):
     """`manifest.json` — `backend_id`/`local` completan el `ModelRequest`
     que cada `entries[i].replay_key` codifica; `mission` es metadata
     descriptiva para operadores (Dylan grabando sesiones), NUNCA consumida
-    por `load_session` para reconstruir el replay."""
+    por `load_session` para reconstruir el replay.
+
+    **`version`/`entries_digest` (P4/M31).** El `entries_digest` es el digest
+    del SET de entradas: el freeze §15.7 punto 4 manda que «el SET de fixtures
+    se pinnea por digest — el modo grabación no puede mutar la config del demo
+    en silencio». Antes, cada respuesta se verificaba individualmente
+    (`load_session` recomputa su digest) pero NADA detectaba que a la sesión le
+    hubieran quitado o agregado entradas: el pin del conjunto faltaba. Ahora
+    `load_session` lo recomputa y falla fail-loud si no coincide.
+
+    `entries_digest` vacío ⇒ sesión escrita antes de este campo: se carga
+    (compat) pero SIN la garantía del conjunto — declarado, no silencioso."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -71,6 +94,25 @@ class SessionManifest(BaseModel):
     local: bool = False
     mission: str | None = None
     entries: tuple[SessionEntry, ...] = ()
+    version: str = SESSION_MANIFEST_VERSION
+    entries_digest: str = ""
+
+
+def compute_entries_digest(entries: tuple[SessionEntry, ...]) -> str:
+    """Digest del SET de entradas (freeze §15.7 punto 4) — canonicalización
+    ÚNICA del proyecto (`blite.certificate.canonical`), jamás un `json.dumps`
+    ad-hoc: el mismo set produce el mismo digest en cualquier máquina.
+
+    Las entradas se ordenan por `replay_key` para que el digest no dependa
+    del orden de inserción del manifest en memoria."""
+    ordenadas = sorted(entries, key=lambda entry: entry.replay_key)
+    vista: list[JSONValue] = [
+        {"replay_key": entry.replay_key, "response_digest": entry.response_digest}
+        for entry in ordenadas
+    ]
+    return hashlib.sha256(
+        SESSION_MANIFEST_VERSION.encode("utf-8") + b"\n" + canonicalize(vista)
+    ).hexdigest()
 
 
 def write_session(
@@ -98,8 +140,14 @@ def write_session(
             SessionEntry(replay_key=replay_key, response_digest=response_digest)
         )
 
+    congeladas = tuple(entries)
     session = SessionManifest(
-        backend_id=backend_id, local=local, mission=mission, entries=tuple(entries)
+        backend_id=backend_id,
+        local=local,
+        mission=mission,
+        entries=congeladas,
+        version=SESSION_MANIFEST_VERSION,
+        entries_digest=compute_entries_digest(congeladas),
     )
     manifest_path = session_dir / _MANIFEST_FILENAME
     manifest_path.write_text(session.model_dump_json(indent=2) + "\n", encoding="utf-8")
@@ -131,6 +179,28 @@ def load_session(
         msg = f"manifest de sesión inválido en {manifest_path}: {exc}"
         raise SessionCorruptError(msg) from exc
 
+    if session.version != SESSION_MANIFEST_VERSION:
+        msg = (
+            f"sesión con formato desconocido: {session.version!r} "
+            f"(esta build entiende {SESSION_MANIFEST_VERSION!r}) — "
+            "actualizá el lector antes de reproducirla"
+        )
+        raise SessionCorruptError(msg)
+
+    # Pin del CONJUNTO (freeze §15.7 punto 4): sin esto, quitarle o agregarle
+    # entradas a una sesión pasaba inadvertido — cada respuesta hasheaba bien
+    # individualmente y nadie miraba el set. Vacío ⇒ sesión anterior al campo:
+    # se carga, pero sin esta garantía (compat declarada, no silenciosa).
+    if session.entries_digest:
+        real = compute_entries_digest(session.entries)
+        if real != session.entries_digest:
+            msg = (
+                f"sesión corrupta: el conjunto de entradas hashea a {real!r}, "
+                f"no a {session.entries_digest!r} declarado en el manifest — "
+                "¿se agregaron o quitaron respuestas a mano?"
+            )
+            raise SessionCorruptError(msg)
+
     replay_manifest = InMemoryReplayManifest()
     for entry in session.entries:
         response_path = (
@@ -154,9 +224,11 @@ def load_session(
 
 
 __all__ = [
+    "SESSION_MANIFEST_VERSION",
     "SessionCorruptError",
     "SessionEntry",
     "SessionManifest",
+    "compute_entries_digest",
     "load_session",
     "write_session",
 ]

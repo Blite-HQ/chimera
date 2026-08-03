@@ -59,9 +59,7 @@ class TestRegresionCpSat:
 
     def test_model_invalid_sigue_levantando(self) -> None:
         with pytest.raises(ValidationError):
-            Differential(
-                status="MODEL_INVALID", objective=0.0, reference_objective=0.0
-            )
+            Differential(status="MODEL_INVALID", objective=0.0, reference_objective=0.0)
 
 
 class TestToleranciaFailClosed:

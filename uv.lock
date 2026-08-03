@@ -742,6 +742,7 @@ source = { editable = "api" }
 dependencies = [
     { name = "chimera-engine" },
     { name = "fastapi" },
+    { name = "jsonschema" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -749,6 +750,7 @@ dependencies = [
 requires-dist = [
     { name = "chimera-engine", editable = "engine" },
     { name = "fastapi", specifier = ">=0.139.2" },
+    { name = "jsonschema", specifier = ">=4.26" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.51.0" },
 ]
 

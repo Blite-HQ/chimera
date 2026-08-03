@@ -185,9 +185,7 @@ class TestConjuntoDeLabels:
         record = _record({"Z0": 0.5})
 
         with pytest.raises(VerificationProcessError):
-            make_verifier(record).verify(
-                claim_for({"Z0": 0.5, "extra": 0.1}), CTX
-            )
+            make_verifier(record).verify(claim_for({"Z0": 0.5, "extra": 0.1}), CTX)
 
 
 class TestFormaDelPredicate:
@@ -222,9 +220,7 @@ class TestNivelAL3:
     def test_pass_y_fail_quedan_en_al3(self) -> None:
         record = _record(_EXPECTED_N8_H10)
 
-        passing = make_verifier(record).verify(
-            claim_for(dict(_EXPECTED_N8_H10)), CTX
-        )
+        passing = make_verifier(record).verify(claim_for(dict(_EXPECTED_N8_H10)), CTX)
         failing_observed = dict(_EXPECTED_N8_H10)
         failing_observed["ZZ0"] = 0.9
         failing = make_verifier(record).verify(claim_for(failing_observed), CTX)
@@ -255,9 +251,7 @@ class TestClaimDigest:
             "canonical_statement": claim.canonical_statement,
             "scope": claim.scope,
         }
-        expected = hashlib.sha256(
-            b"blite/claim/v1\n" + canonicalize(view)
-        ).hexdigest()
+        expected = hashlib.sha256(b"blite/claim/v1\n" + canonicalize(view)).hexdigest()
         assert att.claim_digest == expected
 
 

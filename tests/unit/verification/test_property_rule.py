@@ -265,7 +265,9 @@ class TestRelacionesMetamorficas:
     accuracy; deja de sostener cuando sí la mejora materialmente (señal de
     leakage)."""
 
-    def test_labels_shuffled_degrades_sostiene_cuando_la_barajada_no_mejora(self) -> None:
+    def test_labels_shuffled_degrades_sostiene_cuando_la_barajada_no_mejora(
+        self,
+    ) -> None:
         claim = _claim(
             properties=(),
             relations=("labels_shuffled_degrades",),
@@ -279,7 +281,9 @@ class TestRelacionesMetamorficas:
         assert relation.name == "labels_shuffled_degrades"
         assert relation.held is True
 
-    def test_labels_shuffled_degrades_no_sostiene_cuando_la_barajada_mejora(self) -> None:
+    def test_labels_shuffled_degrades_no_sostiene_cuando_la_barajada_mejora(
+        self,
+    ) -> None:
         claim = _claim(
             properties=(),
             relations=("labels_shuffled_degrades",),
@@ -432,7 +436,5 @@ class TestClaimDigest:
             "canonical_statement": claim.canonical_statement,
             "scope": claim.scope,
         }
-        expected = hashlib.sha256(
-            b"blite/claim/v1\n" + canonicalize(view)
-        ).hexdigest()
+        expected = hashlib.sha256(b"blite/claim/v1\n" + canonicalize(view)).hexdigest()
         assert att.claim_digest == expected

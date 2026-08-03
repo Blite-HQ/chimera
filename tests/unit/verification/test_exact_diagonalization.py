@@ -316,9 +316,7 @@ class TestClaimDigest:
             "canonical_statement": claim.canonical_statement,
             "scope": claim.scope,
         }
-        expected = hashlib.sha256(
-            b"blite/claim/v1\n" + canonicalize(view)
-        ).hexdigest()
+        expected = hashlib.sha256(b"blite/claim/v1\n" + canonicalize(view)).hexdigest()
         assert att.claim_digest == expected
 
 
@@ -385,17 +383,13 @@ class TestValidacionDeEntrada:
     def test_pauli_de_observable_de_largo_incorrecto_levanta(self) -> None:
         with pytest.raises(ValidationError):
             SimulationSeriesClaim(
-                **self._kwargs(
-                    observables=(SeriesObservable(label="Z0", pauli="Z"),)
-                )
+                **self._kwargs(observables=(SeriesObservable(label="Z0", pauli="Z"),))
             )
 
     def test_pauli_de_observable_fuera_del_alfabeto_levanta(self) -> None:
         with pytest.raises(ValidationError):
             SimulationSeriesClaim(
-                **self._kwargs(
-                    observables=(SeriesObservable(label="Z0", pauli="ZA"),)
-                )
+                **self._kwargs(observables=(SeriesObservable(label="Z0", pauli="ZA"),))
             )
 
     def test_initial_bitstring_de_largo_incorrecto_levanta(self) -> None:
