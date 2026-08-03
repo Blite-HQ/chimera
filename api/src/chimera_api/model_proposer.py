@@ -60,11 +60,17 @@ from blite.runtime.registry import Registry
 from blite.serving.model_port import ModelPort, ModelRequest
 from blite_capability.manifest import CapabilityManifest
 
-PROMPT_PROTOCOL = "chimera/mission-proposer-prompt/v1"
+PROMPT_PROTOCOL = "chimera/mission-proposer-prompt/v2"
 """Versión del protocolo del PROMPT (lo que este adapter le manda al modelo)
 — distinto del protocolo de RESPUESTA (que es, literalmente, `ProposedStep`,
 freeze/loop.py). Cambiar la forma de `_prompt_view` es una supersesión de
-ESTA constante, documentada en harness-agentico.md."""
+ESTA constante, documentada en harness-agentico.md.
+
+**v2 (P3, `chat-conversacion.md` §Contrato-6)**: la vista gana `messages` —
+el historial conversacional completo en orden de stream. Las sesiones
+grabadas bajo v1 SIGUEN reproduciendo (el manifest pinnea digests y el campo
+`protocol` de la vista discrimina); el adapter emite v2 desde ahora — no hay
+doble emisión."""
 
 _PROMPT_MEDIA_TYPE = "application/json"
 
@@ -93,7 +99,9 @@ def parse_proposed_step(response_bytes: bytes) -> ProposedStep:
 
 
 def _prompt_view(
-    turn: TurnContext, capabilities: tuple[CapabilityManifest, ...]
+    turn: TurnContext,
+    capabilities: tuple[CapabilityManifest, ...],
+    messages: tuple[dict[str, str], ...],
 ) -> dict[str, JSONValue]:
     """Vista determinista del turno — PURA función de `TurnContext` +
     `registry.list()` (orden ya determinista por id, `EntryPointRegistry`).
@@ -106,9 +114,17 @@ def _prompt_view(
     la demo reproduciéndola (cada `docker compose up` arranca un run_id
     nuevo), lo que volvería inútil el backend `replay` para su propósito
     real. `domain_id` SÍ viaja: hoy es la constante `domain-default` en todo
-    el proceso (`_DEFAULT_DOMAIN`), no una fuente de no-determinismo."""
+    el proceso (`_DEFAULT_DOMAIN`), no una fuente de no-determinismo.
+
+    v2 (§Contrato-6): `messages` es el historial conversacional en orden de
+    stream — `{author, text}` y NADA más. **`message_id` se EXCLUYE por la
+    MISMA razón que `run_id`**: un id minteado por request haría que la clave
+    de replay jamás repitiera entre la sesión grabada y su reproducción.
+    `author`+`text` en orden SÍ son deterministas entre replays de la misma
+    conversación."""
     return {
         "protocol": PROMPT_PROTOCOL,
+        "messages": [dict(message) for message in messages],
         "domain_id": turn.domain_id,
         "turn": turn.turn,
         "goal_capability_id": turn.goal_capability_id,
@@ -134,18 +150,38 @@ def make_model_proposer(
     ctx: object,
     backend_id: str,
     local: bool = False,
+    mission: str | None = None,
+    mission_author: str | None = None,
 ) -> Proposer:
     """Construye el `Proposer` real sobre un `ModelPort` ya configurado
     (replay/record/live, A2) — mismo seam que `_make_goal_proposer`, cero
-    cambio de contrato HTTP (decisión #92)."""
+    cambio de contrato HTTP (decisión #92).
+
+    `mission`/`mission_author` siembran el PRIMER mensaje del historial v2
+    (§Contrato-6: «la misión como primer mensaje, `author` = actor del
+    `run.created`»). Ausentes ⇒ el historial arranca vacío y se llena solo
+    con los `mission.message` que el loop drene — comportamiento honesto para
+    los callers que no son el modo misión."""
+    historial: list[dict[str, str]] = []
+    if mission is not None and mission_author is not None:
+        historial.append({"author": mission_author, "text": mission})
 
     def _propose(turn: TurnContext) -> ProposedStep:
         """Fail-loud sin red de seguridad propia: `ReplayMissError`,
         `ModelResponseProtocolError` o el `KeyError` de un digest ausente
         del `ContentStore` suben tal cual — el guard del proposer en
         `loop.py` los journaliza como `run.failed {error_kind}` con la causa
-        REAL (P1/M32, ver docstring del módulo)."""
-        view = _prompt_view(turn, registry.list())
+        REAL (P1/M32, ver docstring del módulo).
+
+        El historial se ACUMULA acá porque el loop entrega cada mensaje
+        exactamente una vez (`pending_messages` es una cola drenada, no un
+        snapshot): reconstruirlo así da el mismo orden de stream que el log,
+        sin que `TurnContext` cargue dos veces la misma información."""
+        historial.extend(
+            {"author": message.author, "text": message.text}
+            for message in turn.pending_messages
+        )
+        view = _prompt_view(turn, registry.list(), tuple(historial))
         prompt_artifact = content_store.put(canonicalize(view), _PROMPT_MEDIA_TYPE, ctx)
         request = ModelRequest(
             backend_id=backend_id, local=local, prompt_digest=prompt_artifact.digest

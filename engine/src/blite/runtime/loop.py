@@ -60,10 +60,17 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict
 
 from blite.content import ContentStore
+from blite.events.event import Event
 from blite.events.rules import validate_run_id
 from blite.events.store import EventStore
 from blite.runtime.digests import digest_via
 from blite.runtime.dispatch import Dispatcher
+from blite.runtime.mission import (
+    ApprovalGate,
+    ApprovalRequest,
+    PendingMessage,
+    pending_messages_for,
+)
 from blite.runtime.plan import (
     PlanCreatedPayload,
     PlanItem,
@@ -180,6 +187,11 @@ class TurnContext(BaseModel):
     goal_inputs: dict[str, Any]
     plan_item_id: str | None = None
     previous_output_digest: str | None = None
+    pending_messages: tuple[PendingMessage, ...] = ()
+    """Queue-to-next-turn (`chat-conversacion.md` §Contrato-5, P3): los
+    `mission.message` journalizados DESPUÉS de armarse el `TurnContext` del
+    turno N llegan acá en el turno N+1, en orden de stream. Aditivo con
+    default `()` ⇒ compat total: el loop sin chat se comporta igual."""
 
 
 Proposer = Callable[[TurnContext], ProposedStep]
@@ -278,6 +290,12 @@ class _RunRecorder:
     @property
     def domain_id(self) -> str:
         return self._domain_id
+
+    def read_stream(self) -> tuple[Event, ...]:
+        """El stream de ESTE run — lo usa el drenado de `pending_messages`
+        (`chat-conversacion.md` §Contrato-5: la cola se deriva del log, jamás
+        de un buffer paralelo). Lectura, no escritura: no altera el rastro."""
+        return self._store.read_stream(self._run_id)
 
     def step_event(self, suffix: str, step: RunStep) -> None:
         self.append(f"run.step.{suffix}", step.model_dump())
@@ -478,6 +496,9 @@ def execute_run(
     plan_id: str | None = None,
     plan_items: tuple[PlanItem, ...] = (),
     crossing: GatewayCrossing | None = None,
+    thread_id: str | None = None,
+    project_id: str | None = None,
+    approval_gate: ApprovalGate | None = None,
 ) -> RunRow:
     """Ejecuta el run y retorna la fila proyectada.
 
@@ -507,6 +528,20 @@ def execute_run(
     }
     if parent_run_id is not None:
         created_payload["parent_run_id"] = parent_run_id
+    # Aditivos de la conversación (`chat-conversacion.md` §Contrato-4,
+    # ceremonia #123): OMITIDOS cuando son `None` — un run sin hilo ni
+    # proyecto emite el MISMO payload que antes de P3 (compat byte-exacta
+    # con los streams ya grabados, y con el `provenance_hash` que los cubre).
+    #
+    # `thread_id` ≠ `parent_run_id`: el segundo es jerarquía de sub-runs
+    # DENTRO de una corrida; el primero es sucesión conversacional ENTRE
+    # corridas (el stream muerto no acepta mensajes — 409 —, así que
+    # continuar el hilo es un run NUEVO que cita al raíz). El hilo es
+    # correlación de LECTURA, jamás streams anidados.
+    if thread_id is not None:
+        created_payload["thread_id"] = thread_id
+    if project_id is not None:
+        created_payload["project_id"] = project_id
 
     recorder = _RunRecorder(store, content, run_id=run_id, domain_id=domain_id)
     recorder.append("run.created", created_payload, actor_id=actor_id)
@@ -567,6 +602,7 @@ def execute_run(
         plan_id=plan_id if plan_id is not None else f"plan-{run_id}",
         plan_items=plan_items,
         crossing=crossing,
+        approval_gate=approval_gate,
     )
 
 
@@ -687,6 +723,8 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
     goal_inputs: dict[str, Any],
     previous_output_digest: str | None,
     crossing: GatewayCrossing | None = None,
+    pending_messages: tuple[PendingMessage, ...] = (),
+    approval_gate: ApprovalGate | None = None,
 ) -> _TurnResult:
     """UN turno del loop agéntico plano (§Contrato-1): `proponer → gobernar →
     ejecutar → journalizar → verificar`. El MODELO (vía `proposer`) SOLO
@@ -715,6 +753,7 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
                 goal_inputs=goal_inputs,
                 plan_item_id=plan_item.id if plan_item is not None else None,
                 previous_output_digest=previous_output_digest,
+                pending_messages=pending_messages,
             )
         )
     except Exception as exc:  # noqa: BLE001 — frontera delegada: el fallo del seam del modelo se registra como eventos, jamás tumba el runtime
@@ -760,6 +799,57 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
             spent_cost_usd=spent_cost_usd,
             output_digest=previous_output_digest,
         )
+
+    # ── aprobar: la compuerta humana, DESPUÉS de gobernar y ANTES de
+    # ejecutar (§Contrato-6). El loop no decide QUÉ necesita aprobación —
+    # eso es política; solo ofrece la costura y journaliza el par tipado.
+    # Sin gate inyectado (default del despliegue) esto es no-op: cero
+    # aprobaciones fabricadas.
+    if approval_gate is not None:
+        decision = approval_gate(
+            ApprovalRequest(
+                run_id=run_id,
+                turn=turn,
+                capability_id=proposal.capability_id,
+                inputs=proposal.inputs,
+            )
+        )
+        if decision.required:
+            # El payload se arma acá con las claves del wire congelado
+            # (`ApprovalRequestedPayload`, `blite.gateway.approval`): el
+            # contrato `layers` prohíbe importar el gateway desde el runtime
+            # —mismo caso que `CrossingRejected`—, así que la forma se
+            # sostiene con un test anti-drift que valida ESTE dict contra
+            # AQUEL modelo (`test_agentic_loop.py`), no con un import.
+            recorder.append(
+                "approval.requested",
+                {
+                    "run_id": run_id,
+                    "approval_id": decision.approval_id,
+                    "json_schema": dict(decision.json_schema),
+                    "prompt": decision.prompt,
+                    "step_id": None,
+                },
+            )
+            if not decision.granted:
+                # Negada: decisión humana registrada, no falla del sistema —
+                # `plan.item_updated` ANTES del terminal, como todo corte.
+                _emit_plan_item_update(
+                    recorder,
+                    plan_item,
+                    plan_id=plan_id,
+                    run_id=run_id,
+                    status="failed",
+                    cause=decision.cause,
+                )
+                recorder.fail_run(decision.cause)
+                return _TurnResult(
+                    terminal=True,
+                    done=False,
+                    spent_tokens=spent_tokens,
+                    spent_cost_usd=spent_cost_usd,
+                    output_digest=previous_output_digest,
+                )
 
     _emit_plan_item_update(
         recorder, plan_item, plan_id=plan_id, run_id=run_id, status="running"
@@ -853,6 +943,7 @@ def _execute_agentic_loop(  # noqa: PLR0913 — misma superficie que _execute_si
     plan_id: str,
     plan_items: tuple[PlanItem, ...],
     crossing: GatewayCrossing | None = None,
+    approval_gate: ApprovalGate | None = None,
 ) -> RunRow:
     """El driver del loop agéntico plano de A3 — repite `_run_agentic_turn`
     hasta la terminación triple (docs/specs/harness-agentico.md
@@ -878,9 +969,18 @@ def _execute_agentic_loop(  # noqa: PLR0913 — misma superficie que _execute_si
     spent_tokens = 0
     spent_cost_usd = 0.0
     previous_output_digest: str | None = None
+    # Queue-to-next-turn (§Contrato-5): los ids ya entregados. La cola se
+    # DERIVA del stream en cada frontera de turno (fuente única), así que un
+    # mensaje que llegó a mitad del turno N aparece recién en el N+1 — el
+    # turno en curso jamás se interrumpe ni re-planifica a mitad.
+    drained: set[str] = set()
 
     for turn in range(1, max_turns + 1):
         plan_item = items[turn - 1] if turn - 1 < len(items) else None
+        pending = pending_messages_for(
+            recorder.read_stream(), already_drained=frozenset(drained)
+        )
+        drained.update(message.message_id for message in pending)
         result = _run_agentic_turn(
             recorder,
             start_step,
@@ -900,6 +1000,8 @@ def _execute_agentic_loop(  # noqa: PLR0913 — misma superficie que _execute_si
             goal_inputs=inputs,
             previous_output_digest=previous_output_digest,
             crossing=crossing,
+            pending_messages=pending,
+            approval_gate=approval_gate,
         )
         spent_tokens, spent_cost_usd = result.spent_tokens, result.spent_cost_usd
         previous_output_digest = result.output_digest

@@ -418,15 +418,30 @@ _MODEL_CTX = {"domain_id": "domain-default"}
 _MODEL_BACKEND_ID = "anthropic/claude-sonnet-test"
 
 
+_LOCAL_OPERATOR = "user:local-operator"
+"""La identidad que `SessionAuth.identity_from` resuelve sin cookie
+(`chimera_api.auth`) — la MISMA que estampa el `author` de la misión en el
+historial v2, así que una sesión grabada tiene que usarla o la clave de
+replay no coincide."""
+
+
 def _write_fake_session(
     session_dir: Path,
     *,
     turn_contexts_and_responses: list[tuple[TurnContext, bytes]],
+    mission: str | None = None,
+    mission_author: str | None = None,
 ) -> None:
     """Graba una sesión fake — mismo camino de producción (`make_model_proposer`
     sobre un `ModelServer(mode="record")`) que `scripts/record_session.py`
     usaría de verdad, solo que con un `live_caller` fake determinista en vez
-    de litellm (freeze §15.7: testeable sin red/API key)."""
+    de litellm (freeze §15.7: testeable sin red/API key).
+
+    `mission`/`mission_author` son los del historial v2 (P3,
+    `chat-conversacion.md` §Contrato-6): la vista del prompt los incluye, así
+    que grabar con OTRA misión produce otro `prompt_digest` y el replay hace
+    miss — propiedad correcta, no un detalle del test: la sesión grabada es
+    de UNA conversación concreta."""
     store = InMemoryContentStore()
     manifest = InMemoryReplayManifest()
 
@@ -447,6 +462,8 @@ def _write_fake_session(
             content_store=store,
             ctx=_MODEL_CTX,
             backend_id=_MODEL_BACKEND_ID,
+            mission=mission,
+            mission_author=mission_author,
         )
         proposer(turn_ctx)
 
@@ -496,6 +513,8 @@ class TestModoMisionProposerReal:
                     b'"inputs": {"mission": "dictado por la sesion"}}',
                 )
             ],
+            mission=mission,
+            mission_author=_LOCAL_OPERATOR,
         )
         monkeypatch.setenv("CHIMERA_MODEL_BACKEND", "replay")
         monkeypatch.setenv("CHIMERA_MODEL_SESSION_DIR", str(session_dir))

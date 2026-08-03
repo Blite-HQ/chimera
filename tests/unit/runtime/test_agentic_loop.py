@@ -151,6 +151,7 @@ def _run(
     plan_items: tuple[PlanItem, ...] = (),
     registry: EntryPointRegistry | None = None,
     run_id: str = "run-agentic",
+    approval_gate: Any = None,
 ) -> tuple[Any, Any]:
     store = create_event_store()
     row = execute_run(
@@ -170,6 +171,7 @@ def _run(
         budget=budget,
         proposer=proposer,
         plan_items=plan_items,
+        approval_gate=approval_gate,
     )
     return row, store
 
@@ -473,3 +475,98 @@ def test_proposer_que_levanta_en_turno_tardio_no_duplica_terminal() -> None:
     types = [e.type for e in store.read_stream("run-agentic")]
     assert types.count("run.failed") == 1
     assert types[-1] == "run.failed"
+
+
+class _GateQueAprueba:
+    """Compuerta de aprobación explícita (cero mocks silenciosos): declara
+    que el turno 1 requiere aprobación y la CONCEDE."""
+
+    def __init__(self, *, granted: bool = True) -> None:
+        self._granted = granted
+        self.vistas: list[str] = []
+
+    def __call__(self, request: Any) -> Any:
+        from blite.runtime.mission import ApprovalDecision
+
+        self.vistas.append(request.capability_id)
+        return ApprovalDecision(
+            required=request.turn == 1,
+            granted=self._granted,
+            approval_id="apr-1",
+            prompt="¿autorizás invocar esta capability?",
+            json_schema={"type": "boolean"},
+            cause="approval_denied",
+        )
+
+
+def test_sin_gate_de_aprobacion_no_se_emite_nada() -> None:
+    """Default del despliegue: sin compuerta cableada, cero `approval.*` —
+    jamás una aprobación fabricada (regla dura #1: cero mocks sin etiqueta)."""
+    _, store = _run(proposer=_FixedProposer(), post_invoke=_GateAtTurn(1))
+    tipos = [e.type for e in store.read_stream("run-agentic")]
+    assert not [t for t in tipos if t.startswith("approval.")]
+
+
+def test_aprobacion_concedida_emite_el_request_y_el_turno_sigue() -> None:
+    gate = _GateQueAprueba()
+    row, store = _run(
+        proposer=_FixedProposer(), post_invoke=_GateAtTurn(1), approval_gate=gate
+    )
+
+    assert gate.vistas == ["cap.echo"]
+    assert row.status == "completed"
+    tipos = [e.type for e in store.read_stream("run-agentic")]
+    # El request va ANTES de que el turno ejecute (§Contrato-6: aprobar es
+    # gobernar, y se gobierna antes de ejecutar).
+    assert tipos.index("approval.requested") < tipos.index("run.step.started")
+
+
+def test_aprobacion_negada_corta_el_run_con_causa_humana() -> None:
+    """Una aprobación negada NO es un error del sistema: es una decisión
+    registrada — viaja con su propia causa y el plan la refleja."""
+    row, store = _run(
+        proposer=_FixedProposer(),
+        post_invoke=_GateAtTurn(1),
+        approval_gate=_GateQueAprueba(granted=False),
+        plan_items=(
+            PlanItem(
+                id="item-1",
+                description="turno que espera aprobación",
+                verification="delegate",
+                status="pending",
+            ),
+        ),
+    )
+
+    assert row.status == "failed"
+    assert row.error_kind == "approval_denied"
+    eventos = store.read_stream("run-agentic")
+    tipos = [e.type for e in eventos]
+    assert "approval.requested" in tipos
+    # Ni un solo step: la negativa corta ANTES de ejecutar.
+    assert not [t for t in tipos if t.startswith("run.step.")]
+    assert tipos[-2:] == ["plan.item_updated", "run.failed"]
+    assert eventos[-2].payload["cause"] == "approval_denied"
+
+
+def test_el_payload_emitido_valida_contra_el_wire_congelado() -> None:
+    """ANTI-DRIFT del wire: el contrato `layers` prohíbe que `blite.runtime`
+    importe `blite.gateway`, así que el loop arma el dict a mano. Este test
+    es lo que impide que las dos mitades se separen — valida el payload REAL
+    emitido contra `ApprovalRequestedPayload` (`extra="forbid"`: una clave de
+    más o de menos revienta acá)."""
+    from blite.gateway.approval import ApprovalRequestedPayload
+
+    _, store = _run(
+        proposer=_FixedProposer(),
+        post_invoke=_GateAtTurn(1),
+        approval_gate=_GateQueAprueba(),
+    )
+    emitido = next(
+        e for e in store.read_stream("run-agentic") if e.type == "approval.requested"
+    )
+
+    payload = ApprovalRequestedPayload.model_validate(emitido.payload)
+    assert payload.approval_id == "apr-1"
+    assert payload.json_schema == {"type": "boolean"}
+    assert payload.prompt

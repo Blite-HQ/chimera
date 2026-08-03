@@ -7,6 +7,13 @@ requires-python = ">=3.12"
 dependencies = [
     "chimera-engine",
     "fastapi>=0.139.2",
+    # P3 (chat-conversacion.md §Contrato-7): la respuesta de un approval se
+    # valida contra el `json_schema` que el request declaró (forma
+    # elicitation MCP = JSON Schema). Implementación de referencia, MIT —
+    # escribir un validador propio sería reimplementar un estándar.
+    # Estaba disponible transitivamente en el venv; acá queda DECLARADA, que
+    # es lo que la vuelve una dependencia real y no un accidente.
+    "jsonschema>=4.26",
     "uvicorn[standard]>=0.51.0",
 ]
 

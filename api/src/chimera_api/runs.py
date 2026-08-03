@@ -228,6 +228,15 @@ class MissionRequest(BaseModel):
     capability_id: str | None = None
     max_turns: int = Field(default=_DEFAULT_MISSION_MAX_TURNS, ge=1)
     budget: MissionBudgetRequest | None = None
+    thread_id: str | None = None
+    """`run_id` del run RAÍZ del hilo conversacional (`chat-conversacion.md`
+    §Contrato-4). Ausente ⇒ este run ABRE hilo. Es el enhebrado post-terminal:
+    como el stream muerto no acepta mensajes (409), continuar la conversación
+    es un run NUEVO con su propio stream y su propio certificado."""
+    project_id: str | None = None
+    """Referencia OPACA a la fila relacional `project` (M15, FUERA del event
+    store). El evento no valida FK: la valida el API al crear el run cuando
+    P6 exista — hoy viaja tal cual, sin inventar una tabla que no está."""
 
 
 class CreateRunResponse(BaseModel):
@@ -530,12 +539,21 @@ def _make_goal_proposer(capability_id: str, inputs: dict[str, Any]) -> Proposer:
 
 
 def _resolve_proposer(
-    resources: RunResources, capability_id: str, inputs: dict[str, Any]
+    resources: RunResources,
+    capability_id: str,
+    inputs: dict[str, Any],
+    *,
+    mission: str | None = None,
+    mission_author: str | None = None,
 ) -> Proposer:
     """Selecciona el proposer del turno — el agente real (P4, `ModelServer`
     tras `ModelPort`) si `CHIMERA_MODEL_BACKEND` está configurado, si no el
     placeholder determinista etiquetado (default INTACTO, decisión #92).
-    MISMO seam `Proposer` en ambos casos — cero cambio de contrato HTTP."""
+    MISMO seam `Proposer` en ambos casos — cero cambio de contrato HTTP.
+
+    `mission`/`mission_author` siembran el primer mensaje del historial v2
+    (P3) — solo el agente real los consume; el placeholder los ignora porque
+    no habla con ningún modelo."""
     if resources.model_backend is None:
         return _make_goal_proposer(capability_id, inputs)
     return make_model_proposer(
@@ -545,6 +563,8 @@ def _resolve_proposer(
         ctx=_MODEL_CTX,
         backend_id=resources.model_backend.backend_id,
         local=resources.model_backend.local,
+        mission=mission,
+        mission_author=mission_author,
     )
 
 
@@ -684,7 +704,13 @@ def _start_mission_run(
             inputs=inputs,
             max_turns=body.max_turns,
             budget=budget,
-            proposer=_resolve_proposer(resources, capability_id, inputs),
+            proposer=_resolve_proposer(
+                resources,
+                capability_id,
+                inputs,
+                mission=body.mission,
+                mission_author=identity.id,
+            ),
             plan_items=(
                 PlanItem(
                     id="mission-1",
@@ -694,6 +720,8 @@ def _start_mission_run(
                 ),
             ),
             crossing=_make_crossing(resources, identity),
+            thread_id=body.thread_id,
+            project_id=body.project_id,
         ),
     )
 

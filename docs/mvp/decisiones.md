@@ -2005,3 +2005,90 @@ borra (ciclo SPEC→SEED→VERDE del README de specs).
 | `tests/fixtures/contract/endpoints/get-runs-discarded.json`       | E↔D              | NUEVO single-origin — espejo Studio byte-idéntico verificado     |
 | `gen-contract-fixtures-endpoints.py` — casos REQUEST vs RESPUESTA | contratos        | EXTENDIDO — `serialize(case, payload)`; el caso viejo sin cambio |
 | `blite.runtime.projection.project_runs`                           | A (runtime)      | **NO TOCADO** — línea roja de #104 respetada por construcción    |
+
+### #144 — P3/M1 EJECUTADO: el chat real, y por qué NO hay tabla de mensajes
+
+**El contrato S-A completo, lado engine/api.** Las 8 piezas del seed
+(`test_seed_chat_conversacion.py`) pasan contra implementación real; el xfail se
+retiró y el test queda como regresión permanente.
+
+**La decisión estructural: el mensaje es un evento del MISMO stream.** No hay tabla
+`conversations`/`messages` ni buffer paralelo — `blite.runtime.mission` deriva TODO
+del log (`pending_messages_for`). Consecuencias que importan y que ningún producto
+estudiado en el research R2 ofrece:
+
+- la conversación que dirigió el run queda **DENTRO del `provenance_hash`**: el
+  certificado ampara también lo que se PIDIÓ, no solo lo que se hizo;
+- el replay reconstruye la cola leyendo el mismo stream en el mismo orden —
+  determinista por construcción, sin estado que sincronizar;
+- una segunda fuente de verdad habría roto el replay (research R2, literal).
+
+**Queue-to-next-turn (§Contrato-5), verificado contra el loop real.** Un mensaje
+journalizado a mitad del turno N aparece en el `TurnContext` del turno N+1 y jamás se
+re-entrega (`TestDrenadoQueueToNextTurn` fija la secuencia exacta `[(1, ()), (2,
+("cambiá de rumbo",)), (3, ())]`). Es la traducción del «safe boundary» del estado del
+arte a la frontera que Chimera YA tenía: el límite de turno. Steer intra-turno queda
+vetado por doctrina propia (freeze §8: reautorizar a mitad de step es error
+fail-closed) — no es una limitación, es la garantía.
+
+**`PROMPT_PROTOCOL` v2 (§Contrato-6).** La vista gana `messages` con el historial
+completo en orden de stream. **`message_id` se EXCLUYE** por la MISMA razón que
+`run_id` en v1: un id minteado por request haría que la clave de replay jamás
+repitiera entre la sesión grabada y su reproducción. El historial se acumula en el
+proposer (el loop entrega cada mensaje exactamente una vez) en vez de cargar dos veces
+la misma información en `TurnContext`.
+
+**Efecto colateral CORRECTO detectado por un test existente**: grabar una sesión con
+otra misión ahora produce otro `prompt_digest` ⇒ el replay hace miss. No es un detalle
+del test: una sesión grabada es de UNA conversación concreta. `_write_fake_session`
+gana `mission`/`mission_author` para grabar la conversación real.
+
+**Approvals (§Contrato-7).** Dos mitades:
+
+- **Emisor**: puerto `ApprovalGate` inyectable en el loop (mismo patrón que `proposer`
+  y `crossing`), consultado DESPUÉS de gobernar y ANTES de ejecutar. **Sin gate
+  cableado no se emite nada** — cero aprobaciones fabricadas. Una aprobación negada
+  corta el run con `cause` propia (`approval_denied`): es una decisión humana
+  registrada, no un error del sistema.
+- **Respuesta**: `POST /runs/{id}/approvals/{approval_id}` con cuatro compuertas
+  fail-closed — 404 (request inexistente: nadie responde una pregunta que no se hizo),
+  409 (par 1:1), 422 (el valor no valida contra el `json_schema` que el request
+  DECLARÓ), 403 (`authorize_approval_response`, maquinaria §8/§10 reusada sin reabrir).
+
+**Dos decisiones de diseño que conviene mirar:**
+
+1. **`_APPROVAL_SCOPE = "run"`** (el conjunto es cerrado: `{run, domain, global}`). Es
+   el más angosto que aplica. Consecuencia honesta y BUSCADA: el operador local por
+   defecto no porta `override:apply:run`, así que responder un approval devuelve 403
+   hasta que el despliegue otorgue el permiso explícito. Nadie aprueba por accidente.
+2. **El payload de `approval.requested` se arma a mano en el loop** porque el contrato
+   `layers` prohíbe `runtime→gateway` (mismo caso que `CrossingRejected`). Para que las
+   dos mitades no se separen hay un test anti-drift que valida el dict REAL emitido
+   contra `ApprovalRequestedPayload` (`extra="forbid"`: una clave de más o de menos
+   revienta).
+
+**Dependencia nueva declarada**: `jsonschema>=4.26` (MIT) en `api/pyproject.toml` —
+estaba disponible transitivamente en el venv; ahora es una dependencia REAL y no un
+accidente. Escribir un validador propio sería reimplementar un estándar.
+
+**Frontera que queda declarada (no entregada)**: cómo se ESPERA la respuesta humana
+—bloquear el worker, suspender el run, reanudar por cola— es del adapter, no del loop.
+Con `BackgroundTasks` un gate bloqueante retiene un hilo; la casa natural del gate que
+espera de verdad es la cola durable (P11/`JobQueue`).
+
+### Tabla de interacciones — P3
+
+| Interfaz tocada                                                     | Dominio afectado | Estado del contrato                                                 |
+| ------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------- |
+| `blite.runtime.mission` (`MissionMessagePayload`, `PendingMessage`) | A (runtime)      | NUEVO — materializa la reserva `●MissionMessage` del §14            |
+| `TurnContext.pending_messages`                                      | A (runtime)      | ADITIVO default `()` — compat total con el loop sin chat            |
+| `execute_run(thread_id=, project_id=, approval_gate=)`              | A (runtime)      | ADITIVOS — `run.created` omite los `None`, payload byte-igual       |
+| `ApprovalGate`/`ApprovalRequest`/`ApprovalDecision`                 | A (runtime)      | NUEVO puerto — sin gate inyectado es no-op                          |
+| `approval.requested` emitido por el loop                            | A ↔ gateway      | wire congelado REUSADO — anti-drift por test, no por import         |
+| `POST /runs/{id}/messages`                                          | E↔D              | NUEVO — 202/404/409/422; `author` de la identidad                   |
+| `POST /runs/{id}/cancel`                                            | E↔D              | NUEVO — evento ya congelado, faltaba emisor (N1)                    |
+| `POST /runs/{id}/approvals/{approval_id}`                           | E↔D              | NUEVO — valida contra el `json_schema` del request; 403 fail-closed |
+| `MissionRequest.thread_id`/`project_id`                             | E↔D              | ADITIVOS — `extra="forbid"` intacto                                 |
+| `PROMPT_PROTOCOL` v1 → **v2**                                       | E ↔ proposer     | SUPERSEDE de la constante — sesiones v1 siguen reproduciendo        |
+| `make_model_proposer(mission=, mission_author=)`                    | E (api)          | ADITIVO — siembra el primer mensaje del historial                   |
+| `jsonschema>=4.26` (MIT)                                            | deps             | NUEVA declarada — antes solo transitiva                             |

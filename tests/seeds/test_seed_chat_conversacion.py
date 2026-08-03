@@ -8,9 +8,15 @@ función. Nota de mecánica: bajo TestClient los BackgroundTasks corren a
 término antes de volver, así que un run de misión ya es TERMINAL al volver el
 POST — los casos pre-terminales siembran el stream a mano (run sin terminal).
 
-Directiva pyright per-file: este seed es stub de contrato — sus módulos
-objetivo (`blite.runtime.mission`, los campos aditivos) no existen por diseño
-hasta Fase 1; la directiva se retira junto con el xfail.
+**VERDE desde P3 (#144, 2026-08-02)**: el xfail se retiró — las 8 piezas
+pasan contra la implementación real (`blite.runtime.mission`,
+`chimera_api.chat`, `TurnContext.pending_messages`, `PROMPT_PROTOCOL` v2 y
+los aditivos de `run.created`). El test NO se borra: queda como la regresión
+del contrato S-A (ciclo SPEC→SEED→VERDE del README de specs).
+
+Directiva pyright per-file: se conserva el silencio de tipos porque el seed
+usa `Any` a propósito (los imports viven dentro de cada función para ser
+collection-safe), no porque falten módulos.
 """
 
 # pyright: reportMissingImports=false, reportUnknownVariableType=false
@@ -22,17 +28,7 @@ from typing import Any
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 P3/P6: blite.runtime.mission, rutas de mensajes/cancel y "
-            "los campos aditivos de run.created no existen todavía — "
-            "docs/specs/chat-conversacion.md"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 _RUN_ABIERTO = "run-chat-abierto"
 
@@ -93,12 +89,14 @@ def test_mission_message_payload_forma() -> None:
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
+        # El campo de más es EL punto del test (`extra="forbid"` en runtime);
+        # ahora que el modelo EXISTE, pyright también lo rechaza estáticamente.
         MissionMessagePayload(
             run_id="run-1",
             message_id="msg-1",
             author="user:dylan",
             text="x",
-            extra_campo="no",
+            extra_campo="no",  # pyright: ignore[reportCallIssue]
         )
 
 

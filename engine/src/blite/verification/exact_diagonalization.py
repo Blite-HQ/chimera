@@ -114,9 +114,10 @@ class SimulationSeriesClaim(BaseModel):
     def _formas_validas(self) -> SimulationSeriesClaim:
         for idx, term in enumerate(self.terms):
             _validar_pauli(term.pauli, self.n_sites, f"terms[{idx}]")
-        if len(self.initial_bitstring) != self.n_sites or not set(
-            self.initial_bitstring
-        ) <= _BIT_ALPHABET:
+        if (
+            len(self.initial_bitstring) != self.n_sites
+            or not set(self.initial_bitstring) <= _BIT_ALPHABET
+        ):
             msg = (
                 f"initial_bitstring debe ser un string de longitud "
                 f"n_sites={self.n_sites} sobre {{0,1}}, no "
@@ -158,9 +159,7 @@ def relative_series_error(
     mal planteado ahí, receta §4.1) y estrictamente más informativa que un
     promedio, que escondería un sitio malo entre muchos buenos.
     """
-    diffs = tuple(
-        abs(c - r) for c, r in zip(candidate, reference, strict=True)
-    )
+    diffs = tuple(abs(c - r) for c, r in zip(candidate, reference, strict=True))
     scale = max((abs(r) for r in reference), default=0.0)
     return max(diffs, default=0.0) / max(scale, 1e-12)
 
@@ -294,8 +293,7 @@ class ExactDiagonalizationVerifier:
             raise VerificationProcessError(msg)
 
         reference_series = tuple(
-            _expectation(_pauli_operator(obs.pauli), psi_t)
-            for obs in claim.observables
+            _expectation(_pauli_operator(obs.pauli), psi_t) for obs in claim.observables
         )
 
         candidate_singles, candidate_correlators = _group_by_label(

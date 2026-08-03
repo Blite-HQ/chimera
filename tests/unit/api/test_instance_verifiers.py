@@ -161,9 +161,7 @@ class TestSimulationResultFailClosed:
                     "no debía tocar el filesystem con un slug fuera de forma"
                 )
 
-        monkeypatch.setattr(
-            instance_verifiers, "_TFIM_CORPUS_DIR", _ExplodingPath()
-        )
+        monkeypatch.setattr(instance_verifiers, "_TFIM_CORPUS_DIR", _ExplodingPath())
 
         # Act
         resolution = resolve_verifiers(
@@ -192,7 +190,9 @@ class TestSimulationResultFailClosed:
         monkeypatch.setattr(instance_verifiers, "_TFIM_CORPUS_DIR", tmp_path)
 
         # Act
-        resolution = resolve_verifiers(claim_type="simulation_result", instance_id="fake")
+        resolution = resolve_verifiers(
+            claim_type="simulation_result", instance_id="fake"
+        )
 
         # Assert — fail-closed: jamás llega a un verificador
         assert resolution.verifiers == ()
@@ -227,7 +227,9 @@ class TestSimulationResultFailClosed:
         (tmp_path / "fake.json").write_text(json.dumps(record), encoding="utf-8")
         monkeypatch.setattr(instance_verifiers, "_TFIM_CORPUS_DIR", tmp_path)
 
-        resolution = resolve_verifiers(claim_type="simulation_result", instance_id="fake")
+        resolution = resolve_verifiers(
+            claim_type="simulation_result", instance_id="fake"
+        )
 
         assert len(resolution.verifiers) == 2
 
@@ -287,9 +289,7 @@ class TestStatisticalFailClosed:
                     "no debía tocar el filesystem con un slug fuera de forma"
                 )
 
-        monkeypatch.setattr(
-            instance_verifiers, "_TABULAR_CORPUS_DIR", _ExplodingPath()
-        )
+        monkeypatch.setattr(instance_verifiers, "_TABULAR_CORPUS_DIR", _ExplodingPath())
 
         # Act
         resolution = resolve_verifiers(
@@ -346,9 +346,7 @@ class TestStatisticalFailClosed:
         ).hexdigest()
         record = {**record_sin_digest, "digest": digest}
         (tmp_path / "fake.json").write_text(json.dumps(record), encoding="utf-8")
-        (tmp_path / "fake.csv").write_text(
-            "feature_0,label\n1.0,0\n", encoding="utf-8"
-        )
+        (tmp_path / "fake.csv").write_text("feature_0,label\n1.0,0\n", encoding="utf-8")
         monkeypatch.setattr(instance_verifiers, "_TABULAR_CORPUS_DIR", tmp_path)
 
         # Act

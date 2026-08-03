@@ -100,7 +100,9 @@ def _require(subject: Mapping[str, Any], key: str, rule_name: str) -> Any:
     return subject[key]
 
 
-def _augmented_subject(subject: Mapping[str, Any], tolerance: float) -> Mapping[str, Any]:
+def _augmented_subject(
+    subject: Mapping[str, Any], tolerance: float
+) -> Mapping[str, Any]:
     """Copia INMUTABLE de `subject` con `tolerance` inyectada. Los callables
     de los registros solo reciben `subject` (firma fija, §Diseño del
     docstring del módulo) — el umbral del verificador viaja como una clave
@@ -170,9 +172,7 @@ def kernel_psd(subject: Mapping[str, Any]) -> PropertyCheck:
     eigenvalues = np.linalg.eigvalsh(matrix)
     lambda_min = float(np.min(eigenvalues))
     passed = lambda_min >= -tolerance
-    counterexample = (
-        None if passed else f"λ_min(K) = {lambda_min!r} < -{tolerance}"
-    )
+    counterexample = None if passed else f"λ_min(K) = {lambda_min!r} < -{tolerance}"
     return PropertyCheck(
         name="kernel_psd",
         passed=passed,
@@ -194,7 +194,10 @@ def labels_binary(subject: Mapping[str, Any]) -> PropertyCheck:
         None if bad is None else f"labels[{bad[0]}] = {bad[1]!r} (esperado 0 o 1)"
     )
     return PropertyCheck(
-        name="labels_binary", passed=passed, examples_run=n, counterexample=counterexample
+        name="labels_binary",
+        passed=passed,
+        examples_run=n,
+        counterexample=counterexample,
     )
 
 
@@ -228,7 +231,10 @@ def folds_partition(subject: Mapping[str, Any]) -> PropertyCheck:
             f"fold {empty_ids[0]} vacío — 0 filas asignadas (hueco en la partición)"
         )
     return PropertyCheck(
-        name="folds_partition", passed=passed, examples_run=n, counterexample=counterexample
+        name="folds_partition",
+        passed=passed,
+        examples_run=n,
+        counterexample=counterexample,
     )
 
 
@@ -294,7 +300,9 @@ def labels_shuffled_degrades(subject: Mapping[str, Any]) -> MetamorphicRelation:
     NO supera a la real en más de `tolerance`; degrada = sano, mejora o
     empata de más = fuga."""
     accuracy = _require(subject, "accuracy", "labels_shuffled_degrades")
-    accuracy_shuffled = _require(subject, "accuracy_shuffled", "labels_shuffled_degrades")
+    accuracy_shuffled = _require(
+        subject, "accuracy_shuffled", "labels_shuffled_degrades"
+    )
     tolerance = _require(subject, "tolerance", "labels_shuffled_degrades")
     seed = _require(subject, "seed", "labels_shuffled_degrades")
     held = accuracy_shuffled <= accuracy + tolerance

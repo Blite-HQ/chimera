@@ -24,6 +24,7 @@ from blite.events.store import EventStore
 from blite.runtime.registry import Registry
 from chimera_api.auth import create_auth_router
 from chimera_api.certificate import create_certificate_router
+from chimera_api.chat import create_chat_router
 from chimera_api.projection import sse_frame
 from chimera_api.reads import create_reads_router
 from chimera_api.runs import build_run_resources, create_runs_router
@@ -89,6 +90,7 @@ def create_app(
     resources = build_run_resources(event_store, registry=registry)
     app.include_router(create_auth_router(resources.session_auth))
     app.include_router(create_runs_router(resources))
+    app.include_router(create_chat_router(resources))
     app.include_router(create_certificate_router(resources))
     app.include_router(create_reads_router(resources))
 

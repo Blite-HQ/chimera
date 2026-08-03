@@ -258,7 +258,9 @@ def _resolve_solution(instance_id: str) -> VerifierResolution:
     return VerifierResolution(tuple(verifiers), tuple(descriptors))
 
 
-def _model_validating_builder(model: type[BaseModel]) -> Callable[[dict[str, Any]], Any]:
+def _model_validating_builder(
+    model: type[BaseModel],
+) -> Callable[[dict[str, Any]], Any]:
     """Fábrica DRY de `build_claim`: la mayoría de los claim_types no
     necesitan más que validar el payload directo contra su modelo pydantic
     (los campos "de sobre" `canonical_statement`/`scope` ya viven en ESE
