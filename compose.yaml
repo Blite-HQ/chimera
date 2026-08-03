@@ -70,12 +70,26 @@ services:
 
   # CONFIG-presente-e-INERTE (decisión #6, docs/mvp/decisiones.md): usa la
   # MISMA imagen que `api` con el comando `procrastinate worker`, pero no
-  # existe todavía una app procrastinate registrada en el engine (eso es
-  # dominio 01 / Nivel Planeado #4). Este servicio satisface el seed y el
-  # freeze §15 (O6) como servicio de primera clase, pero FALLARÁ al arrancar
-  # hasta que 01 registre la app procrastinate — no se levanta en la
-  # verificación viva del Nivel-1 (que trae solo `postgres api studio`).
+  # existe todavía una app procrastinate registrada en el engine (eso es el
+  # ítem P11 del backlog: la cola durable detrás del puerto JobQueue).
+  #
+  # **P5/M27 — arreglo de `docker compose up` (2026-08-02).** Este servicio
+  # NO es inofensivo: `procrastinate worker` sin app registrada **FALLA al
+  # arrancar**, así que un `docker compose up` pelado —lo primero que hace un
+  # tercero siguiendo el quickstart— mostraba un contenedor en crash-loop y
+  # un exit code sucio, sin ninguna pista de que era esperado. Eso rompe la
+  # autoridad 2 (un externo sin contexto) por una razón puramente cosmética.
+  #
+  # Solución: PERFIL `queue`. Compose no arranca servicios con `profiles:` a
+  # menos que se pidan explícitamente, así que `docker compose up` levanta el
+  # stack que de verdad funciona (postgres + api + studio) y el worker espera
+  # a que P11 le dé una app. Cuando exista, se saca el perfil — no antes: un
+  # servicio declarado como de primera clase que crashea es peor que uno
+  # honestamente apagado.
+  #
+  # Para levantarlo igual (probar la cola cuando llegue): `--profile queue`.
   worker:
+    profiles: ['queue']
     build:
       context: .
       dockerfile: docker/api.Dockerfile

@@ -2173,3 +2173,66 @@ concreta; eso es correcto, no un bug.
 | `load_session` valida versión y digest del conjunto | E (api)          | ENDURECIDO — antes el set no se verificaba                              |
 | `CHIMERA_MODEL_API_KEY_FILE`                        | infra/config     | NUEVA — `*_FILE` como el resto del compose                              |
 | `CHIMERA_MODEL_BACKEND=record` en la API            | infra/config     | **ROMPE a propósito** — escape hatch `CHIMERA_ALLOW_EPHEMERAL_RECORD=1` |
+
+### #146 — P5/M27 EJECUTADO: la autoridad 2 por fin tiene artefacto
+
+La autoridad 2 del criterio (#101) —«un externo instala y usa la plataforma sin
+nosotros al lado»— era la única de las tres **sin ningún entregable**. Ahora tiene
+cuatro, y uno de ellos corrigió un defecto real.
+
+**1 · `scripts/generate-secrets.sh`.** El compose ya era `*_FILE`-only (más estricto
+que el referente Supabase del research R2) pero no había forma de PRODUCIR esos
+archivos: un tercero clonaba y chocaba con un `postgres_password.txt` inexistente sin
+saber qué poner. Tres decisiones de diseño: **jamás sobreescribe** (rotar es explícito,
+no un efecto de correr setup dos veces), **600 desde el nacimiento** vía `umask` (no un
+`chmod` posterior que deje una ventana legible), y aleatoriedad del sistema (nunca una
+contraseña de ejemplo «temporal» que termine en producción). Verificado corriéndolo dos
+veces: crea 600 la primera, respeta la segunda.
+
+**2 · `docs/QUICKSTART.md` — 5 minutos que TERMINAN en `verify-bundle` offline.**
+Ningún referente estudiado cierra su quickstart con evidencia criptográfica (research
+R2): ese es el momento diferenciador. Incluye el paso de **adulterar el bundle a
+propósito** y ver la verificación fallar — el argumento del producto entero en dos
+comandos. **Los 8 puntos citados son la salida REAL** (corrida sobre
+`scripts/example-bundle.json`), no una maqueta: la primera versión de este doc inventó
+etiquetas plausibles y se corrigieron contra la ejecución. El demo de adulteración
+también se ejecutó: falla en `[1/8] firma/PAE del envelope`, tal como se documenta.
+
+**3 · `docs/USO.md`.** Qué es cada pieza, qué significan los niveles AL0-AL4 («que un
+resultado sea AL2 y no AL3 no es una falla: es información»), las dos formas de lanzar
+trabajo, cómo traer un problema propio — y una sección **«lo que hoy NO hace»** con las
+cuatro limitaciones reales (sin multi-tenancy, cola no cableada, aprobaciones necesitan
+permiso explícito, revocación no implementada). Preferimos decirlas antes que dejar al
+tercero descubrirlas a los tropiezos.
+
+**4 · `docker compose up` ARREGLADO — y el diagnóstico corrige una suposición mía.**
+El servicio `worker` no era «inerte e inofensivo» como escribí primero: el comentario
+del propio compose ya decía que **FALLA al arrancar** (`procrastinate worker` sin app
+registrada). O sea, el primer `docker compose up` de alguien que recién llega mostraba
+un contenedor en crash-loop sin ninguna pista de que era esperado — la autoridad 2 rota
+por una razón puramente cosmética. **Solución: perfil `queue`.** Compose no arranca
+servicios con `profiles:` salvo que se pidan, así que `up` levanta el stack que de
+verdad funciona y el worker espera a P11. Se saca el perfil cuando la cola exista, no
+antes: un servicio declarado de primera clase que crashea es peor que uno honestamente
+apagado.
+
+**5 · `install-dev.sh` deja de escribir en `~/.claude` sin preguntar** (N10). Escribía
+en un directorio de configuración PERSONAL, fuera del repo, desde un script llamado
+«install-dev». Ahora es opt-in: bandera `--with-claude-agent`, env
+`INSTALL_CLAUDE_AGENT=1`, o responder el prompt. **En no-interactivo (CI) se salta por
+defecto**: sin TTY nadie pudo consentir.
+
+**6 · `.env.example` completo** con las dos variables nuevas de P4
+(`CHIMERA_MODEL_API_KEY_FILE`, `CHIMERA_ALLOW_EPHEMERAL_RECORD`), cada una con la razón
+por la que existe.
+
+### Tabla de interacciones — P5
+
+| Interfaz tocada                            | Dominio afectado | Estado del contrato                                                                 |
+| ------------------------------------------ | ---------------- | ----------------------------------------------------------------------------------- |
+| `scripts/generate-secrets.sh`              | infra            | NUEVO — idempotente, 600 al nacer, nunca sobreescribe                               |
+| `docs/QUICKSTART.md`                       | producto         | NUEVO — salida de verify-bundle VERIFICADA, no citada de memoria                    |
+| `docs/USO.md`                              | producto         | NUEVO — incluye límites reales declarados                                           |
+| `compose.yaml` — `worker` → perfil `queue` | infra            | **CAMBIO DE COMPORTAMIENTO**: `up` ya no intenta arrancarlo (arregla el crash-loop) |
+| `scripts/install-dev.sh`                   | infra/dev        | CAMBIO — el efecto en `~/.claude` es opt-in; CI lo salta                            |
+| `.env.example`                             | infra/config     | COMPLETADO — las 2 vars de P4 documentadas con su porqué                            |

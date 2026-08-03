@@ -19,15 +19,38 @@ pnpm -C apps/studio install
 echo "==> Setting up Husky git hooks..."
 npx husky
 
-echo "==> Installing invariant-reviewer agent (Claude local)..."
-AGENTS_DIR="${HOME}/.claude/agents"
-TEMPLATE="$(pwd)/tools/claude/agents/invariant-reviewer.md"
-if [ -f "$TEMPLATE" ]; then
-    mkdir -p "$AGENTS_DIR"
-    cp "$TEMPLATE" "$AGENTS_DIR/invariant-reviewer.md"
-    echo "  Installed: $AGENTS_DIR/invariant-reviewer.md"
+# El agente invariant-reviewer es OPT-IN (P5/M27 · hallazgo N10).
+#
+# Antes, este script escribía en `~/.claude/agents/` sin preguntar: un
+# directorio de configuración PERSONAL del usuario, fuera del repo, tocado por
+# un script llamado "install-dev". Un tercero que corre el setup de un
+# proyecto no espera que le modifiquen su herramienta. Ahora hay que pedirlo
+# —con la bandera o respondiendo el prompt—, y en no-interactivo (CI) se
+# SALTA por defecto: sin TTY nadie pudo consentir.
+install_agent() {
+    local agents_dir="${HOME}/.claude/agents"
+    local template="$(pwd)/tools/claude/agents/invariant-reviewer.md"
+    if [ ! -f "$template" ]; then
+        echo "  WARNING: tools/claude/agents/invariant-reviewer.md not found — skipping"
+        return
+    fi
+    mkdir -p "$agents_dir"
+    cp "$template" "$agents_dir/invariant-reviewer.md"
+    echo "  Installed: $agents_dir/invariant-reviewer.md"
+}
+
+echo "==> Optional: invariant-reviewer agent (writes to ~/.claude/agents/)"
+if [ "${INSTALL_CLAUDE_AGENT:-}" = "1" ] || [ "${1:-}" = "--with-claude-agent" ]; then
+    install_agent
+elif [ ! -t 0 ]; then
+    echo "  Skipped (non-interactive). Enable with INSTALL_CLAUDE_AGENT=1"
 else
-    echo "  WARNING: tools/claude/agents/invariant-reviewer.md not found — skipping"
+    printf '  Install it into your ~/.claude/agents/? [y/N] '
+    read -r respuesta
+    case "$respuesta" in
+        [yY]*) install_agent ;;
+        *) echo "  Skipped — nothing written outside this repo." ;;
+    esac
 fi
 
 echo ""
