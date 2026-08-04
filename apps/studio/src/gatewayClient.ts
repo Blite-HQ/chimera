@@ -112,32 +112,7 @@ export interface CreateRunMissionBody {
 export async function postRun(
   body: CreateRunBody | CreateRunMissionBody
 ): Promise<GatewayResponse<{ run_id: string }>> {
-  let response: Response;
-
-  try {
-    response = await fetch(`${apiBaseUrl()}/runs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-  } catch (networkErr) {
-    return {
-      success: false,
-      data: null,
-      error: `Network error: ${networkErr instanceof Error ? networkErr.message : String(networkErr)}`
-    };
-  }
-
-  if (!response.ok) {
-    return {
-      success: false,
-      data: null,
-      error: `Gateway error: ${response.status} ${response.statusText}`
-    };
-  }
-
-  const parsed = (await response.json()) as GatewayResponse<{ run_id: string }>;
-  return parsed;
+  return fetchWirePost(`${apiBaseUrl()}/runs`, body);
 }
 
 /**
@@ -186,10 +161,7 @@ async function fetchWireGet<T>(url: string): Promise<GatewayResponse<T>> {
  *    («el run ya es terminal», «la identidad no porta override:apply:run»).
  *    Si el cuerpo no es JSON se degrada al status, jamás se traga el error.
  */
-async function fetchWirePost<T>(
-  url: string,
-  body: Readonly<Record<string, unknown>>
-): Promise<GatewayResponse<T>> {
+async function fetchWirePost<T>(url: string, body: object): Promise<GatewayResponse<T>> {
   let response: Response;
 
   try {

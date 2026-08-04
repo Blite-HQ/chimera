@@ -35,9 +35,12 @@ describe('postRun', () => {
   it('envía POST a {VITE_API_URL}/runs con el body del contrato y devuelve run_id', async () => {
     // Arrange
     vi.stubEnv('VITE_API_URL', 'http://api.test');
+    // El server responde el wire CRUDO `{run_id}` (CreateRunResponse, sin
+    // envelope) — verificado en vivo contra compose el 2026-08-04.
     const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true, data: { run_id: 'run-123' }, error: null })
+      status: 202,
+      json: async () => ({ run_id: 'run-123' })
     } as Response);
 
     // Act
@@ -51,6 +54,29 @@ describe('postRun', () => {
     });
     expect(result.success).toBe(true);
     expect(result.data).toEqual({ run_id: 'run-123' });
+  });
+
+  /**
+   * Defecto cazado EN VIVO contra compose (2026-08-04): `POST /runs` responde
+   * el wire CRUDO `{run_id}` — nunca un envelope. Este cliente lo casteaba a
+   * `GatewayResponse`, así que `success` salía `undefined` y `createRun`
+   * lanzaba «No se pudo crear el run» AUNQUE el run se hubiera creado bien.
+   * Los tests no lo veían porque el mock devolvía un envelope: el doble
+   * codificaba un contrato que el servidor no cumple. El envelope lo arma
+   * ESTE cliente, igual que en todos los GET.
+   */
+  it('arma el envelope desde el wire crudo del server (que responde {run_id} pelado)', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 202,
+      json: async () => ({ run_id: 'run-vivo' })
+    } as Response);
+
+    const result = await postRun({ mission: 'particione ieee14' });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual({ run_id: 'run-vivo' });
   });
 
   it('devuelve error cuando la respuesta no es OK', async () => {
