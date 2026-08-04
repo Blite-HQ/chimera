@@ -68,15 +68,23 @@ curl -sS -X POST http://localhost:8000/runs \
         "capability_id": "blite.solvers.qubo",
         "inputs": {"matrix": [[0,1],[1,0]]},
         "claim": {
-          "instance": {"n_nodes": 2, "edges": [[0,1,1]]},
-          "assignment": [0,1],
-          "canonical_statement": "la asignación propuesta es el corte máximo exacto",
-          "scope": {"instancia": "par-minimo"},
+          "instance": {"n_nodes": 4, "edges": [[0,1,0],[2,3,0],[1,2,5]]},
+          "assignment": [0,0,1,1],
+          "canonical_statement": "la partición propuesta es óptima y electricamente factible",
+          "scope": {"instancia": "sintetica-4bus"},
           "claim_type": "solution"
         }
       }'
 # → 202 {"run_id":"run-…"}
 ```
+
+> **Por qué esta instancia y no una de dos nodos.** `sintetica-4bus` está en el corpus,
+> así que el claim queda amparado por **dos verificadores independientes** (el formal y
+> el eléctrico) — vas a ver **dos** `verification.completed` en el stream. La política de
+> la distribución exige 2 patas independientes para una conclusión de esta criticidad: un
+> ejemplo de juguete fuera del corpus produce **una sola** pata y su certificado falla el
+> punto [7/8] a propósito. Eso no es la plataforma rota; es la política haciendo su
+> trabajo — y es exactamente lo que verás si probás con una instancia inventada.
 
 Mirá el rastro en vivo (SSE, sin polling):
 
@@ -96,7 +104,8 @@ curl -sS http://localhost:8000/runs/<run_id>/certificate > bundle.json
 uv run python scripts/verify-bundle.py bundle.json
 ```
 
-Salida real (verificada sobre `scripts/example-bundle.json`, 2026-08-02):
+Salida real — **verificada sobre un certificado emitido por este mismo flujo**
+corriendo en el compose (2026-08-03), no sobre un bundle de ejemplo guardado:
 
 ```
 [1/8] OK — firma/PAE del envelope
@@ -166,13 +175,15 @@ uv run python scripts/record_session.py --session-dir knowledge/sessions/mia \
 
 ## 8 · Si algo falla
 
-| Síntoma                                 | Causa probable                        | Qué hacer                                                              |
-| --------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------- |
-| `api` no llega a healthy                | build a medias o Postgres no listo    | `docker compose logs api`; reintentá `up -d`                           |
-| `secrets/postgres_password.txt` ausente | no corriste el paso 2                 | `bash scripts/generate-secrets.sh`                                     |
-| Auth de Postgres falla tras rotar       | el volumen conserva la clave vieja    | `docker compose down -v && docker compose up -d` (borra datos locales) |
-| `GET /runs` lista de menos              | un stream envenenado quedó descartado | `curl localhost:8000/runs/discarded` — te dice cuál y por qué          |
-| El Studio no muestra datos vivos        | `VITE_API_URL` vacío en el build      | rebuild del servicio `studio`                                          |
+| Síntoma                                 | Causa probable                        | Qué hacer                                                                                  |
+| --------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `api` no llega a healthy                | build a medias o Postgres no listo    | `docker compose logs api`; reintentá `up -d`                                               |
+| `secrets/postgres_password.txt` ausente | no corriste el paso 2                 | `bash scripts/generate-secrets.sh`                                                         |
+| Auth de Postgres falla tras rotar       | el volumen conserva la clave vieja    | `docker compose down -v && docker compose up -d` (borra datos locales)                     |
+| `GET /runs` lista de menos              | un stream envenenado quedó descartado | `curl localhost:8000/runs/discarded` — te dice cuál y por qué                              |
+| `verify-bundle` da 7/8 en el punto [7]  | tu instancia tiene una sola pata      | usá una instancia del corpus (ver la nota del paso 4) — es la política, no un fallo        |
+| `Permission denied` en `/run/secrets/…` | el secreto quedó en 600               | `bash scripts/generate-secrets.sh --force` (los crea 644; el candado es `secrets/` en 700) |
+| El Studio no muestra datos vivos        | `VITE_API_URL` vacío en el build      | rebuild del servicio `studio`                                                              |
 
 ## 9 · Después del quickstart
 

@@ -92,6 +92,14 @@ reportUnnecessaryTypeIgnoreComment = "error"
 include = [
     "sdk/src",
     "engine/src",
+    # `api/src` entró al gate 2026-08-03 (P-rt): era el único paquete de
+    # PRODUCCIÓN fuera del tipado estricto — el runtime y el SDK se revisaban,
+    # y la capa que atiende HTTP no. Los 26 errores que destapó se arreglaron
+    # en el mismo cambio; 15 eran el falso positivo de FastAPI
+    # (`reportUnusedFunction` sobre handlers que registra el decorador,
+    # silenciado per-file con su causa) y 11 huecos reales de tipado al
+    # recorrer payloads.
+    "api/src",
     "capabilities",
     "tests",
 ]

@@ -26,11 +26,18 @@ Doctrina fail-closed de esta spec (verbatim en la tabla de la spec):
   respuesta, no quién la produce — sin esos eventos, honest-empty.
 """
 
+# pyright: reportUnusedFunction=false
+# ^ Los handlers de FastAPI se registran por DECORADOR (`@router.get/post`), no
+#   por llamada: pyright los ve como funciones locales que nadie usa. Silenciar
+#   la regla acá —y solo acá— evita 15 falsos positivos sin apagar la
+#   comprobación en el resto del proyecto, donde una función sin usar SÍ es
+#   señal de código muerto.
+
 from __future__ import annotations
 
 import base64
 import json
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
@@ -291,9 +298,9 @@ def _event_step_id(payload: dict[str, Any]) -> str | None:
     step_id = payload.get("step_id")
     if step_id is not None:
         return str(step_id)
-    attestation = payload.get("attestation")
+    attestation: object = payload.get("attestation")
     if isinstance(attestation, dict):
-        nested = attestation.get("step_id")
+        nested = cast(dict[str, Any], attestation).get("step_id")
         if nested is not None:
             return str(nested)
     return None
@@ -363,22 +370,31 @@ def _is_valid_island(island: Any) -> bool:
 def _project_topology(stream: tuple[Event, ...]) -> dict[str, Any]:
     """Última partición embebida en un `verification.completed` — honest-
     empty si ninguna aparece o si la que aparece no trae `verification` por
-    isla (harness-agentico/dominio ciencia aún no cablea el productor real)."""
+    isla (harness-agentico/dominio ciencia aún no cablea el productor real).
+
+    Nota de tipos: `isinstance(x, dict)` estrecha a `dict[Unknown, Unknown]`
+    y pierde el tipo de los valores. El `cast` declara lo que el contrato ya
+    garantiza (freeze §3: el payload de un evento es `dict[str, Any]`) en vez
+    de arrastrar `Unknown` por toda la proyección — y va DESPUÉS del
+    `isinstance`, así que la comprobación en runtime sigue siendo real."""
     for event in reversed(stream):
         if event.type != _VERIFICATION_COMPLETED:
             continue
-        partition = event.payload.get(_PARTITION_PAYLOAD_KEY)
-        if not isinstance(partition, dict):
+        cruda: object = event.payload.get(_PARTITION_PAYLOAD_KEY)
+        if not isinstance(cruda, dict):
             continue
-        islands = partition.get("islands")
-        if not isinstance(islands, list) or not all(
-            _is_valid_island(island) for island in islands
-        ):
+        partition = cast(dict[str, Any], cruda)
+        islas: object = partition.get("islands")
+        if not isinstance(islas, list):
             continue
+        islands = cast(list[Any], islas)
+        if not all(_is_valid_island(island) for island in islands):
+            continue
+        cortes = cast(list[Any], partition.get("cut_branch_ids", []))
         return {
             "topology_ref": partition.get("topology_ref"),
             "islands": tuple(islands),
-            "cut_branch_ids": tuple(partition.get("cut_branch_ids", ())),
+            "cut_branch_ids": tuple(str(branch) for branch in cortes),
             "cut_cost": partition.get("cut_cost", 0.0),
         }
     return _empty_topology()

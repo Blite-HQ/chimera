@@ -17,6 +17,13 @@ Reglas fail-closed:
   real del despliegue con permisos que la etapa 2 del gateway evalúa.
 """
 
+# pyright: reportUnusedFunction=false
+# ^ Los handlers de FastAPI se registran por DECORADOR (`@router.get/post`), no
+#   por llamada: pyright los ve como funciones locales que nadie usa. Silenciar
+#   la regla acá —y solo acá— evita 15 falsos positivos sin apagar la
+#   comprobación en el resto del proyecto, donde una función sin usar SÍ es
+#   señal de código muerto.
+
 from __future__ import annotations
 
 import base64

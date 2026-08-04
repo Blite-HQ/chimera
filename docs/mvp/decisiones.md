@@ -2465,3 +2465,79 @@ retrieval **es** una llamada de modelo y necesita sus propios fixtures (mismo pa
 - **`docs/USO.md` §8 declara cuatro límites reales** (sin multi-tenancy, cola no
   cableada, approvals requieren permiso explícito, revocación no implementada). Si
   alguno se cierra, ese doc es el que hay que actualizar — es lo que un tercero lee.
+
+### #150 — verificación VIVA contra el compose real: dos defectos propios y un gate ampliado
+
+Con Docker disponible se corrió el stack REAL (`docker compose up -d --build`) y se usó la
+plataforma como la usaría un tercero. **Encontró dos defectos que ningún test veía — los
+dos en entregables MÍOS de P5.**
+
+**Defecto 1 · `generate-secrets.sh` rompía el quickstart en el paso 3.** El script creaba
+los secretos en **600**; los contenedores corren como usuario NO-root (`chimera`, uid 999)
+y el compose los monta por bind-mount, así que el api moría con
+`cat: /run/secrets/postgres_password: Permission denied`. La secuencia que yo mismo
+documenté —generar secretos, `docker compose up`— **fallaba**. Corregido a **644 con el
+directorio en 700**: la protección del host la da el directorio (ningún otro usuario puede
+atravesarlo), y el contenedor puede leer. La alternativa (`chown 999` en el host) es peor:
+deja el archivo ilegible para el desarrollador. La causa quedó escrita en el script para
+que nadie lo "arregle" de vuelta a 600.
+
+**Defecto 2 · el QUICKSTART prometía 8/8 con un ejemplo que da 7/8.** El comando de ejemplo
+usaba una instancia de juguete (`par-minimo`, 2 nodos) fuera del corpus: solo la ampara UN
+verificador, y la política de la distribución exige **2 patas independientes** para esa
+criticidad. Resultado real: `[7/8] FALLA — 1 pata(s) por independence_group < 2 exigidas`.
+Los 8/8 que yo citaba salían de `scripts/example-bundle.json` —un bundle guardado—, **no
+del flujo que el propio doc manda correr**. Un tercero habría concluido que la plataforma
+no cumple lo que promete. Corregido: el ejemplo usa `sintetica-4bus` (instancia del corpus,
+dos patas reales) y el doc **explica** que una instancia inventada da 7/8 a propósito —
+«eso no es la plataforma rota, es la política haciendo su trabajo». La tabla de
+troubleshooting gana esa fila y la del secreto.
+
+**Evidencia viva recogida (todo contra el compose, no contra `TestClient`):**
+
+| Qué                                              | Resultado                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `docker compose up -d`                           | postgres healthy + api healthy + studio; **el `worker` NO arranca** (perfil `queue` de #146 funcionando)                              |
+| entry points dentro de la imagen                 | **19** (checkpoint de C-1/G confirmado sobre imagen reconstruida)                                                                     |
+| `smoke_infra.sh`                                 | postgres healthy · `/health` ok · 19 capabilities                                                                                     |
+| `test_postgres_event_store.py` vs Postgres real  | **8 passed**                                                                                                                          |
+| run claim-first `sintetica-4bus`                 | 2 × `verification.completed` → certificado → **`verify-bundle` 8/8**                                                                  |
+| bundle adulterado (1 byte de la firma)           | **falla [1/8]**, 7/8 — exactamente lo que el doc promete                                                                              |
+| `POST /runs/{id}/messages` sobre run EN VUELO    | **202**, y el `mission.message` queda journalizado a mitad del stream, con el actor de la sesión (`user:local-operator`), NO del body |
+| el mismo POST segundos después (run ya terminal) | **409** — el rechazo post-terminal del §2, en vivo                                                                                    |
+| `GET /runs` / `GET /runs/discarded`              | 3 runs con status y AL correctos / `{"discarded_streams": []}`                                                                        |
+| Studio por nginx                                 | `/` → 200 · proxy `/runs` → 200 · **`POST /invoke` → 405** (la ruta fantasma también murió en el proxy)                               |
+
+Un run de misión sobre `blite.quantum.qaoa` falló con `GatewayRejection {stage: mediation}`
+porque la capability rechazó los inputs — **camino fail-loud correcto**, no defecto: el
+arranque HTTP nunca falla por un error DENTRO del run.
+
+**Gate ampliado: `api/src` entra a pyright.** Era el único paquete de PRODUCCIÓN fuera del
+tipado estricto — se revisaba el runtime y el SDK, y no la capa que atiende HTTP. Destapó
+26 errores, todos resueltos en el mismo cambio: 15 eran el falso positivo de FastAPI
+(`reportUnusedFunction` sobre handlers que registra el decorador — silenciado per-file con
+su causa, no apagando la regla en el resto del proyecto) y 11 huecos reales de tipado al
+recorrer payloads en `reads.py` (resueltos con `cast` DESPUÉS del `isinstance`, así que la
+comprobación en runtime sigue siendo real).
+
+**Hallazgo para P-ui (no lo toco: es su alcance).** `docker/studio-nginx.conf` proxea
+`^/(runs|health)` al api, así que **nginx es dueño del prefijo `/runs`**: cualquier ruta
+de cliente bajo `/runs` sería tragada por el proxy y el SPA nunca cargaría en un deep-link.
+Hoy no hay choque (el Studio aún no tiene router) y el árbol planeado
+`/w/:ws/p/:proj/runs/:id/:tab` lo esquiva por construcción — pero si P7 pasa por un paso
+intermedio con `/runs/:id/:tab` al tope, colisiona. Verificado en vivo:
+`GET localhost:3000/runs/x/y` → 404 del API, no `index.html`.
+
+**Nota de entorno (no es del repo):** `~/.docker/config.json` declara
+`"credsStore": "desktop.exe"`, binario que no existe en esta distro WSL — cualquier build
+que deba resolver metadatos de una imagen base falla con `error getting credentials`. Se
+sorteó con un `DOCKER_CONFIG` limpio y temporal, sin tocar la config del usuario.
+
+### Tabla de interacciones — #150
+
+| Interfaz tocada                           | Dominio afectado | Estado del contrato                                                  |
+| ----------------------------------------- | ---------------- | -------------------------------------------------------------------- |
+| `scripts/generate-secrets.sh` — modo 644  | infra            | **FIX** — el quickstart fallaba en el paso 3 con 600                 |
+| `docs/QUICKSTART.md` — ejemplo de 2 patas | producto         | **FIX** — el ejemplo anterior daba 7/8; ahora 8/8 verificado en vivo |
+| `[tool.pyright] include` += `api/src`     | gates            | AMPLIADO — 26 errores destapados y resueltos                         |
+| `reads.py` — tipado de payloads           | E (api)          | ENDURECIDO — `cast` tras `isinstance`, runtime intacto               |

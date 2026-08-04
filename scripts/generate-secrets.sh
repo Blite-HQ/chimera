@@ -9,10 +9,23 @@
 # Doctrina de este script:
 #   - JAMÁS sobreescribe un secreto existente (rotar es una decisión explícita,
 #     nunca un efecto de correr un script de setup dos veces);
-#   - permisos 600 desde el nacimiento (nunca un chmod posterior que deje una
-#     ventana con el archivo legible);
+#   - la protección la da el DIRECTORIO (700), no el modo del archivo — ver
+#     abajo, es una decisión con causa, no descuido;
 #   - aleatoriedad del sistema (`openssl rand`, con fallback a /dev/urandom) —
 #     nunca una contraseña de ejemplo "temporal" que termine en producción.
+#
+# **Por qué los archivos son 644 y no 600** (verificado contra el stack REAL,
+# 2026-08-03): el compose los monta como bind-mount en `/run/secrets/`, y los
+# contenedores corren como usuario NO-root (`chimera`, uid 999 — ver
+# docker/api.Dockerfile). Un secreto 600 propiedad del uid del desarrollador es
+# ILEGIBLE para ese usuario: `docker compose up` moría con
+# `cat: /run/secrets/postgres_password: Permission denied`. La primera versión
+# de este script tenía ese bug y el quickstart entero fallaba en el paso 3.
+#
+# La alternativa (hacer `chown 999` en el host) es peor: deja el archivo
+# ilegible para el propio desarrollador. Con `secrets/` en 700, ningún otro
+# usuario del host puede siquiera atravesar el directorio para llegar al
+# archivo — la superficie protegida es la misma, y el contenedor arranca.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -33,9 +46,11 @@ write_secret() {
         echo "  = ${nombre} ya existe — intacto (usá --force para rotarlo)"
         return
     fi
-    # umask antes de crear: el archivo NACE con 600, no se ajusta después.
-    ( umask 077 && random_secret > "$destino" )
-    echo "  + ${nombre} generado (600)"
+    # umask antes de crear: el archivo NACE con sus permisos finales, sin una
+    # ventana intermedia. 022 => 644 (ver la nota de arriba: el contenedor
+    # corre como uid 999 y necesita leerlo; el candado es el directorio 700).
+    ( umask 022 && random_secret > "$destino" )
+    echo "  + ${nombre} generado (644, dentro de secrets/ en 700)"
 }
 
 echo "==> Generando secretos en ${SECRETS_DIR}/"
