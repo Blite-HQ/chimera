@@ -56,6 +56,14 @@ export interface RunDetailProps {
    * mostraba esas tabs vacías.
    */
   readonly lenses?: readonly ResolvedLens[];
+  /**
+   * P7 — sub-tab activa. Con valor, las tabs son CONTROLADAS por la URL
+   * (`:tab` del árbol #78): compartir el link de la pestaña «Verificación»
+   * abre la pestaña «Verificación». Sin valor caen a estado interno, que es
+   * lo que necesitan los tests de layout.
+   */
+  readonly tab?: string;
+  readonly onTabChange?: (tab: string) => void;
 }
 
 /** Una lente ya resuelta: id, etiqueta y su contenido listo para pintar. */
@@ -88,6 +96,8 @@ export default function RunDetail({
   verificacion,
   procedencia,
   lenses = [],
+  tab,
+  onTabChange,
   onCancelRun,
   cancelError,
   isCancelling
@@ -184,7 +194,16 @@ export default function RunDetail({
         </p>
       </div>
 
-      <Tabs defaultValue="hilo">
+      <Tabs
+        {...(tab === undefined
+          ? { defaultValue: 'hilo' }
+          : {
+              // Una tab desconocida en la URL no rompe la página: cae a la
+              // conversación, que es la vista por defecto del run.
+              value: tabs.some(t => t.id === tab) ? tab : 'hilo',
+              onValueChange: onTabChange
+            })}
+      >
         <TabsList variant="line">
           {tabs.map(tab => (
             <TabsTrigger key={tab.id} value={tab.id} className="px-2">

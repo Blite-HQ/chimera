@@ -31,17 +31,21 @@ describe('App — banner de Replay (D1, honestidad de modo)', () => {
     vi.unstubAllEnvs();
   });
 
-  test('aparece en modo replay (VITE_API_URL ausente) — nunca un default silencioso', () => {
+  // P7: <App/> monta el router, y la ruta raíz REDIRIGE al árbol canónico
+  // (/w/:ws/p/:proj/runs) — el shell aparece después de esa navegación, así
+  // que estos tests esperan en vez de asumir un render síncrono.
+  test('aparece en modo replay (VITE_API_URL ausente) — nunca un default silencioso', async () => {
     vi.stubEnv('VITE_API_URL', undefined);
     render(<App />);
 
-    expect(screen.getByText(/modo replay/i)).toBeInTheDocument();
+    expect(await screen.findByText(/modo replay/i)).toBeInTheDocument();
   });
 
-  test('no aparece en modo vivo (VITE_API_URL presente)', () => {
+  test('no aparece en modo vivo (VITE_API_URL presente)', async () => {
     vi.stubEnv('VITE_API_URL', 'http://api.test');
     render(<App />);
 
+    await screen.findByRole('navigation', { name: /secciones del proyecto/i });
     expect(screen.queryByText(/modo replay/i)).not.toBeInTheDocument();
   });
 });

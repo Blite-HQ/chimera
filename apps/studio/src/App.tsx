@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { RouterProvider } from '@tanstack/react-router';
 import {
   BookOpen,
   Braces,
@@ -12,12 +13,12 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 
-import { AppShell } from '@/components/app-shell/AppShell';
-import { ReplayBanner } from '@/components/app-shell/ReplayBanner';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/DataState';
 import { ToggleButton } from '@/components/layout/ToggleButton';
 import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/lib/theme';
+
+import { router } from './router';
 
 import { isLiveMode } from './data/env';
 import { useCancelRun, useCreateRun, useRespondApproval, useSendMessage } from './data/mutations';
@@ -36,7 +37,6 @@ import CertificateView from './views/CertificateView';
 import { downloadJson } from './views/downloadJson';
 import KnowledgeView from './views/KnowledgeView';
 import NewRunView from './views/NewRunView';
-import PapersView from './views/PapersView';
 import ProvenanceExplorer from './views/ProvenanceExplorer';
 import RunDetail from './views/RunDetail';
 import RunsView from './views/RunsView';
@@ -62,7 +62,7 @@ type SectionId = 'runs' | 'artifacts' | 'papers' | 'knowledge';
 
 const SECTION_ICON = 'size-4 shrink-0';
 
-const SECTIONS: readonly {
+export const SECTIONS: readonly {
   readonly id: SectionId;
   readonly label: string;
   readonly icon: React.ReactNode;
@@ -73,15 +73,15 @@ const SECTIONS: readonly {
   { id: 'knowledge', label: 'Knowledge', icon: <BookOpen className={SECTION_ICON} aria-hidden /> }
 ];
 
-const PROJECT_NAME = 'islanding-ieee14';
-
 const queryClient = new QueryClient();
 
 /** Vistas del run montadas como slots de RunDetail (queries + estado acá). */
-function RunDetailScreen({
+export function RunDetailScreen({
   runId,
   onBack,
-  onContinueThread
+  onContinueThread,
+  tab,
+  onTabChange
 }: {
   readonly runId: string;
   readonly onBack?: () => void;
@@ -91,6 +91,9 @@ function RunDetailScreen({
    * hilo. Sin esta salida, el 409 sería un callejón sin salida.
    */
   readonly onContinueThread?: (threadId: string) => void;
+  /** Sub-tab activa, tomada del `:tab` de la URL (P7). */
+  readonly tab?: string;
+  readonly onTabChange?: (tab: string) => void;
 }): React.ReactElement {
   // No-op en modo fixtures/demo; en modo live alimenta el cache con el SSE
   // real (Nivel-1 task 1) — llamada incondicional, el hook decide adentro.
@@ -272,12 +275,14 @@ function RunDetailScreen({
       timeline={timeline}
       verificacion={verificacion}
       lenses={lenses}
+      {...(tab !== undefined && { tab })}
+      {...(onTabChange !== undefined && { onTabChange })}
       procedencia={procedencia}
     />
   );
 }
 
-function RunsScreen({
+export function RunsScreen({
   onSelectRun,
   threadId,
   onThreadConsumed
@@ -341,7 +346,7 @@ function RunsScreen({
   );
 }
 
-function ArtifactsScreen({
+export function ArtifactsScreen({
   onOpenRun
 }: {
   readonly onOpenRun: (runId: string) => void;
@@ -360,7 +365,7 @@ function ArtifactsScreen({
   return <ArtifactsView artifacts={artifactsQuery.data} onOpenRun={onOpenRun} />;
 }
 
-function KnowledgeScreen({
+export function KnowledgeScreen({
   onOpenRun
 }: {
   readonly onOpenRun: (runId: string) => void;
@@ -379,75 +384,11 @@ function KnowledgeScreen({
   return <KnowledgeView claims={knowledgeQuery.data} onOpenRun={onOpenRun} />;
 }
 
-function Studio(): React.ReactElement {
-  const [section, setSection] = useState<SectionId>('runs');
-  const [runId, setRunId] = useState<string | undefined>(undefined);
-  const [threadId, setThreadId] = useState<string | undefined>(undefined);
-
-  const openRun = (id: string): void => {
-    setSection('runs');
-    setRunId(id);
-    setThreadId(undefined);
-  };
-
-  // §Contrato-4 — continuar un hilo cerrado: se deja el detalle y se abre el
-  // form citando al run raíz. El hilo es correlación de LECTURA entre
-  // corridas; cada run conserva su propio stream y su propio certificado.
-  const continueThread = (raiz: string): void => {
-    setRunId(undefined);
-    setThreadId(raiz);
-  };
-  const goToSection = (id: string): void => {
-    setSection(id as SectionId);
-    setRunId(undefined);
-  };
-
-  const breadcrumb = section === 'runs' && runId ? ['runs', runId] : [section];
-
-  return (
-    <AppShell
-      projectName={PROJECT_NAME}
-      sections={SECTIONS}
-      activeSection={section}
-      onSectionChange={goToSection}
-      breadcrumb={breadcrumb}
-      onBreadcrumbNavigate={index => {
-        // Tramo 0 = la raíz de la sección actual (p. ej. 'runs' desde un
-        // run abierto) — navegar ahí es cerrar el detalle.
-        if (index === 0) {
-          goToSection(section);
-        }
-      }}
-      banner={isLiveMode() ? undefined : <ReplayBanner />}
-    >
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-        {section === 'runs' &&
-          (runId ? (
-            <RunDetailScreen
-              runId={runId}
-              onBack={() => setRunId(undefined)}
-              onContinueThread={continueThread}
-            />
-          ) : (
-            <RunsScreen
-              onSelectRun={openRun}
-              {...(threadId !== undefined && { threadId })}
-              onThreadConsumed={() => setThreadId(undefined)}
-            />
-          ))}
-        {section === 'artifacts' && <ArtifactsScreen onOpenRun={openRun} />}
-        {section === 'papers' && <PapersView />}
-        {section === 'knowledge' && <KnowledgeScreen onOpenRun={openRun} />}
-      </div>
-    </AppShell>
-  );
-}
-
 export default function App(): React.ReactElement {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <Studio />
+        <RouterProvider router={router} />
       </QueryClientProvider>
     </ThemeProvider>
   );
