@@ -23,7 +23,7 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
   },
   {
     globalSeq: 2,
-    type: 'capability.job.invoked',
+    type: 'capability.job.submitted',
     actorId: 'service:runtime',
     occurredAt: '2026-07-07T17:59:50.400Z',
     stepId: 'step-solver',
@@ -49,7 +49,7 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
   },
   {
     globalSeq: 5,
-    type: 'capability.job.invoked',
+    type: 'capability.job.submitted',
     actorId: 'service:runtime',
     occurredAt: '2026-07-07T17:59:52.000Z',
     stepId: 'step-execution-a',
@@ -75,7 +75,7 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
   },
   {
     globalSeq: 8,
-    type: 'capability.job.invoked',
+    type: 'capability.job.submitted',
     actorId: 'service:runtime',
     occurredAt: '2026-07-07T17:59:54.000Z',
     stepId: 'step-execution-b',
@@ -101,7 +101,7 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
   },
   {
     globalSeq: 11,
-    type: 'capability.job.invoked',
+    type: 'capability.job.submitted',
     actorId: 'service:runtime',
     occurredAt: '2026-07-07T17:59:56.200Z',
     stepId: 'step-dataset',

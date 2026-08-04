@@ -58,7 +58,7 @@ describe('subscribeToRunEvents (seam de S10)', () => {
   });
 });
 
-describe('subscribeToRunEvents — modo live (MVP task 1)', () => {
+describe('subscribeToRunEvents — modo live', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.mocked(gatewayClient.openRunEventStream).mockReset();

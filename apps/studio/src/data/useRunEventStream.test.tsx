@@ -25,7 +25,7 @@ const EVENT_1: ProjectedEvent = {
 
 const EVENT_2: ProjectedEvent = {
   globalSeq: 2,
-  type: 'capability.job.invoked',
+  type: 'capability.job.submitted',
   actorId: 'service:runtime',
   occurredAt: '2026-07-22T12:00:02.000000Z',
   resumen: 'Invocando el solver'

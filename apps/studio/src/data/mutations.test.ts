@@ -11,7 +11,7 @@ vi.mock('../gatewayClient', () => ({
   postRun: vi.fn()
 }));
 
-describe('toCreateRunBody (checkpoint 5 — modo misión, endpoints-studio.md)', () => {
+describe('toCreateRunBody (modo misión — endpoints-studio.md)', () => {
   it('mapea instancia + proposer al body misión-first de POST /runs', () => {
     // Arrange
     const input: NewRunInput = { instance: 'ieee14', proposer: 'qaoa' };
@@ -52,7 +52,7 @@ describe('toCreateRunBody (checkpoint 5 — modo misión, endpoints-studio.md)',
   });
 });
 
-describe('createRun (MVP task 2)', () => {
+describe('createRun', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.mocked(gatewayClient.postRun).mockReset();

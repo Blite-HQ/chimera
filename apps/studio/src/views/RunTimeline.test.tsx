@@ -31,7 +31,7 @@ const EVENTS: readonly ProjectedEvent[] = [
   }
 ];
 
-describe('RunTimeline — afordancias de verificación (MVP task 4)', () => {
+describe('RunTimeline — afordancias de verificación', () => {
   test('verification.completed renderiza el AssuranceBadge (clase + AL) en vez del Badge plano', () => {
     render(<RunTimeline events={EVENTS} onSelectEvent={vi.fn()} viewMode="timeline" />);
 

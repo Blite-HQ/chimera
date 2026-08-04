@@ -229,7 +229,7 @@ export async function getAblation(runId: string): Promise<GatewayResponse<unknow
  * emite el SSE, ese frame puntual se pierde en silencio — el resto del
  * stream sigue funcionando.
  */
-const KNOWN_RUN_EVENT_TYPES = [
+export const KNOWN_RUN_EVENT_TYPES = [
   // Auditoría Fase 2 (2026-07-29): el vocabulario COMPLETO que execute_run
   // emite — run.created, run.step.* y capability.job.failed faltaban y el
   // timeline en vivo perdía esos frames en silencio (mostraba 2 de 5

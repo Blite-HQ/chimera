@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { apiBaseUrl, isLiveMode } from './env';
 
-describe('env — toggle fixtures↔live (MVP task 1)', () => {
+describe('env — toggle fixtures↔live', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
