@@ -27,7 +27,8 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     actorId: 'service:runtime',
     occurredAt: '2026-07-07T17:59:50.400Z',
     stepId: 'step-solver',
-    resumen: 'Invocando ortools-cpsat para la partición óptima'
+    resumen: 'Invocando ortools-cpsat para la partición óptima',
+    payload: { capability_id: 'blite.graphs.partition' }
   },
   {
     globalSeq: 3,
@@ -53,7 +54,8 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     actorId: 'service:runtime',
     occurredAt: '2026-07-07T17:59:52.000Z',
     stepId: 'step-execution-a',
-    resumen: 'Invocando pandapower-powerflow en Isla A'
+    resumen: 'Invocando pandapower-powerflow en Isla A',
+    payload: { capability_id: 'blite.sim.power_flow' }
   },
   {
     globalSeq: 6,
@@ -79,7 +81,8 @@ export const RUN_EVENTS: readonly ProjectedEvent[] = [
     actorId: 'service:runtime',
     occurredAt: '2026-07-07T17:59:54.000Z',
     stepId: 'step-execution-b',
-    resumen: 'Invocando pandapower-powerflow en Isla B'
+    resumen: 'Invocando pandapower-powerflow en Isla B',
+    payload: { capability_id: 'blite.sim.power_flow' }
   },
   {
     globalSeq: 9,

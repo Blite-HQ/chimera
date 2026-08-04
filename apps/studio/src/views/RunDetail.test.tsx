@@ -27,8 +27,10 @@ function renderDetail() {
       hilo={<p>vista hilo</p>}
       timeline={<p>vista timeline</p>}
       verificacion={<p>vista verificación</p>}
-      red={<p>vista red</p>}
-      ablacion={<p>vista ablación</p>}
+      lenses={[
+        { id: 'red', label: 'Red', content: <p>vista red</p> },
+        { id: 'ablacion', label: 'Ablación', content: <p>vista ablación</p> }
+      ]}
       procedencia={<p>vista procedencia</p>}
     />
   );
@@ -61,8 +63,6 @@ describe('RunDetail', () => {
         hilo={<p>vista hilo</p>}
         timeline={<p>vista timeline</p>}
         verificacion={<p>vista verificación</p>}
-        red={<p>vista red</p>}
-        ablacion={<p>vista ablación</p>}
         procedencia={<p>vista procedencia</p>}
       />
     );
@@ -80,8 +80,6 @@ describe('RunDetail', () => {
         hilo={<p>vista hilo</p>}
         timeline={<p>vista timeline</p>}
         verificacion={<p>vista verificación</p>}
-        red={<p>vista red</p>}
-        ablacion={<p>vista ablación</p>}
         procedencia={<p>vista procedencia</p>}
       />
     );
@@ -133,8 +131,10 @@ function Harness({
       hilo={<p>vista hilo</p>}
       timeline={<p>vista timeline</p>}
       verificacion={<p>vista verificación</p>}
-      red={<p>vista red</p>}
-      ablacion={<p>vista ablación</p>}
+      lenses={[
+        { id: 'red', label: 'Red', content: <p>vista red</p> },
+        { id: 'ablacion', label: 'Ablación', content: <p>vista ablación</p> }
+      ]}
       procedencia={<p>vista procedencia</p>}
     />
   );

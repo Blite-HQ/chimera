@@ -6,8 +6,6 @@ import {
   LayoutList,
   List,
   ListTree,
-  Map,
-  Network,
   Package,
   Play,
   Plus
@@ -17,28 +15,24 @@ import React, { useState } from 'react';
 import { AppShell } from '@/components/app-shell/AppShell';
 import { ReplayBanner } from '@/components/app-shell/ReplayBanner';
 import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/DataState';
+import { ToggleButton } from '@/components/layout/ToggleButton';
 import { Button } from '@/components/ui/button';
 import { ThemeProvider } from '@/lib/theme';
 
 import { isLiveMode } from './data/env';
-import { ICE_GRID_DATASET } from './data/iceGrid';
 import { useCancelRun, useCreateRun, useRespondApproval, useSendMessage } from './data/mutations';
 import {
-  ablationQueryOptions,
   artifactsQueryOptions,
   certificateQueryOptions,
   knowledgeQueryOptions,
   runEventsQueryOptions,
   runSummariesQueryOptions,
-  rvspQueryOptions,
   stepEvidenceQueryOptions
 } from './data/queries';
+import { DOMAIN_LENSES, deriveLensContext, resolveLenses } from './lenses';
 import { useRunEventStream } from './data/useRunEventStream';
-import GridSpike from './spike/GridSpike';
-import AblationPanel from './views/AblationPanel';
 import ArtifactsView from './views/ArtifactsView';
 import CertificateView from './views/CertificateView';
-import DataFormatRouter from './views/DataFormatRouter';
 import { downloadJson } from './views/downloadJson';
 import KnowledgeView from './views/KnowledgeView';
 import NewRunView from './views/NewRunView';
@@ -48,7 +42,6 @@ import RunDetail from './views/RunDetail';
 import RunsView from './views/RunsView';
 import RunThread from './views/RunThread';
 import RunTimeline from './views/RunTimeline';
-import RvsPChart from './views/RvsPChart';
 import StepInspector from './views/StepInspector';
 import { usePlaybackReveal } from './views/usePlaybackReveal';
 
@@ -83,86 +76,6 @@ const SECTIONS: readonly {
 const PROJECT_NAME = 'islanding-ieee14';
 
 const queryClient = new QueryClient();
-
-function ToggleButton({
-  label,
-  icon,
-  isActive,
-  onClick
-}: {
-  readonly label: string;
-  readonly icon: React.ReactNode;
-  readonly isActive: boolean;
-  readonly onClick: () => void;
-}): React.ReactElement {
-  return (
-    <Button
-      variant={isActive ? 'default' : 'outline'}
-      size="sm"
-      onClick={onClick}
-      aria-pressed={isActive}
-    >
-      {icon}
-      {label}
-    </Button>
-  );
-}
-
-type RedViewMode = 'diagrama' | 'mapa';
-
-/**
- * Slot "Red" de RunDetailScreen (D1 task 4 — honestidad de modo; D4 task 6
- * — spec superficie-visual.md §4.3 "dual diagrama + mapa, no reemplazo"):
- * en replay ofrece AMBAS vistas vía el mismo patrón ToggleButton que usan
- * timeline y procedencia — "Diagrama" (`GridSpike`, la partición benchmark
- * IEEE-14 del run, data ESTÁTICA fabricada) y "Mapa" (`DataFormatRouter` →
- * `GridMap`, la red nacional REAL del ICE, 70 subestaciones + 102 líneas).
- * Son DOS redes distintas — el mapa nunca sustituye al diagrama, lo
- * complementa (honestidad: no hay todavía un mapeo determinista entre la
- * instancia benchmark y el grid real, ver GridMap.tsx).
- *
- * Auditoría Fase 2 (2026-07-29): D3/D4 YA mergearon (`GET /runs` vive en
- * vivo y el mapa ICE-70 real está wireado) — lo que sigue faltando es el
- * productor real de partición (`verification.completed` con `partition`
- * por isla) sobre esa red, bloqueado hasta que exista (decisión #88). En
- * vivo el Studio tampoco tiene todavía una query cableada contra
- * `GET /runs/{id}/topology` (E1 expone la ruta; D3 no llegó a topología) —
- * doble motivo para anunciar "pendiente" en vez de mostrar cualquiera de
- * las dos vistas; el toggle tampoco aparece. Nombrada aparte (no inline en
- * el JSX) para poder testearla sin depender de las demás queries del screen.
- */
-export function RedSlot(): React.ReactElement {
-  const [viewMode, setViewMode] = useState<RedViewMode>('diagrama');
-
-  if (isLiveMode()) {
-    return (
-      <EmptyState
-        title="Topología en vivo — pendiente"
-        hint="D3/D4 ya mergearon (mapa ICE-70 real + rutas de lectura) — falta el productor real de partición sobre esa red (decisión #88), sin fecha prometida."
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-end gap-1">
-        <ToggleButton
-          label="Diagrama"
-          icon={<Network data-icon="inline-start" />}
-          isActive={viewMode === 'diagrama'}
-          onClick={() => setViewMode('diagrama')}
-        />
-        <ToggleButton
-          label="Mapa"
-          icon={<Map data-icon="inline-start" />}
-          isActive={viewMode === 'mapa'}
-          onClick={() => setViewMode('mapa')}
-        />
-      </div>
-      {viewMode === 'diagrama' ? <GridSpike /> : <DataFormatRouter dataset={ICE_GRID_DATASET} />}
-    </div>
-  );
-}
 
 /** Vistas del run montadas como slots de RunDetail (queries + estado acá). */
 function RunDetailScreen({
@@ -200,8 +113,6 @@ function RunDetailScreen({
   );
   const stepsQuery = useQuery(stepEvidenceQueryOptions(runId, stepIds));
   const certificateQuery = useQuery(certificateQueryOptions(runId));
-  const ablationQuery = useQuery(ablationQueryOptions(runId));
-  const rvspQuery = useQuery(rvspQueryOptions(runId));
   const { revealedEvents, playback } = usePlaybackReveal(runEvents);
   const [selectedGlobalSeq, setSelectedGlobalSeq] = useState<number | undefined>(undefined);
   const [timelineViewMode, setTimelineViewMode] = useState<'tree' | 'timeline'>('tree');
@@ -295,53 +206,20 @@ function RunDetailScreen({
     </div>
   );
 
-  // D5 (dataviz "r vs p") — contenido PRIMARIO de la sub-tab "Ablación": la
-  // curva r-vs-p real de la ciencia (ver RvsPChart.tsx, divergencia
-  // deliberada de spec superficie-visual.md §5). Sin endpoint en vivo
-  // todavía (rvspQueryOptions), mismo patrón de EmptyState que el resto.
-  const rvspSection = rvspQuery.isPending ? (
-    <LoadingState label="Cargando la curva r vs p" />
-  ) : rvspQuery.isError ? (
-    <ErrorState message={rvspQuery.error.message} onRetry={() => void rvspQuery.refetch()} />
-  ) : rvspQuery.data === null ? (
-    <EmptyState
-      title="Sin curva r vs p todavía."
-      hint="Esta vista solo existe en modo réplica hoy — el endpoint en vivo llega con un run comparativo real."
-    />
-  ) : (
-    <RvsPChart experiment={rvspQuery.data} />
+  // P13 — las lentes de dominio se RESUELVEN contra lo que el run declara
+  // (claim types + capability ids del stream y del certificado). El shell no
+  // sabe qué lentes existen: agregar un dominio es registrar una lente en
+  // src/lenses/index.ts, no editar esta función.
+  const lensContext = deriveLensContext(
+    runId,
+    runEvents,
+    certificateQuery.data?.envelope.payload.predicate.conclusions ?? []
   );
-
-  // Contenido SECUNDARIO: la ablación cuántico vs. clásico ya existente
-  // (nota 07 §1.3) — ambas son vistas honestas de ablación, conviven en la
-  // misma sub-tab (D5 no reemplaza AblationPanel, lo complementa).
-  const ablationSection = ablationQuery.isPending ? (
-    <LoadingState label="Cargando las métricas de ablación" />
-  ) : ablationQuery.isError ? (
-    <ErrorState
-      message={ablationQuery.error.message}
-      onRetry={() => void ablationQuery.refetch()}
-    />
-  ) : ablationQuery.data.length === 0 ? (
-    <EmptyState
-      title="Sin métricas de ablación todavía."
-      hint="Ejecute un run comparativo (cuántico vs. clásico) para poblar esta vista."
-    />
-  ) : (
-    <AblationPanel metrics={ablationQuery.data} />
-  );
-
-  const ablacion = (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8">
-      {rvspSection}
-      <div className="flex flex-col gap-4 border-t border-border pt-6">
-        <h3 className="text-sm font-medium text-muted-foreground">
-          Ablación — cuántico vs. clásico
-        </h3>
-        {ablationSection}
-      </div>
-    </div>
-  );
+  const lenses = resolveLenses(DOMAIN_LENSES, lensContext).map(lens => ({
+    id: lens.id,
+    label: lens.label,
+    content: lens.render(lensContext)
+  }));
 
   const procedencia =
     runEvents.length === 0 ? (
@@ -393,8 +271,7 @@ function RunDetailScreen({
       hilo={hilo}
       timeline={timeline}
       verificacion={verificacion}
-      red={<RedSlot />}
-      ablacion={ablacion}
+      lenses={lenses}
       procedencia={procedencia}
     />
   );

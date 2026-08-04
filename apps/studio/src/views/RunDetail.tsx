@@ -44,19 +44,40 @@ export interface RunDetailProps {
   readonly hilo: React.ReactNode;
   readonly timeline: React.ReactNode;
   readonly verificacion: React.ReactNode;
-  readonly red: React.ReactNode;
-  readonly ablacion: React.ReactNode;
   readonly procedencia: React.ReactNode;
+  /**
+   * P13 — las lentes de dominio YA RESUELTAS para este run
+   * (`product-model.md` §"Superficies de plataforma vs dominio"). Este
+   * componente no sabe qué lentes existen ni cuál aplica: las pinta como
+   * sub-tabs después de las de plataforma, en el orden en que llegan.
+   *
+   * Antes acá había `red` y `ablacion` como props OBLIGATORIAS — el shell
+   * nombraba el dominio del caso demo, y un run de otro dominio igual
+   * mostraba esas tabs vacías.
+   */
+  readonly lenses?: readonly ResolvedLens[];
 }
 
-const SUB_TABS = [
+/** Una lente ya resuelta: id, etiqueta y su contenido listo para pintar. */
+export interface ResolvedLens {
+  readonly id: string;
+  readonly label: string;
+  readonly content: React.ReactNode;
+}
+
+/**
+ * Las superficies de PLATAFORMA (genéricas, product-model.md): existen en
+ * todo run, sea del dominio que sea. Las de dominio llegan por `lenses` y se
+ * intercalan entre estas dos listas.
+ */
+const LEADING_TABS = [
   { id: 'hilo', label: 'Hilo' },
   { id: 'timeline', label: 'Timeline' },
-  { id: 'verificacion', label: 'Verificación' },
-  { id: 'red', label: 'Red' },
-  { id: 'ablacion', label: 'Ablación' },
-  { id: 'procedencia', label: 'Procedencia' }
+  { id: 'verificacion', label: 'Verificación' }
 ] as const;
+
+/** Procedencia cierra siempre: es la superficie de auditoría del run. */
+const TRAILING_TABS = [{ id: 'procedencia', label: 'Procedencia' }] as const;
 
 export default function RunDetail({
   summary,
@@ -65,14 +86,25 @@ export default function RunDetail({
   hilo,
   timeline,
   verificacion,
-  red,
-  ablacion,
   procedencia,
+  lenses = [],
   onCancelRun,
   cancelError,
   isCancelling
 }: RunDetailProps): React.ReactElement {
-  const slots = { hilo, timeline, verificacion, red, ablacion, procedencia } as const;
+  const platformSlots = { hilo, timeline, verificacion, procedencia } as const;
+  const conContenido = (tab: {
+    readonly id: keyof typeof platformSlots;
+    readonly label: string;
+  }) => ({
+    ...tab,
+    content: platformSlots[tab.id]
+  });
+  const tabs: readonly ResolvedLens[] = [
+    ...LEADING_TABS.map(conContenido),
+    ...lenses,
+    ...TRAILING_TABS.map(conContenido)
+  ];
   const [confirmandoCancel, setConfirmandoCancel] = useState(false);
 
   // Freeze §2: un stream terminal no acepta appends. Cancelar un run cerrado
@@ -154,15 +186,15 @@ export default function RunDetail({
 
       <Tabs defaultValue="hilo">
         <TabsList variant="line">
-          {SUB_TABS.map(tab => (
+          {tabs.map(tab => (
             <TabsTrigger key={tab.id} value={tab.id} className="px-2">
               {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
-        {SUB_TABS.map(tab => (
+        {tabs.map(tab => (
           <TabsContent key={tab.id} value={tab.id} className="pt-4">
-            {slots[tab.id]}
+            {tab.content}
           </TabsContent>
         ))}
       </Tabs>
