@@ -2541,3 +2541,23 @@ sorteó con un `DOCKER_CONFIG` limpio y temporal, sin tocar la config del usuari
 | `docs/QUICKSTART.md` — ejemplo de 2 patas | producto         | **FIX** — el ejemplo anterior daba 7/8; ahora 8/8 verificado en vivo |
 | `[tool.pyright] include` += `api/src`     | gates            | AMPLIADO — 26 errores destapados y resueltos                         |
 | `reads.py` — tipado de payloads           | E (api)          | ENDURECIDO — `cast` tras `isinstance`, runtime intacto               |
+
+### #151 — el quickstart corrido EN LIMPIO: de cero a certificado verificado
+
+Tras los fixes de #150 se destruyó todo (`docker compose down -v`, secreto borrado) y se
+ejecutó `docs/QUICKSTART.md` **literal, paso por paso**, como un tercero recién llegado.
+Sin atajos, sin pasos extra, sin editar nada a mitad:
+
+| Paso del doc                       | Resultado real                                                      |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| 2 · `generate-secrets.sh`          | secreto creado 644 dentro de `secrets/` 700                         |
+| 3 · `docker compose up -d --build` | volumen y red nuevos; **api healthy en ~13 s**; `worker` no arranca |
+| 4 · el `curl` documentado          | 202 + **2 `verification.completed`** (las dos patas)                |
+| 5 · certificado + `verify-bundle`  | **8/8 puntos verificados**, exit 0                                  |
+| 5b · bundle adulterado             | **FALLA [1/8]**, exit 1                                             |
+| Studio                             | `GET localhost:3000` → 200                                          |
+
+**La autoridad 2 del criterio #101 —«un externo instala y usa la plataforma sin nosotros
+al lado»— queda demostrada con evidencia, no con prosa.** Y la demostración vale
+precisamente porque la primera pasada NO funcionó: el paso 3 moría por permisos y el paso
+5 daba 7/8. Un quickstart que nadie ejecuta en limpio es una promesa sin verificar.
