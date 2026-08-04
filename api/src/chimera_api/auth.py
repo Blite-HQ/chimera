@@ -179,4 +179,25 @@ def create_auth_router(session_auth: SessionAuth) -> APIRouter:
     def create_session(response: Response) -> dict[str, object]:
         return session_auth.issue(response)
 
+    @router.get("/me")
+    def read_me(request: Request) -> dict[str, object]:
+        """Quién está operando (P6/M15 — el bloque de usuario del Studio).
+
+        Resuelve la identidad por la MISMA vía que las rutas de escritura
+        (`identity_from`), a propósito: si el Studio mostrara un usuario y
+        los eventos estamparan otro en `actor_id`, el bloque estaría
+        mintiendo sobre quién firma. Por eso también hereda el fail-closed —
+        una cookie rota devuelve 401 acá igual que en `POST /runs`, en vez de
+        degradar al operador local y contar dos versiones de quién sos.
+
+        No expone `domain_id` ni `spiffe_id`: el Studio no los usa y una
+        superficie de lectura no reparte más de lo que su consumidor pide.
+        """
+        identity = session_auth.identity_from(request)
+        return {
+            "id": identity.id,
+            "kind": identity.kind,
+            "permissions": sorted(identity.permissions),
+        }
+
     return router

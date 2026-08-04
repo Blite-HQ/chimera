@@ -11,11 +11,14 @@ import {
 import React from 'react';
 import { z } from 'zod';
 
+import { useQuery } from '@tanstack/react-query';
+
 import { AppShell } from '@/components/app-shell/AppShell';
 import { ReplayBanner } from '@/components/app-shell/ReplayBanner';
 
 import { ArtifactsScreen, KnowledgeScreen, RunDetailScreen, RunsScreen, SECTIONS } from './App';
 import { isLiveMode } from './data/env';
+import { meQueryOptions } from './data/queries';
 import PapersView from './views/PapersView';
 
 /**
@@ -69,10 +72,15 @@ function ProjectLayout(): React.ReactElement {
   const navigate = useNavigate();
   const pathname = usePathname();
   const section = seccionDePath(pathname);
+  // P6 — quién opera sale del API, no de una constante: el bloque de usuario
+  // muestra la MISMA identidad que quedará en `actor_id` de los eventos.
+  const me = useQuery(meQueryOptions()).data;
 
   return (
     <AppShell
       projectName={proj}
+      {...(me !== null &&
+        me !== undefined && { user: { id: me.id, label: me.id.split(':')[1] ?? me.id } })}
       sections={SECTIONS}
       activeSection={section}
       onSectionChange={sectionId =>

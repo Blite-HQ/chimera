@@ -50,6 +50,16 @@ def _make_client(store: EventStore | None = None) -> TestClient:
     return TestClient(create_app(event_store, registry=registry))
 
 
+def _get(client: TestClient, url: str) -> httpx.Response:
+    """Mismo motivo que `_post`: el TestClient de starlette devuelve
+    `Unknown` bajo pyright estricto, y castear en cada llamada esconde el
+    ruido en vez de resolverlo una vez."""
+    return cast(
+        httpx.Response,
+        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+    )
+
+
 def _post(client: TestClient, url: str, **kwargs: Any) -> httpx.Response:
     return cast(
         httpx.Response,
@@ -148,3 +158,46 @@ def test_cookie_secure_por_env_para_despliegues_tls(
     monkeypatch.setenv("CHIMERA_SESSION_COOKIE_SECURE", "1")
     secured = _post(_make_client(), "/auth/session").headers["set-cookie"]
     assert "Secure" in secured
+
+
+def test_me_devuelve_la_identidad_del_operador_sin_cookie() -> None:
+    """`GET /me` — quién está operando (P6/M15, bloque de usuario del Studio).
+
+    Sin cookie la identidad es la del operador local, la MISMA que estampan
+    los eventos: el Studio no puede mostrar un usuario distinto del que va a
+    quedar journalizado en `actor_id`, o el bloque mentiría sobre quién
+    firma."""
+    client = _make_client()
+    if True:
+        response = _get(client, "/me")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["id"] == _OPERATOR
+        assert body["kind"] in {"human", "agent", "service"}
+        assert isinstance(body["permissions"], list)
+
+
+def test_me_refleja_la_identidad_de_la_cookie() -> None:
+    """Con sesión, `GET /me` reporta la identidad de ESA sesión — no el
+    default. Es la misma resolución que usa cualquier ruta de escritura."""
+    client = _make_client()
+    if True:
+        _post(client, "/auth/session")
+
+        response = _get(client, "/me")
+
+        assert response.status_code == 200
+        assert response.json()["id"] == _OPERATOR
+
+
+def test_me_con_cookie_rota_falla_cerrado() -> None:
+    """Una cookie inválida NO degrada al default: 401. Si `GET /me`
+    degradara, el Studio mostraría 'operador local' mientras las rutas de
+    escritura rechazan con 401 — dos versiones de quién sos."""
+    client = _make_client()
+    if True:
+        cookies = cast(httpx.Cookies, client.cookies)  # pyright: ignore[reportUnknownMemberType]
+        cookies.set(SESSION_COOKIE, "no-es-un-jwt")
+
+        assert _get(client, "/me").status_code == 401

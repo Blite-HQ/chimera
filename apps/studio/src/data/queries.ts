@@ -15,6 +15,7 @@ import {
   getArtifacts,
   getCertificate,
   getKnowledge,
+  getMe,
   getRuns,
   getStepEvidence
 } from '../gatewayClient';
@@ -29,6 +30,7 @@ import { deriveArtifacts, deriveKnowledge, deriveRunSummary } from './projection
 import {
   ablationMetricSchema,
   ablationWireSchema,
+  meWireSchema,
   certificateBundleWireSchema,
   knowledgeClaimWireSchema,
   projectArtifactWireSchema,
@@ -45,6 +47,7 @@ import {
   wireEnvelopeSchema
 } from './schemas';
 
+import type { Me } from './schemas';
 import type {
   AblationMetric,
   DsseEnvelope,
@@ -340,4 +343,23 @@ export function rvspQueryOptions(runId: string) {
     queryKey: ['runs', runId, 'rvsp'] as const,
     queryFn: loadRvsP
   });
+}
+
+/**
+ * P6/M15 — la identidad de la sesión. En modo réplica no hay servidor a quien
+ * preguntarle, así que devuelve `null` y el shell no dibuja el bloque: un
+ * usuario inventado en una superficie de procedencia es exactamente el mock
+ * silencioso que la regla 1 prohíbe.
+ */
+export async function loadMe(): Promise<Me | null> {
+  if (!isLiveMode()) return null;
+  const res = await getMe();
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudo obtener la identidad de la sesión');
+  }
+  return meWireSchema.parse(res.data);
+}
+
+export function meQueryOptions() {
+  return queryOptions({ queryKey: ['me'] as const, queryFn: loadMe });
 }

@@ -221,6 +221,20 @@ export const missionMessageSchema = z.object({
 export type MissionMessage = z.infer<typeof missionMessageSchema>;
 
 /**
+ * P6/M15 — espejo de `GET /me` (`chimera_api.auth`). La URN sigue el patrón
+ * congelado de `Identity` (freeze §8): `{user|agent|service}:{slug}`. Se
+ * valida en la frontera como todo lo demás: una identidad malformada es una
+ * identidad en la que no se puede confiar para decir quién firma.
+ */
+export const meWireSchema = z.object({
+  id: z.string().regex(/^(user|agent|service):[a-z0-9-]+$/),
+  kind: z.enum(['human', 'agent', 'service']),
+  permissions: z.array(z.string())
+});
+
+export type Me = z.infer<typeof meWireSchema>;
+
+/**
  * S-D (decisión #125, superficie-visual.md §8) — Zod espejo del payload de
  * topología/partición contra el fixture de costura
  * `src/fixtures/contract/superficie/topology-snapshot.json` (origen:

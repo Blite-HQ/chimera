@@ -256,6 +256,15 @@ export async function getCertificate(runId: string): Promise<GatewayResponse<unk
 }
 
 /**
+ * P6/M15 — `GET {VITE_API_URL}/me`: quién está operando. El Studio muestra
+ * ESTA identidad y no una inventada, porque es la misma que el API estampa
+ * en `actor_id` cuando el run se journaliza.
+ */
+export async function getMe(): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/me`);
+}
+
+/**
  * D3 — `GET {VITE_API_URL}/runs` (endpoints-studio.md tabla, fila 1):
  * `RunSummary[]` wire snake_case. Único lugar del Studio que hace este GET
  * (INV-1); la validación Zod + el mapeo a `RunSummary` viven en
