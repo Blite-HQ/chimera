@@ -1,0 +1,74 @@
+[project]
+name = "chimera-distribution"
+version = "0.1.0"
+description = "La distribución Chimera — qué capabilities y qué extras viajan en el despliegue."
+readme = "README.md"
+requires-python = ">=3.12"
+
+# El runtime descubre capabilities por ENTRY POINTS instalados (ADR-008), así
+# que la distribución no es un manifiesto declarativo aparte: es un paquete
+# que DEPENDE de lo que ship-ea. Instalar este paquete = tener exactamente
+# esas capabilities registradas, ni una más.
+#
+# Antes la imagen se construía con `uv sync --all-packages --all-extras`
+# porque `--package chimera-api` dejaba la imagen SIN capabilities y todo run
+# vivo moría en resolve (decisión #95). El arreglo correcto no era instalar
+# TODO: era declarar la distribución. `--all-extras` arrastra los extras que
+# NADIE invoca —química cuántica, ML de gradient boosting, SDK de hardware
+# ajeno, un solver comercial— y los paga el disco de cada despliegue.
+dependencies = [
+    "chimera-api",
+    "chimera-engine",
+    "blite-capability",
+    # Ingesta no declara extras: su dependencia es la del engine.
+    "blite-cap-ingesta",
+    # Grafos: networkx para el modelo; gw (cvxpy) es el baseline clásico
+    # contra el que se compara el proponente cuántico — sin él no hay ablación.
+    "blite-cap-graphs[networkx,gw]",
+    # Cuántica: SOLO qaoa. Los extras vqe/vqc/dwave son las tres puertas por
+    # las que entran pyscf, pennylane y el SDK de D-Wave; ninguna capability
+    # instalada los importa hoy.
+    "blite-cap-quantum[qaoa]",
+    # Numérica: el ancla de diagonalización exacta del reto 3.
+    "blite-cap-numeric[full]",
+    # ML: sklearn cubre SVM precomputado + baseline del reto 2. xgboost queda
+    # fuera: ninguna capability lo usa.
+    "blite-cap-ml[sklearn]",
+    # Simulación: flujo de potencia = el verificador por ejecución.
+    "blite-cap-sim[pandapower]",
+    # SMT: Z3 es el backend de reglas de C3/M3.
+    "blite-cap-smt[z3]",
+    # Solvers: ortools (CP-SAT) es el ancla exacta. gurobi queda fuera — es
+    # comercial y requiere licencia; una imagen que lo instala promete un
+    # solver que el despliegue no puede usar.
+    "blite-cap-solvers[ortools]",
+    # Informe: matplotlib para las figuras del entregable.
+    "blite-cap-report[plot]",
+]
+
+[project.urls]
+Homepage = "https://github.com/blite/chimera"
+
+[tool.uv.sources]
+chimera-api = { workspace = true }
+chimera-engine = { workspace = true }
+blite-capability = { workspace = true }
+blite-cap-ingesta = { workspace = true }
+blite-cap-graphs = { workspace = true }
+blite-cap-quantum = { workspace = true }
+blite-cap-numeric = { workspace = true }
+blite-cap-ml = { workspace = true }
+blite-cap-sim = { workspace = true }
+blite-cap-smt = { workspace = true }
+blite-cap-solvers = { workspace = true }
+blite-cap-report = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Paquete sin código: solo declara la composición del despliegue. Las
+# policies de al lado (`policies/`) son DATOS con digest — no se empaquetan
+# acá, se montan; empaquetarlas cambiaría su ruta y con ella el digest.
+bypass-selection = true

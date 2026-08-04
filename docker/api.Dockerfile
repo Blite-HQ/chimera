@@ -10,14 +10,20 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# Copia el repo completo (respeta .dockerignore) e instala el workspace
-# COMPLETO con extras (--all-packages --all-extras): el registry del runtime
-# descubre capabilities por entry points instalados (ADR-008) — con
-# `--package chimera-api` la imagen quedaba SIN capabilities y todo run vivo
-# moría en resolve con KeyError (auditoría Fase 2, decisión #95). --no-dev
-# deja fuera solo el tooling (pytest/ruff/pyright).
+# Copia el repo completo (respeta .dockerignore) e instala LA DISTRIBUCIÓN
+# (P9/M14): `distributions/chimera` es un paquete que declara exactamente qué
+# capabilities y qué extras viajan, y el registry del runtime las descubre por
+# entry points instalados (ADR-008).
+#
+# Historia, porque el camino corto es un error conocido: `--package chimera-api`
+# dejaba la imagen SIN capabilities y todo run vivo moría en resolve con
+# KeyError (decisión #95), así que se pasó a `--all-packages --all-extras`.
+# Eso resolvió el bug y trajo otro: `--all-extras` arrastra TODOS los extras
+# declarados —química cuántica (pyscf), pennylane, el SDK de D-Wave, xgboost,
+# un solver comercial— que ninguna capability instalada importa. El punto medio
+# correcto es declarar la distribución: entry points completos, extras curados.
 COPY . .
-RUN uv sync --locked --all-packages --all-extras --no-dev
+RUN uv sync --locked --package chimera-distribution --no-dev
 
 COPY docker/api-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

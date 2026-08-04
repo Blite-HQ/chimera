@@ -9,6 +9,7 @@ Dockerfile real del servicio `studio`.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -45,20 +46,57 @@ def test_nginx_conf_disables_proxy_buffering_for_sse() -> None:
     assert "proxy_buffering off;" in text
 
 
-def test_nginx_conf_proxies_los_prefijos_vivos_y_ninguno_mas() -> None:
-    """P-rt 2026-08-02 (hallazgo 7): eran TRES prefijos y ahora son DOS.
+def _prefijos_servidos_por_el_api() -> set[str]:
+    """Los prefijos de primer nivel que el API sirve DE VERDAD, leídos de sus
+    rutas — no de una lista escrita a mano en este test."""
+    from chimera_api.app import create_app
 
-    `/invoke` se retiró del proxy junto con la ruta fantasma que lo motivaba
-    (ningún servidor la implementó jamás; `apps/studio/src/gatewayClient.ts`
-    documenta por qué se mató en vez de implementarla). Proxear un prefijo
-    que nadie sirve es superficie de ataque gratis y una pista falsa para
-    quien lea la config."""
+    from blite.events import create_event_store
+    from blite.runtime.registry import EntryPointRegistry
+
+    app = create_app(create_event_store(), registry=EntryPointRegistry({}))
+    # `app.routes` NO sirve: FastAPI envuelve cada router incluido en un
+    # `_IncludedRouter` y las rutas reales quedan adentro. El esquema OpenAPI
+    # es la declaración que el propio API hace de lo que sirve.
+    paths: list[str] = sorted(app.openapi()["paths"])
+    return {path.split("/")[1] for path in paths if len(path.split("/")) > 1}
+
+
+def test_nginx_proxea_exactamente_los_prefijos_que_el_api_sirve() -> None:
+    """El allowlist de nginx == las rutas de primer nivel del API. Ni más ni menos.
+
+    **De más** es superficie de ataque gratis y una pista falsa para quien lea
+    la config: fue el caso de `/invoke`, proxeado durante meses hacia una ruta
+    que ningún servidor implementó jamás (hallazgo 7, retirada por P-rt).
+
+    **De menos** es peor porque el síntoma miente: la petición cae en el
+    fallback de la SPA y el navegador recibe **HTML donde esperaba JSON**, con
+    un error de parseo que no menciona a nginx por ningún lado. Pasó con `/me`
+    (P6/M15), cazado recién contra compose. Por eso este test DERIVA la lista
+    de las rutas reales del API en vez de fijarla a mano: una ruta nueva sin
+    su prefijo en el proxy se pone roja acá, no en el navegador."""
     # Arrange
     text = _load_nginx_conf_text()
+    esperados = _prefijos_servidos_por_el_api()
+
+    # Act — el bloque `location ~ ^/(a|b|c)…` del proxy.
+    match = re.search(r"location ~ \^/\(([^)]+)\)", text)
+    assert match is not None, "no se encontró el bloque location del reverse-proxy"
+    proxeados = set(match.group(1).split("|"))
 
     # Assert
-    assert "location ~ ^/(runs|health)" in text
-    assert "invoke" not in text
+    assert proxeados == esperados, (
+        f"el proxy de nginx y las rutas del API divergieron.\n"
+        f"  solo en nginx (superficie muerta): {sorted(proxeados - esperados)}\n"
+        f"  solo en el API (devolverán HTML): {sorted(esperados - proxeados)}"
+    )
+
+
+def test_nginx_conf_no_proxea_la_ruta_fantasma_invoke() -> None:
+    """`/invoke` se retiró junto con la ruta que lo motivaba (hallazgo 7);
+    `apps/studio/src/gatewayClient.ts` documenta por qué se mató en vez de
+    implementarla."""
+    assert "invoke" not in _load_nginx_conf_text()
 
 
 def test_nginx_conf_has_the_spa_fallback_to_index_html() -> None:

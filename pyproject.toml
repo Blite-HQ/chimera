@@ -23,7 +23,7 @@ override-dependencies = ["highspy==1.14.0"]
 default-groups = ["dev", "experiment"]
 
 [tool.uv.workspace]
-members = ["sdk", "engine", "api", "capabilities/*"]
+members = ["sdk", "engine", "api", "capabilities/*", "distributions/*"]
 
 [tool.uv.sources]
 blite-capability = { workspace = true }

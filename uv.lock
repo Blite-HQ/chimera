@@ -23,6 +23,7 @@ members = [
     "blite-cap-solvers",
     "blite-capability",
     "chimera-api",
+    "chimera-distribution",
     "chimera-engine",
     "chimera-workspace",
 ]
@@ -752,6 +753,41 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.139.2" },
     { name = "jsonschema", specifier = ">=4.26" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.51.0" },
+]
+
+[[package]]
+name = "chimera-distribution"
+version = "0.1.0"
+source = { editable = "distributions/chimera" }
+dependencies = [
+    { name = "blite-cap-graphs", extra = ["gw", "networkx"] },
+    { name = "blite-cap-ingesta" },
+    { name = "blite-cap-ml", extra = ["sklearn"] },
+    { name = "blite-cap-numeric", extra = ["full"] },
+    { name = "blite-cap-quantum", extra = ["qaoa"] },
+    { name = "blite-cap-report", extra = ["plot"] },
+    { name = "blite-cap-sim", extra = ["pandapower"] },
+    { name = "blite-cap-smt", extra = ["z3"] },
+    { name = "blite-cap-solvers", extra = ["ortools"] },
+    { name = "blite-capability" },
+    { name = "chimera-api" },
+    { name = "chimera-engine" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "blite-cap-graphs", extras = ["networkx", "gw"], editable = "capabilities/graphs" },
+    { name = "blite-cap-ingesta", editable = "capabilities/ingesta" },
+    { name = "blite-cap-ml", extras = ["sklearn"], editable = "capabilities/ml" },
+    { name = "blite-cap-numeric", extras = ["full"], editable = "capabilities/numeric" },
+    { name = "blite-cap-quantum", extras = ["qaoa"], editable = "capabilities/quantum" },
+    { name = "blite-cap-report", extras = ["plot"], editable = "capabilities/report" },
+    { name = "blite-cap-sim", extras = ["pandapower"], editable = "capabilities/sim" },
+    { name = "blite-cap-smt", extras = ["z3"], editable = "capabilities/smt" },
+    { name = "blite-cap-solvers", extras = ["ortools"], editable = "capabilities/solvers" },
+    { name = "blite-capability", editable = "sdk" },
+    { name = "chimera-api", editable = "api" },
+    { name = "chimera-engine", editable = "engine" },
 ]
 
 [[package]]
