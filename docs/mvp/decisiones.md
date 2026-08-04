@@ -2561,3 +2561,81 @@ Sin atajos, sin pasos extra, sin editar nada a mitad:
 al lado»— queda demostrada con evidencia, no con prosa.** Y la demostración vale
 precisamente porque la primera pasada NO funcionó: el paso 3 moría por permisos y el paso
 5 daba 7/8. Un quickstart que nadie ejecuta en limpio es una promesa sin verificar.
+
+## Sesión PRODUCTO-STUDIO (worktree `mejorado/producto-ui`, 2026-08-03/04)
+
+**Rama base: `mejorado/producto-rt` @08d9fbb, NO `mejorado/base`.** Decisión de esta
+sesión, registrada porque cambia cómo mergea la de control: P-rt cerró SIN merge y CP1
+es explícitamente un checkpoint de DOS lados (P-rt ↔ P-ui). Ramificar desde `base`
+habría obligado a fabricar el lado E para probar el lado D — exactamente el mock
+silencioso que la regla 1 prohíbe. **El merge de CP1 lleva ambas ramas juntas.**
+
+### Decisiones tomadas con Dylan
+
+| #   | Decisión                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P7  | **Router = TanStack Router.** Mismo ecosistema que `@tanstack/react-query` (ya instalado), params y search params tipados de verdad + validación Zod nativa — el stack ya es TanStack+Zod. Descartados: React Router v7 (`useParams` tipado por aserción, no real) y wouter (sin anidamiento de primera clase, que es justo lo que el árbol #78 necesita). **Propuesta hecha ANTES de instalar, como mandaba el prompt.** |
+| P8  | **M16 branding = BLOQUEADO-POR-DYLAN.** Las 21 referencias visuales no están disponibles; la decisión red-de-nodos vs 3-barras y el sistema de marca NO se toman a ciegas. El ítem sale del alcance de esta sesión con causa, no por olvido.                                                                                                                                                                              |
+
+### Tabla de interacciones (interfaces tocadas)
+
+| Interfaz                                           | Dominio afectado | Estado del contrato                                                           |
+| -------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------- |
+| `mission.message` ↔ `missionMessageSchema`         | A↔D              | **CERRADO** — fixture single-origin + Zod espejo + parse test                 |
+| `POST /runs/{id}/messages`                         | E↔D              | **VIVO** — 202/409/422/404 verificados contra compose                         |
+| `POST /runs/{id}/cancel`                           | E↔D              | **VIVO** — 422 del `parent_cancelled` reservado verificado                    |
+| `POST /runs/{id}/approvals/{id}`                   | E↔D              | CABLEADO — card inline + 403 `override:apply:run` mostrado tal cual           |
+| `POST /runs` (envelope)                            | E↔D              | **CORREGIDO** — el server responde `{run_id}` pelado, no envelope (ver abajo) |
+| `run.created.thread_id`                            | A↔E↔D            | **VIVO** — enhebrado Studio→API→stream verificado                             |
+| `NewRunInput` `{instance,proposer}` → misión libre | D                | ROTO A PROPÓSITO — consumidor único (`App.tsx`), migrado en el mismo commit   |
+| `RunThreadModel.checklist` → `.entries`            | D                | ROTO A PROPÓSITO — consumidor único (`RunThread`), tests migrados             |
+| `GatewayResponse` gana `status?`                   | D                | ADITIVO — sin él, 409/403/422 colapsan a un mensaje genérico                  |
+| `KNOWN_RUN_EVENT_TYPES` += chat                    | E↔D              | ADITIVO — la whitelist es ahora exportada y verificada contra los fixtures    |
+
+### Defectos propios cazados (dos por corrida viva, uno por el gate)
+
+1. **`postRun` esperaba un envelope que el API nunca envió.** `POST /runs` responde el
+   wire crudo `{run_id}` (`CreateRunResponse`); el cliente lo casteaba a
+   `GatewayResponse`, así que `success` salía `undefined` y **crear un run desde el
+   Studio en modo live SIEMPRE fallaba con «No se pudo crear el run» aunque el run se
+   creaba**. Lo grave no es el bug: es que los tests estaban VERDES porque el mock
+   devolvía un envelope — el doble codificaba un contrato que el servidor no cumple.
+   Solo apareció al correr el Studio real contra el API real. **Es la regla 2 del plan
+   paralelo justificándose sola.**
+2. **El anti-drift de fixtures del harness tenía un hueco estructural.**
+   `tests/unit/contract/test_harness_contract_fixtures.py` parametriza sus 3 tests sobre
+   `_MODELS`, un espejo A MANO de `_cases()` del generador: un caso nuevo quedaba sin
+   guard, en silencio y con la suite en verde. Pasó con `mission-message`. Cerrado con
+   un cuarto test que compara ambos conjuntos.
+3. **Los fixtures del Studio nombraban `capability.job.invoked`**, un evento que el
+   servidor jamás emitió (hallazgo 4 del handoff S3). Traducidos, y la whitelist del
+   cliente pasa a exportarse para que un test la compare contra los fixtures.
+
+### CP1 — VERIFICADO VIVO contra compose (2026-08-04)
+
+Stack del worktree (`mejorado-producto-ui-{postgres,api,studio}`), imágenes construidas
+desde esta rama. Wire E verificado con `curl`; lado D conducido en el navegador real:
+
+| Comprobación                                                        | Resultado                                             |
+| ------------------------------------------------------------------- | ----------------------------------------------------- |
+| `POST /runs` con misión de TEXTO LIBRE                              | 202 `{run_id}` — sin plantilla en el body             |
+| `POST /runs/{id}/messages` en stream vivo                           | **202** `{message_id}`                                |
+| `mission.message` en el stream, en orden de log                     | **SÍ** — entre `capability.job.submitted` y `.failed` |
+| `POST /runs/{id}/messages` sobre stream terminal                    | **409** con el texto del freeze §2                    |
+| `text` vacío                                                        | **422**                                               |
+| `cancel` con `reason: "parent_cancelled"` (reservado a la cascada)  | **422**                                               |
+| run desconocido                                                     | **404**                                               |
+| Studio: hilo con misión + plan + **mensaje sucesivo** + cierre      | **SÍ** (captura y snapshot de accesibilidad)          |
+| Studio: stream terminal ⇒ sin compositor + «Continuar en run nuevo» | **SÍ**                                                |
+| Studio → `POST /runs` → `run.created.thread_id` journalizado        | **SÍ** — `thread_id: run-cd74980f…` en el evento      |
+
+**Lo que NO se verificó vivo y por qué:** la card de approval no se ejercitó contra un
+`approval.requested` real — el loop no emitió ninguno en estas corridas (el run muere
+antes, en `GatewayRejection`). Su contrato está cubierto por tests contra los fixtures
+de costura, pero **el par vivo queda pendiente** para quien tenga un run que pida
+aprobación. Se declara, no se disimula.
+
+**Hallazgo lateral (no arreglado, fuera de alcance):** un run fallido dispara
+`GET /runs/{id}/certificate` → 409, que aparece como error de consola en el navegador.
+Es honesto (un run fallido no tiene certificado) pero ruidoso: el Studio pide el
+certificado incondicionalmente. Candidato a no pedirlo cuando el run no es `completado`.
