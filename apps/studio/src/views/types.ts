@@ -292,7 +292,25 @@ export interface RvsPExperiment {
  * dueña del shape del formulario (F3: data/** importa tipos de views/**,
  * nunca al revés).
  */
+/**
+ * Lo que el usuario encarga al abrir un run (P3-D, modo misión).
+ *
+ * `mission` es TEXTO LIBRE y es lo único obligatorio: es el encargo, escrito
+ * por quien lo pide. Las pistas son opcionales a propósito — el harness las
+ * resuelve del plan si no vienen, y forzarlas convertiría una conversación en
+ * un formulario (que es justo lo que la plantilla vieja hacía).
+ */
 export interface NewRunInput {
-  readonly instance: string;
-  readonly proposer: string;
+  readonly mission: string;
+  /** Pista opcional: instancia del corpus (`instance_id` del contrato). */
+  readonly instance?: string;
+  /** Pista opcional: proposer preferido (se resuelve a `capability_id`). */
+  readonly proposer?: string;
+  /**
+   * `run_id` del run RAÍZ del hilo (`chat-conversacion.md` §Contrato-4).
+   * Es lo que vuelve accionable al 409: un stream terminal no acepta más
+   * mensajes, así que continuar la conversación es abrir un run NUEVO que
+   * cita al raíz — correlación de lectura, jamás streams anidados.
+   */
+  readonly threadId?: string;
 }

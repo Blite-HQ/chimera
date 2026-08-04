@@ -22,7 +22,7 @@ import { ThemeProvider } from '@/lib/theme';
 
 import { isLiveMode } from './data/env';
 import { ICE_GRID_DATASET } from './data/iceGrid';
-import { useCreateRun } from './data/mutations';
+import { useCancelRun, useCreateRun, useRespondApproval, useSendMessage } from './data/mutations';
 import {
   ablationQueryOptions,
   artifactsQueryOptions,
@@ -167,15 +167,29 @@ export function RedSlot(): React.ReactElement {
 /** Vistas del run montadas como slots de RunDetail (queries + estado acá). */
 function RunDetailScreen({
   runId,
-  onBack
+  onBack,
+  onContinueThread
 }: {
   readonly runId: string;
   readonly onBack?: () => void;
+  /**
+   * P3-D §Contrato-4 — el stream terminal no acepta appends (409), así que
+   * continuar la conversación es abrir un run NUEVO que cite a este como
+   * hilo. Sin esta salida, el 409 sería un callejón sin salida.
+   */
+  readonly onContinueThread?: (threadId: string) => void;
 }): React.ReactElement {
   // No-op en modo fixtures/demo; en modo live alimenta el cache con el SSE
   // real (Nivel-1 task 1) — llamada incondicional, el hook decide adentro.
   useRunEventStream(runId);
   const summariesQuery = useQuery(runSummariesQueryOptions());
+  // P3-D — las tres acciones de conversación del run. Solo se CONECTAN en
+  // modo live: en réplica no hay servidor que reciba el POST, y un botón que
+  // no puede cumplir lo que promete es peor que su ausencia (regla 1 del plan
+  // paralelo: cero mocks silenciosos).
+  const sendMessage = useSendMessage(runId);
+  const cancelRun = useCancelRun(runId);
+  const respondApproval = useRespondApproval(runId);
   const eventsQuery = useQuery(runEventsQueryOptions(runId));
   const runEvents = eventsQuery.data ?? [];
   // D3 — GET /runs/{id}/steps/{step_id}/evidence es POR PASO; se piden los
@@ -213,7 +227,21 @@ function RunDetailScreen({
   ) : eventsQuery.isError ? (
     <ErrorState message={eventsQuery.error.message} onRetry={() => void eventsQuery.refetch()} />
   ) : (
-    <RunThread summary={summary} events={runEvents} />
+    <RunThread
+      summary={summary}
+      events={runEvents}
+      {...(isLiveMode() && {
+        onSendMessage: (text: string) => sendMessage.mutate(text),
+        isSendingMessage: sendMessage.isPending,
+        sendError: sendMessage.error?.message ?? null,
+        onRespondApproval: (approvalId: string, response: unknown) =>
+          respondApproval.mutate({ approvalId, response }),
+        approvalError: respondApproval.error?.message ?? null
+      })}
+      {...(onContinueThread !== undefined && {
+        onContinueThread: () => onContinueThread(runId)
+      })}
+    />
   );
 
   const timeline = eventsQuery.isPending ? (
@@ -352,6 +380,11 @@ function RunDetailScreen({
     <RunDetail
       summary={summary}
       onBack={onBack}
+      {...(isLiveMode() && {
+        onCancelRun: () => cancelRun.mutate(undefined),
+        isCancelling: cancelRun.isPending,
+        cancelError: cancelRun.error?.message ?? null
+      })}
       onDownloadBundle={() => {
         if (certificateQuery.data) {
           downloadJson('bundle.json', certificateQuery.data.wire);
@@ -368,31 +401,43 @@ function RunDetailScreen({
 }
 
 function RunsScreen({
-  onSelectRun
+  onSelectRun,
+  threadId,
+  onThreadConsumed
 }: {
   readonly onSelectRun: (runId: string) => void;
+  /** Presente ⇒ el form abre continuando ese hilo (§Contrato-4). */
+  readonly threadId?: string;
+  readonly onThreadConsumed?: () => void;
 }): React.ReactElement {
   const summariesQuery = useQuery(runSummariesQueryOptions());
   const [showNewRun, setShowNewRun] = useState(false);
   const createRunMutation = useCreateRun();
+  const formAbierto = showNewRun || threadId !== undefined;
+
+  const cerrarForm = (): void => {
+    setShowNewRun(false);
+    onThreadConsumed?.();
+  };
 
   // Nivel-1 task 2 — "Nuevo run" reemplaza la lista mientras está abierto; el
   // POST /runs real no existe todavía (createRun corta a DEMO_RUN_ID en
   // modo fixtures/demo — el flip a live ya está escrito en data/mutations).
-  if (showNewRun) {
+  if (formAbierto) {
     return (
       <NewRunView
         onSubmit={input =>
           createRunMutation.mutate(input, {
             onSuccess: ({ runId }) => {
-              setShowNewRun(false);
+              cerrarForm();
               onSelectRun(runId);
             }
           })
         }
         isPending={createRunMutation.isPending}
         error={createRunMutation.error?.message ?? null}
-        onCancel={() => setShowNewRun(false)}
+        onCancel={cerrarForm}
+        {...(threadId !== undefined && { threadId })}
       />
     );
   }
@@ -460,10 +505,20 @@ function KnowledgeScreen({
 function Studio(): React.ReactElement {
   const [section, setSection] = useState<SectionId>('runs');
   const [runId, setRunId] = useState<string | undefined>(undefined);
+  const [threadId, setThreadId] = useState<string | undefined>(undefined);
 
   const openRun = (id: string): void => {
     setSection('runs');
     setRunId(id);
+    setThreadId(undefined);
+  };
+
+  // §Contrato-4 — continuar un hilo cerrado: se deja el detalle y se abre el
+  // form citando al run raíz. El hilo es correlación de LECTURA entre
+  // corridas; cada run conserva su propio stream y su propio certificado.
+  const continueThread = (raiz: string): void => {
+    setRunId(undefined);
+    setThreadId(raiz);
   };
   const goToSection = (id: string): void => {
     setSection(id as SectionId);
@@ -491,9 +546,17 @@ function Studio(): React.ReactElement {
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         {section === 'runs' &&
           (runId ? (
-            <RunDetailScreen runId={runId} onBack={() => setRunId(undefined)} />
+            <RunDetailScreen
+              runId={runId}
+              onBack={() => setRunId(undefined)}
+              onContinueThread={continueThread}
+            />
           ) : (
-            <RunsScreen onSelectRun={openRun} />
+            <RunsScreen
+              onSelectRun={openRun}
+              {...(threadId !== undefined && { threadId })}
+              onThreadConsumed={() => setThreadId(undefined)}
+            />
           ))}
         {section === 'artifacts' && <ArtifactsScreen onOpenRun={openRun} />}
         {section === 'papers' && <PapersView />}

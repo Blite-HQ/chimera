@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, it, test, vi } from 'vitest';
 
 import RunDetail from './RunDetail';
 
@@ -105,5 +105,83 @@ describe('RunDetail', () => {
     await user.click(screen.getByRole('tab', { name: 'Verificación' }));
     expect(screen.getByText('vista verificación')).toBeInTheDocument();
     expect(screen.queryByText('vista timeline')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * P3-D (N1) — `run.cancelled` estaba congelado desde antes y no tenía quién
+ * lo emitiera; P-rt le dio ruta y acá le damos botón. La regla del freeze §2
+ * manda la afordancia: un stream terminal no acepta appends, así que cancelar
+ * un run ya cerrado no es una acción deshabilitada «por las dudas» — es una
+ * acción que no existe.
+ */
+function Harness({
+  summary,
+  onCancel,
+  cancelError
+}: {
+  readonly summary: RunSummary;
+  readonly onCancel?: () => void;
+  readonly cancelError?: string | null;
+}) {
+  return (
+    <RunDetail
+      summary={summary}
+      onDownloadBundle={vi.fn()}
+      {...(onCancel !== undefined && { onCancelRun: onCancel })}
+      {...(cancelError !== undefined && { cancelError })}
+      hilo={<p>vista hilo</p>}
+      timeline={<p>vista timeline</p>}
+      verificacion={<p>vista verificación</p>}
+      red={<p>vista red</p>}
+      ablacion={<p>vista ablación</p>}
+      procedencia={<p>vista procedencia</p>}
+    />
+  );
+}
+
+describe('RunDetail — cancelar el run (P3-D)', () => {
+  const enCurso: RunSummary = { ...RUN, status: 'en_curso' };
+
+  it('ofrece cancelar mientras el run está en curso', () => {
+    render(<Harness summary={enCurso} onCancel={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /cancelar/i })).toBeInTheDocument();
+  });
+
+  it('no ofrece cancelar un run ya terminal (§2: el stream no acepta appends)', () => {
+    render(<Harness summary={{ ...RUN, status: 'completado' }} onCancel={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: /cancelar/i })).not.toBeInTheDocument();
+  });
+
+  it('no ofrece cancelar cuando no hay quién atienda la acción', () => {
+    render(<Harness summary={enCurso} />);
+
+    expect(screen.queryByRole('button', { name: /cancelar/i })).not.toBeInTheDocument();
+  });
+
+  it('avisa antes de cancelar y solo llama al handler si se confirma', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(<Harness summary={enCurso} onCancel={onCancel} />);
+
+    await user.click(screen.getByRole('button', { name: /^cancelar/i }));
+    expect(onCancel).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: /confirmar/i }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('muestra el error del server tal cual (409 si el run murió mientras tanto)', () => {
+    render(
+      <Harness
+        summary={enCurso}
+        onCancel={vi.fn()}
+        cancelError="el run ya es terminal — el stream no acepta más appends"
+      />
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('no acepta más appends');
   });
 });

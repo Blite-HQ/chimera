@@ -1,5 +1,5 @@
-import { ArrowLeft, Download } from 'lucide-react';
-import React from 'react';
+import { ArrowLeft, Ban, Download } from 'lucide-react';
+import React, { useState } from 'react';
 
 import {
   RUN_STATUS_LABELS,
@@ -7,6 +7,7 @@ import {
   RunStatusDot
 } from '@/components/runs/RunStatusDot';
 import { AssuranceBadge, conclusionTone } from '@chimera/assurance-ui';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,14 @@ export interface RunDetailProps {
   readonly onDownloadBundle: () => void;
   /** Vuelve a la lista de runs (directriz Dylan 2026-07-29: navegabilidad). */
   readonly onBack?: () => void;
+  /**
+   * P3-D (N1) — emisor de `run.cancelled`. Ausente ⇒ no hay quién atienda la
+   * acción (modo réplica) y el botón NO se dibuja: un control que no hace nada
+   * es peor que ninguno.
+   */
+  readonly onCancelRun?: () => void;
+  readonly cancelError?: string | null;
+  readonly isCancelling?: boolean;
   readonly hilo: React.ReactNode;
   readonly timeline: React.ReactNode;
   readonly verificacion: React.ReactNode;
@@ -58,9 +67,17 @@ export default function RunDetail({
   verificacion,
   red,
   ablacion,
-  procedencia
+  procedencia,
+  onCancelRun,
+  cancelError,
+  isCancelling
 }: RunDetailProps): React.ReactElement {
   const slots = { hilo, timeline, verificacion, red, ablacion, procedencia } as const;
+  const [confirmandoCancel, setConfirmandoCancel] = useState(false);
+
+  // Freeze §2: un stream terminal no acepta appends. Cancelar un run cerrado
+  // no es una acción deshabilitada — es una acción que no existe.
+  const puedeCancelar = onCancelRun !== undefined && summary.status === 'en_curso';
 
   return (
     // Aire (directriz Dylan 2026-07-29): header+meta agrupados con gap-2 (8),
@@ -88,13 +105,46 @@ export default function RunDetail({
             verdict={conclusionTone(summary.verdict)}
             verifierClass={summary.titularClass}
           />
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {puedeCancelar &&
+              (confirmandoCancel ? (
+                <>
+                  <span className="text-xs text-muted-foreground">
+                    Se detiene la corrida y el stream queda cerrado.
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={isCancelling === true}
+                    onClick={() => {
+                      setConfirmandoCancel(false);
+                      onCancelRun?.();
+                    }}
+                  >
+                    {isCancelling === true ? 'Cancelando…' : 'Confirmar'}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmandoCancel(false)}>
+                    Volver
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setConfirmandoCancel(true)}>
+                  <Ban data-icon="inline-start" />
+                  Cancelar run
+                </Button>
+              ))}
             <Button variant="outline" size="sm" onClick={onDownloadBundle}>
               <Download data-icon="inline-start" />
               Descargar bundle
             </Button>
           </div>
         </div>
+
+        {cancelError !== undefined && cancelError !== null && cancelError !== '' && (
+          <Alert variant="destructive">
+            <AlertDescription>{cancelError}</AlertDescription>
+          </Alert>
+        )}
 
         <p className="text-xs text-muted-foreground">
           <span className="font-mono">{summary.actor}</span> · {shortDate(summary.completedAt)} ·{' '}

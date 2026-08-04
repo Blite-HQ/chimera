@@ -3,7 +3,14 @@ import { describe, expect, test } from 'vitest';
 
 import RunThread, { deriveRunThread } from './RunThread';
 
+import type { ThreadPlanItem } from './RunThread';
 import type { ProjectedEvent, RunSummary } from './types';
+
+/** El checklist vive en la entrada `plan` del hilo (P3-D reordenó el modelo). */
+function checklistDe(events: readonly ProjectedEvent[]): readonly ThreadPlanItem[] {
+  const plan = deriveRunThread(events).entries.find(entry => entry.kind === 'plan');
+  return plan?.items ?? [];
+}
 
 /**
  * D6 (decisión #93) — dobles ETIQUETADOS: los payloads de plan.* siguen la
@@ -63,33 +70,29 @@ function planItemUpdated(globalSeq: number, status: string, cause?: string): Pro
 
 describe('deriveRunThread (reducer puro sobre el stream)', () => {
   test('pliega plan.item_updated sobre los ítems de plan.created (append-only)', () => {
-    const thread = deriveRunThread([
-      PLAN_CREATED,
-      planItemUpdated(4, 'running'),
-      planItemUpdated(7, 'ok')
-    ]);
+    const events = [PLAN_CREATED, planItemUpdated(4, 'running'), planItemUpdated(7, 'ok')];
 
-    expect(thread.mission).toBe(MISSION);
-    expect(thread.checklist).toHaveLength(1);
-    expect(thread.checklist[0].status).toBe('ok');
+    expect(deriveRunThread(events).mission).toBe(MISSION);
+    expect(checklistDe(events)).toHaveLength(1);
+    expect(checklistDe(events)[0]?.status).toBe('ok');
   });
 
   test('conserva la cause del último update (transición failed)', () => {
-    const thread = deriveRunThread([
+    const events = [
       PLAN_CREATED,
       planItemUpdated(4, 'running'),
       planItemUpdated(5, 'failed', 'exhausted')
-    ]);
+    ];
 
-    expect(thread.checklist[0].status).toBe('failed');
-    expect(thread.checklist[0].cause).toBe('exhausted');
+    expect(checklistDe(events)[0]?.status).toBe('failed');
+    expect(checklistDe(events)[0]?.cause).toBe('exhausted');
   });
 
   test('sin plan.created no hay hilo (run claim-first)', () => {
-    const thread = deriveRunThread([event({ type: 'run.started' })]);
+    const events = [event({ type: 'run.started' })];
 
-    expect(thread.mission).toBeUndefined();
-    expect(thread.checklist).toHaveLength(0);
+    expect(deriveRunThread(events).mission).toBeUndefined();
+    expect(deriveRunThread(events).entries).toHaveLength(0);
   });
 });
 

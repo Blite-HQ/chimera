@@ -92,6 +92,15 @@ export interface CreateRunMissionBody {
     readonly tokens?: number;
     readonly cost_usd?: number;
   };
+  /**
+   * S-A §Contrato-4 (aditivos, ceremonia #123): `thread_id` es el `run_id` del
+   * run RAÍZ de la conversación — correlación de LECTURA entre corridas, jamás
+   * streams anidados (`parent_run_id` es otra cosa: jerarquía de sub-runs
+   * DENTRO de una corrida). `project_id` es referencia opaca a la fila
+   * relacional de M15, fuera del event store.
+   */
+  readonly thread_id?: string;
+  readonly project_id?: string;
 }
 
 /**

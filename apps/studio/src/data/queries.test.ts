@@ -25,6 +25,8 @@ import { RVSP_EXPERIMENT } from '../fixtures/rvsp';
 import { STEP_EVIDENCE } from '../fixtures/stepEvidence';
 import { deriveArtifacts, deriveKnowledge, deriveRunSummary } from './projections';
 import { projectedEventSchema } from './schemas';
+
+import type { RunSummary } from '../views/types';
 import {
   ablationQueryOptions,
   artifactsQueryOptions,
@@ -746,5 +748,56 @@ describe('rvspQueryOptions', () => {
   it('arma la queryKey por runId', () => {
     const options = rvspQueryOptions('run-42');
     expect(options.queryKey).toEqual(['runs', 'run-42', 'rvsp']);
+  });
+});
+
+/**
+ * P3-D — la lista de runs se refresca sola MIENTRAS haya trabajo en curso.
+ *
+ * `GET /runs` es una lectura, no un stream: sin refetch, un run lanzado desde
+ * el Studio se queda en «en_curso» en pantalla hasta que alguien recarga —
+ * la plataforma parece colgada cuando en realidad terminó. Y al revés: dejar
+ * un polling permanente castiga a un proyecto con 200 runs terminales para
+ * no enterarse de nada. El intervalo se ATA al dato: hay `en_curso` ⇒ hay
+ * motivo para volver a preguntar.
+ */
+describe('runSummariesQueryOptions — refetch atado al estado real', () => {
+  const RUN = (status: RunSummary['status']): RunSummary => ({
+    runId: 'r1',
+    status,
+    conclusion: 'c',
+    verdict: 'inconclusive',
+    titularLevel: 'AL0',
+    titularClass: 'formal_exact',
+    eventsCount: 1,
+    actor: 'user:dylan'
+  });
+
+  it('sigue preguntando mientras al menos un run está en curso', () => {
+    const { refetchInterval } = runSummariesQueryOptions();
+    const intervalo = refetchInterval as (query: {
+      state: { data?: readonly RunSummary[] };
+    }) => number | false;
+
+    expect(intervalo({ state: { data: [RUN('completado'), RUN('en_curso')] } })).toBeGreaterThan(0);
+  });
+
+  it('deja de preguntar cuando todos terminaron', () => {
+    const { refetchInterval } = runSummariesQueryOptions();
+    const intervalo = refetchInterval as (query: {
+      state: { data?: readonly RunSummary[] };
+    }) => number | false;
+
+    expect(intervalo({ state: { data: [RUN('completado'), RUN('fallido')] } })).toBe(false);
+    expect(intervalo({ state: { data: [RUN('cancelado')] } })).toBe(false);
+  });
+
+  it('no pregunta cuando todavía no hay datos (el primer fetch está en vuelo)', () => {
+    const { refetchInterval } = runSummariesQueryOptions();
+    const intervalo = refetchInterval as (query: {
+      state: { data?: readonly RunSummary[] };
+    }) => number | false;
+
+    expect(intervalo({ state: {} })).toBe(false);
   });
 });

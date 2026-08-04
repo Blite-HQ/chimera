@@ -13,9 +13,9 @@
  * el Pydantic `MissionRequest`) fija este body en ambos lados.
  */
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { postRun } from '../gatewayClient';
+import { postApprovalResponse, postRun, postRunCancel, postRunMessage } from '../gatewayClient';
 import { isLiveMode } from './env';
 import { DEMO_RUN_ID } from './queries';
 
@@ -48,14 +48,30 @@ export interface CreateRunResult {
 
 /**
  * Mapper puro: NewRunInput (form) → CreateRunMissionBody (modo misión).
- * La misión es el encargo conversacional (product-model.md, D6) — el server
- * la journaliza como description del ítem fundacional del plan.
+ *
+ * **P3-D — la plantilla murió.** Este mapper interpolaba una misión fija
+ * («Particionar la red ${instance} en islas controladas…») a partir de dos
+ * selects. Eso no era un default: era el Studio poniéndole palabras al
+ * usuario. Y como el modo misión journaliza la misión como `description` del
+ * ítem fundacional del plan —dentro del `provenance_hash`— el certificado
+ * terminaba amparando un encargo que nadie escribió. Además cableaba la
+ * plataforma a UN problema (partición de redes), justo lo que la generalidad
+ * de esta fase existe para romper.
+ *
+ * Hoy la misión viaja tal cual. Las pistas se OMITEN cuando no vienen —
+ * `extra="forbid"` del Pydantic acepta ausencia, no `undefined` explícito.
  */
 export function toCreateRunBody(input: NewRunInput): CreateRunMissionBody {
+  const capabilityId =
+    input.proposer === undefined
+      ? undefined
+      : (PROPOSER_CAPABILITY[input.proposer] ?? input.proposer);
+
   return {
-    mission: `Particionar la red ${input.instance} en islas controladas y certificar la optimalidad del corte`,
-    instance_id: input.instance,
-    capability_id: PROPOSER_CAPABILITY[input.proposer] ?? input.proposer
+    mission: input.mission,
+    ...(input.instance !== undefined && { instance_id: input.instance }),
+    ...(capabilityId !== undefined && { capability_id: capabilityId }),
+    ...(input.threadId !== undefined && { thread_id: input.threadId })
   };
 }
 
@@ -73,4 +89,76 @@ export async function createRun(input: NewRunInput): Promise<CreateRunResult> {
 
 export function useCreateRun(): UseMutationResult<CreateRunResult, Error, NewRunInput> {
   return useMutation({ mutationFn: createRun });
+}
+
+/**
+ * P3-D — las tres acciones de conversación del run. Todas comparten la misma
+ * forma: postean por `gatewayClient` (INV-1), traducen un `!success` a
+ * `Error` con el TEXTO DEL SERVER (nunca uno genérico — el 409 y el 403
+ * dicen cosas distintas y accionables) e invalidan lo que quedó viejo.
+ *
+ * En vivo el SSE es el escritor del stream, así que los eventos nuevos
+ * llegan solos; la invalidación cubre el resto (`GET /runs`, cuyo `status`
+ * cambia al cancelar) y el caso de un SSE caído.
+ */
+
+/** Error tipado por status, para que la UI pueda reaccionar al 409 sin parsear texto. */
+export class GatewayCallError extends Error {
+  readonly status: number | undefined;
+
+  constructor(message: string, status: number | undefined) {
+    super(message);
+    this.name = 'GatewayCallError';
+    this.status = status;
+  }
+}
+
+function throwOnFailure(res: { success: boolean; error: string | null; status?: number }): void {
+  if (!res.success) {
+    throw new GatewayCallError(res.error ?? 'La operación no se pudo completar', res.status);
+  }
+}
+
+export function useSendMessage(runId: string): UseMutationResult<void, Error, string> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (text: string) => {
+      throwOnFailure(await postRunMessage(runId, text));
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['runs', runId, 'events'] });
+    }
+  });
+}
+
+export function useCancelRun(runId: string): UseMutationResult<void, Error, string | undefined> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (reason?: string) => {
+      throwOnFailure(await postRunCancel(runId, reason));
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['runs', runId, 'events'] });
+      void queryClient.invalidateQueries({ queryKey: ['runs'] });
+    }
+  });
+}
+
+export interface ApprovalDecision {
+  readonly approvalId: string;
+  readonly response: unknown;
+}
+
+export function useRespondApproval(
+  runId: string
+): UseMutationResult<void, Error, ApprovalDecision> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ approvalId, response }: ApprovalDecision) => {
+      throwOnFailure(await postApprovalResponse(runId, approvalId, response));
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['runs', runId, 'events'] });
+    }
+  });
 }

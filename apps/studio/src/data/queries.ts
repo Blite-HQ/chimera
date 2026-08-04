@@ -80,11 +80,32 @@ export async function loadRunSummaries(): Promise<readonly RunSummary[]> {
   return [deriveRunSummary(EXAMPLE_CERTIFICATE, events)];
 }
 
+/**
+ * Cada cuánto se vuelve a preguntar por la lista MIENTRAS hay trabajo vivo.
+ * 4 s: suficiente para que un run corto no parezca colgado, lo bastante
+ * espaciado para no castigar al API con una pestaña abierta todo el día.
+ */
+const RUNS_REFETCH_MS = 4000;
+
 /** Runs del proyecto (dominio Studio F2) — hoy proyecta el run del bundle real. */
 export function runSummariesQueryOptions() {
   return queryOptions({
     queryKey: ['runs'] as const,
-    queryFn: loadRunSummaries
+    queryFn: loadRunSummaries,
+    /**
+     * P3-D — `GET /runs` es LECTURA, no stream: sin esto, un run lanzado
+     * desde el Studio se queda mostrando «en curso» hasta que alguien
+     * recargue, y la plataforma parece colgada justo cuando terminó bien.
+     * El polling se ATA al dato en vez de ser permanente: mientras haya un
+     * run sin evento terminal hay motivo para volver a preguntar; cuando
+     * todos cerraron, callarse es lo correcto (y un proyecto con 200 runs
+     * terminales no paga nada).
+     */
+    refetchInterval: (query: { state: { data?: readonly RunSummary[] } }) => {
+      const runs = query.state.data;
+      if (runs === undefined) return false;
+      return runs.some(run => run.status === 'en_curso') ? RUNS_REFETCH_MS : false;
+    }
   });
 }
 
