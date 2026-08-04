@@ -22,6 +22,16 @@ export interface GatewayResponse<T = unknown> {
   readonly success: boolean;
   readonly data: T | null;
   readonly error: string | null;
+  /**
+   * Status HTTP de la respuesta, cuando la hubo (ausente en error de red).
+   *
+   * P3-D: las rutas de conversación devuelven estados que la UI tiene que
+   * DISTINGUIR para decir la verdad — 409 no es «falló», es «este stream ya
+   * cerró, continúe en un run nuevo»; 403 no es «error», es la política
+   * fail-closed de `override:apply:run` haciendo su trabajo. Colapsarlos a un
+   * mensaje genérico sería mentirle al usuario sobre qué pasó.
+   */
+  readonly status?: number;
 }
 
 /**
@@ -157,6 +167,104 @@ async function fetchWireGet<T>(url: string): Promise<GatewayResponse<T>> {
 }
 
 /**
+ * P3-D — POST compartido de las rutas de conversación (`chat-conversacion.md`
+ * §Contrato-2/3/7). Tres diferencias con `fetchWireGet`, todas deliberadas:
+ *
+ * 1. El cuerpo de éxito es el wire crudo (202 `{message_id}` o `{}`), así que
+ *    el envelope lo arma este cliente.
+ * 2. El `status` viaja en la respuesta: la UI necesita 409/403/422 tipados.
+ * 3. En error se intenta leer el `detail` de FastAPI — es el texto que EXPLICA
+ *    («el run ya es terminal», «la identidad no porta override:apply:run»).
+ *    Si el cuerpo no es JSON se degrada al status, jamás se traga el error.
+ */
+async function fetchWirePost<T>(
+  url: string,
+  body: Readonly<Record<string, unknown>>
+): Promise<GatewayResponse<T>> {
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch (networkErr) {
+    return {
+      success: false,
+      data: null,
+      error: `Network error: ${networkErr instanceof Error ? networkErr.message : String(networkErr)}`
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      success: false,
+      data: null,
+      error: await readErrorDetail(response),
+      status: response.status
+    };
+  }
+
+  const data = (await response.json()) as T;
+  return { success: true, data, error: null, status: response.status };
+}
+
+/** El `detail` de FastAPI si el cuerpo lo trae; si no, el status desnudo. */
+async function readErrorDetail(response: Response): Promise<string> {
+  const fallback = `Gateway error: ${response.status} ${response.statusText}`;
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    return typeof body.detail === 'string' && body.detail.length > 0 ? body.detail : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * P3-D — `POST {VITE_API_URL}/runs/{id}/messages` (§Contrato-2). 202 con el
+ * `message_id`; el efecto real vive en el stream (el mensaje entra al
+ * `provenance_hash`), jamás en esta respuesta. 409 = stream terminal.
+ */
+export async function postRunMessage(
+  runId: string,
+  text: string
+): Promise<GatewayResponse<{ message_id: string }>> {
+  return fetchWirePost(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/messages`, { text });
+}
+
+/**
+ * P3-D — `POST {VITE_API_URL}/runs/{id}/cancel` (§Contrato-3). Sin `reason`
+ * se manda `{}` A PROPÓSITO: el default (`user_requested`) lo pone el server,
+ * y duplicarlo acá crearía dos fuentes de verdad para el mismo default.
+ */
+export async function postRunCancel(
+  runId: string,
+  reason?: string
+): Promise<GatewayResponse<Record<string, never>>> {
+  return fetchWirePost(
+    `${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/cancel`,
+    reason === undefined ? {} : { reason }
+  );
+}
+
+/**
+ * P3-D — `POST {VITE_API_URL}/runs/{id}/approvals/{approvalId}` (§Contrato-7).
+ * `authorized_by` NO viaja: lo estampa la identidad del request. El 403 de
+ * `override:apply:run` es fail-closed esperado, no un defecto de esta ruta.
+ */
+export async function postApprovalResponse(
+  runId: string,
+  approvalId: string,
+  response: unknown
+): Promise<GatewayResponse<Record<string, never>>> {
+  return fetchWirePost(
+    `${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/approvals/${encodeURIComponent(approvalId)}`,
+    { response }
+  );
+}
+
+/**
  * Task 3 (S10) — `GET {VITE_API_URL}/runs/{id}/certificate` (freeze §7): el
  * cuerpo de la respuesta ES el wire DSSE crudo (`{payloadType, payload,
  * signatures}`). Único lugar del Studio que hace este GET (INV-1); el
@@ -250,6 +358,13 @@ export const KNOWN_RUN_EVENT_TYPES = [
   // del hilo conversacional (mismo fallo silencioso que el pin de .submitted).
   'plan.created',
   'plan.item_updated',
+  // P3-D (chat-conversacion.md §Contrato-1/7) — la conversación es parte del
+  // stream, no un canal aparte: sin estos tres listeners el hilo en vivo se
+  // queda mudo (los mensajes sucesivos del usuario y el par de aprobación
+  // nunca llegan) exactamente como pasaba con el nombre viejo del job.
+  'mission.message',
+  'approval.requested',
+  'approval.responded',
   'run.completed',
   'run.failed',
   'run.cancelled'

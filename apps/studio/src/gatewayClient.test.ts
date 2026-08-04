@@ -8,7 +8,10 @@ import {
   getRuns,
   getStepEvidence,
   openRunEventStream,
-  postRun
+  postApprovalResponse,
+  postRun,
+  postRunCancel,
+  postRunMessage
 } from './gatewayClient';
 
 import type { CreateRunBody } from './gatewayClient';
@@ -533,6 +536,37 @@ describe('openRunEventStream', () => {
    * KNOWN_RUN_EVENT_TYPES escuche `.invoked`, este frame se pierde en
    * silencio (ningún listener registrado lo captura).
    */
+  /**
+   * P3-D (CP1) — sin estos listeners el hilo conversacional en VIVO nunca ve
+   * los mensajes sucesivos ni las aprobaciones: el mismo fallo silencioso que
+   * el pin de `.submitted`, con otro nombre. El stream los emite (P-rt los
+   * apendea en `chimera_api.chat`); el cliente tenía que escucharlos.
+   */
+  it.each(['mission.message', 'approval.requested', 'approval.responded'])(
+    'escucha %s — sin el listener el hilo en vivo los pierde en silencio',
+    tipo => {
+      vi.stubEnv('VITE_API_URL', 'http://api.test');
+      const events: ProjectedEvent[] = [];
+
+      openRunEventStream('8f2c1a9b', { onEvent: e => events.push(e) });
+      const source = FakeEventSource.instances[0];
+      source?.dispatch(
+        tipo,
+        JSON.stringify({
+          global_seq: 7,
+          type: tipo,
+          actor_id: 'user:dylan',
+          occurred_at: '2026-07-22T12:00:07.000000Z',
+          resumen: tipo,
+          payload: {}
+        })
+      );
+
+      expect(events).toHaveLength(1);
+      expect(events[0]?.type).toBe(tipo);
+    }
+  );
+
   it('escucha capability.job.submitted (pin freeze §3/§14 — NO capability.job.invoked)', () => {
     // Arrange
     vi.stubEnv('VITE_API_URL', 'http://api.test');
@@ -641,5 +675,158 @@ describe('openRunEventStream', () => {
     expect(FakeEventSource.instances).toHaveLength(0);
     expect(onError).toHaveBeenCalledTimes(1);
     expect(() => subscription.close()).not.toThrow();
+  });
+});
+
+/**
+ * P3-D (CP1) — las tres rutas de conversación que P-rt dejó vivas del lado E
+ * (`api/src/chimera_api/chat.py`, spec chat-conversacion.md §Contrato-2/3/7).
+ *
+ * A diferencia de `postRun`, estas rutas devuelven el wire CRUDO (202 con
+ * `{message_id}` o `{}`), así que el envelope lo arma este cliente. Y a
+ * diferencia de los GET, el STATUS importa: 409 (stream terminal), 403 (sin
+ * `override:apply:run`) y 422 (no valida contra el json_schema) son estados
+ * que la UI tiene que distinguir para decir la verdad, no un error genérico.
+ */
+describe('postRunMessage / postRunCancel / postApprovalResponse (P3-D)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('postRunMessage postea el texto y devuelve el message_id', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 202,
+      json: async () => ({ message_id: 'msg-abc' })
+    } as Response);
+
+    const result = await postRunMessage('run-1', 'probá con 3 islas');
+
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run-1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'probá con 3 islas' })
+    });
+    expect(result.success).toBe(true);
+    expect(result.data).toEqual({ message_id: 'msg-abc' });
+    expect(result.status).toBe(202);
+  });
+
+  it('propaga el 409 con el detail del server (stream terminal — freeze §2)', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      statusText: 'Conflict',
+      json: async () => ({ detail: 'el run ya es terminal — continuá con un run nuevo' })
+    } as Response);
+
+    const result = await postRunMessage('run-1', 'tarde');
+
+    expect(result.success).toBe(false);
+    expect(result.status).toBe(409);
+    expect(result.error).toContain('terminal');
+  });
+
+  it('no explota si el cuerpo de error no es JSON (degrada al status)', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 502,
+      statusText: 'Bad Gateway',
+      json: async () => {
+        throw new Error('no es json');
+      }
+    } as unknown as Response);
+
+    const result = await postRunMessage('run-1', 'x');
+
+    expect(result.success).toBe(false);
+    expect(result.status).toBe(502);
+    expect(result.error).toContain('502');
+  });
+
+  it('postRunCancel manda el reason cuando se le da', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 202,
+      json: async () => ({})
+    } as Response);
+
+    const result = await postRunCancel('run-1', 'ya no lo necesito');
+
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run-1/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: 'ya no lo necesito' })
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('postRunCancel sin reason deja que el server ponga su default (user_requested)', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 202,
+      json: async () => ({})
+    } as Response);
+
+    await postRunCancel('run-1');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://api.test/runs/run-1/cancel',
+      expect.objectContaining({ body: JSON.stringify({}) })
+    );
+  });
+
+  it('postApprovalResponse postea la respuesta al par del approval', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 202,
+      json: async () => ({})
+    } as Response);
+
+    const result = await postApprovalResponse('run-1', 'approval-1', { aprobado: true });
+
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run-1/approvals/approval-1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ response: { aprobado: true } })
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('propaga el 403 de override:apply:run (fail-closed a propósito, no es bug)', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      json: async () => ({ detail: 'la identidad no porta override:apply:run' })
+    } as Response);
+
+    const result = await postApprovalResponse('run-1', 'approval-1', { aprobado: true });
+
+    expect(result.status).toBe(403);
+    expect(result.error).toContain('override:apply:run');
+  });
+
+  it('escapa los ids en la ruta (un run_id con / no se sale del path)', async () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 202,
+      json: async () => ({ message_id: 'm' })
+    } as Response);
+
+    await postRunMessage('run/1', 'x');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://api.test/runs/run%2F1/messages',
+      expect.anything()
+    );
   });
 });

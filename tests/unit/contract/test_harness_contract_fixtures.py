@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from blite.gateway.approval import ApprovalRequestedPayload, ApprovalRespondedPayload
+from blite.runtime.mission import MissionMessagePayload
 from blite.runtime.plan import PlanCreatedPayload, PlanItemUpdatedPayload
 from blite.runtime.replay import ReplayDivergencePayload
 
@@ -30,6 +32,7 @@ _MODELS = {
     "replay-divergence": ReplayDivergencePayload,
     "approval-requested": ApprovalRequestedPayload,
     "approval-responded": ApprovalRespondedPayload,
+    "mission-message": MissionMessagePayload,
 }
 
 
@@ -69,3 +72,20 @@ def test_anti_drift_committeado_igual_al_generador(case: str) -> None:
     expected = module.serialize(payload)  # type: ignore[attr-defined]
     on_disk = (_CANONICAL / f"{case}.json").read_text(encoding="utf-8")
     assert on_disk == expected
+
+
+def test_models_cubre_todos_los_casos_del_generador() -> None:
+    """(4) El guard del guard: `_MODELS` es un espejo A MANO de `_cases()`, y
+    los tres tests de arriba parametrizan sobre `_MODELS` — así que un caso
+    NUEVO en el generador no entra a la parametrización y su fixture queda
+    SIN anti-drift, en silencio y con la suite en verde.
+
+    Pasó de verdad: `mission-message` se generó (spec chat-conversacion.md
+    §"Tests de contrato" lo declaró para Fase 1) y ningún test lo cubría.
+    Este test convierte ese descuido en un fallo ruidoso."""
+    module: Any = _load_generator()
+    casos: dict[str, object] = module._cases()
+    sin_cubrir: set[str] = set(casos) - set(_MODELS)
+    assert sin_cubrir == set(), (
+        f"casos del generador sin entrada en _MODELS (quedan sin anti-drift): {sorted(sin_cubrir)}"
+    )

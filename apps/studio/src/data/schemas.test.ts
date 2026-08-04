@@ -4,6 +4,7 @@ import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
 import APPROVAL_REQUESTED_CONTRACT_FIXTURE from '../fixtures/contract/harness/approval-requested.json';
 import APPROVAL_RESPONDED_CONTRACT_FIXTURE from '../fixtures/contract/harness/approval-responded.json';
+import MISSION_MESSAGE_CONTRACT_FIXTURE from '../fixtures/contract/harness/mission-message.json';
 import PLAN_CREATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-created.json';
 import PLAN_ITEM_UPDATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-item-updated.json';
 import TOPOLOGY_SNAPSHOT_CONTRACT_FIXTURE from '../fixtures/contract/superficie/topology-snapshot.json';
@@ -16,6 +17,7 @@ import {
   approvalRequestedSchema,
   approvalRespondedSchema,
   knowledgeClaimWireSchema,
+  missionMessageSchema,
   planCreatedSchema,
   planItemUpdatedSchema,
   projectArtifactWireSchema,
@@ -422,6 +424,30 @@ describe('Zod espejo de approval.* contra los fixtures de costura (S-A #123, con
     const sinAutor: Record<string, unknown> = { ...APPROVAL_RESPONDED_CONTRACT_FIXTURE };
     delete sinAutor.authorized_by;
     expect(() => approvalRespondedSchema.parse(sinAutor)).toThrow();
+  });
+});
+
+describe('Zod espejo de mission.message contra el fixture de costura (S-A #123, contrato D↔A)', () => {
+  // chat-conversacion.md §Contrato-1: el mensaje del usuario es un evento del
+  // MISMO stream del run — por eso entra al provenance_hash. El espejo valida
+  // la forma del payload; el `message_id` viaja en el wire (a diferencia de la
+  // vista del proposer, que lo excluye para no romper la clave de replay).
+  it('mission-message.json valida contra missionMessageSchema', () => {
+    const parsed = missionMessageSchema.parse(MISSION_MESSAGE_CONTRACT_FIXTURE);
+    expect(parsed.author).toBe('user:dylan');
+    expect(parsed.message_id).toBe('msg-1');
+    expect(parsed.text).toContain('3 islas');
+  });
+
+  it('un mensaje con texto vacío explota (§Contrato-1: no es evidencia de nada)', () => {
+    const vacio = { ...MISSION_MESSAGE_CONTRACT_FIXTURE, text: '' };
+    expect(() => missionMessageSchema.parse(vacio)).toThrow();
+  });
+
+  it('un mensaje sin author explota (la identidad la estampa el request, pero viaja)', () => {
+    const sinAutor: Record<string, unknown> = { ...MISSION_MESSAGE_CONTRACT_FIXTURE };
+    delete sinAutor.author;
+    expect(() => missionMessageSchema.parse(sinAutor)).toThrow();
   });
 });
 

@@ -22,6 +22,7 @@ import json
 from pathlib import Path
 
 from blite.gateway.approval import ApprovalRequestedPayload, ApprovalRespondedPayload
+from blite.runtime.mission import MissionMessagePayload
 from blite.runtime.plan import PlanCreatedPayload, PlanItem, PlanItemUpdatedPayload
 from blite.runtime.replay import ReplayDivergencePayload
 
@@ -75,6 +76,16 @@ def _cases() -> dict[str, object]:
             },
             prompt="El paso escribe al mundo (irreversible). ¿Aprobás?",
             step_id="step-1",
+        ),
+        # `mission.message` (spec `chat-conversacion.md` §"Tests de contrato"):
+        # el fixture quedó DECLARADO en Fase 0 porque el modelo origen aún no
+        # existía; P3 lo materializó (`blite.runtime.mission`) y P3-D lo
+        # consume desde el Studio — este es el par que cierra el anti-drift.
+        "mission-message": MissionMessagePayload(
+            run_id="run-1",
+            message_id="msg-1",
+            author="user:dylan",
+            text="Probá también con 3 islas y comparame los dos cortes.",
         ),
         "approval-responded": ApprovalRespondedPayload(
             run_id="run-1",

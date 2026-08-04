@@ -202,6 +202,25 @@ export type ApprovalRequested = z.infer<typeof approvalRequestedSchema>;
 export type ApprovalResponded = z.infer<typeof approvalRespondedSchema>;
 
 /**
+ * S-A (decisión #123, chat-conversacion.md §Contrato-1) — Zod espejo de
+ * `blite.runtime.mission.MissionMessagePayload` contra el fixture de costura
+ * `src/fixtures/contract/harness/mission-message.json`.
+ *
+ * El mensaje del usuario NO vive en un almacén paralelo: es un evento del
+ * mismo stream del run, y por eso queda dentro del `provenance_hash` — el
+ * certificado ampara también lo que se pidió. `text` con `min(1)` espeja el
+ * `Field(min_length=1)` del Pydantic: un mensaje vacío no es evidencia de nada.
+ */
+export const missionMessageSchema = z.object({
+  run_id: z.string().min(1),
+  message_id: z.string().min(1),
+  author: z.string().min(1),
+  text: z.string().min(1)
+});
+
+export type MissionMessage = z.infer<typeof missionMessageSchema>;
+
+/**
  * S-D (decisión #125, superficie-visual.md §8) — Zod espejo del payload de
  * topología/partición contra el fixture de costura
  * `src/fixtures/contract/superficie/topology-snapshot.json` (origen:
