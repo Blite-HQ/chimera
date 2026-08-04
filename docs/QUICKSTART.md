@@ -1,6 +1,6 @@
 # Quickstart — de cero a un certificado verificado, en 5 minutos
 
-> **Estado: VIGENTE (2026-08-02).** Entregable de P5/M27 (sesión
+> **Estado: VIGENTE (2026-08-03, verificado contra el compose real).** Entregable de P5/M27 (sesión
 > PRODUCTO-RUNTIME de Mejorado). Es la respuesta a la **autoridad 2** del criterio
 > de la fase (`docs/mejorado/01-criterio.md`): _un externo instala y usa la
 > plataforma sin nosotros al lado_. Hasta ahora esa autoridad no tenía artefacto.
@@ -36,9 +36,14 @@ git clone <url-del-repo> chimera && cd chimera
 bash scripts/generate-secrets.sh
 ```
 
-El compose es `*_FILE`-only: **ningún secreto viaja por variable de entorno**. El
-script crea `secrets/postgres_password.txt` con permisos 600 y **no sobreescribe** nada
-que ya exista (rotar es una decisión explícita, no un efecto de correr setup dos veces).
+El compose es `*_FILE`-only: **ningún secreto viaja por variable de entorno**. El script
+crea `secrets/postgres_password.txt` y **no sobreescribe** nada que ya exista (rotar es
+una decisión explícita, no un efecto de correr setup dos veces).
+
+> El archivo queda en **644 dentro de `secrets/` en 700**. No es descuido: los
+> contenedores corren como usuario no-root y montan el secreto por bind-mount, así que un
+> 600 del usuario del host los deja sin poder leerlo (`Permission denied` al arrancar). El
+> candado real es el directorio: ningún otro usuario del host puede atravesarlo.
 
 ## 3 · Levantar el stack (3-4 min el primer build)
 
