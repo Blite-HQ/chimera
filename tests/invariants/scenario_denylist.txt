@@ -1,9 +1,13 @@
 # Scenario-specific terms that must NOT appear in any CapabilityManifest
-# (id, description, input_schema, output_schema — all checked by test_capability_genericity.py).
+# (id, description, input_schema, output_schema — all checked by test_capability_genericity.py)
+# NOR in the generic layers: sdk · engine · api · studio · packages
+# (test_agnosticism_layers.py — O11; exceptions are DECLARED in
+# agnosticism_exceptions.toml, never silent).
 #
 # These terms belong in the agent's knowledge base, NOT in generic capability manifests (ADR-029).
 #
-# Add new terms here as new scenarios are explored.
+# Add new terms here as new scenarios are explored. ONE list feeds both gates:
+# two lists would drift the first time someone adds a term to only one of them.
 
 # Reto 1 — electrical grid
 islanding
@@ -11,6 +15,14 @@ grid partitioning
 power island
 outage
 microgrid
+# Domain library + benchmark instance ids of reto 1: a generic layer that names
+# them is wired to the scenario. `capabilities/` may name them freely (ADR-008
+# puts the domain there) — this list only gates the generic layers and manifests.
+pandapower
+ieee14
+ieee-14
+ieee30
+ieee-30
 
 # Reto 2 — water
 potabilidad

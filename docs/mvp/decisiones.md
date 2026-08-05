@@ -2810,3 +2810,113 @@ piden decisión propia: content store durable (plano de confianza), flip
 
 **Veredicto:** el paso 2 del plan está COMPLETO. Quedan por lanzar C-2 (Fable),
 V y O — paso 3, paralelizable.
+
+## Sesión PLATAFORMA (dominio O) — worktree `mejorado/plataforma`, 2026-08-05
+
+> Numeración: las sesiones paralelas de esta ola (C-2, V, O) anexan en sus ramas;
+> si dos coinciden en un número, la sesión de control lo resuelve al mergear.
+
+### #153 — O2: el mecanismo de enforcement versionado y el destino del vendorizado
+
+**Discutido con Dylan (2026-08-05), como manda el enunciado de O2.**
+
+**Contexto que cambió la pregunta.** El hook local que registraba la decisión del
+2026-07-16 **no existe en esta máquina**: `.claude/settings.local.json` solo trae
+`permissions`, `~/.claude/settings.json` no declara hooks, y no hay
+`check-branding.sh` en ninguna parte. La regla estaba vigente en el papel y con
+CERO compuertas vivas — que es exactamente el argumento de O2/M26.
+
+**Decisión 1 — gitleaks con config privada opcional.** El enforcement versionado
+se monta sobre gitleaks (que O2 pedía de todos modos): la herramienta y su
+configuración base viajan con el repo, y una config privada NO versionada
+extiende la lista de patrones. La tensión con la decisión del 16-jul («un
+mecanismo de enforcement visible es en sí una señal») se resuelve porque lo
+versionado es genérico —escaneo de secretos, lo que cualquier repo serio tiene— y
+lo específico vive fuera de git. Descartados: script propio de denylist (dos
+mecanismos donde alcanza uno, y un script a medida sí levanta la pregunta «¿por
+qué existe esto?») y semgrep (hoy es advisory de CI, y la regla prohíbe CI para
+esto).
+
+**Decisión 2 — el árbol vendorizado sale del repo; el destilado se queda.**
+`knowledge/quantum/quantathon/` son 16 MB / 81 archivos trackeados (65 `.md`,
+15 `.png`, 1 `.yaml`): transcripciones de clases de YouTube (QWorld) y sesiones
+de 7 ponentes nominados, **sin licencia declarada**. Dylan precisó para qué
+existía: iba a refinarse e integrarse al agente como contexto. Eso separa dos
+cosas que estaban pegadas — el VALOR es el destilado (escritura nuestra, que cita
+las URLs públicas), el material crudo nunca necesitó estar versionado. Se mueve a
+`~/projects/blite/hackathons/2026/Quantathon/quantathon-material/`: sigue a mano
+por ruta absoluta para la sesión que lo destile, y deja de viajar en el repo.
+
+- **Bloqueador pre-flip registrado**: el flip publica la HISTORIA, no solo HEAD.
+  Sacarlo del árbol no lo saca del repo público — hace falta cirugía de historia
+  (`git filter-repo`) ANTES de publicar, y la corre Dylan (el clasificador de la
+  sesión bloquea filter-repo/force-push).
+- **Ítem nuevo al backlog**: destilar ese material a skills / afinado del harness
+  (razón de Dylan). No es alcance de O — se registra, no se ejecuta aquí.
+
+### #154 — O11: el gate de agnosticismo deja de ser mono-superficie
+
+**El problema (censo 07 §8.1/§8.5-4).** La doctrina de agnosticismo tenía UNA
+compuerta sobre UNA superficie: 4 campos del manifest. Ni `engine/`, ni `api/`,
+ni `apps/studio/` tenían gate — y las fugas censadas están, sin excepción, en las
+superficies sin compuerta. Cada fuga nueva era indetectable por CI. Es el ítem
+que hace irreversibles a los demás: sin él, la generalidad que ganan G/P/C/V se
+erosiona en silencio, un id de instancia hardcodeado a la vez.
+
+**Lo construido.** `tests/invariants/test_agnosticism_layers.py` +
+`agnosticism_scan.py` escanean el código de PRODUCCIÓN de `sdk` · `engine` ·
+`api` · `apps/studio/src` · `packages` contra el MISMO `scenario_denylist.txt`
+que vigila los manifests (una lista, no dos: dos listas driftean el primer día).
+Las excepciones son DECLARADAS en `agnosticism_exceptions.toml`, con clase y
+causa. Documentado como **ADR-029b** en `docs/invariants.md` con anclas
+`<!-- enforced: -->`.
+
+**Cuatro decisiones de diseño, cada una con su porqué:**
+
+1. **Trinquete de dos mitades.** Falla una fuga nueva sin declarar Y falla una
+   excepción que ya no matchea nada. Sin la segunda mitad la lista se vuelve un
+   cementerio que oculta que el gate ya podría ser más estricto.
+2. **Frontera de palabra con `_` y `-` incluidos**, no `\b` ni subcadena. Por
+   subcadena, `ice` matchea `service`/`slice`/`device` y el gate muere de ruido.
+   Con `\b`, `_ISLANDING_CORPUS_DIR` **NO** matchea `islanding` — y el nombre de
+   un identificador es justo donde el vocabulario de escenario se esconde mejor
+   (esa línea de `runs.py` se colaba entera con `\b`).
+3. **`lenses/` fuera del barrido, por doctrina.** P13 creó el registry de lentes
+   del Studio y su propio código lo declara: «la única parte del Studio que puede
+   nombrar capabilities de redes eléctricas, y por eso vive acá y no en el shell».
+   Es el `capabilities/` del lado D. Si una lente no pudiera nombrar su dominio,
+   no habría dónde ponerlo. También fuera: fixtures (datos etiquetados) y tests.
+4. **Declarar, no refactorizar.** Las 16 fugas vivas se DECLARAN, no se arreglan
+   en esta sesión: 11 de los 16 archivos son territorio de sesiones vivas (C-2 en
+   `engine/verification` y `api`, V en el Studio). El gate existe para hacer la
+   deuda visible y no-creciente; pagarla es de G3/P6/V1.
+
+**El mapa que deja (16 archivos, 53 apariciones, 3 clases):**
+
+| clase      | qué es                                          | ejemplos                                                                                             |
+| ---------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `doctrina` | la regla citándose a sí misma                   | `sdk/.../manifest.py` — el docstring de ADR-029 usa los términos prohibidos como contraejemplo       |
+| `contrato` | identificador YA estampado en evidencia emitida | `HARNESS_ID = "pandapower-islanding-v1"`, `verifier:pandapower-islanding` — renombrar RE-DIGESTA     |
+| `deuda`    | fuga real, con el ítem que la cierra            | `_ISLANDING_CORPUS_DIR` en el borde HTTP (→G3) · `DEFAULT_PROJECT` del router (→P6) · el spike (→V1) |
+
+**Términos nuevos en el denylist**: `pandapower`, `ieee14`/`ieee-14`,
+`ieee30`/`ieee-30` — librería de dominio e ids de instancia benchmark del reto 1.
+Una capa genérica que los nombra está cableada al escenario; `capabilities/` los
+puede nombrar libremente (ADR-008 pone el dominio ahí).
+
+**Verificado (no «debería»)**: con un canario `MICROGRID_MODE` inyectado en
+`engine/src/blite/runtime/dispatch.py`, el gate falla citando archivo, línea y
+término; revertido el canario, verde. `tests/invariants/`: **88 passed / 1
+skipped**. `pyright` **0 errores** (worktree con `pyrightconfig.json` local —
+`extraPaths` + `venvPath` al venv del principal; excluido en `.git/info/exclude`,
+lleva rutas absolutas de esta máquina). `ruff` limpio. `markdownlint` y
+`prettier --check` verdes sobre `docs/invariants.md`.
+
+### Tabla de interacciones — #153/#154
+
+| Interfaz tocada                          | Dominio afectado | Estado del contrato                                                  |
+| ---------------------------------------- | ---------------- | -------------------------------------------------------------------- |
+| `tests/invariants/scenario_denylist.txt` | TODOS (doctrina) | EXTENDIDO — 5 términos nuevos; una lista alimenta las DOS compuertas |
+| `docs/invariants.md` — ADR-029b          | TODOS (doctrina) | NUEVO — aditivo; ADR-029 intacto                                     |
+| `agnosticism_exceptions.toml`            | engine · api · D | NUEVO — mapa declarado de deuda; solo puede encoger                  |
+| Baseline del worktree                    | n/a              | 1205 passed / 13 skipped / 9 xfailed / 4 xpassed / cov 91.62 %       |

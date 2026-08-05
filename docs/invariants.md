@@ -145,6 +145,38 @@
 
 ---
 
+## ADR-029b — The generic layers stay generic (multi-layer gate, O11)
+
+**Statement:** Scenario vocabulary must not appear in the **production code of the
+generic layers** — `sdk/` · `engine/` · `api/` · the Studio shell and views ·
+`packages/` — beyond what `agnosticism_exceptions.toml` **declares**. Every
+exception states its class (`doctrina` — the rule quoting itself · `contrato` —
+an identifier already stamped in emitted evidence, so renaming it re-digests and
+needs ceremony · `deuda` — a real leak, which must cite the backlog item that
+closes it).
+
+**Rationale:** ADR-029 alone is one gate over one surface (four manifest fields).
+Every leak the design census found (`docs/mejorado/07-censo-documental.md` §8.3)
+sits in the surfaces with **no** gate — so each new leak was undetectable by CI.
+This is the item that makes the others irreversible: without it, generality won
+by G/P/C/V erodes silently, one hardcoded instance id at a time.
+
+**Where the domain DOES belong:** `capabilities/` (ADR-008), the Studio's
+`lenses/` (P13 — a lens is the declared plug-in point for a domain),
+`distributions/` policies, `knowledge/`, `challenges/`, fixtures (labelled data)
+and tests. None of those are scanned.
+
+**The ratchet:** a new undeclared leak fails the gate, and so does an exception
+that no longer matches anything — the list can only shrink.
+
+**Gate:** multi-layer scan over the generic layers with declared exceptions
+
+<!-- enforced: tests/invariants/test_agnosticism_layers.py::TestElTrinquete -->
+<!-- enforced: tests/invariants/agnosticism_exceptions.toml -->
+<!-- enforced: tests/invariants/scenario_denylist.txt -->
+
+---
+
 ## Axiom AX1 — Identity (ENFORCED)
 
 **Statement:** Every action must be attributable to exactly one actor. Every `Event` must carry a required, non-empty `actor_id`.

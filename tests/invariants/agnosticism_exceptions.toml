@@ -1,0 +1,178 @@
+# Excepciones DECLARADAS del gate de agnosticismo multi-capa (O11).
+#
+# Este archivo es el mapa honesto de dónde el vocabulario del reto 1 sigue
+# metido en capas que deberían ser genéricas. Cada entrada dice DÓNDE, QUÉ
+# término, de qué CLASE es y QUÉ la mata:
+#
+#   doctrina — la regla citándose a sí misma (no muere: es el contraejemplo).
+#   contrato — identificador YA estampado en bundles/attestations emitidos.
+#              Renombrarlo re-digesta evidencia firmada ⇒ ceremonia, jamás
+#              un rename de conveniencia.
+#   deuda    — fuga real. Obliga a citar el ítem de backlog que la cierra.
+#
+# El gate es un TRINQUETE: una fuga nueva sin declarar lo rompe, y una
+# excepción que deja de matchear también (se borra). La lista solo encoge.
+#
+# Añadir una entrada NO es el camino barato: el arreglo por defecto es sacar el
+# término del código genérico (a `capabilities/`, a `lenses/`, a datos, o
+# reformulándolo).
+
+# ── sdk ───────────────────────────────────────────────────────────────────────
+
+[[exception]]
+path = "sdk/src/blite_capability/manifest.py"
+terms = ["islanding", "water quality"]
+kind = "doctrina"
+causa = """
+El docstring de `CapabilityManifest` ENSEÑA ADR-029 citando los términos
+prohibidos como contraejemplo ("Terms like 'islanding', 'grid', 'water
+quality'…" + un `id=` de ejemplo marcado como violación).
+"""
+muere_con = "nunca — es la regla explicándose a sí misma en el archivo que la define"
+
+# ── engine ────────────────────────────────────────────────────────────────────
+
+[[exception]]
+path = "engine/src/blite/verification/execution.py"
+terms = ["islanding"]
+kind = "contrato"
+causa = """
+`HARNESS_ID = "pandapower-islanding-v1"` viaja DENTRO de las attestations que
+el ExecutionVerifier ya emitió: el id es parte de la evidencia canonicalizada.
+Renombrarlo cambia el digest de bundles estampados.
+"""
+muere_con = "ceremonia de supersede del identificador de harness (freeze §4) — jamás un rename suelto"
+
+[[exception]]
+path = "engine/src/blite/verification/execution.py"
+terms = ["pandapower", "ieee14"]
+kind = "deuda"
+causa = """
+`ExecutionVerifier` es un verificador de DOMINIO (AL3, flujo de potencia) que
+vive en `blite.verification` — el mismo patrón que ADR-008 le prohíbe a los
+solvers, sin ADR que justifique la asimetría (censo 07 §8.3, fila `engine`).
+Está declarado con honestidad, pero la UBICACIÓN es la fuga.
+"""
+muere_con = "G3 (dispatch por clase) o verificador hermano en `capabilities/` — 04-consolidacion §4 G3"
+
+[[exception]]
+path = "engine/src/blite/verification/external_evidence.py"
+terms = ["islanding"]
+kind = "deuda"
+causa = "Docstring que cita el corpus del reto 1 como procedencia de una determinación empírica del caller."
+muere_con = "reformulación de la prosa (fuga de docstring, no de comportamiento) — censo 07 §8.3"
+
+[[exception]]
+path = "engine/src/blite/verification/ground_truth.py"
+terms = ["islanding"]
+kind = "deuda"
+causa = "Docstring que ancla la doctrina del veredicto al corpus del reto 1 (receta 11 §5.1)."
+muere_con = "reformulación de la prosa (fuga de docstring, no de comportamiento) — censo 07 §8.3"
+
+[[exception]]
+path = "engine/src/blite/verification/exact_diagonalization.py"
+terms = ["pandapower"]
+kind = "deuda"
+causa = "Comentario que explica de qué dependencia DIRECTA llega numpy — nombra la librería de dominio para justificar «cero deps nuevas» (#135)."
+muere_con = "reformulación de la prosa cuando la dep deje de llegar por esa vía — censo 07 §8.3"
+
+[[exception]]
+path = "engine/src/blite/verification/property_rule.py"
+terms = ["pandapower"]
+kind = "deuda"
+causa = "Mismo comentario de procedencia de numpy que `exact_diagonalization.py`."
+muere_con = "reformulación de la prosa cuando la dep deje de llegar por esa vía — censo 07 §8.3"
+
+# ── api ───────────────────────────────────────────────────────────────────────
+
+[[exception]]
+path = "api/src/chimera_api/instance_verifiers.py"
+terms = ["islanding", "pandapower"]
+kind = "contrato"
+causa = """
+`_EXECUTION_VERIFIER_ID = "verifier:pandapower-islanding"` y
+`_SINTETICA_4BUS_PROVENANCE = "pandapower-sintetica-v1"` son identificadores
+estampados en certificados ya emitidos (más la prosa que los explica).
+"""
+muere_con = "ceremonia de supersede de ids de verificador/provenance (freeze §4) — nunca un rename suelto"
+
+[[exception]]
+path = "api/src/chimera_api/runs.py"
+terms = ["islanding"]
+kind = "deuda"
+causa = """
+`_ISLANDING_CORPUS_DIR` — el borde HTTP lee el corpus del reto 1 por ruta
+hardcodeada del repo. Es la fuga más profunda del censo (07 §8.3, fila `api`):
+aritmética y datos de dominio en la capa que solo debería enrutar.
+"""
+muere_con = "G3 (dispatch por clase) + corpus por capability de ingesta — 04-consolidacion §4 G3"
+
+[[exception]]
+path = "api/src/chimera_api/reads.py"
+terms = ["ieee14"]
+kind = "deuda"
+causa = "Comentario que ancla la forma de `PartitionView`/`Island` al módulo estático del spike del Studio."
+muere_con = "muerte del spike estático (V1/M18 pinta la partición real sobre el mapa) — 04-consolidacion §4 V1"
+
+# ── studio (shell y vistas: el dominio va en `lenses/`, no acá) ────────────────
+
+[[exception]]
+path = "apps/studio/src/router.tsx"
+terms = ["islanding", "ieee14"]
+kind = "deuda"
+causa = """
+`DEFAULT_PROJECT = 'islanding-ieee14'` — el shell arranca en un proyecto del
+reto 1 por constante. P13 sacó la lente de dominio del shell, pero el proyecto
+por defecto sigue siendo una constante y no un dato.
+"""
+muere_con = "P6/M15 (workspaces: el proyecto por defecto sale de datos) — 04-consolidacion §4 P6"
+
+[[exception]]
+path = "apps/studio/src/views/NewRunView.tsx"
+terms = ["ieee14", "ieee-14", "ieee30", "ieee-30"]
+kind = "deuda"
+causa = """
+El selector de instancias está cableado al corpus del reto 1 (opciones IEEE-14 /
+IEEE-30 literales) y el placeholder de misión describe una partición eléctrica.
+Un tercero con SU problema no tiene dónde aparecer.
+"""
+muere_con = "O4 (ruta de catálogo de instancias en el api) + G3 (dispatch por clase) — 04-consolidacion §4"
+
+[[exception]]
+path = "apps/studio/src/views/types.ts"
+terms = ["ieee14"]
+kind = "deuda"
+causa = "Los tipos de las vistas re-exportan `AnchorKind`/`Verdict` desde `spike/ieee14.ts`: el módulo del escenario es la fuente de tipos genéricos."
+muere_con = "muerte del spike estático (V1/M18) — 04-consolidacion §4 V1"
+
+[[exception]]
+path = "apps/studio/src/views/GridMap.tsx"
+terms = ["ieee14"]
+kind = "deuda"
+causa = "Comentario que explica que el mapa del ICE es una red DISTINTA a la instancia benchmark del run."
+muere_con = "muerte del spike estático (V1/M18) — 04-consolidacion §4 V1"
+
+[[exception]]
+path = "apps/studio/src/data/iceGridSchemas.ts"
+terms = ["ieee14"]
+kind = "deuda"
+causa = "Mismo comentario de deslinde entre la red real del ICE y la instancia benchmark, del lado del schema."
+muere_con = "muerte del spike estático (V1/M18) — 04-consolidacion §4 V1"
+
+[[exception]]
+path = "apps/studio/src/spike/ieee14.ts"
+terms = ["ieee14", "ieee-14", "pandapower"]
+kind = "deuda"
+causa = """
+El spike ES el escenario: data estática de la partición benchmark del reto 1.
+Su casa natural hoy sería `lenses/` (donde P13 declaró que el dominio puede
+nombrarse); vive en la raíz del `src` del Studio por antigüedad.
+"""
+muere_con = "V1/M18 (partición real sobre el mapa) — 04-consolidacion §4 V1"
+
+[[exception]]
+path = "apps/studio/src/spike/GridSpike.tsx"
+terms = ["ieee14", "ieee-14"]
+kind = "deuda"
+causa = "El visualizador del spike, mismo caso que su data: escenario del reto 1 fuera de `lenses/`."
+muere_con = "V1/M18 (partición real sobre el mapa) — 04-consolidacion §4 V1"
