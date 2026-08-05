@@ -556,3 +556,128 @@ class TestEndpointNameMatchDerivesTheRealIce68Network:
 
         # Assert
         assert first == second
+
+
+class TestBranchIdsConvencionHibrida:
+    """C-8 (`docs/specs/superficie-visual.md` §8): la salida estampa un id por
+    rama, 1:1 con `aristas`. Dos mitades — la canónica `L{min}-{max}[-k]`
+    (modelos sin GIS) y el `edge_id_property` del portal (instancias derivadas
+    de GIS, donde el dato del cliente conserva SU identidad)."""
+
+    def test_por_defecto_los_ids_son_canonicos_y_alineados_1a1(self) -> None:
+        # Arrange
+        nodes = [_point(1, "A"), _point(2, "B"), _point(3, "C")]
+        edges = [
+            _named_edge(10, "A-B", 138),
+            _named_edge(11, "B-C", 230),
+        ]
+
+        # Act
+        result = _invoke_endpoint_name_match(nodes, edges)
+
+        # Assert
+        graph = result["graph"]
+        assert graph["branch_id_convention"] == "canonical-l-min-max@v1"
+        assert len(graph["branch_ids"]) == len(graph["aristas"])
+        assert graph["branch_ids"] == ["L0-1", "L1-2"]
+
+    def test_edge_id_property_conserva_la_identidad_del_portal(self) -> None:
+        """Estrategia 1:1 (`nearest-neighbor`): el FID del portal ES el id."""
+        # Arrange
+        nodes_fc = {
+            "type": "FeatureCollection",
+            "features": [_point(1, "A"), _point(2, "B")],
+        }
+        edges_fc = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[0.0, 0.0], [0.0, 0.0]],
+                    },
+                    "properties": {"FID": 70143, "OBJECTID": 991},
+                }
+            ],
+        }
+        inputs = _base_inputs(
+            nodes_content_base64=_fc_b64(nodes_fc),
+            edges_content_base64=_fc_b64(edges_fc),
+            edge_id_property="OBJECTID",
+        )
+
+        # Act
+        graph = GeojsonToGraph().invoke(inputs)["graph"]
+
+        # Assert
+        assert graph["branch_id_convention"] == "edge-id-property@v1"
+        assert graph["branch_ids"] == ["991"]
+
+    def test_edge_id_property_con_estrategia_que_agrega_falla_fuerte(self) -> None:
+        """La agregación de paralelas destruye el 1:1 feature↔rama: un id de
+        portal por rama agregada sería una mentira. Se rechaza en frontera en
+        vez de elegir en silencio uno de los N features."""
+        # Arrange
+        nodes = [_point(1, "A"), _point(2, "B")]
+        edges = [_named_edge(10, "A-B", 138), _named_edge(11, "A-B", 230)]
+
+        # Act / Assert
+        with pytest.raises(ValueError, match="edge_id_property"):
+            _invoke_endpoint_name_match(nodes, edges, edge_id_property="FID")
+
+    def test_paralelas_canonicas_llevan_sufijo_en_estrategia_1a1(self) -> None:
+        # Arrange
+        nodes_fc = {
+            "type": "FeatureCollection",
+            "features": [_point(1, "A"), _point(2, "B")],
+        }
+        line = {
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": [[0.0, 0.0], [0.0, 0.0]]},
+            "properties": {"FID": 1},
+        }
+        edges_fc = {
+            "type": "FeatureCollection",
+            "features": [line, {**line, "properties": {"FID": 2}}],
+        }
+        inputs = _base_inputs(
+            nodes_content_base64=_fc_b64(nodes_fc),
+            edges_content_base64=_fc_b64(edges_fc),
+        )
+
+        # Act
+        graph = GeojsonToGraph().invoke(inputs)["graph"]
+
+        # Assert — mismo par de nodos dos veces ⇒ ambas reciben sufijo
+        assert graph["branch_ids"] == ["L0-0-1", "L0-0-2"]
+
+    def test_forma_invalida_no_inventa_ids(self) -> None:
+        """Sin derivación no hay ramas — `branch_ids` vacío, jamás un id
+        fabricado sobre índices que no se computaron."""
+        # Arrange
+        nodes = [_point(1, "A"), _point(1, "B")]  # FID duplicado ⇒ tabular inválido
+        edges = [_named_edge(10, "A-B", 138)]
+
+        # Act
+        graph = _invoke_endpoint_name_match(nodes, edges)["graph"]
+
+        # Assert
+        assert graph["aristas"] == []
+        assert graph["branch_ids"] == []
+
+    def test_la_red_real_estampa_un_id_por_rama(self) -> None:
+        # Arrange
+        inputs = _base_inputs(
+            edge_strategy="endpoint-name-match",
+            node_match_property="Subestacio",
+            endpoint_property="Circuito",
+            endpoint_separator="-",
+        )
+
+        # Act
+        graph = GeojsonToGraph().invoke(inputs)["graph"]
+
+        # Assert
+        assert len(graph["branch_ids"]) == len(graph["aristas"]) == 90
+        assert len(set(graph["branch_ids"])) == 90
