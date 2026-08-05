@@ -265,6 +265,50 @@ export async function getMe(): Promise<GatewayResponse<unknown>> {
 }
 
 /**
+ * P10/M24 — archivos del proyecto. `GET /files` lista; `POST /files` sube el
+ * cuerpo CRUDO con el nombre en `X-Filename` (el server no usa multipart —
+ * ver `chimera_api.files`). La URL de descarga se arma con el digest, que es
+ * la dirección del contenido.
+ */
+export async function getFiles(): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/files`);
+}
+
+export async function postFile(file: File): Promise<GatewayResponse<unknown>> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}/files`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+        'X-Filename': file.name
+      },
+      body: file
+    });
+  } catch (networkErr) {
+    return {
+      success: false,
+      data: null,
+      error: `Network error: ${networkErr instanceof Error ? networkErr.message : String(networkErr)}`
+    };
+  }
+  if (!response.ok) {
+    return {
+      success: false,
+      data: null,
+      error: await readErrorDetail(response),
+      status: response.status
+    };
+  }
+  return { success: true, data: await response.json(), error: null, status: response.status };
+}
+
+/** URL de descarga de un archivo — el digest ES la dirección (O3). */
+export function fileDownloadUrl(digest: string): string {
+  return `${apiBaseUrl()}/files/${encodeURIComponent(digest)}`;
+}
+
+/**
  * D3 — `GET {VITE_API_URL}/runs` (endpoints-studio.md tabla, fila 1):
  * `RunSummary[]` wire snake_case. Único lugar del Studio que hace este GET
  * (INV-1); la validación Zod + el mapeo a `RunSummary` viven en

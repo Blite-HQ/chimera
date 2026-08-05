@@ -21,9 +21,17 @@ import { ThemeProvider } from '@/lib/theme';
 import { router } from './router';
 
 import { isLiveMode } from './data/env';
-import { useCancelRun, useCreateRun, useRespondApproval, useSendMessage } from './data/mutations';
+import {
+  useCancelRun,
+  useCreateRun,
+  useRespondApproval,
+  useSendMessage,
+  useUploadFile
+} from './data/mutations';
+import { fileDownloadUrl } from './gatewayClient';
 import {
   artifactsQueryOptions,
+  filesQueryOptions,
   certificateQueryOptions,
   knowledgeQueryOptions,
   runEventsQueryOptions,
@@ -31,6 +39,7 @@ import {
   stepEvidenceQueryOptions
 } from './data/queries';
 import { DOMAIN_LENSES, deriveLensContext, resolveLenses } from './lenses';
+import PapersView from './views/PapersView';
 import { useRunEventStream } from './data/useRunEventStream';
 import ArtifactsView from './views/ArtifactsView';
 import CertificateView from './views/CertificateView';
@@ -363,6 +372,32 @@ export function ArtifactsScreen({
     );
   }
   return <ArtifactsView artifacts={artifactsQuery.data} onOpenRun={onOpenRun} />;
+}
+
+/** P10/M24 — Papers cableado al endpoint de archivos. */
+export function PapersScreen(): React.ReactElement {
+  const filesQuery = useQuery(filesQueryOptions());
+  const uploadFile = useUploadFile();
+
+  if (filesQuery.isPending) return <LoadingState label="Cargando los archivos del proyecto" />;
+  if (filesQuery.isError) {
+    return (
+      <ErrorState message={filesQuery.error.message} onRetry={() => void filesQuery.refetch()} />
+    );
+  }
+  return (
+    <PapersView
+      files={filesQuery.data}
+      // Sin API en vivo no hay dónde guardar los bytes: la vista lo dice en
+      // vez de ofrecer un botón que no puede cumplir.
+      {...(isLiveMode() && {
+        onUpload: (file: File) => uploadFile.mutate(file),
+        isUploading: uploadFile.isPending,
+        uploadError: uploadFile.error?.message ?? null,
+        downloadUrl: fileDownloadUrl
+      })}
+    />
+  );
 }
 
 export function KnowledgeScreen({

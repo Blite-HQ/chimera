@@ -15,7 +15,13 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { postApprovalResponse, postRun, postRunCancel, postRunMessage } from '../gatewayClient';
+import {
+  postApprovalResponse,
+  postFile,
+  postRun,
+  postRunCancel,
+  postRunMessage
+} from '../gatewayClient';
 import { isLiveMode } from './env';
 import { DEMO_RUN_ID } from './queries';
 
@@ -159,6 +165,23 @@ export function useRespondApproval(
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['runs', runId, 'events'] });
+    }
+  });
+}
+
+/**
+ * P10/M24 — subir un archivo del proyecto. Invalida el listado en vez de
+ * insertarlo a mano: el server decide el digest (y si el contenido ya
+ * existía, no crea nada), así que la única verdad es la que él devuelve.
+ */
+export function useUploadFile(): UseMutationResult<void, Error, File> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      throwOnFailure(await postFile(file));
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['files'] });
     }
   });
 }

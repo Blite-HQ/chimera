@@ -235,6 +235,21 @@ export const meWireSchema = z.object({
 export type Me = z.infer<typeof meWireSchema>;
 
 /**
+ * P10/M24 — espejo de `GET /files` (`chimera_api.files`). El `digest` es la
+ * identidad del contenido (O3), el `filename` es solo legibilidad humana: dos
+ * nombres del mismo PDF son UN archivo, y por eso el nombre puede faltar.
+ */
+export const projectFileWireSchema = z.object({
+  digest: z.string().regex(SHA256_HEX),
+  filename: z.string().nullable(),
+  media_type: z.string().min(1),
+  size_bytes: z.number().int().nonnegative(),
+  created_at: z.string().min(1)
+});
+
+export type ProjectFile = z.infer<typeof projectFileWireSchema>;
+
+/**
  * S-D (decisión #125, superficie-visual.md §8) — Zod espejo del payload de
  * topología/partición contra el fixture de costura
  * `src/fixtures/contract/superficie/topology-snapshot.json` (origen:

@@ -52,6 +52,12 @@ services:
       #
       # CHIMERA_MODEL_BACKEND: replay
       # CHIMERA_MODEL_SESSION_DIR: /app/knowledge/sessions/<nombre>
+      # P10/M24 — dónde viven los archivos del proyecto (Papers). Volumen,
+      # no bind: son contenido direccionado por digest, y perderlos en un
+      # rebuild rompería toda cita `ref{name, digest}` que los nombre.
+      CHIMERA_FILES_DIR: /app/var/files
+    volumes:
+      - filesdata:/app/var/files
     secrets:
       - postgres_password
     ports:
@@ -129,3 +135,7 @@ secrets:
 
 volumes:
   pgdata: {}
+  # P10/M24 — archivos del proyecto (Papers). Direccionados por contenido:
+  # sin volumen se perderían en cada rebuild, que es justo lo que un almacén
+  # por digest no puede hacer.
+  filesdata: {}

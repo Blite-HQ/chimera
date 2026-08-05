@@ -55,13 +55,59 @@ describe('ArtifactsView', () => {
   });
 });
 
-describe('PapersView', () => {
-  test('invita a subir archivos con ustedeo y declara que aún no hay datos', () => {
-    render(<PapersView />);
+describe('PapersView (P10/M24)', () => {
+  const ARCHIVO = {
+    digest: 'a'.repeat(64),
+    filename: 'qaoa-regrid.pdf',
+    media_type: 'application/pdf',
+    size_bytes: 2048,
+    created_at: '2026-08-04T12:00:00Z'
+  };
+
+  test('sin archivos declara el estado real, no lo disfraza', () => {
+    render(<PapersView files={[]} />);
 
     expect(screen.getByRole('heading', { name: /papers y archivos/i })).toBeInTheDocument();
-    expect(screen.getByText(/arrastre/i)).toBeInTheDocument();
     expect(screen.getByText(/todavía no hay archivos/i)).toBeInTheDocument();
+  });
+
+  test('sin backend no ofrece subir — dice por qué en vez de un botón muerto', () => {
+    render(<PapersView files={[]} />);
+
+    expect(screen.queryByRole('button', { name: /subir/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/necesita el api en vivo/i)).toBeInTheDocument();
+  });
+
+  test('lista el archivo con su digest — es lo que un certificado puede citar', () => {
+    render(<PapersView files={[ARCHIVO]} />);
+
+    expect(screen.getByText('qaoa-regrid.pdf')).toBeInTheDocument();
+    expect(screen.getByTitle('a'.repeat(64))).toBeInTheDocument();
+    expect(screen.getByText('2 KB')).toBeInTheDocument();
+  });
+
+  test('un archivo sin nombre no rompe la fila — el digest es la identidad', () => {
+    render(<PapersView files={[{ ...ARCHIVO, filename: null }]} />);
+
+    expect(screen.getByText('(sin nombre)')).toBeInTheDocument();
+  });
+
+  test('con backend, elegir un archivo lo entrega al llamador', async () => {
+    const user = userEvent.setup();
+    const onUpload = vi.fn();
+    render(<PapersView files={[]} onUpload={onUpload} />);
+
+    const input = screen.getByLabelText(/archivo para subir/i);
+    await user.upload(input, new File([new Uint8Array([1, 2, 3])], 'paper.pdf'));
+
+    expect(onUpload).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(onUpload).mock.calls[0]?.[0]).toBeInstanceOf(File);
+  });
+
+  test('muestra el error de subida tal cual lo dijo el server', () => {
+    render(<PapersView files={[]} onUpload={vi.fn()} uploadError="el cuerpo está vacío" />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('el cuerpo está vacío');
   });
 });
 

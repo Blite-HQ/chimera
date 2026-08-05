@@ -16,10 +16,16 @@ import { useQuery } from '@tanstack/react-query';
 import { AppShell } from '@/components/app-shell/AppShell';
 import { ReplayBanner } from '@/components/app-shell/ReplayBanner';
 
-import { ArtifactsScreen, KnowledgeScreen, RunDetailScreen, RunsScreen, SECTIONS } from './App';
+import {
+  ArtifactsScreen,
+  KnowledgeScreen,
+  PapersScreen,
+  RunDetailScreen,
+  RunsScreen,
+  SECTIONS
+} from './App';
 import { isLiveMode } from './data/env';
 import { meQueryOptions } from './data/queries';
-import PapersView from './views/PapersView';
 
 /**
  * Router del Studio (P7/M17) — **TanStack Router**, decidido con Dylan
@@ -213,7 +219,7 @@ function seccionDeProyecto(
 const artifactsRoute = seccionDeProyecto('artifacts', abrirRun => (
   <ArtifactsScreen onOpenRun={abrirRun} />
 ));
-const papersRoute = seccionDeProyecto('papers', () => <PapersView />);
+const papersRoute = seccionDeProyecto('papers', () => <PapersScreen />);
 const knowledgeRoute = seccionDeProyecto('knowledge', abrirRun => (
   <KnowledgeScreen onOpenRun={abrirRun} />
 ));

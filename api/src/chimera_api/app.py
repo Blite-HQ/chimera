@@ -32,6 +32,7 @@ from blite.runtime.registry import Registry
 from chimera_api.auth import create_auth_router
 from chimera_api.certificate import create_certificate_router
 from chimera_api.chat import create_chat_router
+from chimera_api.files import create_files_router
 from chimera_api.projection import sse_frame
 from chimera_api.reads import create_reads_router
 from chimera_api.runs import build_run_resources, create_runs_router
@@ -100,6 +101,8 @@ def create_app(
     app.include_router(create_chat_router(resources))
     app.include_router(create_certificate_router(resources))
     app.include_router(create_reads_router(resources))
+    # P10/M24 — archivos del proyecto (insumos con procedencia, freeze §7).
+    app.include_router(create_files_router(resources.session_auth))
 
     @app.get("/health")
     def health() -> dict[str, str]:

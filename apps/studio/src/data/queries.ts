@@ -14,6 +14,7 @@ import {
   getAblation,
   getArtifacts,
   getCertificate,
+  getFiles,
   getKnowledge,
   getMe,
   getRuns,
@@ -31,6 +32,7 @@ import {
   ablationMetricSchema,
   ablationWireSchema,
   meWireSchema,
+  projectFileWireSchema,
   certificateBundleWireSchema,
   knowledgeClaimWireSchema,
   projectArtifactWireSchema,
@@ -47,7 +49,7 @@ import {
   wireEnvelopeSchema
 } from './schemas';
 
-import type { Me } from './schemas';
+import type { Me, ProjectFile } from './schemas';
 import type {
   AblationMetric,
   DsseEnvelope,
@@ -362,4 +364,22 @@ export async function loadMe(): Promise<Me | null> {
 
 export function meQueryOptions() {
   return queryOptions({ queryKey: ['me'] as const, queryFn: loadMe });
+}
+
+/**
+ * P10/M24 — archivos del proyecto. En réplica no hay servidor de archivos, así
+ * que devuelve `[]`: la vista muestra su estado vacío honesto en vez de un
+ * listado inventado.
+ */
+export async function loadFiles(): Promise<readonly ProjectFile[]> {
+  if (!isLiveMode()) return [];
+  const res = await getFiles();
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudieron obtener los archivos');
+  }
+  return z.array(projectFileWireSchema).parse(res.data);
+}
+
+export function filesQueryOptions() {
+  return queryOptions({ queryKey: ['files'] as const, queryFn: loadFiles });
 }
