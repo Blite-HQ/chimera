@@ -30,6 +30,23 @@ from blite.content_fs import FileContext, FilesystemContentStore
 from chimera_api.auth import SessionAuth
 
 _DEFAULT_MEDIA_TYPE = "application/octet-stream"
+
+_MEDIA_TYPES_ACTIVOS = frozenset(
+    {
+        "text/html",
+        "application/xhtml+xml",
+        "image/svg+xml",
+        "text/xml",
+        "application/xml",
+        "application/javascript",
+        "text/javascript",
+    }
+)
+"""Tipos que un navegador EJECUTA. `/files` se proxea en el MISMO origen que el
+Studio (`docker/studio-nginx.conf`), así que servir un `text/html` subido lo
+haría correr con la cookie de sesión del usuario adjunta: podría crear runs o
+responder approvals en su nombre. Que la cookie sea HttpOnly no ayuda — el
+navegador la manda sola. Estos tipos se sirven neutralizados."""
 _FILES_DIR_ENV = "CHIMERA_FILES_DIR"
 _DEFAULT_FILES_DIR = "/app/var/files"
 """Default del contenedor. En compose es un volumen: sin él los archivos del
@@ -39,6 +56,18 @@ almacén direccionado por contenido no debe hacer."""
 
 def files_dir() -> Path:
     return Path(os.environ.get(_FILES_DIR_ENV, _DEFAULT_FILES_DIR))
+
+
+def _nombre_seguro(nombre: str) -> str:
+    """El nombre llega en un header del cliente y vuelve en otro header: un
+    CRLF ahí dentro partiría la respuesta en dos (header injection), y una
+    comilla escaparía del `filename="..."`. Se conserva solo lo imprimible y
+    sin comillas — el nombre es comodidad, la identidad es el digest."""
+    limpio = "".join(c for c in nombre if c.isprintable() and c not in '"\\')
+    return limpio[:_MAX_FILENAME] or "descarga"
+
+
+_MAX_FILENAME = 200
 
 
 def create_files_router(session_auth: SessionAuth) -> APIRouter:
@@ -111,10 +140,24 @@ def create_files_router(session_auth: SessionAuth) -> APIRouter:
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="archivo desconocido") from exc
         artifact = store.stat(digest, ctx)
+        declarado = artifact.media_type if artifact is not None else _DEFAULT_MEDIA_TYPE
+        # Tres capas, ninguna sobra: el tipo activo se neutraliza en el origen,
+        # `attachment` impide el render aunque el tipo pasara, y `nosniff`
+        # impide que el navegador adivine HTML de un octet-stream.
         media_type = (
-            artifact.media_type if artifact is not None else _DEFAULT_MEDIA_TYPE
+            _DEFAULT_MEDIA_TYPE
+            if declarado.split(";")[0].strip().lower() in _MEDIA_TYPES_ACTIVOS
+            else declarado
         )
-        return Response(content=data, media_type=media_type)
+        nombre = store.filename(digest, ctx) or digest
+        return Response(
+            content=data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{_nombre_seguro(nombre)}"',
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     return router
 

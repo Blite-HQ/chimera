@@ -112,3 +112,61 @@ def test_el_listado_expone_lo_necesario_para_citar_el_archivo(
 
     assert set(fila) >= {"digest", "filename", "media_type", "size_bytes", "created_at"}
     assert fila["filename"] == "tfim.pdf"
+
+
+class TestNoSeSirveComoPaginaWeb:
+    """`/files` se proxea en el MISMO origen que el Studio
+    (`docker/studio-nginx.conf`), así que un archivo servido como
+    `text/html` ejecutaría con la cookie de sesión del usuario adjunta: podría
+    crear runs o responder approvals en su nombre. Que la cookie sea HttpOnly
+    no alcanza — el navegador la manda sola.
+
+    La defensa es en capas y ninguna sobra: `attachment` impide el render,
+    `nosniff` impide que el navegador adivine HTML de un octet-stream, y el
+    `Content-Type` peligroso se neutraliza en el origen."""
+
+    def test_un_html_subido_no_se_sirve_como_html(self, client: TestClient) -> None:
+        digest = _post_file(
+            client,
+            b"<script>fetch('/runs',{method:'POST'})</script>",
+            **{"Content-Type": "text/html"},
+        ).json()["digest"]
+
+        response = _get(client, f"/files/{digest}")
+
+        assert "text/html" not in response.headers["content-type"]
+
+    def test_toda_descarga_va_como_adjunto(self, client: TestClient) -> None:
+        digest = _post_file(client, b"%PDF-1.7", **{"X-Filename": "p.pdf"}).json()[
+            "digest"
+        ]
+
+        response = _get(client, f"/files/{digest}")
+
+        assert response.headers["content-disposition"].startswith("attachment")
+
+    def test_toda_descarga_prohibe_el_sniffing(self, client: TestClient) -> None:
+        digest = _post_file(client, b"x").json()["digest"]
+
+        response = _get(client, f"/files/{digest}")
+
+        assert response.headers["x-content-type-options"] == "nosniff"
+
+    def test_un_nombre_con_salto_de_linea_no_inyecta_cabeceras(
+        self, client: TestClient
+    ) -> None:
+        """El nombre viene de un header del cliente y vuelve en otro header:
+        un CRLF ahí dentro partiría la respuesta en dos."""
+        digest = _post_file(
+            client, b"x", **{"X-Filename": 'a"\r\nSet-Cookie: robada=1'}
+        ).json()["digest"]
+
+        disposition = _get(client, f"/files/{digest}").headers["content-disposition"]
+
+        # Lo que importa: la respuesta no se puede PARTIR (sin CR/LF) y el
+        # nombre no puede salirse de sus comillas. El texto que quede adentro
+        # del valor entrecomillado es inerte.
+        assert "\r" not in disposition
+        assert "\n" not in disposition
+        assert disposition.count('"') == 2
+        assert disposition.startswith('attachment; filename="')

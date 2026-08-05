@@ -118,3 +118,51 @@ def test_el_nombre_original_viaja_como_metadato(store: FilesystemContentStore) -
 
 def test_artifact_es_el_modelo_congelado(store: FilesystemContentStore) -> None:
     assert isinstance(store.put(b"x", "text/plain", _CTX), Artifact)
+
+
+class TestAislamientoDeDominioSinColisiones:
+    """SO2 es la propiedad que este adapter existe para cumplir, así que su
+    implementación no puede ser una sanitización con PÉRDIDA.
+
+    Reemplazar los caracteres raros de un `domain_id` por `_` hace que dos
+    dominios DISTINTOS caigan en el mismo directorio: el aislamiento se
+    evapora sin que nada falle. Y `..` sobrevive intacto a ese filtro, así que
+    también era una salida del root."""
+
+    def test_dos_dominios_distintos_no_comparten_archivos(
+        self, store: FilesystemContentStore
+    ) -> None:
+        uno = FileContext(domain_id="acme:prod")
+        otro = FileContext(domain_id="acme/prod")
+
+        artifact = store.put(b"secreto de acme:prod", "text/plain", uno)
+
+        assert store.stat(artifact.digest, otro) is None
+        assert store.list(otro) == ()
+        with pytest.raises(KeyError):
+            store.get(artifact.digest, otro)
+
+    def test_un_domain_id_con_traversal_se_queda_dentro_del_root(
+        self, store: FilesystemContentStore, tmp_path: Path
+    ) -> None:
+        """`..` sobrevivía a la sanitización vieja: `root / ".."` sale del
+        store. Todo lo escrito tiene que quedar bajo el root, siempre."""
+        antes = set(tmp_path.parent.iterdir())
+
+        artifact = store.put(b"x", "text/plain", FileContext(domain_id="../fuera"))
+
+        assert set(tmp_path.parent.iterdir()) == antes
+        assert Path(artifact.storage_ref).resolve().is_relative_to(tmp_path.resolve())
+
+    def test_el_metadato_conserva_el_domain_id_real(
+        self, store: FilesystemContentStore
+    ) -> None:
+        """El directorio puede ser un hash, pero el Artifact tiene que seguir
+        diciendo a qué dominio pertenece — es lo que hace auditable el SO2."""
+        ctx = FileContext(domain_id="acme:prod")
+
+        artifact = store.put(b"x", "text/plain", ctx)
+
+        assert artifact.domain_id == "acme:prod"
+        leido = store.stat(artifact.digest, ctx)
+        assert leido is not None and leido.domain_id == "acme:prod"

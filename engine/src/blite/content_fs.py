@@ -98,8 +98,12 @@ class FilesystemContentStore:
 
     def get(self, digest: str, ctx: object) -> bytes:
         """Bytes exactos, o falla fuerte — devolver vacío inventaría contenido."""
-        blob = self._blob_path(digest, _domain_of(ctx))
-        if blob is None or not blob.is_file():
+        domain_id = _domain_of(ctx)
+        blob = self._blob_path(digest, domain_id)
+        # Defensa en capas: aunque el directorio ya es por-hash, se comprueba
+        # que el metadato declare ESTE dominio. Un aislamiento que depende de
+        # una sola comprobación se rompe entero cuando esa comprobación falla.
+        if blob is None or not blob.is_file() or self.stat(digest, ctx) is None:
             raise KeyError(f"artifact {digest!r} no visible en este dominio")
         return blob.read_bytes()
 
@@ -108,7 +112,13 @@ class FilesystemContentStore:
         domain_id = _domain_of(ctx)
         if self._blob_path(digest, domain_id) is None:
             return None
-        return self._read_metadata(self._domain_dir(domain_id), digest)
+        artifact = self._read_metadata(self._domain_dir(domain_id), digest)
+        # El metadato manda: si dice otro dominio, no es visible acá.
+        return (
+            artifact
+            if artifact is not None and artifact.domain_id == domain_id
+            else None
+        )
 
     def list(self, ctx: object) -> tuple[Artifact, ...]:
         """Los artifacts del dominio, más recientes primero.
@@ -119,10 +129,12 @@ class FilesystemContentStore:
         directorio = self._domain_dir(_domain_of(ctx))
         if not directorio.is_dir():
             return ()
+        domain_id = _domain_of(ctx)
         artifacts = [
             artifact
             for meta in directorio.glob(f"*{_METADATA_SUFFIX}")
             if (artifact := self._parse_metadata(meta)) is not None
+            and artifact.domain_id == domain_id
         ]
         return tuple(sorted(artifacts, key=lambda a: a.created_at, reverse=True))
 
@@ -136,9 +148,17 @@ class FilesystemContentStore:
     # ── interno ──────────────────────────────────────────────────────────────
 
     def _domain_dir(self, domain_id: str) -> Path:
-        # El domain_id también llega de afuera: se sanitiza igual que el digest.
-        seguro = re.sub(r"[^a-zA-Z0-9._-]", "_", domain_id)
-        return self._root / seguro
+        """El directorio de un dominio es el HASH de su id, no su id saneado.
+
+        Sanear con reemplazos es una función con PÉRDIDA: `acme:prod` y
+        `acme/prod` caían en el mismo directorio y el aislamiento se evaporaba
+        sin que nada fallara — justo la propiedad (SO2) que este adapter existe
+        para cumplir. El hash es inyectivo en la práctica y, de paso, cierra la
+        salida del root que `..` tenía (sobrevivía al filtro intacto).
+
+        El `domain_id` REAL sigue viajando en el metadato del artifact, así que
+        el SO2 se puede auditar leyendo el sidecar."""
+        return self._root / hashlib.sha256(domain_id.encode("utf-8")).hexdigest()
 
     def _blob_path(self, digest: str, domain_id: str) -> Path | None:
         if not _DIGEST_PATTERN.match(digest):
