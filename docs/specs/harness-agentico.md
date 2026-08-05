@@ -287,7 +287,7 @@ silenciosa.
 > ANTERIOR y su rodeo; queda como historia, la manda esta marca. Lo ejecutado, exactamente
 > lo que el último párrafo pedía: `_run_agentic_turn` envuelve la llamada al `proposer` en
 > try/except y journaliza `plan.item_updated {failed, cause}` + `run.failed
-> {error_kind: type(exc).__name__}` ANTES de cortar (orden #100.1 — el terminal siempre
+{error_kind: type(exc).__name__}` ANTES de cortar (orden #100.1 — el terminal siempre
 > último, jamás post-terminal). Consecuencias registradas:
 >
 > - **La capability CENTINELA `PROTOCOL_VIOLATION_CAPABILITY_ID` MURIÓ** — el propio párrafo

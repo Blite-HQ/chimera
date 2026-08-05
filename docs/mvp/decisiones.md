@@ -2763,3 +2763,50 @@ metadato y es una instrucción para el navegador.
   error de consola en el navegador. Es honesto (un run fallido no tiene
   certificado) pero ruidoso: el Studio pide el certificado incondicionalmente.
   Candidato a no pedirlo salvo `status === 'completado'`.
+
+### #152 — CP1 (P-rt + P-ui) VALIDADO Y MERGEADO + primer push de Mejorado
+
+**Fecha:** 2026-08-04. **Sesión de control.** Validación rápida a pedido de
+Dylan (sin auditoría profunda: los dos lados de CP1 ya estaban verificados
+VIVOS y registrados en #142–#151 + bloque P-ui).
+
+**Merge:** fast-forward `c4b44a5..c95aeb9` (27 commits: 13 de
+`mejorado/producto-rt` + 14 de `mejorado/producto-ui`, cadena lineal). Las dos
+ramas entran JUNTAS porque P-ui ramificó desde P-rt — exactamente el diseño de
+CP1 (checkpoint de dos lados). Tras el merge, TODAS las ramas de sesión de la
+fase (contratos, confianza-1, generalidad, saneamiento, producto-rt,
+producto-ui) son ancestros de `mejorado/base`.
+
+**Gates vivos en el repo principal sobre el árbol mergeado** (regla de control:
+los números de sesión no se heredan, se re-corren):
+
+| gate                  | resultado                                             |
+| --------------------- | ----------------------------------------------------- |
+| `uv run pytest`       | **1209 passed / 9 skipped / 9 xfailed / 4 xpassed**   |
+| cobertura             | **91.62%**                                            |
+| `uv run lint-imports` | 14 contratos kept, 0 broken                           |
+| `uv run ruff check`   | 0                                                     |
+| `uv run pyright`      | 0 errores (con `api/src` ya en el include, #150)      |
+| studio `test:run`     | **299 passed / 32 files**                             |
+| studio `lint`         | 0 warnings                                            |
+| `docs:lint`           | 0                                                     |
+| `format:check`        | verde tras formatear `docs/specs/harness-agentico.md` |
+
+El único rojo del árbol combinado era prettier sobre `harness-agentico.md`
+(spec VIVA editada por P-rt; verificado sin pin de digest — la única referencia
+es un docstring). Se formateó. Requirió `uv sync --locked --all-packages
+--all-extras` por el paquete nuevo `chimera-distribution` (P9).
+
+**Push AUTORIZADO por Dylan** (este registro): trabajará el paso 3 en paralelo
+desde otra máquina. Se publica `mejorado/base` a origin por primera vez (vía
+HTTPS/gh, regla del repo) — contiene toda la fase hasta acá.
+
+**Hereda al backlog, con causa (del handoff P-ui):** P8 branding
+(bloqueado-por-Dylan), fila `project` de P6 (CEREMONIA sobre
+`docs/esquema-datos-v2.md`, DDL propuesto arriba), P10 sin verificación viva,
+card de approval sin par vivo, P12 (espera sesión O), y tres fronteras que
+piden decisión propia: content store durable (plano de confianza), flip
+401-obligatorio, certificado 409 ruidoso en Studio.
+
+**Veredicto:** el paso 2 del plan está COMPLETO. Quedan por lanzar C-2 (Fable),
+V y O — paso 3, paralelizable.
