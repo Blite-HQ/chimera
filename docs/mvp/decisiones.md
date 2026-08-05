@@ -2713,6 +2713,34 @@ hallazgos 4/5/6 del handoff S3.
    costura; el par vivo queda pendiente para quien tenga un run que pida
    aprobación.
 
+#### Dos agujeros de seguridad propios, encontrados y cerrados (2026-08-04)
+
+Un review de seguridad sobre el commit de P10 encontró **dos defectos reales en
+código de esta sesión**. Ambos corregidos con test de regresión antes de cerrar:
+
+1. **XSS almacenado en el MISMO origen que el Studio.** `GET /files/{digest}`
+   devolvía el `Content-Type` que había declarado quien subió el archivo, y
+   `/files` se proxea en el origen del Studio: un HTML subido se servía como
+   HTML y ejecutaba **con la cookie de sesión adjunta** — podía crear runs o
+   responder approvals en nombre del usuario. Que la cookie sea `HttpOnly` no
+   ayuda: el navegador la manda sola. Cerrado con tres capas (neutralizar los
+   tipos activos, `Content-Disposition: attachment`, `nosniff`) más saneo del
+   nombre, que venía de un header del cliente y volvía en otro (CRLF ⇒ header
+   splitting).
+2. **Aislamiento de dominio roto por colisión.** `_domain_dir` saneaba el
+   `domain_id` con reemplazos — una función **con pérdida**: `acme:prod` y
+   `acme/prod` caían en el mismo directorio y el SO2 se evaporaba sin que nada
+   fallara, justo la propiedad que ese adapter existe para cumplir. Y `..`
+   sobrevivía al filtro intacto (salida del root). El directorio pasa a ser el
+   `sha256` del `domain_id` y además se comprueba el dominio del metadato al
+   leer: un aislamiento que depende de UNA comprobación se rompe entero cuando
+   esa comprobación falla.
+
+**La lección, porque se repite:** las dos veces el código _parecía_ implementar
+la doctrina y hasta la citaba en su docstring. La sanitización con `re.sub` se
+lee como una defensa y es un colador; el `media_type` guardado se lee como un
+metadato y es una instrucción para el navegador.
+
 #### Fronteras declaradas para la sesión de control
 
 - **La rama sale de `mejorado/producto-rt`, no de `mejorado/base`.** CP1 es un
