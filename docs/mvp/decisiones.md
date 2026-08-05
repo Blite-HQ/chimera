@@ -2639,3 +2639,99 @@ aprobación. Se declara, no se disimula.
 `GET /runs/{id}/certificate` → 409, que aparece como error de consola en el navegador.
 Es honesto (un run fallido no tiene certificado) pero ruidoso: el Studio pide el
 certificado incondicionalmente. Candidato a no pedirlo cuando el run no es `completado`.
+
+### Handoff de la sesión PRODUCTO-STUDIO — qué queda y qué NO se verificó
+
+**Gates al cierre** (worktree `mejorado/producto-ui`, 11 commits sobre
+`mejorado/producto-rt` @08d9fbb, sin push):
+
+| Gate                            | Resultado                                         |
+| ------------------------------- | ------------------------------------------------- |
+| `pytest`                        | **1197 passed**, 14 skipped, 9 xfailed, 4 xpassed |
+| cobertura                       | **91.5 %** (mínimo exigido 30 %)                  |
+| `lint-imports`                  | **14 contratos kept, 0 broken**                   |
+| `ruff check`                    | limpio                                            |
+| `pyright`                       | **0 errores**                                     |
+| `pnpm -C apps/studio test:run`  | **299 passed** / 32 files                         |
+| `pnpm -C apps/studio lint`      | limpio                                            |
+| `pnpm -C apps/studio typecheck` | limpio                                            |
+
+Baseline al abrir: pytest 1166 / studio 224 en 27 files.
+
+**Alcance cerrado**: P3-D, P6 (parcial — ver abajo), P7, P9, P10, P13 y los
+hallazgos 4/5/6 del handoff S3.
+
+#### Lo que NO se cerró, con causa
+
+1. **P8/M16 branding — BLOQUEADO-POR-DYLAN.** Las 21 referencias visuales no
+   están disponibles. La decisión red-de-nodos vs 3-barras y el sistema de
+   marca 16px NO se tomaron a ciegas: es la decisión más subjetiva del alcance
+   y hacerla sin el material que la informa habría producido algo que hay que
+   rehacer. Se retoma cuando lleguen.
+2. **P6/M15 — la fila relacional `project` NO existe.** El resto de P6 sí está
+   (selector honesto, colapsable, bloque de usuario real vía `GET /me`).
+   **Es ceremonia, no olvido**: la tabla vive en `engine/sql/init_v2.sql`, que
+   está bajo candado bidireccional doc⊆SQL⊆doc
+   (`tests/invariants/test_esquema_migration.py`) contra
+   `docs/esquema-datos-v2.md` — SEMILLA v2 gobernada por `contract-freeze.md`.
+   Crear la tabla exige editar un doc CONGELADO con ceremonia registrada, que
+   el plan reserva a la sesión de control.
+
+   **DDL propuesto** (para que la ceremonia tenga algo concreto que ratificar):
+
+   ```sql
+   CREATE TABLE projects (
+       id          TEXT PRIMARY KEY,
+       domain_id   TEXT NOT NULL REFERENCES domains (id),
+       name        TEXT NOT NULL,
+       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+   );
+   ```
+
+   Fuera del event store, como manda S-A §Contrato-4: `run.created.project_id`
+   es referencia OPACA y el evento no valida FK — la valida el API al crear el
+   run. El Studio ya está listo para consumirla: `AppShell` acepta
+   `projects`/`onProjectChange` y solo dibuja el selector con dos o más, y el
+   router ya lleva el `:proj` en la URL. **P6 se termina llenando datos, sin
+   reescribir rutas ni vistas.**
+
+3. **P10 — no verificado VIVO.** El endpoint de archivos y la vista Papers
+   están completos y con gates verdes (19 tests propios: 11 del adapter + 8 de
+   las rutas), pero la corrida contra compose quedó sin hacer. Comando exacto
+   para cerrarlo:
+
+   ```bash
+   docker compose build api studio && docker compose up -d
+   curl -X POST http://localhost:3000/files -H 'Content-Type: application/pdf' \
+        -H 'X-Filename: paper.pdf' --data-binary @archivo.pdf
+   curl http://localhost:3000/files
+   ```
+
+4. **La card de approval no se ejercitó contra un `approval.requested` real.**
+   El loop no emitió ninguno en las corridas de esta sesión (el run muere antes,
+   en `GatewayRejection`). Su contrato está cubierto contra los fixtures de
+   costura; el par vivo queda pendiente para quien tenga un run que pida
+   aprobación.
+
+#### Fronteras declaradas para la sesión de control
+
+- **La rama sale de `mejorado/producto-rt`, no de `mejorado/base`.** CP1 es un
+  checkpoint de dos lados y P-rt cerró sin merge; ramificar desde `base` habría
+  obligado a fabricar el lado E para probar el lado D. **El merge de CP1 lleva
+  ambas ramas juntas.**
+- **`scripts/smoke_infra.sh` no corre desde un worktree**: usa `uv run`, y el
+  `.venv` de un worktree no tiene los editables (gotcha conocido). Sus pasos se
+  corrieron a mano con la receta de worktree y dieron verde; el script sigue
+  sirviendo desde el repo principal. Arreglarlo es de plataforma (O).
+- **`resources.content` sigue siendo `InMemoryContentStore`.** El adapter
+  durable ya existe (`blite.content_fs`) y habla el mismo puerto, así que
+  migrar la evidencia de los runs a disco es un cambio de una línea de
+  cableado — pero cambia el plano de CONFIANZA (la evidencia dejaría de
+  evaporarse al reiniciar) y merece decisión propia, no colarse en producto.
+- **El flip a 401-obligatorio** que `test_auth_session.py` declara «frontera
+  P-ui» no se hizo: hoy sin cookie se cae a la identidad del operador local.
+  Cambiarlo rompe el flujo sin sesión y no estaba en el alcance enumerado.
+- **Un run fallido dispara `GET /runs/{id}/certificate` → 409** y aparece como
+  error de consola en el navegador. Es honesto (un run fallido no tiene
+  certificado) pero ruidoso: el Studio pide el certificado incondicionalmente.
+  Candidato a no pedirlo salvo `status === 'completado'`.
