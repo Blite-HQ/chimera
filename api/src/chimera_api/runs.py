@@ -72,6 +72,7 @@ from blite.runtime.loop import (
     TurnContext,
     execute_run,
 )
+from blite.runtime.metrics import record_run_metrics
 from blite.runtime.plan import PlanItem
 from blite.runtime.registry import Registry, load_registry
 from blite.serving.model_port import ModelPort
@@ -467,6 +468,21 @@ def run_in_background(
     except Exception as exc:  # noqa: BLE001 — último recurso: una tarea de fondo jamás tumba el worker, y el run jamás queda sin terminal
         _LOGGER.exception("run %s: excepción escapada de la tarea de fondo", run_id)
         _fail_run_last_resort(store, run_id, exc)
+    _record_metrics_best_effort(store, run_id)
+
+
+def _record_metrics_best_effort(store: EventStore, run_id: str) -> None:
+    """V2/M19 — el cierre métrico (`run.metrics.recorded`, freeze §3 [S-F]:
+    «se emite al cerrar el run»). Va DESPUÉS del terminal y fuera del hash,
+    así que emitirlo no toca la procedencia de un certificado ya emitido.
+
+    Best-effort a propósito: el run YA cerró con su terminal, y una métrica
+    que no se pudo escribir no puede invalidar un run que sí corrió. Se
+    registra el fallo — nunca se traga en silencio."""
+    try:
+        record_run_metrics(store, run_id=run_id, domain_id=_DEFAULT_DOMAIN)
+    except Exception:  # noqa: BLE001 — el cierre métrico jamás falla un run ya terminado; se reporta
+        _LOGGER.exception("run %s: no se pudo emitir el cierre métrico", run_id)
 
 
 def _fail_run_last_resort(store: EventStore, run_id: str, exc: Exception) -> None:

@@ -156,6 +156,9 @@ class TestResultProjection:
             "verdict",
             "attestation",
             "step_id",
+            # V2/M19: la latencia se estampa SIEMPRE — es lo que hace que
+            # `run.metrics.recorded` se derive del log y no de memoria.
+            "latency_ms",
         }
 
     def test_la_proyeccion_no_puede_pisar_el_binding_de_confianza(self) -> None:

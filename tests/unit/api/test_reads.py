@@ -391,6 +391,55 @@ class TestGetAblation:
         response = _get(client, "/runs/no-existe/ablation")
         assert response.status_code == 404
 
+    def test_las_cuatro_variantes_del_enum_pasan_la_ruta(self) -> None:
+        """[V2/M19 · C-4] El enum creció de 2 a 4 EN EL MISMO checkpoint que
+        su productor — `mitigated`/`zne` (M6) ya no rebotan en la frontera."""
+        store = create_event_store()
+        for indice, variante in enumerate(("quantum", "classical", "mitigated", "zne")):
+            run_id = f"r-{variante}"
+            store.append(
+                stream_id=run_id,
+                type="run.created",
+                actor_id="user:dylan",
+                domain_id="d-default",
+                payload={
+                    "run_id": run_id,
+                    "max_steps": 8,
+                    "policy_digest": "sha256:pp",
+                },
+            )
+            store.append(
+                stream_id=run_id,
+                type="run.metrics.recorded",
+                actor_id="service:runtime",
+                domain_id="d-default",
+                payload={
+                    "variant": variante,
+                    "cut_cost": float(indice),
+                    "wall_ms": 1.0,
+                    "verification_latency_ms": 1.0,
+                },
+                expected_seq=1,
+            )
+        client = _make_client(store)
+
+        for variante in ("quantum", "classical", "mitigated", "zne"):
+            body = _get(client, f"/runs/r-{variante}/ablation").json()
+            assert [fila["variant"] for fila in body] == [variante]
+
+    def test_un_cierre_solo_de_confianza_no_aparece_como_punto_cientifico(
+        self,
+    ) -> None:
+        """[V2/M19] TODO run terminado emite `run.metrics.recorded`, pero uno
+        sin `variant`/`cut_cost`/`wall_ms` no es una fila de ablación — se
+        omite en vez de inventarle una variante."""
+        # Arrange / Act
+        client = _make_client()
+        run_id = _create_golden_run(client)
+
+        # Assert
+        assert _get(client, f"/runs/{run_id}/ablation").json() == []
+
 
 class TestGetTopology:
     def test_sin_particion_embebida_da_payload_vacio_honesto(self) -> None:

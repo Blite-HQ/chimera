@@ -30,21 +30,34 @@ import {
   YAxis
 } from 'recharts';
 
-import type { AblationMetric } from './types';
+import type { AblationMetric, AblationVariant } from './types';
 
 export interface AblationPanelProps {
   readonly metrics: readonly AblationMetric[];
 }
 
-const VARIANT_COLORS: Readonly<Record<AblationMetric['variant'], string>> = {
+/**
+ * [V2/M19 · C-4] Cuatro variantes, no dos: `mitigated`/`zne` son los brazos de
+ * mitigación de M6. El color identifica la VARIANTE (la entidad comparada) y
+ * se mantiene igual en los tres charts — un color por métrica haría creer que
+ * los paneles comparan cosas distintas.
+ */
+const VARIANT_COLORS: Readonly<Record<AblationVariant, string>> = {
   quantum: 'var(--color-chart-2)', // misma familia que Isla A (cian de traza)
-  classical: 'var(--color-chart-3)' // misma familia que Isla B (magenta)
+  classical: 'var(--color-chart-3)', // misma familia que Isla B (magenta)
+  mitigated: 'var(--color-chart-1)',
+  zne: 'var(--color-chart-4)'
 };
 
-const VARIANT_LABELS: Readonly<Record<AblationMetric['variant'], string>> = {
+const VARIANT_LABELS: Readonly<Record<AblationVariant, string>> = {
   quantum: 'Cuántico',
-  classical: 'Clásico'
+  classical: 'Clásico',
+  mitigated: 'Mitigado',
+  zne: 'ZNE'
 };
+
+/** Orden estable de presentación — dos renders del mismo run dan lo mismo. */
+const VARIANT_ORDER: readonly AblationVariant[] = ['quantum', 'classical', 'mitigated', 'zne'];
 
 interface MetricConfig {
   readonly key: keyof Pick<AblationMetric, 'cutCost' | 'wallMs' | 'verificationLatencyMs'>;
@@ -75,10 +88,15 @@ function buildChartData(
   }));
 }
 
-function Legend(): React.ReactElement {
+/**
+ * La leyenda nombra SOLO las variantes que este run produjo. Anunciar «ZNE»
+ * cuando ningún brazo de mitigación corrió sugeriría una comparación que no
+ * ocurrió — el panel dice lo que hay, no lo que el enum admite.
+ */
+function Legend({ variants }: { readonly variants: readonly AblationVariant[] }) {
   return (
     <div className="flex items-center gap-4 text-xs text-muted-foreground">
-      {(['quantum', 'classical'] as const).map(variant => (
+      {variants.map(variant => (
         <span key={variant} className="flex items-center gap-2">
           <span
             className="inline-block h-2.5 w-2.5 rounded-full"
@@ -147,9 +165,12 @@ function MetricChart({
 }
 
 export default function AblationPanel({ metrics }: AblationPanelProps): React.ReactElement {
+  const presentes = VARIANT_ORDER.filter(variant =>
+    metrics.some(metric => metric.variant === variant)
+  );
   return (
     <div className="flex flex-col gap-4">
-      <Legend />
+      <Legend variants={presentes} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {METRIC_CONFIGS.map(config => (
           <MetricChart key={config.key} config={config} metrics={metrics} />

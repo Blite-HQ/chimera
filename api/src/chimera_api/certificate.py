@@ -33,7 +33,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from blite.certificate.assemble import AssembleError, assemble_bundle
-from blite.events.rules import TERMINAL_RUN_EVENTS
+from blite.events.rules import TERMINAL_RUN_EVENTS, provenance_slice
 from chimera_api.runs import RunResources
 
 
@@ -49,7 +49,14 @@ def create_certificate_router(resources: RunResources) -> APIRouter:
             raise HTTPException(status_code=404, detail="run desconocido")
 
         stream = resources.store.read_stream(run_id)
-        if not stream or stream[-1].type not in TERMINAL_RUN_EVENTS:
+        # [V2/M19] El corte NO es "el último evento del stream": freeze §2
+        # [stress-final] admite familias de CIERRE post-terminales
+        # (`run.metrics.recorded`, ● de cierre del case) que quedan FUERA del
+        # hash. Comprobar `stream[-1]` daba 409 en cuanto el cierre métrico
+        # existió — y pasarle el stream completo a `assemble_bundle` habría metido
+        # un evento post-terminal DENTRO del provenance_hash. Por eso: el run está
+        # terminado si TIENE terminal, y lo que se certifica es el corte.
+        if not stream or not any(e.type in TERMINAL_RUN_EVENTS for e in stream):
             raise HTTPException(
                 status_code=409,
                 detail="el run aún no terminó — un run vivo no se certifica",
@@ -57,7 +64,7 @@ def create_certificate_router(resources: RunResources) -> APIRouter:
 
         try:
             return assemble_bundle(
-                stream=stream,
+                stream=provenance_slice(stream),
                 conclusions=ticket.conclusions,
                 policy_yaml=resources.policy_bytes,
                 signing_key=resources.signing_key,

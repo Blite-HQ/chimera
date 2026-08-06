@@ -99,6 +99,17 @@ def _parse_frames(body: str) -> list[dict[str, str]]:
     return frames
 
 
+_CLOSING_EVENT_TYPES = frozenset({"run.metrics.recorded"})
+
+
+def _hasta_el_terminal(frames: list[dict[str, str]]) -> list[dict[str, str]]:
+    """[V2/M19] El cierre métrico se emite DESPUÉS del terminal (freeze §2
+    [stress-final]: familia de cierre, fuera del hash). Preguntar cómo cerró
+    el run es preguntar por el corte del provenance_hash, no por el último
+    frame del stream."""
+    return [f for f in frames if f["event"] not in _CLOSING_EVENT_TYPES]
+
+
 def _predicate_of(bundle: dict[str, Any]) -> dict[str, Any]:
     """Mismo helper que `test_assemble.py`/`test_certificate.py`::_predicate_of
     — decodifica `envelope.payload` base64→json→["predicate"]."""
@@ -141,7 +152,7 @@ class TestGoldenPathE2E:
         # terminaron durante el POST, así que el snapshot `?live=0` observa
         # el stream completo hasta el evento terminal.
         events_response = _get(client, f"/runs/{run_id}/events?live=0")
-        frames = _parse_frames(events_response.text)
+        frames = _hasta_el_terminal(_parse_frames(events_response.text))
         types = [f["event"] for f in frames]
         assert frames[-1]["event"] == "run.completed"
         assert types.count("claim.emitted") == 1
@@ -190,7 +201,7 @@ class TestRefutacionE2E:
 
         # Act — SSE terminal.
         events_response = _get(client, f"/runs/{run_id}/events?live=0")
-        frames = _parse_frames(events_response.text)
+        frames = _hasta_el_terminal(_parse_frames(events_response.text))
         assert frames[-1]["event"] == "run.completed"
 
         # Act — GET certificate.

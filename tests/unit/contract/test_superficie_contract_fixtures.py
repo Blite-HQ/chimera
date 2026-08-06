@@ -22,6 +22,7 @@ _REPO = Path(__file__).resolve().parents[3]
 _CANONICAL = _REPO / "tests" / "fixtures" / "contract" / "superficie"
 _STUDIO = _REPO / "apps" / "studio" / "src" / "fixtures" / "contract" / "superficie"
 _CASE = "topology-snapshot"
+_CASE_METRICS = "run-metrics-recorded"
 
 
 def _load_generator() -> object:
@@ -143,3 +144,45 @@ def test_el_productor_real_emite_la_misma_forma_que_el_fixture() -> None:
     assert set(produced["islands"][0]["verification"]) == set(
         fixture["islands"][0]["verification"]
     )
+
+
+def test_fixture_de_metricas_parsea_de_vuelta_a_su_modelo() -> None:
+    """[V2/M19 · C-4] El caso que estaba DECLARADO ahora se genera desde
+    `RunMetricsRecordedPayload` — confianza (congelado) + ciencia (aditivo) en
+    UN payload, que era exactamente el choque que C-4 resolvió."""
+    from blite.runtime.metrics import RunMetricsRecordedPayload
+
+    text = (_CANONICAL / f"{_CASE_METRICS}.json").read_text(encoding="utf-8")
+    parsed = RunMetricsRecordedPayload.model_validate_json(text)
+
+    assert parsed.variant == "zne"
+    assert parsed.attestations_total == 4
+    assert parsed.cut_cost == 57070.0
+    assert parsed.ms_por_clase == {"formal_exact": 12.5, "execution": 800.0}
+
+
+def test_fixture_de_metricas_byte_identico_y_sin_drift() -> None:
+    canonical = (_CANONICAL / f"{_CASE_METRICS}.json").read_bytes()
+    assert canonical == (_STUDIO / f"{_CASE_METRICS}.json").read_bytes()
+
+    module = _load_generator()
+    expected = module.serialize(module._cases()[_CASE_METRICS])  # type: ignore[attr-defined]
+    assert canonical.decode("utf-8") == expected
+
+
+def test_la_fila_de_ablacion_sale_del_mismo_payload() -> None:
+    """El puente C-4: los 4 campos que `AblationMetric` consume salen del
+    cierre métrico — si el productor y el consumidor se desalinearan, esto
+    falla antes de que el panel pinte una barra inventada."""
+    from chimera_api.reads import AblationMetric
+
+    data = json.loads(
+        (_CANONICAL / f"{_CASE_METRICS}.json").read_text(encoding="utf-8")
+    )
+    fila = AblationMetric(
+        variant=data["variant"],
+        cut_cost=data["cut_cost"],
+        wall_ms=data["wall_ms"],
+        verification_latency_ms=data["verification_latency_ms"],
+    )
+    assert fila.variant == "zne"

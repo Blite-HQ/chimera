@@ -18,6 +18,7 @@ Reglas duras:
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -30,7 +31,7 @@ from blite.verification.verifier import Verifier
 _RUNTIME_ACTOR = "service:runtime"
 
 _RESERVED_PAYLOAD_KEYS = frozenset(
-    {"claim_digest", "verifier_id", "verdict", "attestation", "step_id"}
+    {"claim_digest", "verifier_id", "verdict", "attestation", "step_id", "latency_ms"}
 )
 """El binding de confianza del evento. Una proyección del caller EXTIENDE el
 payload; jamás reescribe lo que el verificador dictó — eso sería falsificar la
@@ -146,11 +147,18 @@ def make_verification_delegate(
             )
             append("claim.emitted", payload.model_dump())
             for verifier in verifiers:
+                started = time.perf_counter()
                 attestation = verifier.verify(declaration.claim, invocation_ctx)
+                latency_ms = (time.perf_counter() - started) * 1000.0
                 verification: dict[str, Any] = {
                     "claim_digest": attestation.claim_digest,
                     "verifier_id": attestation.verifier_id,
                     "verdict": attestation.verdict,
+                    # V2/M19: la latencia se estampa POR attestation para que
+                    # `run.metrics.recorded` se DERIVE del log — un tercero que
+                    # replaye obtiene el mismo número, cosa que un acumulador
+                    # en memoria del emisor nunca podría ofrecerle.
+                    "latency_ms": latency_ms,
                     "attestation": attestation.model_dump(mode="json"),
                 }
                 if step_id is not None:

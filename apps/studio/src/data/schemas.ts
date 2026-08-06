@@ -302,9 +302,16 @@ export const stepDetailSchema = z.object({
   attestations: z.array(attestationSchema)
 });
 
-/** nota 07 §1.3 — fila de ablación. */
+/**
+ * nota 07 §1.3 — fila de ablación.
+ * [V2/M19 · C-4] El enum de variantes vive UNA vez y lo comparten el schema de
+ * fixture y el del wire: dos listas paralelas es exactamente el drift que la
+ * extensión coordinada evita.
+ */
+export const ablationVariantSchema = z.enum(['quantum', 'classical', 'mitigated', 'zne']);
+
 export const ablationMetricSchema = z.object({
-  variant: z.enum(['quantum', 'classical']),
+  variant: ablationVariantSchema,
   cutCost: z.number().nonnegative(),
   wallMs: z.number().nonnegative(),
   verificationLatencyMs: z.number().nonnegative()
@@ -477,7 +484,7 @@ export function toKnowledgeClaim(wire: z.infer<typeof knowledgeClaimWireSchema>)
  * shape que `ablationMetricSchema` (fixtures), salvo casing snake_case.
  */
 export const ablationWireSchema = z.object({
-  variant: z.enum(['quantum', 'classical']),
+  variant: ablationVariantSchema,
   cut_cost: z.number().nonnegative(),
   wall_ms: z.number().nonnegative(),
   verification_latency_ms: z.number().nonnegative()

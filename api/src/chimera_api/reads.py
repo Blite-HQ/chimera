@@ -45,7 +45,8 @@ from pydantic import BaseModel, ConfigDict
 from blite.certificate.assemble import AssembleError, assemble_bundle
 from blite.certificate.predicate import AssuranceLevel, ConclusionVerdict
 from blite.events.event import Event
-from blite.events.rules import TERMINAL_RUN_EVENTS
+from blite.events.rules import TERMINAL_RUN_EVENTS, provenance_slice
+from blite.runtime.metrics import AblationVariant
 from blite.runtime.projection import RunRow, project_runs
 from chimera_api.runs import RunResources
 
@@ -154,11 +155,17 @@ class StepDetail(BaseModel):
 
 
 class AblationMetric(BaseModel):
-    """`GET /runs/{run_id}/ablation` — `run.metrics.recorded` por variante."""
+    """`GET /runs/{run_id}/ablation` — `run.metrics.recorded` por variante.
+
+    [V2/M19 · C-4] `variant` pasa de 2 a 4 valores EN EL MISMO checkpoint que
+    su productor (`blite.runtime.metrics`), de donde se importa el enum: dos
+    copias del mismo Literal es exactamente el drift que C-15 prohíbe. Una
+    fila sin los 4 campos se OMITE (ver `_project_ablation`) — un run que solo
+    reportó confianza no aparece como un punto científico fabricado."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    variant: Literal["quantum", "classical"]
+    variant: AblationVariant
     cut_cost: float
     wall_ms: float
     verification_latency_ms: float
@@ -195,11 +202,18 @@ def _bundle_for(resources: RunResources, run_id: str) -> dict[str, Any] | None:
     if ticket is None:
         return None
     stream = resources.store.read_stream(run_id)
-    if not stream or stream[-1].type not in TERMINAL_RUN_EVENTS:
+    # [V2/M19] El corte NO es "el último evento del stream": freeze §2
+    # [stress-final] admite familias de CIERRE post-terminales
+    # (`run.metrics.recorded`, ● de cierre del case) que quedan FUERA del
+    # hash. Comprobar `stream[-1]` daba 409 en cuanto el cierre métrico
+    # existió — y pasarle el stream completo a `assemble_bundle` habría metido
+    # un evento post-terminal DENTRO del provenance_hash. Por eso: el run está
+    # terminado si TIENE terminal, y lo que se certifica es el corte.
+    if not stream or not any(e.type in TERMINAL_RUN_EVENTS for e in stream):
         return None
     try:
         return assemble_bundle(
-            stream=stream,
+            stream=provenance_slice(stream),
             conclusions=ticket.conclusions,
             policy_yaml=resources.policy_bytes,
             signing_key=resources.signing_key,
