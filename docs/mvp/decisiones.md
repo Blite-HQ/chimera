@@ -2810,3 +2810,361 @@ piden decisión propia: content store durable (plano de confianza), flip
 
 **Veredicto:** el paso 2 del plan está COMPLETO. Quedan por lanzar C-2 (Fable),
 V y O — paso 3, paralelizable.
+
+## Sesión CONFIANZA-2 Mejorado — C3→C15 (rama `mejorado/confianza-2`, 2026-08-05/06)
+
+> Alcance del prompt generador (`docs/mejorado/05-plan-paralelo.md` §4):
+> C3-C10 + extensiones #120 (C12-C15). **C11 NO entra** — su enunciado
+> («MCP de salida, ingesta KG, Fargate/BYOC, al final del dominio y tras el
+> flip OSS si llega») está repartido entre O5 y P12, y el prompt de esta
+> sesión no lo lista. Se deja al backlog sin tocar.
+
+### #153 — C3/M3: las reglas del dominio entran como DATO SMT-LIB con digest
+
+`RuleVerifier` + puerto `RuleBackend` + `RuleSet` (artefacto SMT-LIB 2
+versionado). El `rule_digest` son los BYTES EXACTOS del archivo (Regla 1 del
+anexo, como `policy_digest`) y el `rule_set_id` viaja DENTRO del artefacto —
+un cargador que lo recibiera por parámetro dejaría que id y bytes deriven.
+
+Decisiones que quedan estampadas:
+
+1. **`rlimit`, jamás timeout de reloj** (#103): un corte por tiempo hace que
+   `unknown` dependa de la máquina y el replay deja de ser determinista. La
+   clase NO expone ningún parámetro de tiempo.
+2. **El candidato se fija ENTERO o no se chequea nada.** Con un símbolo libre
+   el solver ELIGE el valor que hace `sat`, y el `pass` diría «existe algún
+   mundo donde se cumple» disfrazado de «el candidato cumple». Símbolo libre,
+   símbolo ajeno, sort equivocado o float no finito ⇒ error de PROCESO.
+3. **Cero techos rotos.** La v1 emite `property_rule` AL2. Un backend que
+   devolviera prueba formal NO se emite en silencio ni se degrada escondiendo
+   evidencia: explota nombrando la ceremonia pendiente (arm de prueba de
+   reglas en `FormalExactPredicate`, freeze §4-iii). **Frontera declarada** —
+   esa ceremonia queda para quien traiga cvc5.
+4. La explicabilidad es la evidencia: además del `unsat_core` nativo, cada
+   regla corre por separado, porque el core de Z3 es un subconjunto pequeño
+   NO garantizado mínimo y presentarlo como diagnóstico completo engañaría.
+
+`PropertyRulePredicate` gana `rule_set_id`/`rule_digest` (aditivos, trust/11
+§1.5) y corrige dos campos intipables de la semilla: `unsat_core` era `str |
+None` (el core ES un conjunto de reglas) y `status` era `str` libre teniendo
+vocabulario cerrado. Sin emisores ni consumidores previos.
+
+**Dependencia nueva:** `z3-solver>=4.16` como dep DIRECTA del engine (igual
+que ortools y pandapower). Que la distribución ya lo instalara vía
+`blite-cap-smt[z3]` era una dependencia implícita que se rompía al instalar
+el engine solo.
+
+### #154 — C3: registro de confianza (`system:trust-registry`)
+
+`●VerifierRegistered`/`●AnchorRegistered` y la proyección que produce los
+`anchor_descriptors`/`verifier_descriptors` del Bundle. Antes se escribían a
+mano en el generador: el punto 5 del checklist comparaba una lista contra otra
+lista del MISMO autor. Ahora salen del log. Fail-closed: un `anchor_digest`
+que no es sha256 no se registra, y la proyección lee SOLO su stream de sistema
+(un evento homónimo en el stream de un run no inyecta descriptores).
+
+Ciclo de vida (`Superseded/Deprecated/Revoked`) NO implementado: exige decidir
+qué pasa con los certificados que citan un ancla retirada, y esa pregunta la
+responde la StatusList (#157).
+
+### #155 — C4/M4: una constancia por isla, y las islas no inflan patas
+
+`verify_all()` con default `= (verify(),)` (C-6/#106) + `ExecutionVerifier`
+emitiendo una constancia POR ISLA (`step_id = island-{k}`, convención S-D §8)
+con solo los checks de esa isla. Ambas rutas salen de la MISMA evaluación: si
+cada una corriera sus propios checks, el bundle podría mostrar dos verdades
+sobre el mismo run.
+
+**La regla que lo hace seguro va en el mismo commit** (extensión del punto 7):
+las constancias de un mismo verificador en un mismo run comparten
+`independence_group`. Sin ella, partir un verdict en N y darle a cada parte su
+grupo convierte UN verificador en las 2 patas que la Policy exige.
+
+**Hallazgo de contrato:** la promesa «compat total, todo adapter hereda el
+default» NO se cumple con typing estructural — un Protocol `runtime_checkable`
+exige el ATRIBUTO para `isinstance`, y los 8 adapters del repo satisfacen
+`Verifier` estructuralmente. Se declara explícito en los 8 y la promesa queda
+viva por el helper `verify_all_of`, que aplica el mismo default desde afuera
+para un adapter ajeno escrito contra el puerto viejo. Es el camino que usa el
+orquestador.
+
+Efecto observable: el golden path emite 3 `verification.completed` (1 formal +
+2 islas) en vez de 2, con las MISMAS 2 patas. Los dos tests que contaban
+eventos pasan a afirmar la propiedad real (grupos distintos).
+
+### #156 — C5/M28: hash-chain en el writer y el sub-run con integridad
+
+Tres piezas que solo juntas cierran la letra del anexo §4:
+
+1. **Hash-chain por evento** (`blite/events/chain.py`), génesis `""` — la
+   elección EXPLÍCITA del anexo. Se computa en el writer, donde el evento
+   queda definido y todavía no lo vio nadie. Las columnas `prev_hash`/`hash`
+   de la semilla v2 por fin se llenan; CERO cambios de esquema.
+2. **M28 — una sola fórmula.** `subrun.py` tenía prefijo, vista y
+   canonicalización propios (frontera registrada en la fila «`sub_run_
+provenance_hash`» de este ledger). El costo era concreto: el anexo manda
+   que el verificador offline RECOMPUTE ese hash, y con dos fórmulas era
+   imposible.
+3. **Puntos 9 y 10 del checklist** + `sub_run_streams` y
+   `provenance_chain_head` en el Bundle (el head va DENTRO del payload
+   firmado: un valor de integridad fuera de la firma es un número que nadie
+   atestigua).
+
+**El `provenance_hash` NO se sustituye por el head todavía** — la promoción
+que el anexo describe («sin cambiar forma») cambiaría el digest de todo
+certificado ya emitido. Queda como ceremonia aparte, con el sustrato puesto.
+
+**Postgres:** el `seq` ya no se decide dentro del INSERT (el hash necesita
+id/seq/occurred_at antes de hashear). La concurrencia optimista no se debilita
+— el `UNIQUE (stream_id, seq)` sigue siendo quien rechaza la carrera.
+VERIFICADO VIVO contra Postgres 17 real: cadena correcta y
+`ConcurrentAppendError` intacto.
+
+### #157 — C6/C7: DSSE por constancia y revocación comprobable (supersedes §7)
+
+**C6 (T6 SUPERSEDIDO):** un sobre DSSE por constancia con predicate forma
+**SLSA VSA** — se adopta la FORMA del estándar, no su stack, para que un
+tercero con herramientas in-toto lea esto sin traductor. El `subject` es el
+CLAIM (atarlo al run permitiría reusar el sobre para otro claim del mismo
+run) y el `resourceUri` lleva el `step_id`, así que dos constancias por isla
+no son indistinguibles una vez firmadas — es lo que hace a M4 «de primera
+clase». El punto 7 exige que las dos vistas (embebida y firmada) coincidan
+EXACTAMENTE. Con `attestation_public_keys` la separación S2 deja de ser
+limitación declarada.
+
+**C7 (T14 SUPERSEDIDO, acotado):** StatusList con forma W3C Bitstring como
+artefacto estático firmado. El punto 11 es OPT-IN y esa es la resolución del
+choque con el air-gap: sin lista la verificación offline sigue completa y el
+punto DECLARA «válido a valid_as_of, revocación no comprobada». Para eso el
+resultado de un punto gana `notes` — un checklist que imprimiera «12/12»
+callando lo que no comprobó sería la ceremonia que T11 prohíbe.
+`●CertificateRevoked` se emite en el stream del run (post-terminal, fuera del
+corte) con actor humano y razón; los bits se PROYECTAN de esos eventos.
+**`●CertificateReissued` sigue siendo Fase 2 declarada** — re-emitir exige
+decidir qué pasa con el certificado anterior.
+
+Detalles con causa escrita: índice 0 = bit más significativo (leerlo al revés
+revocaría certificados ajenos); mínimo de 16 KB por PRIVACIDAD, no capacidad;
+`gzip(mtime=0)` o el artefacto cambia en cada emisión; índice fuera de rango
+= error, jamás «no revocado».
+
+### #158 — C8/M8 pieza 4: la llave sale del proceso (y tres hallazgos vivos)
+
+El puerto `KeyProvider` existía desde S-G y nadie lo usaba. Ahora `assemble`,
+los sobres de constancia y la StatusList firman POR EL PUERTO, con `purpose`
+separados (`certificate`/`attestation`/`status-list`). Escalón 1
+(`LocalKeyProvider`, efímero o del archivo del despliegue) y escalón 2
+(`TransitKeyProvider` sobre OpenBao single-instance — el quorum de 3 resuelve
+ALTA DISPONIBILIDAD, no seguridad). El api elige por env y **falla cerrado si
+la custodia se configura a medias**: un Transit sin token no puede degradar a
+llave efímera en silencio.
+
+**VERIFICADO VIVO** (perfil `custody`, OpenBao 2.6.1): certificado firmado con
+una llave que el proceso nunca vio → `check_bundle` 12/12 offline. La corrida
+encontró tres cosas que ningún test de escritorio habría encontrado:
+
+1. OpenBao 2.6 ELIMINÓ mlock — `disable_mlock` impide el arranque.
+2. El volumen va en `/openbao/file` (path que la imagen crea con el dueño
+   correcto); en una ruta propia lo crea Docker como root y el proceso —que no
+   corre como root— no puede escribirlo.
+3. **Transit devuelve la pública Ed25519 en base64 CRUDO, no en PEM.** El
+   doble de protocolo del test asumía PEM y pasaba: un doble escrito de
+   memoria prueba lo que uno cree, no lo que el servidor hace.
+
+También salió del choque con la realidad el bug del script de init: `bao
+status` sale con código 2 cuando el vault está sellado —estado normal— y con
+`pipefail` la rama de unseal nunca corría.
+
+### #159 — C9/M8 pieza 5 (#105): prueba de inclusión engrapada
+
+Rekor RE-ENTRA con causa: el descarte era correcto para la emisión _keyless_
+con Fulcio (exige CA en línea al firmar); un log privado del que se extrae una
+prueba que viaja DENTRO del bundle se verifica con aritmética. Qué agrega
+sobre la firma: la firma no impide que el emisor produzca DOS certificados del
+mismo run y le muestre uno a cada auditor.
+
+Punto 12, opt-in como el 11. Exige que la hoja sea la de ESTE certificado —
+una prueba de inclusión matemáticamente válida de otro documento es la forja
+que un `verify` descuidado deja pasar.
+
+**ALCANCE DECLARADO:** la mitad OFFLINE está implementada y probada (incluido
+el árbol impar). El cliente de SUMISIÓN al log NO se escribió: hacerlo sin
+ejercitarlo contra un servidor real produce código que falla en el primer
+contacto — acaba de pasar en C8, y ahí sí había servidor para descubrirlo.
+Perfil `transparency` del compose listo; comando en el handoff.
+
+### #160 — C10/M29: la relajación con responsable (§10 → código)
+
+`OverridePayload` + `apply_override` que REGISTRA antes de aplicar (INV-4) —
+por eso la función no recibe ni ejecuta la acción relajada: mezclarlas
+permitiría aplicar primero «y de paso» registrar.
+
+**Match EXACTO del permiso** (A6 lo asumía; queda por escrito):
+`override:apply:global` no habilita un override de alcance `run` ni al revés.
+La alternativa jerárquica hace que el permiso más peligroso sea también el más
+cómodo. **`authorized_by` en snake_case** — el `authorizedBy` del §10 es prosa
+con sabor TS. Y el autorizador que PRESENTA el override es el que queda
+registrado: nadie inscribe a otro como responsable.
+
+Un intento RECHAZADO no escribe: mezclar intentos con hechos haría que «hay un
+override registrado» dejara de significar «hubo un override». AX2 con test
+propio, sin camino de permiso más fácil que los demás.
+
+### #161 — C15: el punto 7 evalúa la Policy completa (CEREMONIA)
+
+Ceremonia obligatoria porque cambia el veredicto de bundles estampados. La
+evidencia de que no rompe nada vivo: la suite completa verde (1357), incluidos
+los e2e de los tres retos, más un test que lo afirma sobre el bundle vigente.
+
+Dos huecos, y el segundo es peor. `min_level` NUNCA se comprobaba (una
+conclusión AL1 bajo regla AL3 pasaba). Y `MatchCondition.side_effects` se
+ignoraba eligiendo la regla con el PRIMER `claim_type` que casara: en la
+Policy que se distribuye HOY, la regla `{side_effects: irreversible-external}`
+no tiene `claim_type`, así que era **INALCANZABLE** — un claim irreversible se
+evaluaba con la regla `pure`. El caso más peligroso, juzgado por la vara más
+laxa, con la regla estricta en el archivo dando la impresión contraria.
+
+La corrección es monotónica: aplican TODAS las reglas cuyas dimensiones
+restringidas satisface el claim y la exigencia es el MÁXIMO — el orden del
+YAML deja de decidir. `min_level` se exige solo a lo VERIFICADO (una
+refutación tiene AL0 por construcción). Los `side_effects` se derivan del
+`claim.emitted`; `reversible-external` NO se infiere de un booleano.
+
+**Efecto en el fixture:** `scripts/example-bundle.json` no emitía
+`claim.emitted`, así que su conclusión se venía evaluando contra una regla que
+no le correspondía. Ahora lo emite con sus portadores, como cualquier run real.
+
+### #162 — C12/C13/C14: tres puertos hacia lo que no es el reto 1
+
+**C14 `ExecutionHarness`** (prepare/run/collect/dispose + guarda
+PASS_TO_PASS): `dispose` corre SIEMPRE y la garantía vive en el helper, no en
+que cada implementador recuerde su try/finally. La guarda cuenta como roto un
+check que DESAPARECIÓ — borrarlo es la forma más limpia de «arreglarlo».
+`isolation` declarado en la spec (AX3 deja de ser aspiracional en la forma).
+
+**C13 análisis del SET de políticas:** `policy_diff.py` compara texto; la
+pregunta real es si algún caso quedó más laxo, y se puede aflojar agregando
+una regla, AMPLIANDO un `match` o reordenando. Se adopta la idea de Cedar
+Analysis sin su motor: el dominio `(claim_type, side_effects)` es finito, la
+comparación es exhaustiva por enumeración y usa el MISMO evaluador que el
+checklist — un analizador con su propia noción de «exigencia» respondería
+sobre una política que nadie aplica.
+
+**C12 registro de detectores** con digest: los guardrails llegaban como
+callables anónimos y dos corridas con detectores distintos dejaban rastros
+indistinguibles. El pick de trust/16 (HHEM-2.1-Open + AlignScore) se declara
+como ids con su `kind`.
+
+**Hallazgo de arquitectura:** HHEM y AlignScore son MODELOS y el contrato
+AX3-b prohíbe a `blite.guardrails` importar SDKs de modelo — un detector
+model-backed no puede vivir en ese paquete. El registro recibe la puntuación
+por un callable inyectado y el modelo corre detrás del puerto de
+`blite.protocols`. No es una incomodidad del diseño: es lo que impide que un
+«detector» se vuelva la puerta por la que un modelo entra sin mediación.
+`GuardrailsStage` YA existía (la trajo C-1); el enunciado del ítem estaba
+desactualizado.
+
+### Tabla de interacciones — sesión CONFIANZA-2 (regla #3)
+
+| Interfaz tocada                                                                                     | Dominio afectado           | Estado del contrato                                                             |
+| --------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------- |
+| `Verifier.verify_all()` + `verify_all_of`                                                           | G, V (verificadores)       | **EXTENDIDO** (C-6/#106 ya lo autorizaba); 8 adapters lo declaran explícito     |
+| `Attestation.step_id` = `island-{k}`                                                                | V (M18/badges)             | convención S-D §8 CONSUMIDA — V ya puede atar badge↔isla                        |
+| `verification.completed` ×N por isla                                                                | V, P-ui (SSE)              | **CAMBIO OBSERVABLE**: 3 eventos donde había 2, mismas 2 patas                  |
+| `PropertyRulePredicate` (+`rule_set_id`/`rule_digest`, `unsat_core`, `status`)                      | G (reto 2)                 | ADITIVO + 2 correcciones de tipo sin emisores previos; fixture regenerado       |
+| `blite.events.chain` (vista canónica + 2 hashes)                                                    | todos                      | **fuente ÚNICA** de la fórmula; `assemble`/`bundle_check`/writer/subrun la usan |
+| `Event.prev_hash`/`hash` poblados                                                                   | O (proyector), infra       | columnas de la semilla v2, sin cambio de esquema                                |
+| `PostgresEventStore.append` (2 statements)                                                          | infra                      | mismo puerto; concurrencia por `UNIQUE`, verificada viva                        |
+| `assemble_bundle(key_provider=…)`                                                                   | api (2 sitios)             | **BREAKING** para el caller: `signing_key`/`keyid` → puerto                     |
+| `RunResources.key_provider`                                                                         | api                        | reemplaza `signing_key`+`keyid`                                                 |
+| Bundle: `sub_run_streams`, `attestation_envelopes`, `attestation_public_keys`, `transparency_proof` | verificador offline        | ADITIVOS, todos opt-in                                                          |
+| Predicate firmado: `provenance_chain_head`, `status_list_entry`, `revocation:"status_list"`         | Studio (`CertificateView`) | ADITIVOS; el fixture del Studio se regeneró                                     |
+| `PointResult.notes` + `check_bundle(status_list=…)`                                                 | CLI verify-bundle          | ADITIVO; el CLI imprime las notas                                               |
+| checklist 8 → **12 puntos**                                                                         | CP7, seed                  | el seed deriva el denominador; los 8 originales intactos                        |
+| `compose.yaml`: perfiles `custody` y `transparency`                                                 | O (plataforma)             | servicios con `profiles:` — el mínimo canónico sigue en 3 sin perfil            |
+| `override.applied` (`blite.gateway.override`)                                                       | C-1 (gateway), api         | tipo NUEVO del catálogo §14 aterrizado                                          |
+| `blite.verification.harness` / `guardrails.registry` / `certificate.policy_analysis`                | G, O                       | puertos NUEVOS sin consumidor todavía                                           |
+
+### Cierre de la sesión CONFIANZA-2 — CP7 vivo y qué NO se verificó
+
+**Alcance CERRADO:** C3, C4, C5 (+M28), C6, C7, C8, C9, C10 y las
+extensiones #120 (C12, C13, C14, C15). **C11 no entra** (ver encabezado de esta sesión).
+
+**Gates al cierre** (worktree `mejorado/confianza-2`, 12 commits sobre
+`mejorado/base` @cebbfe5, sin push):
+
+| Gate                           | Resultado                                        |
+| ------------------------------ | ------------------------------------------------ |
+| `pytest`                       | **1357 passed**, 9 skipped, 8 xfailed, 4 xpassed |
+| cobertura                      | **91.50 %** (mínimo exigido 30 %)                |
+| `lint-imports`                 | **14 contratos kept, 0 broken**                  |
+| `ruff check`                   | limpio                                           |
+| `pyright`                      | **0 errores**                                    |
+| `pnpm -C apps/studio test:run` | **299 passed** / 32 files                        |
+| `docs:lint` + `format:check`   | limpio                                           |
+
+Baseline al abrir el worktree: pytest 1205 / cobertura 91.62 %.
+
+**CP7 — VERIFICADO VIVO** (`scripts/verify-bundle.py`, no solo la librería):
+
+```
+12/12 puntos verificados                      · exit 0
+11/12 con la StatusList que revoca ese índice · exit 1
+```
+
+Los 8 puntos originales conservan su semántica y un test lo prueba sobre un
+bundle re-firmado SIN nada de lo que esta sesión agregó. Los puntos 9-12
+declaran lo que no comprobaron en vez de callarlo.
+
+**Verificado vivo además** (fuera del checklist):
+
+- **Custodia real**: certificado firmado con una llave que vive en OpenBao
+  2.6.1 (perfil `custody`) → 12/12 offline. Tres defectos encontrados y
+  corregidos ahí (ver #158).
+- **Hash-chain en Postgres 17 real**: cadena correcta desde la génesis y
+  `ConcurrentAppendError` intacto.
+
+#### Lo que NO se cerró, con causa
+
+1. **Cliente de sumisión a Rekor (C9).** La mitad offline está probada; el
+   cliente no se escribió porque hacerlo sin un servidor que lo ejercite
+   produce código que falla en el primer contacto — pasó en C8 con la pública
+   de Transit. Para retomarlo:
+   `docker compose --profile transparency up -d rekor` y escribir el cliente
+   contra `http://127.0.0.1:3003` con un round-trip real antes de mergear.
+2. **Promoción del `provenance_hash` al head de la cadena.** El anexo la
+   describe «sin cambiar forma», pero cambiaría el digest de todo certificado
+   ya emitido: ceremonia aparte, con el sustrato ya puesto (#156).
+3. **Arm de prueba de reglas en `FormalExactPredicate`** (`formal_exact` desde
+   el `RuleBackend`). Hoy el adapter EXPLOTA si un backend devuelve prueba, en
+   vez de inflar o esconder. Se abre cuando exista el backend cvc5 (#153).
+4. **`●CertificateReissued`** sigue siendo Fase 2 declarada: re-emitir exige
+   decidir qué pasa con el certificado anterior (#157).
+5. **Ciclo de vida del trust-registry** (`Superseded/Deprecated/Revoked` de
+   anclas y verificadores) — misma razón: qué pasa con lo ya emitido (#154).
+6. **Los tres puertos nuevos no tienen consumidor todavía**
+   (`ExecutionHarness`, registro de detectores, análisis de políticas). Son
+   contratos con test, no features vivas: engancharlos es de G (un harness de
+   dominio), O (el gate de políticas en CI) y C-1 (los detectores en la etapa).
+
+#### Fronteras declaradas para la sesión de control
+
+- **`assemble_bundle` cambió de firma** (`signing_key`/`keyid` → `key_provider`).
+  Los dos sitios del api están migrados; cualquier rama sin mergear que llame
+  al ensamblador va a chocar ahí, y es un cambio de una línea
+  (`LocalKeyProvider(la_llave)`).
+- **El golden path emite 3 `verification.completed`, no 2.** Es el efecto
+  buscado de C4, pero V y P-ui consumen ese stream: la sesión V debería mirar
+  `attestation.step_id` para el badge por isla en vez de asumir un evento
+  único. El `step_id` TOP-LEVEL del payload (M23a) sigue siendo de V — esta
+  sesión no lo tocó.
+- **`docs/contract-freeze.md` §7 y §10 llevan marcas de supersede nuevas**
+  (T6, T14 acotado, checklist de 12 puntos, match exacto del override). El
+  anexo de canonicalización NO se tocó: sus fórmulas se implementaron tal cual.
+- **`scripts/example-bundle.json` y el fixture del Studio se regeneraron** con
+  `claim.emitted`, head de cadena y sobres por constancia. El generador sigue
+  siendo auto-validante.
+- **La policy de la distribución no cambió** — pero ahora su regla
+  `irreversible-external` es alcanzable. Si algún claim del sistema empieza a
+  declararse irreversible, exigirá 2 patas y ancla `solver`+`execution` de
+  verdad.
