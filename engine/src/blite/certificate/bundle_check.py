@@ -1,7 +1,12 @@
 """
-Checklist de 8 puntos del Bundle — freeze §7 (T11 + SF-P0-1/P1-4/P2-4 +
-stress-final 2026-07-22) + `docs/specs/harness-agentico.md` §Contrato-5
-(punto 8, replay). [S-G track Dylan #1]
+Checklist del Bundle — freeze §7 (T11 + SF-P0-1/P1-4/P2-4 + stress-final
+2026-07-22) + `docs/specs/harness-agentico.md` §Contrato-5 (punto 8, replay)
++ ítem C5/M8 (puntos 9 y 10). [S-G track Dylan #1 · Mejorado C-2]
+
+Los 8 puntos originales NO cambian de semántica: los puntos 9 y 10 son
+extensión ADITIVA y ninguno de los dos puede reprobar un Bundle emitido antes
+de existir (el 9 solo mira claims de sub-run, que un bundle sin sub-runs no
+tiene; el 10 solo verifica si el certificado DECLARA un head de cadena).
 
 El Bundle mínimo = envelope DSSE del certificado (attestations EMBEBIDAS en el
 payload — una sola firma) + descriptores de anclas/verificadores + la Policy
@@ -35,9 +40,9 @@ from blite.certificate.canonical import canonicalize
 from blite.certificate.dsse import DSSEEnvelope, DSSESignature
 from blite.certificate.dsse import verify as dsse_verify
 from blite.certificate.predicate import Conclusion, compute_titular_level
+from blite.events.chain import chain_head_of_views, provenance_hash_of_views
 from blite.events.rules import TERMINAL_RUN_EVENTS
 
-PROVENANCE_PREFIX = b"blite/provenance/v1\n"
 CLAIM_PREFIX = b"blite/claim/v1\n"
 
 # Techos por clase decisoria (freeze §4). formal_exact alcanza AL4 SOLO con
@@ -114,9 +119,7 @@ def punto_2_provenance_hash(bundle: dict[str, Any]) -> tuple[str, ...]:
     seqs = [e.get("seq") for e in stream]
     if seqs != list(range(1, len(stream) + 1)):
         failures.append(f"seq no es 1..n estricto: {seqs}")
-    recomputed = hashlib.sha256(
-        PROVENANCE_PREFIX + b"".join(canonicalize(e) + b"\n" for e in stream)
-    ).hexdigest()
+    recomputed = provenance_hash_of_views(stream)
     statement, predicate = _decode_predicate(bundle)
     subject_digest = statement["subject"][0]["digest"]["sha256"]
     if recomputed != subject_digest:
@@ -325,6 +328,85 @@ def punto_8_replay_fidelidad(bundle: dict[str, Any]) -> tuple[str, ...]:
     return tuple(failures)
 
 
+def punto_9_sub_runs(bundle: dict[str, Any]) -> tuple[str, ...]:
+    """(9) Recompute del `sub_run_provenance_hash` de cada sub-run que aportó
+    claims — el anexo de canonicalización §4 lo MANDA desde que se congeló:
+    «el verificador offline recomputa el hash del sub-run y lo compara contra
+    el payload del `●ClaimEmitted` que el hash del raíz ya ampara».
+
+    Hasta hoy era letra muerta por dos razones que este punto cierra juntas:
+    el stream del sub-run no viajaba en el Bundle (`assemble_bundle` lo
+    empaqueta desde C5) y el hash se computaba con OTRA fórmula (M28 lo
+    reconcilió a la del anexo). Sin las dos, `sub_run_id` era «un puntero sin
+    integridad» (freeze §13) y el certificado citaba trabajo que no podía
+    demostrar.
+
+    Fail-closed: un claim que declara `sub_run_provenance_hash` SIN su stream
+    empaquetado FALLA — el certificado estaría amparando trabajo que nadie
+    puede recomputar. Un bundle sin claims de sub-run pasa vacío (no afirma
+    nada sobre sub-runs)."""
+    failures: list[str] = []
+    stream: list[dict[str, Any]] = bundle.get("stream", [])
+    packaged: dict[str, list[dict[str, Any]]] = bundle.get("sub_run_streams", {})
+
+    for event in stream:
+        if event.get("type") != "claim.emitted":
+            continue
+        payload = event.get("payload", {})
+        declarado = payload.get("sub_run_provenance_hash")
+        if not declarado:
+            continue
+        sub_run_id = payload.get("sub_run_id")
+        views = packaged.get(sub_run_id) if sub_run_id is not None else None
+        if views is None:
+            failures.append(
+                f"claim del sub-run {sub_run_id!r} declara hash "
+                f"{str(declarado)[:12]}… pero su stream NO viaja en el Bundle "
+                "(no es recomputable — fail-closed)"
+            )
+            continue
+        try:
+            recomputado = provenance_hash_of_views(views)
+        except (KeyError, TypeError, ValueError) as exc:
+            failures.append(
+                f"sub-run {sub_run_id!r}: stream no canonicalizable ({exc})"
+            )
+            continue
+        if recomputado != declarado:
+            failures.append(
+                f"sub-run {sub_run_id!r}: recompute {recomputado[:12]}… ≠ "
+                f"declarado {str(declarado)[:12]}… (el trabajo amparado no es ese)"
+            )
+    return tuple(failures)
+
+
+def punto_10_hash_chain(bundle: dict[str, Any]) -> tuple[str, ...]:
+    """(10) Recompute del hash-chain por evento contra el head FIRMADO
+    (anexo §4 Fase 2; ítem C5/M8 pieza 1).
+
+    Opt-in por diseño: un Bundle emitido antes de que el writer encadenara no
+    lleva `provenance_chain_head`, y exigírselo convertiría «extensión
+    aditiva» en «los certificados viejos dejan de valer». Sin head declarado
+    este punto no verifica nada Y NO INVENTA que sí — el resto del checklist
+    (en particular el punto 2) sigue amparando el stream. Con head declarado,
+    la cadena se recomputa entera desde las vistas empaquetadas: no hace
+    falta un hash por evento en el Bundle."""
+    _, predicate = _decode_predicate(bundle)
+    declarado = predicate.get("provenance_chain_head")
+    if not declarado:
+        return ()
+    stream: list[dict[str, Any]] = bundle.get("stream", [])
+    if not stream:
+        return ("head de cadena declarado sin stream que lo sostenga (fail-closed)",)
+    recomputado = chain_head_of_views(stream)
+    if recomputado != declarado:
+        return (
+            f"head de cadena recomputado {recomputado[:12]}… ≠ firmado "
+            f"{str(declarado)[:12]}…",
+        )
+    return ()
+
+
 _PUNTOS = (
     ("firma/PAE del envelope", punto_1_firma_pae),
     ("recompute del provenance_hash", punto_2_provenance_hash),
@@ -337,6 +419,8 @@ _PUNTOS = (
         "fidelidad de replay: sin replay.divergence en el stream",
         punto_8_replay_fidelidad,
     ),
+    ("recompute del provenance de cada sub-run aportante", punto_9_sub_runs),
+    ("recompute del hash-chain contra el head firmado", punto_10_hash_chain),
 )
 
 

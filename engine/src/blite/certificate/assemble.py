@@ -22,15 +22,14 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from types import MappingProxyType
 from typing import Any, cast
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from blite.certificate.bundle_check import PROVENANCE_PREFIX
 from blite.certificate.canonical import canonicalize
 from blite.certificate.dsse import sign
 from blite.certificate.predicate import (
@@ -39,8 +38,14 @@ from blite.certificate.predicate import (
     ConclusionVerdict,
     compute_titular_level,
 )
+from blite.events.chain import (
+    chain_head_of_views,
+    event_view,
+    provenance_hash_of_views,
+)
 from blite.events.event import Event
 from blite.events.rules import TERMINAL_RUN_EVENTS
+from blite.events.store import EventStore
 from blite.verification.claim import claim_view_digest
 
 PAYLOAD_TYPE = "application/vnd.blite.trust-certificate+json"
@@ -67,28 +72,6 @@ class ConclusionDeclaration:
     canonical_statement: str
     scope: dict[str, Any]
     claim_type: str | None = None
-
-
-def _rfc3339(value: datetime) -> str:
-    """RFC3339 con 6 fraccionales y sufijo Z — el formato del anexo §3."""
-    aware = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-    utc = aware.astimezone(UTC)
-    return f"{utc:%Y-%m-%dT%H:%M:%S}.{utc.microsecond:06d}Z"
-
-
-def event_view(event: Event) -> dict[str, Any]:
-    """view(e) del anexo §3 — exactamente 8 campos; lo que se hashea es lo
-    que viaja en el bundle (auto-consistencia del punto 2)."""
-    return {
-        "id": str(event.id),
-        "stream_id": event.stream_id,
-        "seq": event.seq,
-        "type": event.type,
-        "actor_id": event.actor_id,
-        "domain_id": event.domain_id,
-        "payload": event.payload,
-        "occurred_at": _rfc3339(event.occurred_at),
-    }
 
 
 def _validate_stream(views: Sequence[dict[str, Any]]) -> None:
@@ -145,6 +128,28 @@ def _conclusion_from(
     )
 
 
+def sub_run_streams_for(
+    store: EventStore, stream: Sequence[Event]
+) -> dict[str, tuple[Event, ...]]:
+    """Los streams de los sub-runs que aportaron claims a este raíz.
+
+    [M28 · C5] Se derivan del propio stream (los `claim.emitted` que traen
+    `sub_run_id`), no de una lista que el caller mantenga: si el certificado
+    ampara transitivamente el trabajo de un sub-run, el material para
+    recomputarlo tiene que salir del MISMO log que lo declaró. El punto 9 del
+    checklist falla si un claim declara un hash cuyo stream no viaja — así
+    que olvidar esto no produce un certificado silenciosamente débil, produce
+    un certificado que no verifica."""
+    sub_run_ids = {
+        event.payload["sub_run_id"]
+        for event in stream
+        if event.type == "claim.emitted" and event.payload.get("sub_run_id")
+    }
+    return {
+        sub_run_id: store.read_stream(sub_run_id) for sub_run_id in sorted(sub_run_ids)
+    }
+
+
 def assemble_bundle(
     *,
     stream: Sequence[Event],
@@ -154,6 +159,7 @@ def assemble_bundle(
     keyid: str,
     anchor_descriptors: Sequence[dict[str, Any]] = (),
     deliverables: Sequence[tuple[str, bytes]] = (),
+    sub_run_streams: Mapping[str, Sequence[Event]] = MappingProxyType({}),
     calculus_version: str = "cal-2.4",
     policy_ref_name: str = "verification-default.yaml",
 ) -> dict[str, Any]:
@@ -165,9 +171,7 @@ def assemble_bundle(
     views = [event_view(e) for e in stream]
     _validate_stream(views)
 
-    provenance_hash = hashlib.sha256(
-        PROVENANCE_PREFIX + b"".join(canonicalize(v) + b"\n" for v in views)
-    ).hexdigest()
+    provenance_hash = provenance_hash_of_views(views)
 
     created_payload: dict[str, Any] = views[0]["payload"]
     try:
@@ -215,6 +219,14 @@ def assemble_bundle(
         "unanchored_steps": 0,
         "coverage_stats": {},
         "policy_digest": policy_digest,
+        # [C5/M8 pieza 1] Head del hash-chain por evento en el corte del run
+        # (anexo §4). Va DENTRO del payload firmado a propósito: un valor de
+        # integridad que viviera fuera de la firma sería un número que nadie
+        # atestigua. Es recomputable desde el `stream` empaquetado — punto 10
+        # del checklist. Cuando la Fase 2 lo promueva a `provenance_hash`
+        # "sin cambiar forma", este campo desaparece y `subject.digest`
+        # pasa a llevar ESTE valor; hasta entonces conviven sin ambigüedad.
+        "provenance_chain_head": chain_head_of_views(views),
         "calculus_version": calculus_version,
         "valid_as_of": views[-1]["occurred_at"],
         "revocation": "none",
@@ -267,4 +279,12 @@ def assemble_bundle(
         "verifier_descriptors": verifier_descriptors,
         "policy_yaml_b64": base64.b64encode(policy_yaml).decode("ascii"),
         "deliverable_contents": deliverable_contents,
+        # [M28 · C5] Los streams de los sub-runs que aportaron claims. Sin
+        # ellos, el `sub_run_provenance_hash` que el stream del raíz estampa
+        # es letra muerta: el anexo §4 manda RECOMPUTARLO offline, y no se
+        # puede recomputar lo que no viaja. Punto 9 del checklist.
+        "sub_run_streams": {
+            sub_run_id: [event_view(event) for event in events]
+            for sub_run_id, events in sub_run_streams.items()
+        },
     }

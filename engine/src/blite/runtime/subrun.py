@@ -46,11 +46,10 @@ queda fuera de alcance de Fase 1.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from typing import Any
 
 from blite.content import ContentStore
+from blite.events.chain import provenance_hash_of_events
 from blite.events.event import Event
 from blite.events.rules import provenance_slice
 from blite.events.store import EventStore
@@ -74,15 +73,24 @@ PARENT_CANCELLED_REASON = "parent_cancelled"
 """freeze §13 regla 1: la ÚNICA `reason` que la cascada estampa — la razón
 propia de la cancelación del run que la disparó es asunto del caller."""
 
-SUB_RUN_PROVENANCE_PREFIX = b"blite/sub-run-provenance/v1\n"
-"""Prefijo del hash de §13 regla 2 ("el hash encadena"). Nota de scope: esto
-NO es el `provenance_hash` del certificado DSSE — esa fórmula exacta (vistas
-canónicas + `PROVENANCE_PREFIX`) es de `blite.certificate` (frontera Dylan/
-Steven, freeze §7); `blite.runtime` no la importa (mantiene la separación de
-capas: certificate consume el log del runtime, no al revés). Este hash es un
-encadenado propio y suficiente para lo que §13 regla 2 exige: que el
-`sub_run_id` no viaje "sin integridad" — cualquier evento del sub-run que
-cambie, cambia este hash."""
+# [M28 · C5 · 2026-08-05] RECONCILIACIÓN de la fórmula del sub-run.
+#
+# Este módulo tenía su propio prefijo (`blite/sub-run-provenance/v1`), su
+# propia vista (`{type, seq, payload}`) y su propia canonicalización
+# (`json.dumps(sort_keys=True)`) — tres divergencias contra el anexo
+# CONGELADO, justificadas entonces por no cruzar la frontera
+# runtime↔certificate.
+#
+# El costo era real y estaba registrado en la cobertura de Mejorado: el anexo
+# §4 manda que el verificador offline RECOMPUTE el hash del sub-run y lo
+# compare contra el `●ClaimEmitted` del raíz. Con dos fórmulas ese recompute
+# era imposible — la letra del anexo quedaba muerta y `sub_run_id` volvía a
+# ser "un puntero sin integridad" para cualquiera que no fuera este proceso.
+#
+# La fórmula pasa a ser LA del anexo, tomada de `blite.events.chain` (fuente
+# única). La frontera de capas se respeta igual: `blite.events` es la capa
+# BAJA que ambos lados comparten; lo que este módulo sigue sin importar es
+# `blite.certificate`.
 
 
 class PolicyInheritanceError(ValueError):
@@ -93,30 +101,19 @@ class PolicyInheritanceError(ValueError):
     que el sub-run NO llega a tener ni su propio `run.created`."""
 
 
-def _canonical_json(obj: object) -> bytes:
-    """Misma forma canónica mínima que `runtime/loop.py::_canonical_json`
-    (claves ordenadas, sin espacios) — duplicada a propósito: es una utilidad
-    de tres líneas, no una regla de negocio a compartir entre módulos."""
-    return json.dumps(
-        obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode()
-
-
 def compute_sub_run_provenance_hash(events: tuple[Event, ...]) -> str:
     """El hash que ENCADENA la porción de procedencia de un sub-run (§13
     regla 2) — mismo corte que `events.rules.provenance_slice` (freeze §2
-    [stress-final]: desde `run.created` hasta el terminal, INCLUSIVE).
+    [stress-final]: desde `run.created` hasta el terminal, INCLUSIVE) y
+    MISMA fórmula que el `provenance_hash` de un run raíz (anexo §4).
 
-    Determinista sobre `(type, seq, payload)` de cada evento del corte —
-    cualquier evento del sub-run que cambie, cambia este hash. Sin terminal
-    aún ⇒ `ValueError` (propagada de `provenance_slice`): no se puede
-    encadenar un sub-run que sigue vivo."""
-    sliced = provenance_slice(events)
-    body = b"".join(
-        _canonical_json({"type": e.type, "seq": e.seq, "payload": e.payload}) + b"\n"
-        for e in sliced
-    )
-    return hashlib.sha256(SUB_RUN_PROVENANCE_PREFIX + body).hexdigest()
+    Que sea la misma fórmula es el punto (M28): así el verificador offline
+    puede recomputarlo desde el stream del sub-run empaquetado en el bundle
+    y compararlo contra el `●ClaimEmitted` que el hash del raíz ya ampara —
+    el encadenado estilo Merkle que §13 regla 2 describe. Sin terminal aún ⇒
+    `ValueError` (propagada de `provenance_slice`): no se encadena un
+    sub-run que sigue vivo."""
+    return provenance_hash_of_events(provenance_slice(events))
 
 
 def spawn_sub_run(  # noqa: PLR0913 — misma superficie que execute_run (que envuelve) + el trío propio del sub-run (parent_run_id/parent_policy_digest/sub_run_id)
@@ -281,8 +278,8 @@ def cancel_run_with_cascade(
 __all__ = [
     "CLAIM_EMITTED_TYPE",
     "PARENT_CANCELLED_REASON",
-    "PolicyInheritanceError",
     "RUN_CANCELLED_TYPE",
+    "PolicyInheritanceError",
     "cancel_run_with_cascade",
     "compute_sub_run_provenance_hash",
     "contribute_sub_run_claims",

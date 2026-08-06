@@ -116,7 +116,8 @@ def test_a_clean_stream_passes_point_8() -> None:
 
     results = check_bundle(bundle)
 
-    assert len(results) == 8
+    # El punto 8 es el que este archivo cuida; el checklist creció a 10 con
+    # C5 (sub-runs y hash-chain) y el total no se escribe a mano.
     assert results[7].number == 8
     assert all(r.ok for r in results), [(r.number, r.failures) for r in results]
 

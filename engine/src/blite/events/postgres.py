@@ -12,12 +12,15 @@ reglas de `blite.events.rules` que el store in-memory (una sola fuente).
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from psycopg import errors
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 
+from blite.events.chain import GENESIS_PREV_HASH, chain_hash, view_of
 from blite.events.event import Event
 from blite.events.rules import (
     TERMINAL_RUN_EVENTS,
@@ -31,22 +34,31 @@ _COLUMNS = (
     "payload, occurred_at, prev_hash, hash"
 )
 
-# seq se decide DENTRO del statement (posición actual + 1); el WHERE ancla la
-# posición esperada — cero filas insertadas = la posición real no es la
-# esperada (conflicto o expected_seq adelantado: jamás un hueco). El UNIQUE
-# (stream_id, seq) del esquema queda como red de fondo ante la carrera de dos
-# escritores que leyeron la misma posición.
+# [C5/M8 pieza 1] El encadenado obliga a conocer `seq`, `id` y `occurred_at`
+# ANTES de hashear (los tres están en la vista canónica del anexo §3), así que
+# ya no pueden decidirse dentro del INSERT: se lee la cabeza del stream, se
+# computa el hash en Python (la MISMA función que usa el store in-memory —
+# `blite.events.chain`, una sola fórmula) y se inserta todo explícito.
+# La concurrencia optimista NO se debilita: el `UNIQUE (stream_id, seq)` del
+# esquema sigue siendo quien rechaza la carrera de dos escritores que leyeron
+# la misma posición, y ese caso ya se traducía a `ConcurrentAppendError`.
+# Cero cambios de esquema: `id`/`occurred_at` solo pierden su DEFAULT cuando
+# el INSERT los trae, y `prev_hash`/`hash` son las columnas que la semilla v2
+# dejó reservadas para esto.
+_HEAD = """
+SELECT COALESCE(MAX(seq), 0) AS current,
+       (SELECT hash FROM events
+         WHERE stream_id = %(stream_id)s
+         ORDER BY seq DESC LIMIT 1) AS head
+FROM events
+WHERE stream_id = %(stream_id)s
+"""
+
 _INSERT = f"""
-WITH position AS (
-    SELECT COALESCE(MAX(seq), 0) AS current
-    FROM events
-    WHERE stream_id = %(stream_id)s
-)
-INSERT INTO events (stream_id, seq, type, actor_id, domain_id, payload)
-SELECT %(stream_id)s, position.current + 1, %(type)s, %(actor_id)s,
-       %(domain_id)s, %(payload)s
-FROM position
-WHERE %(expected_seq)s::bigint IS NULL OR position.current = %(expected_seq)s
+INSERT INTO events (id, stream_id, seq, type, actor_id, domain_id, payload,
+                    occurred_at, prev_hash, hash)
+VALUES (%(id)s, %(stream_id)s, %(seq)s, %(type)s, %(actor_id)s, %(domain_id)s,
+        %(payload)s, %(occurred_at)s, %(prev_hash)s, %(hash)s)
 RETURNING {_COLUMNS}
 """
 
@@ -121,16 +133,38 @@ class PostgresEventStore:
                         f"stream {stream_id!r} ya tiene su evento terminal: "
                         f"{type!r} se rechaza"
                     )
+            cur.execute(_HEAD, {"stream_id": stream_id})
+            head_row = cur.fetchone()
+            current_seq: int = head_row[0] if head_row is not None else 0
+            prev_hash: str = (
+                head_row[1]
+                if head_row is not None and head_row[1]
+                else GENESIS_PREV_HASH
+            )
+            if expected_seq is not None and expected_seq != current_seq:
+                raise ConcurrentAppendError(
+                    f"expected_seq={expected_seq} no es la posición actual "
+                    f"del stream {stream_id!r} ({current_seq})"
+                )
+
+            fields: dict[str, Any] = {
+                "id": uuid4(),
+                "stream_id": stream_id,
+                "seq": current_seq + 1,
+                "type": type,
+                "actor_id": actor_id,
+                "domain_id": domain_id,
+                "payload": payload,
+                "occurred_at": datetime.now(tz=UTC),
+            }
             try:
                 cur.execute(
                     _INSERT,
                     {
-                        "stream_id": stream_id,
-                        "type": type,
-                        "actor_id": actor_id,
-                        "domain_id": domain_id,
+                        **fields,
                         "payload": Jsonb(payload),
-                        "expected_seq": expected_seq,
+                        "prev_hash": prev_hash,
+                        "hash": chain_hash(prev_hash=prev_hash, view=view_of(**fields)),
                     },
                 )
             except errors.UniqueViolation as exc:
@@ -138,10 +172,11 @@ class PostgresEventStore:
                     f"append concurrente sobre {stream_id!r} (UNIQUE stream_id, seq)"
                 ) from exc
             inserted = cur.fetchone()
-            if inserted is None:
+            if (
+                inserted is None
+            ):  # pragma: no cover — INSERT…RETURNING siempre trae fila
                 raise ConcurrentAppendError(
-                    f"expected_seq={expected_seq} no es la posición actual "
-                    f"del stream {stream_id!r}"
+                    f"el INSERT sobre {stream_id!r} no devolvió fila"
                 )
             return _row_to_event(inserted)
 

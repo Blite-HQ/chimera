@@ -32,7 +32,11 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from blite.certificate.assemble import AssembleError, assemble_bundle
+from blite.certificate.assemble import (
+    AssembleError,
+    assemble_bundle,
+    sub_run_streams_for,
+)
 from blite.events.rules import TERMINAL_RUN_EVENTS
 from chimera_api.runs import RunResources
 
@@ -63,6 +67,7 @@ def create_certificate_router(resources: RunResources) -> APIRouter:
                 signing_key=resources.signing_key,
                 keyid=resources.keyid,
                 anchor_descriptors=ticket.anchor_descriptors,
+                sub_run_streams=sub_run_streams_for(resources.store, stream),
             )
         except AssembleError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -42,7 +42,11 @@ from typing import Any, Literal, cast
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from blite.certificate.assemble import AssembleError, assemble_bundle
+from blite.certificate.assemble import (
+    AssembleError,
+    assemble_bundle,
+    sub_run_streams_for,
+)
 from blite.certificate.predicate import AssuranceLevel, ConclusionVerdict
 from blite.events.event import Event
 from blite.events.rules import TERMINAL_RUN_EVENTS
@@ -205,6 +209,7 @@ def _bundle_for(resources: RunResources, run_id: str) -> dict[str, Any] | None:
             signing_key=resources.signing_key,
             keyid=resources.keyid,
             anchor_descriptors=ticket.anchor_descriptors,
+            sub_run_streams=sub_run_streams_for(resources.store, stream),
         )
     except AssembleError:
         return None

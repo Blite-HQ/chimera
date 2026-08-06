@@ -30,12 +30,9 @@ from typing import Any
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from blite.certificate.bundle_check import (
-    CLAIM_PREFIX,
-    PROVENANCE_PREFIX,
-    check_bundle,
-)
+from blite.certificate.bundle_check import CLAIM_PREFIX, check_bundle
 from blite.certificate.canonical import canonicalize
+from blite.events.chain import chain_head_of_views, provenance_hash_of_views
 
 REPO = Path(__file__).resolve().parent.parent
 POLICY_PATH = (
@@ -99,9 +96,7 @@ def main() -> int:
         ),
         _event(5, "run.completed", "service:runtime", {}),
     ]
-    provenance_hash = hashlib.sha256(
-        PROVENANCE_PREFIX + b"".join(canonicalize(e) + b"\n" for e in stream)
-    ).hexdigest()
+    provenance_hash = provenance_hash_of_views(stream)
 
     # --- Conclusión + claim_digest por la fórmula del anexo §5 ---
     canonical_statement = "La partición propuesta de ieee14 es el óptimo exacto del corte bajo las restricciones declaradas"
@@ -183,6 +178,8 @@ def main() -> int:
         "unanchored_steps": 0,
         "coverage_stats": {},
         "policy_digest": policy_digest,
+        # [C5/M8 pieza 1] Head del hash-chain sobre el MISMO corte — punto 10.
+        "provenance_chain_head": chain_head_of_views(stream),
         "calculus_version": "cal-2.4",
         "valid_as_of": "2026-07-22T12:00:06.000000Z",
         "revocation": "none",

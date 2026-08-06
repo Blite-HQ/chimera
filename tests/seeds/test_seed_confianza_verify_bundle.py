@@ -9,11 +9,14 @@ real generado por `scripts/gen-example-bundle.py` (supersede al generador
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+
+from blite.certificate.bundle_check import check_bundle
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "verify-bundle.py"
@@ -43,8 +46,10 @@ def test_the_seven_point_checklist_verifies_a_real_bundle_offline() -> None:
     )
 
     # Assert — todos los puntos verificados, exit 0; cualquier punto sin
-    # verificar = fallo. Denominador 8/8 desde A5 (docs/specs/harness-
-    # agentico.md §Contrato-5): check_bundle ganó el punto 8 (fidelidad de
-    # replay) — el script deriva el total de check_bundle, nunca hardcodeado.
+    # verificar = fallo. El denominador se DERIVA de `check_bundle` (no se
+    # escribe a mano): el 7/7 original pasó a 8/8 con A5 y a 10/10 con C5
+    # (puntos 9 sub-runs y 10 hash-chain), y este seed no vuelve a romperse
+    # por que el checklist crezca — que era justo lo que su nota pedía.
+    total = len(check_bundle(json.loads(bundle.read_text(encoding="utf-8"))))
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "8/8" in result.stdout
+    assert f"{total}/{total}" in result.stdout
