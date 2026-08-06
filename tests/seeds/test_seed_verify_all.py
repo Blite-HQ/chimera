@@ -3,17 +3,19 @@
 Contrato: freeze §7, marca [MEJORADO C-6/#106]: el puerto gana
 `verify_all() -> tuple[Attestation, ...]` con default `= (verify(),)` —
 compat total (todo adapter existente hereda el default). La regla semántica
-que acompaña — «las islas de una MISMA corrida comparten independence_group,
-jamás inflan patas» — es de los implementadores (C4/M4) y del punto 7 del
-checklist; este seed fija SOLO la forma del puerto.
-Implementación = ítem C4/M4 (Fase 1).
+que acompaña — «las islas de una MISMA corrida comparten
+independence_group, jamás inflan patas» — es de los implementadores (C4/M4)
+y del punto 7 del checklist; este seed fija SOLO la forma del puerto.
 
-Directiva pyright per-file: el método objetivo no existe por diseño hasta
-Fase 1; la directiva se retira junto con el xfail.
+VERDE 2026-08-05 (ítem C4/M4): el default vive en
+`blite.verification.verifier.Verifier.verify_all`; el camino de los adapters
+ESTRUCTURALES (frozen dataclasses que no heredan del Protocol y por eso no
+heredan el cuerpo del default) es el helper `verify_all_of`, cubierto en
+`tests/unit/verification/test_verify_all_por_isla.py` junto con la regla
+semántica y las constancias por isla del `ExecutionVerifier`. El xfail y la
+directiva de pyright que lo acompañaba se retiraron juntos, como mandaba
+esta nota.
 """
-
-# pyright: reportAttributeAccessIssue=false, reportUnknownMemberType=false
-# pyright: reportUnknownVariableType=false
 
 from __future__ import annotations
 
@@ -21,18 +23,14 @@ from typing import Any
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 C4/M4: Verifier.verify_all no existe todavía — freeze §7 "
-            "marca [MEJORADO C-6/#106]"
-        ),
-    ),
-]
+from blite.verification.context import InvocationContext
+
+pytestmark = [pytest.mark.seed]
 
 _CENTINELA: Any = object()
+_CTX = InvocationContext(
+    run_id="run:seed", actor_id="service:runtime", domain_id="dom:seed"
+)
 
 
 def test_verify_all_default_envuelve_verify() -> None:
@@ -55,6 +53,6 @@ def test_verify_all_default_envuelve_verify() -> None:
         def verify(self, claim: Any, ctx: Any) -> Any:
             return _CENTINELA
 
-    resultado = _Uno().verify_all({"claim": True}, None)
+    resultado = _Uno().verify_all({"claim": True}, _CTX)
     assert resultado == (_CENTINELA,)
     assert isinstance(resultado, tuple)

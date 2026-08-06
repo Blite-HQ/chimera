@@ -200,9 +200,32 @@ def punto_6_claim_digest(bundle: dict[str, Any]) -> tuple[str, ...]:
     return tuple(failures)
 
 
+def _coherencia_de_grupos(attestations: list[dict[str, Any]]) -> tuple[str, ...]:
+    """Extensión del punto 7 (freeze §7 [MEJORADO C-6/#106]): las constancias
+    de un MISMO verificador en un MISMO run comparten `independence_group`.
+
+    Sin esta regla, la granularidad por isla (C4/M4) sería una máquina de
+    inflar patas: partir un verdict global en N constancias y darle a cada
+    una su propio grupo convierte UN verificador en las N «patas
+    independientes» que la Policy exige. El conteo de abajo cuenta grupos
+    distintos; esta regla se asegura de que un grupo distinto signifique de
+    verdad otra fuente de evidencia."""
+    grupos: dict[tuple[str, str], set[str]] = {}
+    for att in attestations:
+        clave = (att.get("run_id", ""), att["verifier_id"])
+        grupos.setdefault(clave, set()).add(att["independence_group"])
+    return tuple(
+        f"{verifier_id}: {len(vistos)} independence_group distintos en el mismo "
+        f"run ({sorted(vistos)}) — un solo verificador no son varias patas (C-6)"
+        for (_run, verifier_id), vistos in sorted(grupos.items())
+        if len(vistos) > 1
+    )
+
+
 def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
     """(7) Conclusión↔attestations (pass↔verified) · techo por clase · proof AL4
-    · patas por independence_group ≥ Policy pinneada; not_required_declared EXENTAS."""
+    · patas por independence_group ≥ Policy pinneada; not_required_declared EXENTAS.
+    Extensión C-6/#106: coherencia de grupos por verificador (anti-inflación)."""
     failures: list[str] = []
     _, predicate = _decode_predicate(bundle)
 
@@ -217,6 +240,7 @@ def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
     rules: list[dict[str, Any]] = yaml.safe_load(policy_bytes).get("rules", [])
 
     attestations = predicate.get("attestations", [])
+    failures.extend(_coherencia_de_grupos(attestations))
     for conclusion in predicate.get("conclusions", []):
         verdict = conclusion["verdict"]
         if verdict == "not_required_declared":

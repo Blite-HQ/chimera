@@ -86,6 +86,20 @@ def _default_binary_digest() -> str:
     return hashlib.sha256(f"pandapower-{version}".encode()).hexdigest()
 
 
+@dataclass(frozen=True)
+class _IslandOutcome:
+    """Los checks de una isla + lo que su verdict necesita. Fuente ÚNICA de
+    las dos rutas de constancia (global y por isla, C4/M4): si cada una
+    corriera su propia evaluación, un cambio en una podría no llegar a la
+    otra y el bundle mostraría dos verdades sobre el mismo run."""
+
+    island_id: str
+    checks: tuple[ExecutionCheck, ...]
+    hard_fail: bool
+    inconclusive: bool
+    runtime_ms: float
+
+
 def _is_connected(buses: set[int], edges: list[tuple[int, int]]) -> bool:
     """BFS sobre las ramas internas de la isla — chequeo de grafo puro."""
     if len(buses) <= 1:
@@ -131,6 +145,54 @@ class ExecutionVerifier:
         return hashlib.sha256(canonicalize(params)).hexdigest()
 
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
+        """La constancia GLOBAL — forma intacta (compat: los llamadores y los
+        bundles ya emitidos ven exactamente lo mismo que antes de C4/M4)."""
+        outcomes, runtime_ms = self._evaluate(claim)
+        return self._attestation(
+            claim,
+            ctx,
+            step_id=None,
+            checks=tuple(check for outcome in outcomes for check in outcome.checks),
+            verdict=derive_execution_verdict(
+                all_passed=not any(o.hard_fail for o in outcomes),
+                any_inconclusive=any(o.inconclusive for o in outcomes),
+            ),
+            runtime_ms=runtime_ms,
+        )
+
+    def verify_all(self, claim: Any, ctx: InvocationContext) -> tuple[Attestation, ...]:
+        """Una constancia POR ISLA (C4/M4 · C-6/#106), con la convención de
+        S-D (#125, `docs/specs/superficie-visual.md` §8): verdict de la isla
+        `k` = `derive_execution_verdict` sobre el subconjunto de checks
+        `island-{k}:*` de esa isla, y `step_id = island_id` estable.
+
+        **Todas comparten `independence_group`** — el del verificador. Es LA
+        regla de C-6: partir un verdict global en N verdicts por isla no crea
+        N patas independientes; sigue siendo un verificador, un ancla, una
+        fuente de evidencia. La granularidad fina existe para EXPLICAR dónde
+        falló, no para multiplicar el respaldo de una conclusión.
+
+        Ninguna evidencia se pierde ni se duplica: los checks de las dos
+        rutas salen de la MISMA evaluación, particionados por isla."""
+        outcomes, _ = self._evaluate(claim)
+        return tuple(
+            self._attestation(
+                claim,
+                ctx,
+                step_id=outcome.island_id,
+                checks=outcome.checks,
+                verdict=derive_execution_verdict(
+                    all_passed=not outcome.hard_fail,
+                    any_inconclusive=outcome.inconclusive,
+                ),
+                runtime_ms=outcome.runtime_ms,
+            )
+            for outcome in outcomes
+        )
+
+    def _evaluate(self, claim: Any) -> tuple[tuple[_IslandOutcome, ...], float]:
+        """Corre los checks UNA vez y los devuelve agrupados por isla — la
+        fuente única de las dos rutas (`verify`/`verify_all`)."""
         if not isinstance(claim, OptimalityClaim):
             msg = f"claim {type(claim).__name__} no es un OptimalityClaim"
             raise VerificationProcessError(msg)
@@ -143,77 +205,108 @@ class ExecutionVerifier:
             raise VerificationProcessError(msg)
 
         started = time.perf_counter()
-        checks: list[ExecutionCheck] = []
-        hard_fail = False
-        any_inconclusive = False
+        outcomes: list[_IslandOutcome] = []
 
         islands: dict[int, set[int]] = {}
         for bus, side in zip(bus_ids, claim.assignment, strict=True):
             islands.setdefault(side, set()).add(bus)
 
         for side in sorted(islands):
-            island = islands[side]
-            prefix = f"island-{side}"
-            internal_edges = [
-                (int(br["from"]), int(br["to"]))
-                for br in self.topology.get("branches", [])
-                if int(br["from"]) in island and int(br["to"]) in island
-            ]
-            connected = _is_connected(island, internal_edges)
-            checks.append(
-                ExecutionCheck(name=f"{prefix}:island_connectivity", passed=connected)
-            )
-            sources = {
-                int(s["bus"])
-                for s in self.topology.get("slack", [])
-                if int(s["bus"]) in island
-            }
-            has_source = bool(sources)
-            checks.append(
-                ExecutionCheck(name=f"{prefix}:island_has_source", passed=has_source)
-            )
-            if not (connected and has_source):
-                hard_fail = True
-                continue  # el flujo de una isla rota no se corre (dependiente)
+            outcomes.append(self._evaluate_island(f"island-{side}", islands[side]))
 
-            converged, metrics = self._run_island_powerflow(island)
-            checks.append(
-                ExecutionCheck(name=f"{prefix}:powerflow_converged", passed=converged)
-            )
-            if not converged:
-                # Abstención honesta (spec §1.3): cota del método, no verdict
-                any_inconclusive = True
-                continue
+        return tuple(outcomes), (time.perf_counter() - started) * 1000.0
 
-            vm = metrics["bus_vm_pu"]
-            voltage_ok = all(
-                self.limits.vm_pu_min <= v <= self.limits.vm_pu_max for v in vm
-            )
-            checks.append(
-                ExecutionCheck(name=f"{prefix}:voltage_limits", passed=voltage_ok)
-            )
-            loading_ok = all(
-                v <= self.limits.line_loading_max_percent
-                for v in metrics["branch_loading_percent"]
-            )
-            checks.append(
-                ExecutionCheck(name=f"{prefix}:line_loading", passed=loading_ok)
-            )
-            balance_ok = True
-            if self.limits.slack_p_max_mw is not None:
-                balance_ok = all(
-                    abs(p) <= self.limits.slack_p_max_mw for p in metrics["slack_p_mw"]
-                )
-                checks.append(
-                    ExecutionCheck(name=f"{prefix}:power_balance", passed=balance_ok)
-                )
-            if not (voltage_ok and loading_ok and balance_ok):
-                hard_fail = True
-
-        runtime_ms = (time.perf_counter() - started) * 1000.0
-        verdict = derive_execution_verdict(
-            all_passed=not hard_fail, any_inconclusive=any_inconclusive
+    def _evaluate_island(self, island_id: str, island: set[int]) -> _IslandOutcome:
+        """Los checks de UNA isla, con su verdict propio ya derivable. El
+        prefijo `island-{k}:` de cada nombre es la convención de S-D §8 —
+        es lo que permite atar cada check a su isla sin adivinar."""
+        started = time.perf_counter()
+        checks: list[ExecutionCheck] = []
+        internal_edges = [
+            (int(br["from"]), int(br["to"]))
+            for br in self.topology.get("branches", [])
+            if int(br["from"]) in island and int(br["to"]) in island
+        ]
+        connected = _is_connected(island, internal_edges)
+        checks.append(
+            ExecutionCheck(name=f"{island_id}:island_connectivity", passed=connected)
         )
+        sources = {
+            int(s["bus"])
+            for s in self.topology.get("slack", [])
+            if int(s["bus"]) in island
+        }
+        has_source = bool(sources)
+        checks.append(
+            ExecutionCheck(name=f"{island_id}:island_has_source", passed=has_source)
+        )
+        if not (connected and has_source):
+            # El flujo de una isla rota no se corre (dependiente).
+            return _IslandOutcome(
+                island_id=island_id,
+                checks=tuple(checks),
+                hard_fail=True,
+                inconclusive=False,
+                runtime_ms=(time.perf_counter() - started) * 1000.0,
+            )
+
+        converged, metrics = self._run_island_powerflow(island)
+        checks.append(
+            ExecutionCheck(name=f"{island_id}:powerflow_converged", passed=converged)
+        )
+        if not converged:
+            # Abstención honesta (spec §1.3): cota del método, no verdict
+            return _IslandOutcome(
+                island_id=island_id,
+                checks=tuple(checks),
+                hard_fail=False,
+                inconclusive=True,
+                runtime_ms=(time.perf_counter() - started) * 1000.0,
+            )
+
+        vm = metrics["bus_vm_pu"]
+        voltage_ok = all(
+            self.limits.vm_pu_min <= v <= self.limits.vm_pu_max for v in vm
+        )
+        checks.append(
+            ExecutionCheck(name=f"{island_id}:voltage_limits", passed=voltage_ok)
+        )
+        loading_ok = all(
+            v <= self.limits.line_loading_max_percent
+            for v in metrics["branch_loading_percent"]
+        )
+        checks.append(
+            ExecutionCheck(name=f"{island_id}:line_loading", passed=loading_ok)
+        )
+        balance_ok = True
+        if self.limits.slack_p_max_mw is not None:
+            balance_ok = all(
+                abs(p) <= self.limits.slack_p_max_mw for p in metrics["slack_p_mw"]
+            )
+            checks.append(
+                ExecutionCheck(name=f"{island_id}:power_balance", passed=balance_ok)
+            )
+        return _IslandOutcome(
+            island_id=island_id,
+            checks=tuple(checks),
+            hard_fail=not (voltage_ok and loading_ok and balance_ok),
+            inconclusive=False,
+            runtime_ms=(time.perf_counter() - started) * 1000.0,
+        )
+
+    def _attestation(  # noqa: PLR0913 — cada parámetro es un campo distinto de la constancia
+        self,
+        claim: OptimalityClaim,
+        ctx: InvocationContext,
+        *,
+        step_id: str | None,
+        checks: tuple[ExecutionCheck, ...],
+        verdict: Verdict,
+        runtime_ms: float,
+    ) -> Attestation:
+        """La constancia — idéntica en las dos rutas salvo `step_id`, los
+        checks que ampara y su verdict. El binding (claim/ancla/digests) es
+        el MISMO: las islas son vistas del mismo claim, no claims distintos."""
         input_view: dict[str, Any] = {
             "topology": self.topology,
             "assignment": list(claim.assignment),
@@ -227,8 +320,11 @@ class ExecutionVerifier:
             verdict=verdict,
             inconclusive_reason=("undecidable" if verdict == "inconclusive" else None),
             scope=claim.scope,
+            # C-6: TODAS las islas de la corrida comparten el grupo — la
+            # granularidad explica, no multiplica patas.
             independence_group=self.independence_group,
             run_id=ctx.run_id,
+            step_id=step_id,
             claim_digest=claim_view_digest(claim.canonical_statement, claim.scope),
             verifier_binary_digest=self.verifier_binary_digest,
             verifier_params_digest=self.verifier_params_digest,
@@ -236,7 +332,7 @@ class ExecutionVerifier:
             predicate=ExecutionPredicate(
                 harness=HARNESS_ID,
                 input_digest=hashlib.sha256(canonicalize(input_view)).hexdigest(),
-                checks=tuple(checks),
+                checks=checks,
                 runtime_ms=runtime_ms,
                 environment=ExecutionEnvironment(
                     package="pandapower", version=metadata.version("pandapower")

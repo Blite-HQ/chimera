@@ -266,6 +266,13 @@ class ExactDiagonalizationVerifier:
     def verifier_params_digest(self) -> str:
         return hashlib.sha256(canonicalize(self._params)).hexdigest()
 
+    def verify_all(self, claim: Any, ctx: InvocationContext) -> tuple[Attestation, ...]:
+        """Constancia ÚNICA (default del puerto, freeze §7 [MEJORADO
+        C-6/#106]): este adapter no tiene sub-entidades que verificar por
+        separado. Se declara explícito porque el adapter satisface `Verifier`
+        de forma ESTRUCTURAL — no hereda el cuerpo del default del Protocol."""
+        return (self.verify(claim, ctx),)
+
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         if not isinstance(claim, SimulationSeriesClaim):
             msg = f"claim {type(claim).__name__} no es un SimulationSeriesClaim"

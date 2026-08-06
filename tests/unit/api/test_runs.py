@@ -193,7 +193,22 @@ class TestGoldenPathDosPatas:
         types = [f["event"] for f in frames]
         assert frames[-1]["event"] == "run.completed"
         assert types.count("claim.emitted") == 1
-        assert types.count("verification.completed") == 2
+
+        # [C4/M4 · C-6/#106] Lo que este test cuida son las DOS PATAS, no el
+        # número de eventos: desde `verify_all()` el verificador por ejecución
+        # emite una constancia POR ISLA (aquí 2), así que el conteo crudo pasó
+        # de 2 a 3 sin que el respaldo de la conclusión cambie ni un ápice.
+        # Se afirma la propiedad real — grupos de independencia distintos —,
+        # que es la que la Policy exige y la que una regresión rompería.
+        attestations = [
+            json.loads(f["data"])["payload"]["attestation"]
+            for f in frames
+            if f["event"] == "verification.completed"
+        ]
+        assert len({a["independence_group"] for a in attestations}) == 2
+        por_isla = [a for a in attestations if a["step_id"] is not None]
+        assert [a["step_id"] for a in por_isla] == ["island-0", "island-1"]
+        assert len({a["independence_group"] for a in por_isla}) == 1
 
 
 class TestFailClosed:

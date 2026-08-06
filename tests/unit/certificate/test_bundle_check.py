@@ -120,3 +120,41 @@ def test_point_7_catches_al4_without_proof(bundle: dict[str, Any]) -> None:
 def test_point_7_fails_closed_without_the_pinned_policy(bundle: dict[str, Any]) -> None:
     bundle["policy_yaml_b64"] = ""
     assert 7 in _failed_points(bundle)
+
+
+def test_point_7_catches_leg_inflation_by_splitting_one_verifier(
+    bundle: dict[str, Any],
+) -> None:
+    """C-6/#106 (C4/M4): las constancias de un MISMO verificador en un MISMO
+    run comparten `independence_group`. La forja que este chequeo caza es la
+    barata de verdad: partir un verdict global en constancias por isla y
+    darle a cada una su propio grupo — un solo verificador posando como las
+    2 patas independientes que la Policy exige. La granularidad fina existe
+    para EXPLICAR dónde falló, no para multiplicar el respaldo."""
+
+    def mutate(s: dict[str, Any]) -> None:
+        original = s["predicate"]["attestations"][0]
+        isla_0 = {**original, "step_id": "island-0", "independence_group": "isla-0"}
+        isla_1 = {**original, "step_id": "island-1", "independence_group": "isla-1"}
+        s["predicate"]["attestations"] = [isla_0, isla_1]
+
+    assert 7 in _failed_points(_retamper_payload(bundle, mutate))
+
+
+def test_point_7_accepts_per_island_attestations_that_share_the_group(
+    bundle: dict[str, Any],
+) -> None:
+    """El reverso: la granularidad LEGÍTIMA no se castiga. Dos constancias
+    por isla del mismo verificador, con el mismo grupo, siguen contando como
+    UNA pata — y el bundle falla solo por lo que la Policy realmente exige
+    (2 patas), no por tener detalle."""
+
+    def mutate(s: dict[str, Any]) -> None:
+        formal, ejecucion = s["predicate"]["attestations"]
+        s["predicate"]["attestations"] = [
+            formal,
+            {**ejecucion, "step_id": "island-0"},
+            {**ejecucion, "step_id": "island-1"},
+        ]
+
+    assert 7 not in _failed_points(_retamper_payload(bundle, mutate))

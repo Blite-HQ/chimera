@@ -79,6 +79,9 @@ class _ExplodingVerifier:
     anchor_kind: AnchorKind = "solver"
     determinism: Determinism = "deterministic"
 
+    def verify_all(self, claim: Any, ctx: InvocationContext) -> tuple[Attestation, ...]:
+        return (self.verify(claim, ctx),)
+
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         msg = "proceso de verificación roto a propósito"
         raise VerificationProcessError(msg)

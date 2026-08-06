@@ -145,7 +145,10 @@ class TestGoldenPathE2E:
         types = [f["event"] for f in frames]
         assert frames[-1]["event"] == "run.completed"
         assert types.count("claim.emitted") == 1
-        assert types.count("verification.completed") == 2
+        # [C4/M4 · C-6/#106] El verificador por ejecución emite una constancia
+        # POR ISLA: 3 eventos (1 formal + 2 islas) para las MISMAS 2 patas. Lo
+        # que el certificado exige se comprueba abajo, sobre las attestations.
+        assert types.count("verification.completed") == 3
 
         # Act — GET certificate.
         cert_response = _get(client, f"/runs/{run_id}/certificate")
@@ -164,6 +167,10 @@ class TestGoldenPathE2E:
             "execution",
         }
         assert predicate["conclusions"][0]["verdict"] == "verified"
+        # Las constancias por isla NO inflan patas (C-6): el certificado
+        # sigue sosteniéndose en 2 grupos de independencia, y el punto 7 del
+        # checklist —que ya corrió arriba— lo verifica offline.
+        assert len({a["independence_group"] for a in predicate["attestations"]}) == 2
 
 
 class TestRefutacionE2E:

@@ -72,11 +72,24 @@ def test_invocation_context_is_frozen() -> None:
 
 
 class _FakeSolverVerifier:
-    """A minimal conforming Verifier — proves the Protocol shape is usable."""
+    """A minimal conforming Verifier — proves the Protocol shape is usable.
+
+    [C4/M4 · C-6/#106] `verify_all` entró al puerto con default
+    `= (verify(),)`. Un Protocol `runtime_checkable` exige el ATRIBUTO para
+    `isinstance`, así que un adapter estructural (los del repo lo son) lo
+    declara explícito. La promesa de compat total del freeze sigue viva por
+    el otro lado: un adapter ajeno escrito contra el puerto viejo — sin
+    `verify_all` — sigue funcionando a través de
+    `blite.verification.verifier.verify_all_of`, que aplica el mismo default
+    desde afuera (test en
+    `tests/unit/verification/test_verify_all_por_isla.py`)."""
 
     verifier_class: VerifierClass = "formal_exact"
     anchor_kind: AnchorKind = "solver"
     determinism: Determinism = "deterministic"
+
+    def verify_all(self, claim: Any, ctx: InvocationContext) -> tuple[Attestation, ...]:
+        return (self.verify(claim, ctx),)
 
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         return Attestation(

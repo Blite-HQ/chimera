@@ -412,6 +412,12 @@ class _GroundTruthOverSimulationSeries:
     def determinism(self) -> Determinism:
         return self.inner.determinism
 
+    def verify_all(self, claim: Any, ctx: InvocationContext) -> tuple[Attestation, ...]:
+        """Constancia ÚNICA (default del puerto, freeze §7 [MEJORADO
+        C-6/#106]): este adapter no tiene sub-entidades que verificar por
+        separado. Explícito porque satisface `Verifier` ESTRUCTURALMENTE."""
+        return (self.verify(claim, ctx),)
+
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         if not isinstance(claim, SimulationSeriesClaim):
             msg = f"claim {type(claim).__name__} no es un SimulationSeriesClaim"
@@ -536,6 +542,12 @@ class _GroundTruthOverStatistical:
     def determinism(self) -> Determinism:
         return self.inner.determinism
 
+    def verify_all(self, claim: Any, ctx: InvocationContext) -> tuple[Attestation, ...]:
+        """Constancia ÚNICA (default del puerto, freeze §7 [MEJORADO
+        C-6/#106]): este adapter no tiene sub-entidades que verificar por
+        separado. Explícito porque satisface `Verifier` ESTRUCTURALMENTE."""
+        return (self.verify(claim, ctx),)
+
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         if not isinstance(claim, StatisticalClaim):
             msg = f"claim {type(claim).__name__} no es un StatisticalClaim"
@@ -597,6 +609,12 @@ class _PropertyRuleOverStatistical:
     @property
     def determinism(self) -> Determinism:
         return self.inner.determinism
+
+    def verify_all(self, claim: Any, ctx: InvocationContext) -> tuple[Attestation, ...]:
+        """Constancia ÚNICA (default del puerto, freeze §7 [MEJORADO
+        C-6/#106]): este adapter no tiene sub-entidades que verificar por
+        separado. Explícito porque satisface `Verifier` ESTRUCTURALMENTE."""
+        return (self.verify(claim, ctx),)
 
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         if not isinstance(claim, StatisticalClaim):

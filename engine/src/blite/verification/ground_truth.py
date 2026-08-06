@@ -205,6 +205,13 @@ class GroundTruthVerifier:
         podría reconstruir de cualquier forma internamente consistente."""
         return self.record.source_digest
 
+    def verify_all(self, claim: Any, ctx: InvocationContext) -> tuple[Attestation, ...]:
+        """Constancia ÚNICA (default del puerto, freeze §7 [MEJORADO
+        C-6/#106]): este adapter no tiene sub-entidades que verificar por
+        separado. Se declara explícito porque el adapter satisface `Verifier`
+        de forma ESTRUCTURAL — no hereda el cuerpo del default del Protocol."""
+        return (self.verify(claim, ctx),)
+
     def verify(self, claim: Any, ctx: InvocationContext) -> Attestation:
         if not isinstance(claim, GroundTruthClaim):
             msg = f"claim {type(claim).__name__} no es un GroundTruthClaim"

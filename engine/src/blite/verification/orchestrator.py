@@ -24,7 +24,7 @@ from typing import Any, Protocol
 
 from blite.verification.claim import ClaimEmittedPayload, claim_view_digest
 from blite.verification.context import InvocationContext
-from blite.verification.verifier import Verifier
+from blite.verification.verifier import Verifier, verify_all_of
 
 _RUNTIME_ACTOR = "service:runtime"
 
@@ -88,15 +88,22 @@ def make_verification_delegate(
             )
             append("claim.emitted", payload.model_dump())
             for verifier in verifiers:
-                attestation = verifier.verify(declaration.claim, invocation_ctx)
-                append(
-                    "verification.completed",
-                    {
-                        "claim_digest": attestation.claim_digest,
-                        "verifier_id": attestation.verifier_id,
-                        "verdict": attestation.verdict,
-                        "attestation": attestation.model_dump(mode="json"),
-                    },
-                )
+                # `verify_all_of` (C4/M4 · C-6/#106): un verificador con
+                # granularidad emite UNA constancia por sub-entidad (las islas
+                # del ExecutionVerifier); el resto sigue emitiendo la suya
+                # única por el default del puerto. El conteo de patas del
+                # punto 7 no cambia: todas comparten `independence_group`.
+                for attestation in verify_all_of(
+                    verifier, declaration.claim, invocation_ctx
+                ):
+                    append(
+                        "verification.completed",
+                        {
+                            "claim_digest": attestation.claim_digest,
+                            "verifier_id": attestation.verifier_id,
+                            "verdict": attestation.verdict,
+                            "attestation": attestation.model_dump(mode="json"),
+                        },
+                    )
 
     return _delegate
