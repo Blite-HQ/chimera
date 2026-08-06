@@ -3307,3 +3307,54 @@ escucha — ese es el punto de que la costura sea un collector.
 | `events` (tabla)                   | A (runtime)      | **NO TOCADA** — solo lectura                               |
 | fixture `contract/observabilidad/` | costura          | NUEVO — golden + anti-drift; sin espejo Studio (declarado) |
 | seeds S-F                          | costura          | xfail RETIRADO — 3 tests de regresión permanente           |
+
+### Handoff parcial de la sesión PLATAFORMA (dominio O) — estado al 2026-08-05
+
+**Rama `mejorado/plataforma`, 6 commits sobre `mejorado/base` @cebbfe5, sin push.**
+
+| ítem                      | estado                                                                    |
+| ------------------------- | ------------------------------------------------------------------------- |
+| O11 gate multi-capa       | **CERRADO** (#154) — trinquete + 16 fugas declaradas, probado con canario |
+| O8 corpus runner          | **CERRADO** (#155) — KPI vivo sobre corpus C3; halló el hueco de N=12     |
+| O2 enforcement + vendor   | **CERRADO** (#157) — gitleaks en pre-commit probado; árbol fuera          |
+| O12 guards de datos       | **CERRADO** (#160) — guard nuevo de nexus + job de CI; probado que muerde |
+| hallazgos 9/10            | **CERRADOS** (#159) — con evidencia; 9b resuelto por los hechos           |
+| O3 proyector OTel         | **CERRADO** (#162) — DoD VIVO contra collector real                       |
+| O4 Croissant              | **PENDIENTE**                                                             |
+| O5 MCP gobernado          | **PENDIENTE** — el más grande de los que quedan                           |
+| O9 protocolo convergencia | **PENDIENTE**                                                             |
+| O10 1-pager SEPs          | **PENDIENTE**                                                             |
+| O7 deck.gl                | **NO evaluado** — condicional por umbral, no es compromiso                |
+
+**Gates al cierre parcial** (worktree, `uv run` directo — la receta #83 quedó
+caduca, ver #161):
+
+| gate                  | resultado                                                  |
+| --------------------- | ---------------------------------------------------------- |
+| `pytest`              | **1283 passed** / 9 skipped / 6 xfailed / 4 xpassed        |
+| cobertura             | **90.27 %** (mínimo 30 %)                                  |
+| `lint-imports`        | **17 contratos kept, 0 broken** (3 nuevos: O8 ×1, C-11 ×2) |
+| `ruff check`          | limpio                                                     |
+| `ruff format --check` | limpio (**gate que faltaba en el bloque REGLAS** — #156)   |
+| `pyright`             | **0 errores**                                              |
+| `markdownlint`        | 0 · `prettier --check` 0, ya sobre el repo COMPLETO        |
+
+Baseline al abrir: 1205 passed / cov 91.62 %. Los 6 xfailed que quedan son 3
+menos que el baseline: los seeds S-F del proyector entraron en verde y su xfail
+se retiró (jamás borrados).
+
+**Dos cosas BLOQUEADAS EN DYLAN, ninguna es deuda de esta sesión:**
+
+1. **Exposición viva del vendorizado (#158)** — el repo YA es público y el
+   material de terceros está publicado. Hace falta `git filter-repo` +
+   force-push (el clasificador de la sesión los bloquea) y, idealmente, pedirle
+   a GitHub Support la purga de objetos sueltos.
+2. **Push de esta rama** — como manda el bloque REGLAS.
+
+**Una cosa REPORTADA a otra sesión (#156):** las 2 violaciones de
+dependency-cruiser del Studio (`App.tsx ↔ router.tsx` circular y `App.tsx →
+gatewayClient.ts` contra F3). Son de P-ui/V y son estructurales. **Hasta que se
+arreglen, el job Web de CI sigue rojo** aunque todo lo demás esté verde.
+
+**El stack quedó ARRIBA** (`docker compose --profile otel`) para el DoD de O5.
+Bajarlo: `docker compose --profile otel down`.
