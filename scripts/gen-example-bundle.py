@@ -64,6 +64,21 @@ def _event(i: int, type_: str, actor: str, payload: dict[str, Any]) -> dict[str,
     }
 
 
+CANONICAL_STATEMENT = (
+    "La partición propuesta de ieee14 es el óptimo exacto del corte bajo las "
+    "restricciones declaradas"
+)
+SCOPE = {
+    "instance": "ieee14",
+    "problem": "islanding-partition",
+    "constraints": "declared-v1",
+}
+_CLAIM_DIGEST = hashlib.sha256(
+    CLAIM_PREFIX
+    + canonicalize({"canonical_statement": CANONICAL_STATEMENT, "scope": SCOPE})
+).hexdigest()
+
+
 def main() -> int:
     policy_bytes = POLICY_PATH.read_bytes()
     policy_digest = hashlib.sha256(policy_bytes).hexdigest()
@@ -90,27 +105,41 @@ def main() -> int:
             {"job_id": "j1", "step_id": "s1"},
         ),
         _event(3, "capability.job.completed", "service:runtime", {"job_id": "j1"}),
+        # [C15] El `claim.emitted` con sus PORTADORES (§6 [stress-final]): sin
+        # él, el evaluador de la Policy no puede saber los `side_effects` de
+        # la conclusión y ninguna regla que los restrinja aplica — fail-closed.
+        # Un run real siempre lo emite (el orquestador lo hace antes de cada
+        # `verification.completed`); este fixture lo omitía y por eso parecía
+        # verificar contra una regla que en realidad no le correspondía.
         _event(
             4,
+            "claim.emitted",
+            "service:runtime",
+            {
+                "claim_digest": _CLAIM_DIGEST,
+                "claim_type": "solution",
+                "is_conclusion": True,
+                "world": False,
+                "irreversible": False,
+                "affects_third_party": False,
+            },
+        ),
+        _event(
+            5,
             "verification.completed",
             "service:runtime",
             {"verdict": "pass", "policy_id": "chimera-default@0.2.0"},
         ),
-        _event(5, "run.completed", "service:runtime", {}),
+        _event(6, "run.completed", "service:runtime", {}),
     ]
     provenance_hash = provenance_hash_of_views(stream)
 
     # --- Conclusión + claim_digest por la fórmula del anexo §5 ---
-    canonical_statement = "La partición propuesta de ieee14 es el óptimo exacto del corte bajo las restricciones declaradas"
-    scope = {
-        "instance": "ieee14",
-        "problem": "islanding-partition",
-        "constraints": "declared-v1",
-    }
-    claim_digest = hashlib.sha256(
-        CLAIM_PREFIX
-        + canonicalize({"canonical_statement": canonical_statement, "scope": scope})
-    ).hexdigest()
+    canonical_statement, scope, claim_digest = (
+        CANONICAL_STATEMENT,
+        SCOPE,
+        _CLAIM_DIGEST,
+    )
 
     anchor_solver = hashlib.sha256(b"anchor:cpsat-reference-v1").hexdigest()
     anchor_exec = hashlib.sha256(b"anchor:pandapower-case14-v1").hexdigest()

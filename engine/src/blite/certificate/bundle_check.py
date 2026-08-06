@@ -325,6 +325,81 @@ def _sobres_de_attestation(
     return tuple(failures)
 
 
+@dataclass(frozen=True)
+class _Exigencia:
+    """Lo que la Policy exige para una conclusión — el MÁXIMO de todas las
+    reglas aplicables, no la primera que casó."""
+
+    min_level: str
+    required_legs: int
+    required_anchors: tuple[str, ...]
+
+
+def _side_effects_declarados(stream: list[dict[str, Any]]) -> dict[str, str]:
+    """`claim_digest → side_effects` derivado de los `claim.emitted` del
+    stream (freeze §6 [stress-final]: los flags de piso viajan en ESE
+    payload, y el manifest porta `side_effects` como proxy de `irreversible`).
+
+    Solo se distinguen las dos formas que el flag permite distinguir:
+    `irreversible-external` y `pure`. `reversible-external` NO es derivable
+    de un booleano, así que no se infiere — inventarlo haría que una regla
+    escrita para ese caso pareciera evaluada."""
+    efectos: dict[str, str] = {}
+    for event in stream:
+        if event.get("type") != "claim.emitted":
+            continue
+        payload = event.get("payload", {})
+        digest = payload.get("claim_digest")
+        if not digest:
+            continue
+        efectos[digest] = (
+            "irreversible-external" if payload.get("irreversible") else "pure"
+        )
+    return efectos
+
+
+def _regla_aplica(
+    rule: dict[str, Any], conclusion: dict[str, Any], side_effects: str | None
+) -> bool:
+    """[C15] Una regla aplica si TODA dimensión que su `match` restringe está
+    satisfecha. La versión anterior miraba solo `claim_type`, con dos
+    consecuencias: `MatchCondition.side_effects` no hacía nada, y la regla
+    `{side_effects: irreversible-external}` (sin claim_type) era INALCANZABLE
+    — el caso más peligroso de la Policy se evaluaba con la regla laxa."""
+    match: dict[str, Any] = rule.get("match", {})
+    if "claim_type" in match and match["claim_type"] != conclusion.get("claim_type"):
+        return False
+    if "side_effects" in match and match["side_effects"] != side_effects:
+        return False
+    return bool(match)
+
+
+def _exigencia_de_policy(
+    rules: list[dict[str, Any]],
+    conclusion: dict[str, Any],
+    efectos: dict[str, str],
+) -> _Exigencia | None:
+    """El MÁXIMO de las reglas aplicables — «forma monotónica, deny unless
+    proven» (freeze §6). Tomar la primera que casa dejaría que el orden del
+    YAML decidiera la exigencia, y que una regla laxa tapara a una estricta
+    que también aplica."""
+    side_effects = efectos.get(conclusion["claim_digest"])
+    aplicables = [r for r in rules if _regla_aplica(r, conclusion, side_effects)]
+    if not aplicables:
+        return None
+    anclas: list[str] = []
+    for rule in aplicables:
+        anclas.extend(str(kind) for kind in rule.get("required_anchors", []))
+    return _Exigencia(
+        min_level=max(
+            (str(r.get("min_level", "AL0")) for r in aplicables),
+            key=_LEVEL_ORDER.__getitem__,
+        ),
+        required_legs=max(int(r.get("required_legs", 1)) for r in aplicables),
+        required_anchors=tuple(dict.fromkeys(anclas)),
+    )
+
+
 def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
     """(7) Conclusión↔attestations (pass↔verified) · techo por clase · proof AL4
     · patas por independence_group ≥ Policy pinneada; not_required_declared EXENTAS.
@@ -343,6 +418,7 @@ def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
             f"policy_digest {policy_digest[:12]}… ≠ predicate {str(predicate.get('policy_digest'))[:12]}…"
         )
     rules: list[dict[str, Any]] = yaml.safe_load(policy_bytes).get("rules", [])
+    efectos = _side_effects_declarados(bundle.get("stream", []))
 
     attestations = predicate.get("attestations", [])
     failures.extend(_coherencia_de_grupos(attestations))
@@ -385,28 +461,33 @@ def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
                     failures.append(
                         f"{att['verifier_id']}: AL4 sin proof completo (§4-iii)"
                     )
-        rule = next(
-            (
-                r
-                for r in rules
-                if r.get("match", {}).get("claim_type") == conclusion.get("claim_type")
-            ),
-            None,
-        )
-        if rule is None:
+        exigencia = _exigencia_de_policy(rules, conclusion, efectos)
+        if exigencia is None:
             failures.append(
                 f"claim {cid}…: sin regla de Policy para claim_type "
                 f"{conclusion.get('claim_type')!r} (fail-closed)"
             )
             continue
         legs = len({a["independence_group"] for a in matching})
-        required = int(rule.get("required_legs", 1))
-        if legs < required:
+        if legs < exigencia.required_legs:
             failures.append(
-                f"claim {cid}…: {legs} pata(s) por independence_group < {required} exigidas"
+                f"claim {cid}…: {legs} pata(s) por independence_group < "
+                f"{exigencia.required_legs} exigidas"
+            )
+        # [C15] `min_level` — la exigencia que la Policy declara y el punto 7
+        # nunca comprobaba: una conclusión AL1 bajo una regla AL3 pasaba.
+        # Solo se exige a lo VERIFICADO: una conclusión refutada tiene AL0 por
+        # construcción y exigirle nivel volvería toda refutación una falla del
+        # certificado (el socavamiento ya lo cubre el punto 4).
+        if verdict == "verified" and (
+            _LEVEL_ORDER[conclusion["level"]] < _LEVEL_ORDER[exigencia.min_level]
+        ):
+            failures.append(
+                f"claim {cid}…: nivel {conclusion['level']} < {exigencia.min_level} "
+                f"exigido por la Policy pinneada"
             )
         anchors_present = {a.get("anchor_kind") for a in matching}
-        for kind in rule.get("required_anchors", []):
+        for kind in exigencia.required_anchors:
             if kind not in anchors_present:
                 failures.append(f"claim {cid}…: ancla requerida {kind!r} ausente")
     return tuple(failures)
