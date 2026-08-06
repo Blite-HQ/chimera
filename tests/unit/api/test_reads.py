@@ -536,6 +536,85 @@ class TestGetAblation:
         assert _get(client, f"/runs/{run_id}/ablation").json() == []
 
 
+class TestAblacionAgregaLosBrazos:
+    """[V2/M19 · C-4] Los dos brazos son SUB-RUNS (§13): cada uno emite SU
+    cierre en SU stream. Preguntarle solo al raíz devolvería un panel de una
+    barra para una comparación de dos."""
+
+    @staticmethod
+    def _con_dos_brazos(store: EventStore) -> None:
+        from blite.runtime.ablation import AblationArm, run_ablation_arms
+        from blite.runtime.content_store import InMemoryContentStore
+        from blite.runtime.dispatch import ProfileDispatcher
+
+        store.append(
+            stream_id="raiz",
+            type="run.created",
+            actor_id="user:dylan",
+            domain_id="d-default",
+            payload={
+                "run_id": "raiz",
+                "actor_id": "user:dylan",
+                "domain_id": "d-default",
+                "max_steps": 4,
+                "policy_digest": "p" * 64,
+            },
+        )
+        run_ablation_arms(
+            store,
+            _make_registry(),
+            ProfileDispatcher(),
+            InMemoryContentStore(),
+            root_run_id="raiz",
+            root_policy_digest="p" * 64,
+            actor_id="user:dylan",
+            domain_id="d-default",
+            arms=[
+                AblationArm(
+                    variant="quantum",
+                    capability_id="cap.echo",
+                    inputs={"x": 1},
+                    cut_cost=5.0,
+                ),
+                AblationArm(
+                    variant="classical",
+                    capability_id="cap.echo",
+                    inputs={"x": 2},
+                    cut_cost=7.0,
+                ),
+            ],
+        )
+
+    def test_el_panel_del_raiz_muestra_las_dos_barras(self) -> None:
+        # Arrange
+        store = create_event_store()
+        self._con_dos_brazos(store)
+        client = _make_client(store)
+
+        # Act
+        body = _get(client, "/runs/raiz/ablation").json()
+
+        # Assert — orden determinista y en el orden DECLARADO de los brazos:
+        # el id del sub-run lleva el índice, así que ordenar por id preserva
+        # el orden del experimento (dos renders dan el mismo panel).
+        assert [fila["variant"] for fila in body] == ["quantum", "classical"]
+        assert [fila["cut_cost"] for fila in body] == [5.0, 7.0]
+
+    def test_cada_brazo_conserva_su_propio_panel(self) -> None:
+        """Agregación de LECTURA: nada se fusiona — cada brazo sigue teniendo
+        su stream, su procedencia y su propia respuesta."""
+        # Arrange
+        store = create_event_store()
+        self._con_dos_brazos(store)
+        client = _make_client(store)
+
+        # Act
+        propio = _get(client, "/runs/raiz--arm-0-quantum/ablation").json()
+
+        # Assert
+        assert [fila["variant"] for fila in propio] == ["quantum"]
+
+
 class TestGetTopology:
     def test_sin_particion_embebida_da_payload_vacio_honesto(self) -> None:
         store = create_event_store()

@@ -185,6 +185,17 @@ class TopologyResponse(BaseModel):
     cut_cost: float
 
 
+def _sub_run_ids(resources: RunResources, run_id: str) -> tuple[str, ...]:
+    """Sub-runs DIRECTOS de `run_id`, en orden determinista (§13: la
+    correlación padre-hijo viaja por `parent_run_id`, jamás por streams
+    anidados). Sin árboles profundos — misma frontera que la cascada de
+    `cancel_run_with_cascade`."""
+    rows, _ = _proyectar_salteando_envenenados(resources.store.read_all())
+    return tuple(
+        sorted(rid for rid, row in rows.items() if row.parent_run_id == run_id)
+    )
+
+
 def _run_ids_conocidos(resources: RunResources) -> tuple[str, ...]:
     """Los runs que la proyección puede leer, en orden determinista. Un stream
     envenenado se omite (#104, ruta de LECTURA) en vez de tumbar el agregado
@@ -596,8 +607,18 @@ def create_reads_router(resources: RunResources) -> APIRouter:
 
     @router.get("/runs/{run_id}/ablation")
     def get_run_ablation(run_id: str) -> list[AblationMetric]:
+        """[V2/M19 · C-4] La ablación de un run INCLUYE la de sus sub-runs
+        DIRECTOS: los dos brazos son sub-runs (§13) y cada uno emite SU
+        `run.metrics.recorded` en SU stream, así que preguntarle solo al raíz
+        devolvería un panel de una sola barra para una comparación de dos.
+
+        Es agregación de LECTURA, no de escritura: cada brazo conserva su
+        stream, su procedencia y su certificado — nada se fusiona."""
         stream = _require_known_run(resources, run_id)
-        return _project_ablation(stream)
+        filas = _project_ablation(stream)
+        for sub_run_id in _sub_run_ids(resources, run_id):
+            filas.extend(_project_ablation(resources.store.read_stream(sub_run_id)))
+        return filas
 
     @router.get("/runs/{run_id}/topology")
     def get_run_topology(run_id: str) -> TopologyResponse:
