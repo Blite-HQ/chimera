@@ -94,6 +94,8 @@ from blite.verification.ground_truth import (
     GroundTruthVerifier,
     build_ground_truth_record,
 )
+from blite.verification.orchestrator import ResultProjection
+from blite.verification.partition import build_partition
 from blite.verification.property_rule import PropertyRuleClaim, PropertyRuleVerifier
 from blite.verification.verifier import Determinism, Verifier
 
@@ -175,11 +177,14 @@ class VerifierResolution:
 @dataclass(frozen=True)
 class ClaimTypeEntry:
     """Lo que el registro declara para UN `claim_type`: cómo construir el
-    claim de dominio desde el payload normalizado del request, y cómo
-    resolver un `instance_id` en verifiers + descriptores de ancla."""
+    claim de dominio desde el payload normalizado del request, cómo resolver
+    un `instance_id` en verifiers + descriptores de ancla, y —opcional— cómo
+    traducir las attestations resultantes a la superficie que su dominio
+    consume (`build_projection`, V1/M18)."""
 
     build_claim: Callable[[dict[str, Any]], Any]
     resolve: Callable[[str], VerifierResolution]
+    build_projection: Callable[[Any], ResultProjection | None] | None = None
 
 
 _SINTETICA_4BUS_PROVENANCE = "pandapower-sintetica-v1"
@@ -679,10 +684,45 @@ def _resolve_statistical(instance_id: str) -> VerifierResolution:
     return VerifierResolution(verifiers, descriptors)
 
 
+def _solution_projection(claim: Any) -> ResultProjection | None:
+    """V1/M18 — el productor de `partition` para `solution` (C-8).
+
+    Vive acá y no en el orquestador porque ESTE módulo es el que sabe de qué
+    clase de problema habla cada `claim_type`; el engine sigue sin saber de
+    particiones. Devuelve `None` cuando el claim no declara instancia: sin
+    `topology_ref` la superficie no tendría a qué topología referirse, y una
+    partición huérfana es peor que ninguna.
+
+    `branch_ids=None` a propósito: el claim transporta las aristas, no los ids
+    del portal, así que el corte se nombra con la convención CANÓNICA — que es
+    derivable de esas mismas aristas por cualquier tercero.
+    """
+    if not isinstance(claim, OptimalityClaim):
+        return None
+    instance_id = str(claim.scope.get("instancia", ""))
+    if not instance_id:
+        return None
+
+    def _project(attestation: Attestation) -> dict[str, Any] | None:
+        partition = build_partition(
+            attestation=attestation,
+            assignment=claim.assignment,
+            edges=claim.instance.edges,
+            topology_ref=instance_id,
+        )
+        # La llave es la que la ruta de lectura ya esperaba
+        # (`reads::_PARTITION_PAYLOAD_KEY`): el payload viaja ANIDADO, no
+        # derramado sobre el evento.
+        return None if partition is None else {"partition": partition}
+
+    return _project
+
+
 CLAIM_TYPE_VERIFIERS: dict[str, ClaimTypeEntry] = {
     "solution": ClaimTypeEntry(
         build_claim=_model_validating_builder(OptimalityClaim),
         resolve=_resolve_solution,
+        build_projection=_solution_projection,
     ),
     "simulation_result": ClaimTypeEntry(
         build_claim=_model_validating_builder(SimulationSeriesClaim),
@@ -707,3 +747,19 @@ def resolve_verifiers(*, claim_type: str, instance_id: str) -> VerifierResolutio
     if entry is None:
         return VerifierResolution((), ())
     return entry.resolve(instance_id)
+
+
+def resolve_result_projection(
+    *, claim_type: str, claim: Any
+) -> ResultProjection | None:
+    """La proyección de superficie que ampara este claim, o `None` si su clase
+    no declara ninguna (V1/M18).
+
+    Hermana de `resolve_verifiers` y con la misma disciplina: un `claim_type`
+    sin entrada no rescata nada — la superficie queda honest-empty en vez de
+    recibir un payload fabricado.
+    """
+    entry = CLAIM_TYPE_VERIFIERS.get(claim_type)
+    if entry is None or entry.build_projection is None:
+        return None
+    return entry.build_projection(claim)

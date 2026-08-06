@@ -77,7 +77,11 @@ from blite.runtime.registry import Registry, load_registry
 from blite.serving.model_port import ModelPort
 from blite.verification.orchestrator import ClaimDeclaration, make_verification_delegate
 from chimera_api.auth import SessionAuth
-from chimera_api.instance_verifiers import CLAIM_TYPE_VERIFIERS, resolve_verifiers
+from chimera_api.instance_verifiers import (
+    CLAIM_TYPE_VERIFIERS,
+    resolve_result_projection,
+    resolve_verifiers,
+)
 from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import load_session
 
@@ -669,6 +673,10 @@ def _start_claim_run(
         scope=body.claim.scope,
         claim_type=claim_type,
         is_conclusion=True,
+        # V1/M18: la superficie de partición se emite EMBEBIDA en
+        # `verification.completed` cuando la clase de claim la declara —
+        # el orquestador no sabe de dominios, el registro sí.
+        result_projection=resolve_result_projection(claim_type=claim_type, claim=claim),
     )
     delegate = make_verification_delegate(
         verifiers=resolution.verifiers, declarations=(declaration,)

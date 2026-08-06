@@ -257,13 +257,15 @@ class TestGetRunKnowledge:
 
 class TestGetStepEvidence:
     def test_step_con_capability_job_trae_los_digests(self) -> None:
-        # El paso "invoke" (step-2, freeze §3 step<->job 1:1) sí lleva
+        # El paso "invoke" (step-2, freeze §3 step<->job 1:1) lleva
         # `capability_id`/`input_digest`/`output_digest` — los emite
-        # `capability.job.*`, que SÍ carga `step_id` (loop.py). Las
-        # `attestations` quedan `[]` acá: el orquestador real
-        # (`make_verification_delegate`) todavía no hilvana `step_id` en
-        # `verification.completed`/`Attestation.step_id` (queda `None` en
-        # el log) — honesto, no fabricado; hallazgo para el reporte.
+        # `capability.job.*`, que SÍ carga `step_id` (loop.py).
+        #
+        # [V1/M18 — M23a/N3] Las `attestations` YA NO llegan vacías: el
+        # orquestador hilvana el `step_id` que el loop siempre le pasó, así
+        # que la ruta puede atribuir al paso las dos patas del golden path.
+        # El hallazgo previo ("honesto, no fabricado; hallazgo para el
+        # reporte") queda cerrado acá.
         client = _make_client()
         run_id = _create_golden_run(client)
 
@@ -275,7 +277,10 @@ class TestGetStepEvidence:
         assert body["capability_id"] == "cap.echo"
         assert body["input_digest"] is not None
         assert body["output_digest"] is not None
-        assert body["attestations"] == []
+        assert [a["verifier_id"] for a in body["attestations"]] == [
+            "verifier:cpsat-differential",
+            "verifier:pandapower-islanding",
+        ]
 
     def test_step_conocido_sin_verificacion_da_attestations_vacio(self) -> None:
         store = create_event_store()
@@ -405,3 +410,38 @@ class TestGetTopology:
         client = _make_client()
         response = _get(client, "/runs/no-existe/topology")
         assert response.status_code == 404
+
+    def test_el_golden_path_produce_la_particion_real(self) -> None:
+        """V1/M18: el productor que faltaba. Un run REAL de dos patas emite la
+        partición embebida en `verification.completed` y la ruta la proyecta —
+        los badges del mapa salen de la pata de ejecución que corrió de
+        verdad, no de un fixture."""
+        # Arrange
+        client = _make_client()
+
+        # Act
+        run_id = _create_golden_run(client)
+        body = _get(client, f"/runs/{run_id}/topology").json()
+
+        # Assert — dos islas verificadas, cada una con SU bloque (freeze §9)
+        assert body["topology_ref"] == "sintetica-4bus"
+        assert [isla["id"] for isla in body["islands"]] == ["island-0", "island-1"]
+        for isla in body["islands"]:
+            assert isla["verification"]["verdict"] == "pass"
+            assert isla["verification"]["verifier_class"] == "execution"
+            assert isla["verification"]["level"] == "AL3"
+        assert [isla["bus_ids"] for isla in body["islands"]] == [["0", "1"], ["2", "3"]]
+
+    def test_el_corte_cita_la_convencion_de_branch_ids(self) -> None:
+        """C-8: `cut_branch_ids` con identidad estable — la arista (1,2) es la
+        única que cruza en la partición del golden path."""
+        # Arrange
+        client = _make_client()
+
+        # Act
+        run_id = _create_golden_run(client)
+        body = _get(client, f"/runs/{run_id}/topology").json()
+
+        # Assert
+        assert body["cut_branch_ids"] == ["L1-2"]
+        assert body["cut_cost"] == 5.0

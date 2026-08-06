@@ -83,3 +83,63 @@ def test_anti_drift_committeado_igual_al_generador() -> None:
     expected = module.serialize(payload)  # type: ignore[attr-defined]
     on_disk = (_CANONICAL / f"{_CASE}.json").read_text(encoding="utf-8")
     assert on_disk == expected
+
+
+def test_el_productor_real_emite_la_misma_forma_que_el_fixture() -> None:
+    """(4, V1/M18) El puente que faltaba: el fixture describía una forma que
+    NADIE emitía. Ahora `build_partition` es el productor, y lo que produce
+    valida contra el mismo modelo origen y trae exactamente las mismas llaves
+    por isla que el caso commiteado — o el contrato se habría bifurcado en dos
+    verdades (fixture verde, superficie viva distinta)."""
+    from datetime import UTC, datetime
+
+    from blite.verification.attestation import Attestation
+    from blite.verification.evidence import (
+        ExecutionCheck,
+        ExecutionEnvironment,
+        ExecutionPredicate,
+    )
+    from blite.verification.partition import build_partition
+
+    attestation = Attestation(
+        verifier_id="verifier:pandapower-islanding",
+        verifier_class="execution",
+        anchor_kind="execution",
+        level="AL3",
+        verdict="pass",
+        scope={"instancia": "ieee14"},
+        independence_group="leg-execution",
+        run_id="run-contract",
+        claim_digest="c" * 64,
+        verifier_binary_digest="b" * 64,
+        verifier_params_digest="p" * 64,
+        anchor_digest="a" * 64,
+        predicate=ExecutionPredicate(
+            harness="pandapower-islanding-v1",
+            input_digest="i" * 64,
+            checks=(
+                ExecutionCheck(name="island-0:island_connectivity", passed=True),
+                ExecutionCheck(name="island-1:island_connectivity", passed=True),
+            ),
+            runtime_ms=1.0,
+            environment=ExecutionEnvironment(package="pandapower", version="3.5.4"),
+        ),
+        issued_at=datetime(2026, 8, 5, tzinfo=UTC),
+    )
+    produced = build_partition(
+        attestation=attestation,
+        assignment=(0, 0, 1, 1),
+        edges=((0, 1, 1), (1, 2, 5), (2, 3, 1)),
+        topology_ref="ieee14-topology@v1",
+    )
+    assert produced is not None
+
+    parsed = TopologyResponse.model_validate(produced)
+    assert len(parsed.islands) == 2
+
+    fixture = json.loads((_CANONICAL / f"{_CASE}.json").read_text(encoding="utf-8"))
+    assert set(produced) == set(fixture)
+    assert set(produced["islands"][0]) == set(fixture["islands"][0])
+    assert set(produced["islands"][0]["verification"]) == set(
+        fixture["islands"][0]["verification"]
+    )
