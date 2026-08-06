@@ -3200,3 +3200,35 @@ de Python entera, y el `ci-gate` agregador ya lo exige.
 | `ci.yml` — ignore de CVE                | seguridad        | RE-EVALUADO con evidencia; sigue justificado (sin fix upstream)             |
 | `knowledge/nexus/`, corpus              | datos            | **NO TOCADOS** — el guard los lee, jamás los escribe                        |
 | exposición pública del vendorizado      | repo             | **ABIERTO — requiere a Dylan**: filter-repo + force-push + purga de objetos |
+
+### #161 — el hallazgo que casi arruina #157: git no corre hooks en un worktree
+
+**Encontrado probando mi propio entregable.** Tras cablear el escaneo de
+secretos al `pre-commit`, hice el commit de #157 esperando ver correr
+`lint-staged`. No corrió nada.
+
+```
+git config core.hooksPath  →  .husky/_
+ls .husky/_                →  No such file or directory
+```
+
+`core.hooksPath` está configurado, pero `.husky/_` lo GENERA el script
+`prepare` de npm y **no está versionado**. Un worktree recién creado hereda la
+config y no el directorio: git no encuentra los hooks y **no corre ninguno, sin
+error y sin aviso**. Los commits simplemente dejan de revisarse.
+
+Es la causa raíz de #156: 21 archivos sin formatear entraron a `mejorado/base`
+porque `lint-staged` —que los habría formateado— jamás corrió en las sesiones de
+worktree. Y habría dejado el enforcement de #157 en decorativo: un hook
+versionado que en la práctica no se ejecuta es peor que no tenerlo, porque uno
+cree estar cubierto.
+
+**Arreglo**: `npx husky` una vez por worktree. Documentado en CONTRIBUTING (con
+la comprobación de que el directorio EXISTA, no solo la config) y en el bloque
+de reglas de `05-plan-paralelo.md` §0, junto con la corrección de la receta de
+gates (`uv sync` en worktree SÍ funciona hoy) y los dos gates que faltan en el
+bloque REGLAS (`ruff format --check`, `depcruise`).
+
+**Verificado en vivo, no asumido**: con `.husky/_` generado, `git commit` con un
+token de Stripe staged termina en `husky - pre-commit script failed (code 1)` —
+el commit NO se crea.
