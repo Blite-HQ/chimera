@@ -35,11 +35,13 @@ from typing import Any
 import yaml
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ed25519
+from pydantic import ValidationError
 
 from blite.certificate.canonical import canonicalize
 from blite.certificate.dsse import DSSEEnvelope, DSSESignature
 from blite.certificate.dsse import verify as dsse_verify
 from blite.certificate.predicate import Conclusion, compute_titular_level
+from blite.certificate.status_list import is_revoked, verify_status_list
 from blite.events.chain import chain_head_of_views, provenance_hash_of_views
 from blite.events.rules import TERMINAL_RUN_EVENTS
 
@@ -71,6 +73,12 @@ class PointResult:
     number: int
     name: str
     failures: tuple[str, ...]
+    notes: tuple[str, ...] = ()
+    """Lo que el punto NO pudo comprobar sin que eso sea una falla. Existe
+    por el punto 11 (C7): sin la StatusList, la revocación no se comprueba —
+    y un checklist que imprimiera «verificado» callando eso sería justo la
+    ceremonia que el freeze prohíbe. Un punto OK con nota es un punto que
+    dice qué alcance tuvo."""
 
     @property
     def ok(self) -> bool:
@@ -496,6 +504,55 @@ def punto_10_hash_chain(bundle: dict[str, Any]) -> tuple[str, ...]:
     return ()
 
 
+def punto_11_revocacion(
+    bundle: dict[str, Any], status_list: dict[str, Any] | None
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """(11) Estado de revocación contra la StatusList — C7/M8 pieza 3.
+
+    OPT-IN por diseño, y esa es la resolución del choque con el air-gap: sin
+    lista, la verificación offline sigue completa y el punto DECLARA que la
+    revocación no se comprobó (semántica `VALID_AS_OF` ya congelada, dicha en
+    voz alta). Con lista, se verifica su FIRMA y después el bit — una lista
+    sin verificar es peor que ninguna: cualquiera podría producir una donde
+    el certificado que le molesta aparece revocado.
+
+    Devuelve `(fallas, notas)`: el único punto del checklist que tiene algo
+    que decir cuando no falla."""
+    _, predicate = _decode_predicate(bundle)
+    entry = predicate.get("status_list_entry")
+    if entry is None:
+        return (), (
+            f"el certificado autodeclara revocation={predicate.get('revocation')!r}: "
+            "no publica lista, no hay nada que consultar",
+        )
+    if status_list is None:
+        return (), (
+            f"válido a {predicate.get('valid_as_of')} — revocación NO comprobada "
+            f"(sin --status-list para {entry['status_list_id']!r})",
+        )
+    try:
+        lista = verify_status_list(status_list, bundle["public_key"])
+    except InvalidSignature:
+        return ("la StatusList NO verifica sobre su PAE (lista no confiable)",), ()
+    except (KeyError, ValidationError, ValueError) as exc:
+        return (f"StatusList malformada: {exc}",), ()
+    if lista.status_list_id != entry["status_list_id"]:
+        return (
+            f"la lista provista es {lista.status_list_id!r} y el certificado "
+            f"apunta a {entry['status_list_id']!r} — no responde su pregunta",
+        ), ()
+    try:
+        revocado = is_revoked(lista, int(entry["status_list_index"]))
+    except ValueError as exc:
+        return (f"{exc}",), ()
+    if revocado:
+        return (
+            f"CERTIFICADO REVOCADO en {lista.status_list_id!r} "
+            f"(índice {entry['status_list_index']}, lista de {lista.issued_at})",
+        ), ()
+    return (), (f"no revocado según {lista.status_list_id!r} a {lista.issued_at}",)
+
+
 _PUNTOS = (
     ("firma/PAE del envelope", punto_1_firma_pae),
     ("recompute del provenance_hash", punto_2_provenance_hash),
@@ -513,8 +570,12 @@ _PUNTOS = (
 )
 
 
-def check_bundle(bundle: dict[str, Any]) -> tuple[PointResult, ...]:
-    """Corre los 8 puntos; cada uno reporta aparte (ninguno corta a los demás)."""
+def check_bundle(
+    bundle: dict[str, Any], *, status_list: dict[str, Any] | None = None
+) -> tuple[PointResult, ...]:
+    """Corre TODOS los puntos; cada uno reporta aparte (ninguno corta a los
+    demás). `status_list` es opcional (C7): sin ella el punto 11 declara que
+    la revocación no se comprobó, jamás la da por buena."""
     results: list[PointResult] = []
     for number, (name, fn) in enumerate(_PUNTOS, start=1):
         try:
@@ -522,4 +583,18 @@ def check_bundle(bundle: dict[str, Any]) -> tuple[PointResult, ...]:
         except Exception as exc:  # noqa: BLE001 — fail-closed: excepción = punto fallido
             failures = (f"error verificando: {exc!r}",)
         results.append(PointResult(number=number, name=name, failures=failures))
+
+    numero = len(results) + 1
+    try:
+        fallas, notas = punto_11_revocacion(bundle, status_list)
+    except Exception as exc:  # noqa: BLE001 — mismo fail-closed que el resto
+        fallas, notas = (f"error verificando: {exc!r}",), ()
+    results.append(
+        PointResult(
+            number=numero,
+            name="estado de revocación (StatusList, opcional)",
+            failures=fallas,
+            notes=notas,
+        )
+    )
     return tuple(results)

@@ -203,6 +203,30 @@ De objeto plano a **Statement in-toto + envelope DSSE firmado**, con la **letra 
 > **S2 (Signer ≠ Verifier) deja de ser limitación declarada**: cada verificador
 > puede firmar SU constancia. La `assumption` correspondiente se mantiene solo
 > mientras la distribución siga firmando todo con la llave del certificado.
+>
+> **(g) T14 SUPERSEDIDO — la revocación deja de ser Fase 2 declarada (C7/M8
+> pieza 3).** `revocation: "none"` era el único campo del certificado que decía
+> «no hay forma de saber si esto fue retirado». Entra la **StatusList con forma
+> W3C Bitstring v1.0** (Recommendation may-2025) **adoptando la FORMA, no el
+> stack de Verifiable Credentials**: artefacto estático firmado con el MISMO
+> DSSE, distribuible por cualquier medio (incluido un USB en un sitio sin red).
+> El certificado gana `status_list_entry {status_list_id, status_list_index,
+status_purpose}` en el predicate firmado y `revocation: "status_list"` cuando
+> la declara; sin entrada sigue autodeclarándose `"none"`. El checklist gana el
+> **punto 11**, OPT-IN: `verify-bundle --status-list` lo comprueba; SIN la
+> lista el punto NO falla y **declara** «válido a `valid_as_of`, revocación no
+> comprobada» — la semántica de `VALID_AS_OF` (P1-2) dicha en voz alta en vez
+> de escondida tras un «verificado». Por eso el resultado de un punto gana
+> `notes`: un checklist que imprimiera «11/11» callando lo que no comprobó
+> sería la ceremonia que T11 prohíbe. `●CertificateRevoked`
+> (`certificate.revoked`) se emite en el stream del run, POST-terminal (familia
+> de cierre, FUERA del corte del hash — §2, o revocar cambiaría los bytes que
+> el propio certificado ampara) y con `actor_id` humano obligatorio; los bits
+> de la lista se PROYECTAN de esos eventos, jamás se mantienen a mano. La letra
+> «una emisión por run» de T14 queda superseded solo en cuanto a
+> `●CertificateRevoked`: **`●CertificateReissued` sigue siendo Fase 2
+> declarada** — re-emitir exige decidir qué pasa con el certificado anterior y
+> esa pregunta no la responde esta pieza.
 
 ## 8 · `Identity` + JWT + intersección de permisos **[confianza / frontera en la etapa 1]** — trust/08
 

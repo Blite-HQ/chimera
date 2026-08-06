@@ -38,6 +38,7 @@ from blite.certificate.predicate import (
     ConclusionVerdict,
     compute_titular_level,
 )
+from blite.certificate.status_list import StatusListEntry
 from blite.certificate.vsa import envelope_to_wire, sign_attestation
 from blite.events.chain import (
     chain_head_of_views,
@@ -161,6 +162,7 @@ def assemble_bundle(
     anchor_descriptors: Sequence[dict[str, Any]] = (),
     deliverables: Sequence[tuple[str, bytes]] = (),
     sub_run_streams: Mapping[str, Sequence[Event]] = MappingProxyType({}),
+    status_list_entry: StatusListEntry | None = None,
     calculus_version: str = "cal-2.4",
     policy_ref_name: str = "verification-default.yaml",
 ) -> dict[str, Any]:
@@ -230,7 +232,16 @@ def assemble_bundle(
         "provenance_chain_head": chain_head_of_views(views),
         "calculus_version": calculus_version,
         "valid_as_of": views[-1]["occurred_at"],
-        "revocation": "none",
+        # [C7/M8 pieza 3] `revocation` deja de ser siempre `"none"`: con una
+        # entrada de StatusList declarada, el certificado dice DÓNDE mirar su
+        # estado. Sin entrada sigue autodeclarándose `"none"` — que es la
+        # verdad para quien no publica lista, no un default cómodo.
+        "revocation": "none" if status_list_entry is None else "status_list",
+        **(
+            {}
+            if status_list_entry is None
+            else {"status_list_entry": status_list_entry.model_dump()}
+        ),
         "attestations": attestations,
     }
     statement: dict[str, Any] = {
