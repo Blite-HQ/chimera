@@ -264,6 +264,25 @@ No es tabla nueva: `override.applied` es una fila más de `events` (§2). Forma 
 
 **Regla dura (AX2):** desactivar el propio registro de overrides es, a su vez, un override — se escribe _antes_ de surtir efecto (mismo `events` append-only con REVOKE+trigger, sin excepción para este tipo). **[ejecución]** El `Stage` que aplica un override emite su evento él mismo, vía `EventStore`, antes de aplicarlo (INV-4 — execution/01).
 
+> **[MEJORADO C10/M29 · sesión CONFIANZA-2 · 2026-08-05] §10 aterrizado en
+> código (`blite.gateway.override`), con dos precisiones que la letra dejaba
+> abiertas:**
+> **(a) El match del permiso es EXACTO** (A6 ya lo asumía; queda estampado):
+> `override:apply:global` NO habilita un override de alcance `run`, ni al
+> revés. La alternativa jerárquica haría que el permiso más peligroso fuera
+> también el más cómodo y convertiría cada concesión de alcance amplio en una
+> concesión silenciosa de todos los alcances menores. Cada alcance se concede
+> a propósito.
+> **(b) `authorized_by` en snake_case** — el `authorizedBy` de arriba es prosa
+> con sabor TS; los payloads del log son snake_case en todo el §3 y en el
+> código. Misma restricción `user:*`, y además el autorizador que PRESENTA el
+> override debe ser el mismo que queda registrado: nadie inscribe a otro como
+> responsable.
+> El tipo de evento en el wire es `override.applied` (dotted-lowercase, como
+> el resto del catálogo §14), y un intento RECHAZADO no escribe: el log de
+> confianza registra lo que ocurrió, y mezclar intentos con hechos haría que
+> «hay un override registrado» dejara de significar «hubo un override».
+
 ---
 
 ## 11 · Evidencia del plano cuántico — campos del claim proponente **[confianza / ciencia]** — quantum/03/04/05/09
