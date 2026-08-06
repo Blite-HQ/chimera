@@ -3,14 +3,11 @@
 Contrato: docs/specs/observabilidad-proyeccion.md. El proyector es un
 consumer standalone FUERA de blite.* (`projectors/otel/`, paquete
 `chimera_otel`); sus trace/span-id son DETERMINISTAS (re-proyección ⇒ trazas
-byte-idénticas). El xfail se retira cuando O3 lo implemente.
-
-Directiva pyright per-file: el paquete objetivo no existe por diseño hasta
-Fase 1; la directiva se retira junto con el xfail.
+byte-idénticas). **[O3 · 2026-08-05] EN VERDE.** `projectors/otel/` existe: el xfail se retiró
+y estas tres pruebas quedan como REGRESIÓN PERMANENTE de su contrato — la
+derivación de ids se recomputa acá de forma independiente, sin importar la del
+proyector para verificarla contra sí misma.
 """
-
-# pyright: reportMissingImports=false, reportUnknownVariableType=false
-# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
 
 from __future__ import annotations
 
@@ -18,16 +15,7 @@ import hashlib
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 O3/M9: projectors/otel (chimera_otel) no existe todavía — "
-            "docs/specs/observabilidad-proyeccion.md (#128)"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 
 def _trace_id_esperado(run_id: str) -> bytes:

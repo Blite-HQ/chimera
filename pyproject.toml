@@ -23,7 +23,7 @@ override-dependencies = ["highspy==1.14.0"]
 default-groups = ["dev", "experiment"]
 
 [tool.uv.workspace]
-members = ["sdk", "engine", "api", "capabilities/*", "distributions/*", "tools/corpus-runner"]
+members = ["sdk", "engine", "api", "capabilities/*", "distributions/*", "tools/corpus-runner", "projectors/otel"]
 
 [tool.uv.sources]
 blite-capability = { workspace = true }
@@ -57,6 +57,7 @@ src = [
     "capabilities/report/src",
     "capabilities/ingesta/src",
     "tools/corpus-runner/src",
+    "projectors/otel/src",
     "tests",
 ]
 
@@ -103,13 +104,19 @@ include = [
     "api/src",
     "capabilities",
     "tools/corpus-runner",
+    "projectors/otel",
     "tests",
 ]
 
 # ── Pytest + Coverage ─────────────────────────────────────────────────────────
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "capabilities/*/tests", "tools/corpus-runner/tests"]
+testpaths = [
+    "tests",
+    "capabilities/*/tests",
+    "tools/corpus-runner/tests",
+    "projectors/otel/tests",
+]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
@@ -133,6 +140,7 @@ source = [
     "blite_cap_report",
     "blite_cap_ingesta",
     "chimera_eval",
+    "chimera_otel",
 ]
 branch = true
 omit = ["*/tests/*"]
@@ -166,6 +174,7 @@ root_packages = [
     "blite_cap_report",
     "blite_cap_ingesta",
     "chimera_eval",
+    "chimera_otel",
 ]
 include_external_packages = true
 
@@ -424,3 +433,29 @@ source_modules = [
     "blite_cap_ingesta",
 ]
 forbidden_modules = ["chimera_eval"]
+
+[[tool.importlinter.contracts]]
+name = "C-11: the OTel projector never imports the engine"
+type = "forbidden"
+# El exportador OTLP es EGRESO. Dentro de `blite` chocaría con Inv-E/INV-6, así
+# que el proyector es un proceso aparte que parsea el WIRE — el mismo desacople
+# que el Studio (docs/specs/observabilidad-proyeccion.md §1). Si esta flecha
+# apareciera, la frontera se habría perdido en silencio.
+source_modules = ["chimera_otel"]
+forbidden_modules = [
+    "blite",
+    "blite_capability",
+    "chimera_api",
+]
+
+[[tool.importlinter.contracts]]
+name = "C-11: nothing depends on the OTel projector"
+type = "forbidden"
+# Y al revés: la observabilidad es opcional (perfil del compose). Un proyector
+# caído jamás debe poder afectar un run.
+source_modules = [
+    "blite",
+    "blite_capability",
+    "chimera_api",
+]
+forbidden_modules = ["chimera_otel"]

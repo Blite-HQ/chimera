@@ -3232,3 +3232,78 @@ bloque REGLAS (`ruff format --check`, `depcruise`).
 **Verificado en vivo, no asumido**: con `.husky/_` generado, `git commit` con un
 token de Stripe staged termina en `husky - pre-commit script failed (code 1)` —
 el commit NO se crea.
+
+### #162 — O3: el proyector OTel, y el pin de semconv
+
+**Ejecuta S-F (#128) / C-11.** `projectors/otel/` (paquete `chimera_otel`,
+miembro nuevo del workspace) deriva trazas OTLP del stream. Es un PROCESO
+aparte: no gobierna, no escribe, no importa el engine.
+
+**Lo que se decidió acá (S-F lo dejaba a O3):**
+
+| decisión                    | valor      | por qué                                                                                         |
+| --------------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| pin de semconv GenAI        | **1.38.0** | las semconv GenAI siguen incubando; el pin es una decisión fechada y cada span la porta         |
+| `chimera.projector_version` | **1**      | cambiar el mapeo = bump acá Y en el prefijo de dominio (`.../v2`), como el anexo                |
+| collector del perfil        | `debug`    | el DoD es «un run real llega a un collector»: stdout lo hace observable sin montar Jaeger/Tempo |
+
+**Tres fronteras hechas hechos, no promesas:**
+
+1. **Solo-SELECT de verdad.** El proyector se conecta con el rol
+   `chimera_otel`, creado por un init script con `SELECT` sobre `events` y nada
+   más. **Probado en vivo**: `INSERT` → `ERROR: permission denied for table
+events`; `SELECT count(*)` → 13. El append-only no depende de que el código
+   se porte bien.
+2. **Imagen propia.** El proyector NO usa la imagen del api: instala
+   `--package chimera-otel` y ni siquiera lleva `blite` dentro. Más dos
+   contratos de import-linter, uno por dirección (17 contratos kept, 0 broken).
+3. **Cursor fuera del event store** — volumen propio. Se puede perder: reproyectar
+   es idempotente.
+
+**Determinismo, el punto del ítem.** El SDK de OTel genera ids ALEATORIOS. Se
+usa su punto de extensión (`IdGenerator`) para devolver los del plan —
+deliberadamente NO se escribe el `_context` privado del span, que habría
+funcionado hoy y se habría roto en la próxima versión del SDK, en silencio y
+justo en la propiedad que sostiene el diseño.
+
+**DoD CUMPLIDO EN VIVO** (`docker compose --profile otel up -d --build`), no en
+tests:
+
+- run REAL creado por HTTP (`run-1d7edb53aecc4f2d96b61d0272cb2b96`, 12 eventos);
+- el collector recibió **5 spans**: `run` · `step` ×2 · `capability` ·
+  `verification` — las cinco clases de la tabla §3 que este run produce;
+- `trace_id` en el collector = **`bd03fae4d4e1fa97dc7c441ba71ba859`**, idéntico
+  al recompute independiente de `sha256("blite/otel-trace/v1\n" ‖ run_id)[:16]`;
+- cada span porta `chimera.semconv_version=1.38.0` y
+  `chimera.projector_version=1`;
+- **re-proyección**: borrado el cursor y reiniciado el servicio, el collector
+  vuelve a recibir la MISMA traza — la promesa de §4 verificada contra un
+  collector real, no contra un mock.
+
+**El stream `system:registry` quedó fuera**, como manda §3: no es el rastro de
+un run.
+
+**Fixture de costura** `tests/fixtures/contract/observabilidad/trace-example.json`
+con su generador (`scripts/gen-contract-fixtures-observabilidad.py`) y su test
+anti-drift; el golden cubre las CINCO clases de span. Espejo Studio no aplica
+(el consumidor es un collector).
+
+**Seeds S-F en verde**: los 3 xfail de `test_seed_observabilidad_proyector.py`
+se retiraron — quedan como regresión permanente de su contrato, recomputando la
+derivación de ids de forma INDEPENDIENTE.
+
+**Langfuse** queda documentado como perfil OPCIONAL aguas abajo del collector,
+con el bloque de exporter listo para descomentar y las credenciales por env var
+(EG-3). El proyector no sabe que existe: exporta OTLP y no le importa quién
+escucha — ese es el punto de que la costura sea un collector.
+
+### Tabla de interacciones — #162
+
+| Interfaz tocada                    | Dominio afectado | Estado del contrato                                        |
+| ---------------------------------- | ---------------- | ---------------------------------------------------------- |
+| `projectors/otel` (paquete)        | observabilidad   | NUEVO — fuera de `blite.*`; 2 contratos de imports         |
+| rol `chimera_otel` + init script   | infra            | NUEVO — SELECT sobre `events` y nada más                   |
+| perfil `otel` del compose          | infra            | NUEVO — fuera del camino por defecto                       |
+| `events` (tabla)                   | A (runtime)      | **NO TOCADA** — solo lectura                               |
+| fixture `contract/observabilidad/` | costura          | NUEVO — golden + anti-drift; sin espejo Studio (declarado) |
+| seeds S-F                          | costura          | xfail RETIRADO — 3 tests de regresión permanente           |

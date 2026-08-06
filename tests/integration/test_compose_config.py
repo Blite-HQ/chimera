@@ -21,15 +21,68 @@ def _load_compose() -> dict[str, Any]:
     return yaml.safe_load(COMPOSE_PATH.read_text(encoding="utf-8"))
 
 
-def test_services_are_exactly_the_four_frozen_by_the_freeze() -> None:
+def test_the_default_path_is_exactly_the_three_services_that_work() -> None:
+    """Lo que `docker compose up` levanta sin argumentos.
+
+    Un servicio SIN `profiles:` arranca siempre, así que este conjunto es la
+    promesa que le hacemos a un externo: postgres + api + studio y nada más.
+    `worker` salió a un perfil en #146 (arrancaba y moría sin cola), y O3 sumó
+    el perfil `otel` — pero el camino por defecto no puede crecer sin que este
+    test lo diga.
+    """
     # Arrange
     compose = _load_compose()
 
     # Act
-    service_names = set(compose["services"].keys())
+    default_path = {
+        name
+        for name, service in compose["services"].items()
+        if not service.get("profiles")
+    }
 
     # Assert
-    assert service_names == {"postgres", "api", "worker", "studio"}
+    assert default_path == {"postgres", "api", "studio"}
+
+
+def test_every_optional_service_declares_the_profile_that_gates_it() -> None:
+    """Los servicios de perfil, uno por uno y con nombre.
+
+    El conjunto se lista explícito para que agregar uno sea una decisión y no
+    un descuido: un servicio nuevo o cambia este test, o no existe.
+    """
+    # Arrange
+    compose = _load_compose()
+
+    # Act
+    profiled = {
+        name: set(service["profiles"])
+        for name, service in compose["services"].items()
+        if service.get("profiles")
+    }
+
+    # Assert
+    assert profiled == {
+        "worker": {"queue"},
+        "otel-collector": {"otel"},
+        "otel-projector": {"otel"},
+    }
+
+
+def test_the_projector_never_gets_the_credentials_of_the_engine() -> None:
+    """S-F §2: el proyector lee con un rol SOLO-SELECT, no con el del engine.
+
+    Si algún día recibiera `postgres_password`, la frontera de solo-lectura
+    quedaría en manos del código en vez del motor.
+    """
+    # Arrange
+    compose = _load_compose()
+
+    # Act
+    projector_secrets = set(compose["services"]["otel-projector"].get("secrets", []))
+
+    # Assert
+    assert projector_secrets == {"otel_password"}
+    assert "postgres_password" not in projector_secrets
 
 
 def test_top_level_secret_declares_the_postgres_password_file() -> None:

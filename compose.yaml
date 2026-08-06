@@ -17,9 +17,13 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     secrets:
       - postgres_password
+      - otel_password
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./engine/sql/init_v2.sql:/docker-entrypoint-initdb.d/10-init_v2.sql:ro
+      # Rol SOLO-SELECT del proyector (perfil `otel`). Corre solo sobre un
+      # volumen NUEVO — en uno ya inicializado, `docker compose exec`.
+      - ./docker/otel-grants-init.sh:/docker-entrypoint-initdb.d/20-otel-grants.sh:ro
     ports:
       # Solo loopback: tests de integración corridos en el host
       # (CHIMERA_TEST_DATABASE_URL) contra el Postgres del compose. 5544
@@ -108,6 +112,46 @@ services:
     secrets:
       - postgres_password
 
+  # ── Perfil `otel` — observabilidad, OPCIONAL por diseño (S-F §1) ──────────
+  # El camino por defecto del stack NO lo incluye: un proyector caído jamás debe
+  # poder afectar un run. `docker compose --profile otel up -d` levanta los dos.
+  otel-collector:
+    profiles: ['otel']
+    image: otel/opentelemetry-collector-contrib:0.139.0
+    command: ['--config=/etc/otelcol/config.yaml']
+    volumes:
+      - ./docker/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      # Solo loopback: el proyector corre en la red del compose; el puerto
+      # publicado es para inspeccionar desde el host.
+      - '127.0.0.1:4318:4318'
+
+  otel-projector:
+    profiles: ['otel']
+    build:
+      context: .
+      dockerfile: docker/otel-projector.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    environment:
+      # Usuario SOLO-SELECT — el DSN se arma acá porque este servicio no
+      # comparte el entrypoint del api.
+      CHIMERA_OTEL_PASSWORD_FILE: /run/secrets/otel_password
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: chimera-otel-projector
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - >-
+        CHIMERA_OTEL_DATABASE_URL="postgresql://chimera_otel:$$(cat /run/secrets/otel_password)@postgres:5432/chimera"
+        exec python -m chimera_otel
+    secrets:
+      - otel_password
+    volumes:
+      - otelcursor:/var/lib/chimera-otel
+
   studio:
     build:
       context: .
@@ -132,9 +176,13 @@ services:
 secrets:
   postgres_password:
     file: ./secrets/postgres_password.txt
+  otel_password:
+    file: ./secrets/otel_password.txt
 
 volumes:
   pgdata: {}
+  # Cursor del proyector — FUERA del event store (S-F §2).
+  otelcursor: {}
   # P10/M24 — archivos del proyecto (Papers). Direccionados por contenido:
   # sin volumen se perderían en cada rebuild, que es justo lo que un almacén
   # por digest no puede hacer.
