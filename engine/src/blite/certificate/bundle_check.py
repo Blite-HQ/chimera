@@ -29,6 +29,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -42,6 +43,7 @@ from blite.certificate.dsse import DSSEEnvelope, DSSESignature
 from blite.certificate.dsse import verify as dsse_verify
 from blite.certificate.predicate import Conclusion, compute_titular_level
 from blite.certificate.status_list import is_revoked, verify_status_list
+from blite.certificate.transparency import entry_bytes, leaf_hash, verify_inclusion
 from blite.events.chain import chain_head_of_views, provenance_hash_of_views
 from blite.events.rules import TERMINAL_RUN_EVENTS
 
@@ -64,6 +66,10 @@ _LEVEL_ORDER: dict[str, int] = {"AL0": 0, "AL1": 1, "AL2": 2, "AL3": 3, "AL4": 4
 
 # pass↔verified · fail↔refuted (freeze §7 punto 7)
 _VERDICT_MAP = {"verified": "pass", "refuted": "fail"}
+
+PuntoConNota = Callable[[dict[str, Any]], tuple[tuple[str, ...], tuple[str, ...]]]
+"""Firma de los puntos que devuelven `(fallas, notas)` — los únicos que
+tienen algo que decir cuando NO fallan (11 revocación, 12 transparencia)."""
 
 
 @dataclass(frozen=True)
@@ -504,6 +510,49 @@ def punto_10_hash_chain(bundle: dict[str, Any]) -> tuple[str, ...]:
     return ()
 
 
+def punto_12_transparencia(
+    bundle: dict[str, Any],
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """(12) Prueba de inclusión ENGRAPADA — C9/M8 pieza 5 (#105).
+
+    Se recomputa el camino de Merkle hasta la raíz del checkpoint SIN
+    contactar al log: eso es lo que hace compatible un testigo de
+    transparencia con la verificación offline, y es la razón por la que el
+    descarte anterior (keyless + Fulcio, que exige red al firmar) ya no
+    aplica.
+
+    Opt-in: sin prueba engrapada el punto no falla y DECLARA que no hubo
+    testigo. Con prueba, la hoja tiene que ser la de ESTE certificado — una
+    prueba de inclusión de otro documento es tan inútil como ninguna, y es el
+    error que un `verify` descuidado deja pasar."""
+    proof = bundle.get("transparency_proof")
+    if proof is None:
+        return (), ("sin prueba de transparencia engrapada: inclusión no comprobada",)
+    try:
+        esperada = leaf_hash(entry_bytes(bundle))
+        declarada = str(proof["leaf_hash"])
+        if declarada != esperada:
+            return (
+                f"la hoja engrapada {declarada[:12]}… no es la de este "
+                f"certificado ({esperada[:12]}…)",
+            ), ()
+        ok = verify_inclusion(
+            leaf=declarada,
+            index=int(proof["index"]),
+            tree_size=int(proof["tree_size"]),
+            proof=[str(h) for h in proof["proof"]],
+            root=str(proof["root"]),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        return (f"prueba de transparencia malformada: {exc}",), ()
+    if not ok:
+        return ("la prueba de inclusión NO lleva a la raíz declarada",), ()
+    return (), (
+        f"incluido en {proof.get('log_id', '?')} (árbol de "
+        f"{proof['tree_size']} entradas, raíz {str(proof['root'])[:12]}…)",
+    )
+
+
 def punto_11_revocacion(
     bundle: dict[str, Any], status_list: dict[str, Any] | None
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -584,17 +633,27 @@ def check_bundle(
             failures = (f"error verificando: {exc!r}",)
         results.append(PointResult(number=number, name=name, failures=failures))
 
-    numero = len(results) + 1
-    try:
-        fallas, notas = punto_11_revocacion(bundle, status_list)
-    except Exception as exc:  # noqa: BLE001 — mismo fail-closed que el resto
-        fallas, notas = (f"error verificando: {exc!r}",), ()
-    results.append(
-        PointResult(
-            number=numero,
-            name="estado de revocación (StatusList, opcional)",
-            failures=fallas,
-            notes=notas,
-        )
+    # Los dos puntos con NOTA (11 revocación, 12 transparencia) corren aparte
+    # porque devuelven `(fallas, notas)`: son los únicos que tienen algo que
+    # decir cuando NO fallan — «no lo comprobé» es información, no silencio.
+    def _revocacion(b: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        return punto_11_revocacion(b, status_list)
+
+    con_nota: tuple[tuple[str, PuntoConNota], ...] = (
+        ("estado de revocación (StatusList, opcional)", _revocacion),
+        ("inclusión en el log de transparencia (opcional)", punto_12_transparencia),
     )
+    for offset, (name, fn) in enumerate(con_nota):
+        try:
+            fallas, notas = fn(bundle)
+        except Exception as exc:  # noqa: BLE001 — mismo fail-closed que el resto
+            fallas, notas = (f"error verificando: {exc!r}",), ()
+        results.append(
+            PointResult(
+                number=len(_PUNTOS) + 1 + offset,
+                name=name,
+                failures=fallas,
+                notes=notas,
+            )
+        )
     return tuple(results)

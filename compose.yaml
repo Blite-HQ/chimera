@@ -174,6 +174,32 @@ services:
       timeout: 3s
       retries: 10
 
+  # [C9/M8 pieza 5 · #105] Testigo de transparencia — `rekor-server-posix`:
+  # UN binario y UN disco, sin Fulcio ni CA en línea. El descarte anterior de
+  # Rekor (freeze §7, «rompe air-gap») era correcto para la emisión KEYLESS;
+  # este perfil registra el certificado ya firmado y devuelve una prueba de
+  # inclusión que viaja DENTRO del bundle — verificarla no contacta a nadie
+  # (`blite.certificate.transparency`, punto 12 del checklist).
+  #
+  # ALCANCE DECLARADO: la mitad OFFLINE (verificación de la prueba engrapada)
+  # está implementada y probada. El cliente de SUMISIÓN al log no: escribirlo
+  # sin ejercitarlo contra un servidor real produce código que falla en el
+  # primer contacto — es exactamente lo que pasó con la pública de Transit en
+  # C8, y ahí sí había servidor para descubrirlo. Queda en el handoff con su
+  # comando.
+  rekor:
+    profiles: ['transparency']
+    image: ghcr.io/sigstore/rekor-tiles/rekor-server:v1.0.0
+    command:
+      - '--http-address=0.0.0.0'
+      - '--http-port=3003'
+      - '--storage-backend=posix'
+      - '--posix-dir=/var/lib/rekor'
+    volumes:
+      - rekordata:/var/lib/rekor
+    ports:
+      - '127.0.0.1:3003:3003'
+
 secrets:
   postgres_password:
     file: ./secrets/postgres_password.txt
@@ -187,6 +213,8 @@ volumes:
   pgdata: {}
   # Datos de OpenBao (Raft integrado) — perfil `custody`.
   baodata: {}
+  # Árbol del log de transparencia — perfil `transparency`.
+  rekordata: {}
   # P10/M24 — archivos del proyecto (Papers). Direccionados por contenido:
   # sin volumen se perderían en cada rebuild, que es justo lo que un almacén
   # por digest no puede hacer.

@@ -42,6 +42,7 @@ def test_services_are_exactly_the_four_frozen_by_the_freeze() -> None:
     assert canonicos == {"postgres", "api", "studio"}
     assert set(compose["services"]["worker"]["profiles"]) == {"queue"}
     assert set(compose["services"]["openbao"]["profiles"]) == {"custody"}
+    assert set(compose["services"]["rekor"]["profiles"]) == {"transparency"}
 
 
 def test_top_level_secret_declares_the_postgres_password_file() -> None:

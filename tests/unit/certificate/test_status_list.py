@@ -20,7 +20,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from blite.certificate.bundle_check import check_bundle
+from blite.certificate.bundle_check import PointResult, check_bundle
 from blite.certificate.keys import LocalKeyProvider
 from blite.certificate.status_list import (
     MIN_ENTRIES,
@@ -43,6 +43,12 @@ INDICE = 42
 @pytest.fixture()
 def bundle() -> dict[str, Any]:
     return json.loads(FIXTURE.read_text(encoding="utf-8"))
+
+
+def _punto_revocacion(resultados: tuple[PointResult, ...]) -> PointResult:
+    """El punto 11 por NOMBRE, no por posición: el checklist crece y «el
+    último» dejó de ser este en cuanto entró el 12 (transparencia)."""
+    return next(r for r in resultados if "revocación" in r.name)
 
 
 def _clave() -> ed25519.Ed25519PrivateKey:
@@ -196,8 +202,7 @@ def test_sin_lista_el_punto_11_declara_que_no_comprobo(bundle: dict[str, Any]) -
     no falla (la verificación offline es completa) y tampoco finge."""
     con_entrada = _con_entrada(bundle, _clave())
 
-    resultados = {r.number: r for r in check_bundle(con_entrada)}
-    punto = resultados[max(resultados)]
+    punto = _punto_revocacion(check_bundle(con_entrada))
 
     assert punto.ok
     assert any("NO comprobada" in nota for nota in punto.notes)
@@ -215,8 +220,7 @@ def test_un_certificado_revocado_reprueba(bundle: dict[str, Any]) -> None:
         key_provider=LocalKeyProvider(key),
     )
 
-    resultados = {r.number: r for r in check_bundle(con_entrada, status_list=artefacto)}
-    punto = resultados[max(resultados)]
+    punto = _punto_revocacion(check_bundle(con_entrada, status_list=artefacto))
 
     assert not punto.ok
     assert any("REVOCADO" in falla for falla in punto.failures)
@@ -236,8 +240,7 @@ def test_un_certificado_vigente_pasa_con_la_fecha_de_la_lista(
         key_provider=LocalKeyProvider(key),
     )
 
-    resultados = {r.number: r for r in check_bundle(con_entrada, status_list=artefacto)}
-    punto = resultados[max(resultados)]
+    punto = _punto_revocacion(check_bundle(con_entrada, status_list=artefacto))
 
     assert punto.ok
     assert any("2026-08-05T00:00:00Z" in nota for nota in punto.notes)
@@ -257,9 +260,7 @@ def test_una_lista_de_otro_id_no_responde_la_pregunta(bundle: dict[str, Any]) ->
         key_provider=LocalKeyProvider(key),
     )
 
-    resultados = {r.number: r for r in check_bundle(con_entrada, status_list=artefacto)}
-
-    assert not resultados[max(resultados)].ok
+    assert not _punto_revocacion(check_bundle(con_entrada, status_list=artefacto)).ok
 
 
 def test_un_bundle_sin_entrada_declara_que_no_publica_lista(
@@ -267,8 +268,7 @@ def test_un_bundle_sin_entrada_declara_que_no_publica_lista(
 ) -> None:
     """Los certificados ya emitidos autodeclaran `revocation: "none"` y su
     punto 11 pasa diciendo exactamente eso — sin lista que consultar."""
-    resultados = {r.number: r for r in check_bundle(bundle)}
-    punto = resultados[max(resultados)]
+    punto = _punto_revocacion(check_bundle(bundle))
 
     assert punto.ok
     assert any("no publica lista" in nota for nota in punto.notes)
