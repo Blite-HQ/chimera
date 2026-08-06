@@ -34,6 +34,7 @@ from fastapi import APIRouter, HTTPException
 
 from blite.certificate.assemble import AssembleError, assemble_bundle
 from blite.events.rules import TERMINAL_RUN_EVENTS, provenance_slice
+from chimera_api.deliverables import collect_deliverables
 from chimera_api.runs import RunResources
 
 
@@ -70,6 +71,13 @@ def create_certificate_router(resources: RunResources) -> APIRouter:
                 signing_key=resources.signing_key,
                 keyid=resources.keyid,
                 anchor_descriptors=ticket.anchor_descriptors,
+                # V8/M23b: el cable que faltaba — sin esto
+                # `predicate.deliverables` salía vacío SIEMPRE.
+                deliverables=collect_deliverables(
+                    resources.content,
+                    run_id=run_id,
+                    stream=stream,
+                ),
             )
         except AssembleError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc

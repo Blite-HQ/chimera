@@ -48,6 +48,7 @@ from blite.events.event import Event
 from blite.events.rules import TERMINAL_RUN_EVENTS, provenance_slice
 from blite.runtime.metrics import AblationVariant
 from blite.runtime.projection import RunRow, project_runs
+from chimera_api.deliverables import collect_deliverables
 from chimera_api.runs import RunResources
 
 RunStatusWire = Literal["en_curso", "completado", "fallido", "cancelado"]
@@ -184,6 +185,14 @@ class TopologyResponse(BaseModel):
     cut_cost: float
 
 
+def _run_ids_conocidos(resources: RunResources) -> tuple[str, ...]:
+    """Los runs que la proyección puede leer, en orden determinista. Un stream
+    envenenado se omite (#104, ruta de LECTURA) en vez de tumbar el agregado
+    de proyecto — el reporte de lo omitido sigue siendo `GET /runs/discarded`."""
+    rows, _ = _proyectar_salteando_envenenados(resources.store.read_all())
+    return tuple(sorted(rows))
+
+
 def _require_known_run(resources: RunResources, run_id: str) -> tuple[Event, ...]:
     """404 fail-closed (mismo patrón que `certificate.py::get_certificate`):
     un stream vacío es un `run_id` que el log jamás vio."""
@@ -219,6 +228,11 @@ def _bundle_for(resources: RunResources, run_id: str) -> dict[str, Any] | None:
             signing_key=resources.signing_key,
             keyid=resources.keyid,
             anchor_descriptors=ticket.anchor_descriptors,
+            deliverables=collect_deliverables(
+                resources.content,
+                run_id=run_id,
+                stream=stream,
+            ),
         )
     except AssembleError:
         return None
@@ -496,9 +510,7 @@ def create_reads_router(resources: RunResources) -> APIRouter:
         _, descartados = _listar()
         return DiscardedStreams(discarded_streams=descartados)
 
-    @router.get("/runs/{run_id}/artifacts")
-    def get_run_artifacts(run_id: str) -> list[ProjectArtifact]:
-        _require_known_run(resources, run_id)
+    def _artifacts_of(run_id: str) -> list[ProjectArtifact]:
         bundle = _bundle_for(resources, run_id)
         if bundle is None:
             return []
@@ -524,9 +536,7 @@ def create_reads_router(resources: RunResources) -> APIRouter:
             for deliverable in predicate["deliverables"]
         ]
 
-    @router.get("/runs/{run_id}/knowledge")
-    def get_run_knowledge(run_id: str) -> list[KnowledgeClaim]:
-        _require_known_run(resources, run_id)
+    def _knowledge_of(run_id: str) -> list[KnowledgeClaim]:
         bundle = _bundle_for(resources, run_id)
         if bundle is None:
             return []
@@ -542,6 +552,38 @@ def create_reads_router(resources: RunResources) -> APIRouter:
                 valid_as_of=predicate["valid_as_of"],
             )
             for conclusion in predicate["conclusions"]
+        ]
+
+    @router.get("/runs/{run_id}/artifacts")
+    def get_run_artifacts(run_id: str) -> list[ProjectArtifact]:
+        _require_known_run(resources, run_id)
+        return _artifacts_of(run_id)
+
+    @router.get("/runs/{run_id}/knowledge")
+    def get_run_knowledge(run_id: str) -> list[KnowledgeClaim]:
+        _require_known_run(resources, run_id)
+        return _knowledge_of(run_id)
+
+    @router.get("/artifacts")
+    def list_project_artifacts() -> list[ProjectArtifact]:
+        """[V8/M23b · N4] Nivel PROYECTO: los deliverables de todos los runs
+        que ya emitieron certificado. Antes esta superficie no existía y el
+        Studio devolvía `[]` en vivo por no tener a quién preguntarle.
+
+        Mismo skip honesto de #104: un run que no se puede resumir se omite
+        del agregado en vez de tumbarlo — la línea roja sigue siendo que la
+        ESCRITURA y los certificados fallen fuerte, no la lectura."""
+        return [
+            a for run_id in _run_ids_conocidos(resources) for a in _artifacts_of(run_id)
+        ]
+
+    @router.get("/knowledge")
+    def list_project_knowledge() -> list[KnowledgeClaim]:
+        """[V8/M23b · N4] Nivel PROYECTO: el conocimiento verificado que se
+        acumula a través de los runs — la vista que la doctrina siempre
+        prometió («conclusiones verificadas acumuladas»)."""
+        return [
+            k for run_id in _run_ids_conocidos(resources) for k in _knowledge_of(run_id)
         ]
 
     @router.get("/runs/{run_id}/steps/{step_id}/evidence")

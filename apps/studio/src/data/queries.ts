@@ -17,6 +17,8 @@ import {
   getFiles,
   getKnowledge,
   getMe,
+  getProjectArtifacts,
+  getProjectKnowledge,
   getRuns,
   getStepEvidence,
   getTopology
@@ -126,10 +128,9 @@ export function runSummariesQueryOptions() {
  */
 export async function loadArtifacts(runId?: string): Promise<readonly ProjectArtifact[]> {
   if (isLiveMode()) {
-    if (runId === undefined) {
-      return [];
-    }
-    const res = await getArtifacts(runId);
+    // V8/M23b: sin `runId` la pregunta es de PROYECTO y ahora tiene ruta —
+    // antes esto devolvía `[]` para siempre por no tener a quién preguntarle.
+    const res = runId === undefined ? await getProjectArtifacts() : await getArtifacts(runId);
     if (!res.success || res.data === null) {
       throw new Error(res.error ?? 'No se pudieron obtener los artifacts');
     }
@@ -149,10 +150,7 @@ export function artifactsQueryOptions(runId?: string) {
 /** Rama demo/live (D3) — mismo patrón que loadArtifacts (runId opcional). */
 export async function loadKnowledge(runId?: string): Promise<readonly KnowledgeClaim[]> {
   if (isLiveMode()) {
-    if (runId === undefined) {
-      return [];
-    }
-    const res = await getKnowledge(runId);
+    const res = runId === undefined ? await getProjectKnowledge() : await getKnowledge(runId);
     if (!res.success || res.data === null) {
       throw new Error(res.error ?? 'No se pudo obtener el knowledge');
     }

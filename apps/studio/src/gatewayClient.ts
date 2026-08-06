@@ -335,6 +335,20 @@ export async function getKnowledge(runId: string): Promise<GatewayResponse<unkno
 }
 
 /**
+ * V8/M23b — nivel PROYECTO: los deliverables y el conocimiento verificado que
+ * se ACUMULAN a través de los runs. Las vistas de proyecto (Artifacts,
+ * Knowledge) no tienen un run al que preguntarle; antes de estas rutas la
+ * respuesta honesta en vivo era `[]` para siempre.
+ */
+export async function getProjectArtifacts(): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/artifacts`);
+}
+
+export async function getProjectKnowledge(): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/knowledge`);
+}
+
+/**
  * D3 — `GET {VITE_API_URL}/runs/{id}/steps/{stepId}/evidence` (tabla, fila
  * 4): `StepDetail` wire snake_case, con `capability_id`/`input_digest`/
  * `output_digest` posiblemente `null` y `attestations` posiblemente `[]`

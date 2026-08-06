@@ -52,9 +52,32 @@ vi.mock('../gatewayClient', () => ({
   getRuns: vi.fn(),
   getArtifacts: vi.fn(),
   getKnowledge: vi.fn(),
+  getProjectArtifacts: vi.fn(),
+  getProjectKnowledge: vi.fn(),
   getStepEvidence: vi.fn(),
   getAblation: vi.fn()
 }));
+
+/** Wire de una fila real de cada agregado de proyecto (V8/M23b). */
+const ARTIFACT_WIRE = {
+  artifact_ref: 'runs/8f2c1a9b/output.json',
+  digest: 'a1b751764b2d516ab45b8ac077a0eff0ab49c3d4245e882f3c0bef59de498b93',
+  run_id: '8f2c1a9b',
+  titular_level: 'AL3',
+  titular_class: 'formal_exact',
+  verdict: 'verified',
+  issued_at: '2026-07-22T12:00:06.000000Z'
+} as const;
+
+const KNOWLEDGE_WIRE = {
+  statement: 'la partición propuesta es óptima y electricamente factible',
+  scope: { instancia: 'sintetica-4bus' },
+  verdict: 'verified',
+  level: 'AL3',
+  titular_class: 'formal_exact',
+  run_id: '8f2c1a9b',
+  valid_as_of: '2026-07-22T12:00:06.000000Z'
+} as const;
 
 describe('certificateQueryOptions', () => {
   it('arma la queryKey por runId', () => {
@@ -309,16 +332,22 @@ describe('loadArtifacts (rama demo/live)', () => {
     expect(gatewayClient.getArtifacts).not.toHaveBeenCalled();
   });
 
-  it('modo live sin runId (screen de proyecto, sin contexto de run): honest-empty, nunca el fixture', async () => {
+  it('[V8/M23b] modo live sin runId: pregunta al PROYECTO, ya no devuelve [] por no tener a quién', async () => {
     // Arrange
     vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getProjectArtifacts).mockResolvedValue({
+      success: true,
+      data: [ARTIFACT_WIRE],
+      error: null
+    });
 
     // Act
     const artifacts = await loadArtifacts();
 
     // Assert
-    expect(artifacts).toEqual([]);
+    expect(gatewayClient.getProjectArtifacts).toHaveBeenCalledTimes(1);
     expect(gatewayClient.getArtifacts).not.toHaveBeenCalled();
+    expect(artifacts).toHaveLength(1);
   });
 
   it('modo live con runId: llama a getArtifacts, valida el wire y lo mapea', async () => {
@@ -414,16 +443,22 @@ describe('loadKnowledge (rama demo/live)', () => {
     expect(gatewayClient.getKnowledge).not.toHaveBeenCalled();
   });
 
-  it('modo live sin runId (screen de proyecto): honest-empty, nunca el fixture', async () => {
+  it('[V8/M23b] modo live sin runId: pregunta al PROYECTO por el conocimiento acumulado', async () => {
     // Arrange
     vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getProjectKnowledge).mockResolvedValue({
+      success: true,
+      data: [KNOWLEDGE_WIRE],
+      error: null
+    });
 
     // Act
     const claims = await loadKnowledge();
 
     // Assert
-    expect(claims).toEqual([]);
+    expect(gatewayClient.getProjectKnowledge).toHaveBeenCalledTimes(1);
     expect(gatewayClient.getKnowledge).not.toHaveBeenCalled();
+    expect(claims).toHaveLength(1);
   });
 
   it('modo live con runId: llama a getKnowledge, valida el wire y lo mapea', async () => {

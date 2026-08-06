@@ -205,6 +205,101 @@ class TestGetRuns:
         assert row["status"] == "cancelado"
 
 
+class TestDeliverablesDelCertificado:
+    """[V8/M23b · N4/#70b] `assemble_bundle` aceptaba `deliverables=` desde
+    siempre y NADIE se lo pasaba: `GET /runs/{id}/artifacts` devolvía `[]`
+    para todo run — honest-empty ESTRUCTURAL, no falta de datos."""
+
+    def test_un_run_completado_cita_su_artefacto_de_salida(self) -> None:
+        # Arrange / Act
+        client = _make_client()
+        run_id = _create_golden_run(client)
+
+        # Assert
+        body = _get(client, f"/runs/{run_id}/artifacts").json()
+        assert [a["artifact_ref"] for a in body] == [f"runs/{run_id}/output.json"]
+        assert body[0]["run_id"] == run_id
+        assert body[0]["titular_level"] == "AL3"
+        assert body[0]["verdict"] == "verified"
+
+    def test_el_digest_citado_es_el_output_digest_del_log(self) -> None:
+        """La cita es verificable: el certificado y el log nombran los MISMOS
+        bytes. Si divergieran, el enlace del certificado sería decorativo."""
+        # Arrange
+        store = create_event_store()
+        client = _make_client(store)
+
+        # Act
+        run_id = _create_golden_run(client)
+        artefactos = _get(client, f"/runs/{run_id}/artifacts").json()
+        completado = next(
+            e for e in store.read_stream(run_id) if e.type == "run.completed"
+        )
+
+        # Assert
+        assert artefactos[0]["digest"] == completado.payload["output_digest"]
+
+    def test_un_run_sin_salida_recuperable_no_cita_nada_roto(self) -> None:
+        """Fail-closed sin ruido: el certificado se emite con la lista vacía
+        antes que con un enlace que nadie puede resolver."""
+        store = create_event_store()
+        _seed_bare_run(store, "r1")
+        client = _make_client(store)
+
+        assert _get(client, "/runs/r1/artifacts").json() == []
+
+
+class TestRutasDeProyecto:
+    """[V8/M23b · N4] Artifacts/Knowledge de NIVEL PROYECTO: la superficie que
+    la doctrina prometía («conclusiones verificadas acumuladas») y que no
+    existía — el Studio devolvía `[]` en vivo por no tener a quién preguntar."""
+
+    def test_agrega_los_deliverables_de_todos_los_runs(self) -> None:
+        # Arrange
+        client = _make_client()
+        primero = _create_golden_run(client)
+        segundo = _create_golden_run(client)
+
+        # Act
+        body = _get(client, "/artifacts").json()
+
+        # Assert
+        assert sorted(a["run_id"] for a in body) == sorted([primero, segundo])
+
+    def test_agrega_el_conocimiento_verificado_de_todos_los_runs(self) -> None:
+        # Arrange
+        client = _make_client()
+        _create_golden_run(client)
+        _create_golden_run(client)
+
+        # Act
+        body = _get(client, "/knowledge").json()
+
+        # Assert
+        assert len(body) == 2
+        assert {k["statement"] for k in body} == {_STATEMENT_4BUS}
+
+    def test_un_proyecto_sin_runs_da_listas_vacias_honestas(self) -> None:
+        client = _make_client()
+        assert _get(client, "/artifacts").json() == []
+        assert _get(client, "/knowledge").json() == []
+
+    def test_un_run_sin_certificado_no_aporta_ni_rompe_el_agregado(self) -> None:
+        """Skip honesto (#104) aplicado al agregado: un run sin bundle no
+        aparece, y no impide que los demás sí."""
+        # Arrange
+        store = create_event_store()
+        _seed_bare_run(store, "r-sin-cert")
+        client = _make_client(store)
+        con_cert = _create_golden_run(client)
+
+        # Act
+        body = _get(client, "/artifacts").json()
+
+        # Assert
+        assert [a["run_id"] for a in body] == [con_cert]
+
+
 class TestGetRunArtifacts:
     def test_run_sin_certificado_da_lista_vacia_honesta(self) -> None:
         store = create_event_store()
