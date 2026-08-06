@@ -358,6 +358,20 @@ export async function getAblation(runId: string): Promise<GatewayResponse<unknow
 }
 
 /**
+ * V1/M18 — `GET {VITE_API_URL}/runs/{id}/topology` (tabla, fila 6):
+ * `TopologyResponse` wire snake_case. La ruta existía desde E1 y NO tenía
+ * consumidor: el Studio construía su mapa aparte y la partición del run no
+ * llegaba nunca. Este es ese consumidor.
+ *
+ * Un run sin partición devuelve 200 con `islands: []` — honest-empty, no un
+ * 404: el run existe, simplemente no produjo (todavía) una partición
+ * verificada por isla.
+ */
+export async function getTopology(runId: string): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/topology`);
+}
+
+/**
  * Nivel-1 task 1 (S10) — el conjunto de tipos de evento que emite chimera_api
  * en `GET /runs/{id}/events` (freeze §9 · `chimera_api.projection`). El
  * wire nombra el evento SSE (`event: {type}`), no el genérico `message`,

@@ -243,7 +243,11 @@ class TestClaimInvalido:
 
 
 class TestFormalOnly:
-    def test_instancia_desconocida_ampara_solo_con_cpsat(self) -> None:
+    def test_instancia_sin_dato_electrico_suma_la_pata_estructural(self) -> None:
+        """[V1/M18] El run de una instancia sin modelo eléctrico emite DOS
+        `verification.completed`: la formal (CP-SAT) y la estructural (AL2),
+        que es la que aporta los checks por isla que el mapa necesita. Antes
+        emitía una sola y la superficie se quedaba sin nada que pintar."""
         # Arrange
         client = _make_client()
         body = _run_body(
@@ -264,7 +268,7 @@ class TestFormalOnly:
         run_id = response.json()["run_id"]
         frames = _events_of(client, run_id)
         assert frames[-1]["event"] == "run.completed"
-        assert [f["event"] for f in frames].count("verification.completed") == 1
+        assert [f["event"] for f in frames].count("verification.completed") == 2
 
 
 class TestCapabilityDesconocida:

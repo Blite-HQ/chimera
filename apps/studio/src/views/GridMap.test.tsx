@@ -107,3 +107,67 @@ describe('GridMap — proyección d3-geo del grid real del ICE (D4)', () => {
     expect(screen.getByText('Pailas — Guanacaste, Liberia')).toBeInTheDocument();
   });
 });
+
+/**
+ * [V1/M18] El overlay de partición: lo que se pinta sale del run, y lo que
+ * no casa se DECLARA. Estos tests fijan la parte de CP6 que vive del lado D —
+ * badges por isla sobre el mapa y reconciliación honesta a la vista.
+ */
+describe('GridMap — overlay de partición (V1/M18)', () => {
+  const OVERLAY = {
+    islands: [
+      {
+        id: 'island-0',
+        label: 'island-0',
+        substationNames: ['Pailas'],
+        verification: {
+          verdict: 'pass' as const,
+          level: 'AL2' as const,
+          verifierClass: 'property_rule',
+          method: 'structural-partition-v1',
+          summary: 'island-0: 2/2 checks pasaron'
+        }
+      }
+    ],
+    matchedSubstations: 1,
+    instanceDigest: '0078d201ff590345598ab0d7698a724cc642eaec4dca660a4ec66361402485a7'
+  };
+
+  test('sin partición dice que no hay nada que colorear — jamás colorea igual', () => {
+    render(<GridMap dataset={DATASET} />);
+
+    expect(screen.getByText(/no produjo una partición verificada por isla/i)).toBeInTheDocument();
+  });
+
+  test('con partición muestra un badge por isla con su clase y su nivel', () => {
+    render(<GridMap dataset={DATASET} partition={OVERLAY} />);
+
+    expect(screen.getByText('AL2')).toBeInTheDocument();
+    expect(screen.getByText(/structural-partition-v1/)).toBeInTheDocument();
+  });
+
+  test('declara la reconciliación: cuántas subestaciones casaron y cuántas no', () => {
+    render(<GridMap dataset={DATASET} partition={OVERLAY} />);
+
+    expect(screen.getByText(/1 de 2 subestaciones reconciliadas/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 sin isla/i)).toBeInTheDocument();
+  });
+
+  test('cita el digest de la instancia reconciliada — procedencia, no adorno', () => {
+    render(<GridMap dataset={DATASET} partition={OVERLAY} />);
+
+    expect(screen.getByText('0078d201ff59')).toBeInTheDocument();
+  });
+
+  test('el hover de una subestación asignada nombra su isla y su nivel', () => {
+    render(<GridMap dataset={DATASET} partition={OVERLAY} />);
+
+    expect(screen.getByText('Pailas — Guanacaste, Liberia — island-0 (AL2)')).toBeInTheDocument();
+  });
+
+  test('una subestación que la partición no cubre se dice «sin isla», no se rellena', () => {
+    render(<GridMap dataset={DATASET} partition={OVERLAY} />);
+
+    expect(screen.getByText(/Palmar — Puntarenas, Osa — sin isla/)).toBeInTheDocument();
+  });
+});

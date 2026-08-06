@@ -97,6 +97,7 @@ from blite.verification.ground_truth import (
 from blite.verification.orchestrator import ResultProjection
 from blite.verification.partition import build_partition
 from blite.verification.property_rule import PropertyRuleClaim, PropertyRuleVerifier
+from blite.verification.structural_partition import StructuralPartitionVerifier
 from blite.verification.verifier import Determinism, Verifier
 
 # api/src/chimera_api/instance_verifiers.py -> parents[3] es la raíz del
@@ -120,6 +121,18 @@ _SOLVER_ANCHOR_KIND = "solver"
 _EXECUTION_VERIFIER_ID = "verifier:pandapower-islanding"
 _EXECUTION_INDEPENDENCE_GROUP = "leg-execution"
 _EXECUTION_ANCHOR_KIND = "execution"
+
+# V1/M18 — pata ESTRUCTURAL: la única constancia por sub-entidad disponible
+# cuando la instancia no tiene dato eléctrico registrado (p. ej. una red
+# derivada de un portal GIS: trae geometría y nombres, jamás impedancias).
+# Techo AL2 por clase — nunca finge la fuerza de una ejecución.
+_STRUCTURAL_VERIFIER_ID = "verifier:structural-partition"
+_STRUCTURAL_INDEPENDENCE_GROUP = "leg-structural"
+_STRUCTURAL_ANCHOR_KIND = "rule"
+_STRUCTURAL_ANCHOR_PROVENANCE = "structural-partition-v1"
+_STRUCTURAL_ANCHOR_DIGEST = hashlib.sha256(
+    f"anchor:{_STRUCTURAL_ANCHOR_PROVENANCE}".encode()
+).hexdigest()
 
 SOLVER_ANCHOR_DIGEST = hashlib.sha256(
     f"anchor:{_SOLVER_ANCHOR_PROVENANCE}".encode()
@@ -247,11 +260,36 @@ def _execution_descriptor(data: InstanceElectricalData) -> dict[str, Any]:
     }
 
 
+def _structural_verifier() -> Verifier:
+    return StructuralPartitionVerifier(
+        verifier_id=_STRUCTURAL_VERIFIER_ID,
+        independence_group=_STRUCTURAL_INDEPENDENCE_GROUP,
+        anchor_digest=_STRUCTURAL_ANCHOR_DIGEST,
+    )
+
+
+def _structural_descriptor() -> dict[str, Any]:
+    return {
+        "anchor_digest": _STRUCTURAL_ANCHOR_DIGEST,
+        "kind": _STRUCTURAL_ANCHOR_KIND,
+        "provenance": _STRUCTURAL_ANCHOR_PROVENANCE,
+    }
+
+
 def _resolve_solution(instance_id: str) -> VerifierResolution:
     """Reto 1 (compat total, decisión #7/#8): CP-SAT ampara SIEMPRE; la
     pata eléctrica (pandapower) se añade solo si `instance_id` trae dato
     registrado en `ELECTRICAL_DATA` — sin él, la segunda pata simplemente no
-    existe, nunca se inventa."""
+    existe, nunca se inventa.
+
+    [V1/M18] Cuando ese dato NO existe entra la pata ESTRUCTURAL en su lugar
+    (AL2, ancla `rule`): verifica lo que el grafo permite verificar —
+    conectividad por isla y coherencia del corte— para que una instancia sin
+    modelo eléctrico igual tenga constancia POR ISLA, que es lo que el mapa
+    necesita para pintar badges. Es EXCLUYENTE con la eléctrica a propósito:
+    donde pandapower corre, sus checks por isla son estrictamente más fuertes,
+    y sumar una tercera pata inflaría el conteo de patas independientes del
+    punto 7 sin agregar un método realmente nuevo."""
     verifiers: list[Verifier] = [_solver_verifier()]
     descriptors: list[dict[str, Any]] = [_solver_descriptor()]
 
@@ -259,6 +297,9 @@ def _resolve_solution(instance_id: str) -> VerifierResolution:
     if electrical_data is not None:
         verifiers.append(_execution_verifier(electrical_data))
         descriptors.append(_execution_descriptor(electrical_data))
+    else:
+        verifiers.append(_structural_verifier())
+        descriptors.append(_structural_descriptor())
 
     return VerifierResolution(tuple(verifiers), tuple(descriptors))
 

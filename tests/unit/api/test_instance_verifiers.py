@@ -43,17 +43,40 @@ class TestClaimDeOptimalidadConDatoElectrico:
 
 
 class TestClaimDeOptimalidadSinDatoElectrico:
-    def test_instancia_desconocida_ampara_solo_cpsat(self) -> None:
+    def test_sin_dato_electrico_entra_la_pata_estructural(self) -> None:
+        """[V1/M18] Antes esta instancia amparaba SOLO CP-SAT y se quedaba sin
+        ninguna constancia POR ISLA — o sea, sin badges posibles sobre el mapa.
+        Ahora entra la pata ESTRUCTURAL (AL2, ancla `rule`): verifica lo que el
+        grafo permite (conectividad por isla, corte no vacío) sin inventar el
+        dato eléctrico que la instancia no tiene. La eléctrica sigue siendo
+        exclusiva — donde pandapower corre, esta no se suma."""
         # Arrange / Act
         resolution = resolve_verifiers(
             claim_type="solution", instance_id="instancia-desconocida"
         )
 
         # Assert
-        assert len(resolution.verifiers) == 1
-        assert len(resolution.anchor_descriptors) == 1
-        assert resolution.anchor_descriptors[0]["kind"] == "solver"
-        assert resolution.verifiers[0].verifier_class == "formal_exact"
+        assert len(resolution.verifiers) == 2
+        assert [d["kind"] for d in resolution.anchor_descriptors] == ["solver", "rule"]
+        assert [v.verifier_class for v in resolution.verifiers] == [
+            "formal_exact",
+            "property_rule",
+        ]
+
+    def test_con_dato_electrico_la_estructural_no_infla_las_patas(self) -> None:
+        """La eléctrica y la estructural son EXCLUYENTES: sumar una tercera
+        pata donde ya corre pandapower inflaría el conteo del punto 7 sin
+        aportar un método realmente nuevo."""
+        # Arrange / Act
+        resolution = resolve_verifiers(
+            claim_type="solution", instance_id="sintetica-4bus"
+        )
+
+        # Assert
+        assert [d["kind"] for d in resolution.anchor_descriptors] == [
+            "solver",
+            "execution",
+        ]
 
 
 class TestClaimTypeNoOptimalidadFailCloses:

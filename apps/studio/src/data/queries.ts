@@ -18,7 +18,8 @@ import {
   getKnowledge,
   getMe,
   getRuns,
-  getStepEvidence
+  getStepEvidence,
+  getTopology
 } from '../gatewayClient';
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
@@ -42,6 +43,7 @@ import {
   stepDetailSchema,
   stepDetailWireSchema,
   toAblationMetric,
+  topologySnapshotSchema,
   toKnowledgeClaim,
   toProjectArtifact,
   toRunSummary,
@@ -49,7 +51,7 @@ import {
   wireEnvelopeSchema
 } from './schemas';
 
-import type { Me, ProjectFile } from './schemas';
+import type { Me, ProjectFile, TopologySnapshot } from './schemas';
 import type {
   AblationMetric,
   DsseEnvelope,
@@ -323,6 +325,35 @@ export function ablationQueryOptions(runId: string) {
   return queryOptions({
     queryKey: ['runs', runId, 'ablation'] as const,
     queryFn: () => loadAblation(runId)
+  });
+}
+
+/**
+ * V1/M18 — partición del run (`GET /runs/{id}/topology`, S-D §4). En vivo
+ * llama al egress real y valida el wire con el MISMO Zod espejo del fixture
+ * de costura (`topologySnapshotSchema`): un payload sin `verification` POR
+ * isla no parsea, que es exactamente la regla §9 aplicada en la frontera.
+ *
+ * En réplica devuelve `null` — no un fixture: la partición es de un RUN, y
+ * fabricar una para el modo demo pintaría islas que nadie verificó. La lente
+ * distingue `null` (no hay run que consultar) de `islands: []` (el run corrió
+ * y no produjo partición) y dice cosas distintas.
+ */
+export async function loadTopology(runId: string): Promise<TopologySnapshot | null> {
+  if (!isLiveMode()) {
+    return null;
+  }
+  const res = await getTopology(runId);
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudo obtener la topología del run');
+  }
+  return topologySnapshotSchema.parse(res.data);
+}
+
+export function topologyQueryOptions(runId: string) {
+  return queryOptions({
+    queryKey: ['runs', runId, 'topology'] as const,
+    queryFn: () => loadTopology(runId)
   });
 }
 
