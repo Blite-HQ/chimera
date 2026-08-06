@@ -38,6 +38,7 @@ jobs:
       python: ${{ steps.filter.outputs.python }}
       web: ${{ steps.filter.outputs.web }}
       docs: ${{ steps.filter.outputs.docs }}
+      data: ${{ steps.filter.outputs.data }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
@@ -53,12 +54,29 @@ jobs:
             python:
               - 'sdk/**'
               - 'engine/**'
+              # `api/**` faltaba: un cambio SOLO en la capa HTTP se saltaba
+              # pytest/pyright/lint-imports enteros (hallazgo O, 2026-08-05).
+              - 'api/**'
               - 'capabilities/**'
+              - 'distributions/**'
+              - 'tools/**'
+              - 'challenges/**'
+              - 'scripts/**'
               - 'tests/**'
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/ci.yml'
               - '.github/actions/setup-uv/**'
+            # Datos ESTAMPADOS: su guard no depende del código, así que no
+            # tiene por qué arrastrar la suite de Python entera (O12).
+            data:
+              - 'knowledge/islanding/corpus/**'
+              - 'knowledge/tfim/corpus/**'
+              - 'knowledge/tabular/corpus/**'
+              - 'knowledge/nexus/**'
+              - 'scripts/verify_corpus_digests.py'
+              - 'scripts/verify_nexus_digests.py'
+              - '.github/workflows/ci.yml'
             web:
               - 'apps/studio/**'
               - 'package.json'
@@ -114,6 +132,36 @@ jobs:
 
       - name: Architecture gates (import-linter)
         run: uv run lint-imports
+
+  # ── Datos estampados: los digests que nadie puede re-escribir ──────────────
+  # La regla («se REPORTA, jamás se sobreescribe») vivía solo en prosa y en un
+  # script que había que acordarse de correr. Un corpus editado a mano o un
+  # import re-corrido con otro snapshot pasaban sin que nada los viera (O12).
+  data:
+    name: Data guards
+    needs: changes
+    if: needs.changes.outputs.data == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+
+      - name: Install dependencies
+        run: uv sync --locked --all-packages --all-extras
+
+      - name: Stamped corpora (islanding · TFIM · tabular)
+        run: uv run python scripts/verify_corpus_digests.py
+
+      - name: External evidence chain (Nexus)
+        run: uv run python scripts/verify_nexus_digests.py
 
   # ── Web: lint + types + tests + dep-cruiser ─────────────────────────────────
   web:
@@ -246,9 +294,13 @@ jobs:
       - name: Audit Python deps (pip-audit)
         run: |
           uv sync --locked --all-packages
-          # CVE-2025-69872 (diskcache 5.6.3, via dwave-ocean-sdk → the
-          # quantum capability's 'dwave' extra): no fixed release exists as
-          # of 2026-07-02. Re-evaluate when dependabot bumps dwave/diskcache.
+          # CVE-2025-69872 / PYSEC-2026-2447 (diskcache 5.6.3, via
+          # dwave-ocean-sdk → the quantum capability's 'dwave' extra).
+          # RE-EVALUATED 2026-08-05 (O, hallazgo 9): pip-audit still reports
+          # `fix_versions: []` — upstream has published no fixed release, so
+          # the ignore stands. It is not a standing waiver: whoever touches
+          # this next re-runs `uv run pip-audit --skip-editable -f json` and
+          # drops the flag the moment a fix version appears.
           uv run pip-audit --skip-editable --ignore-vuln CVE-2025-69872
 
       - name: Set up pnpm + Node
@@ -340,7 +392,7 @@ jobs:
   ci-gate:
     name: CI gate
     if: always()
-    needs: [python, web, commits, pr-title, security, docs]
+    needs: [python, web, data, commits, pr-title, security, docs]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -349,6 +401,7 @@ jobs:
           declare -A results=(
             [python]="${{ needs.python.result }}"
             [web]="${{ needs.web.result }}"
+            [data]="${{ needs.data.result }}"
             [commits]="${{ needs.commits.result }}"
             [pr-title]="${{ needs.pr-title.result }}"
             [security]="${{ needs.security.result }}"

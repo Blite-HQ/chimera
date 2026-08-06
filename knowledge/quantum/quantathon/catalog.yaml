@@ -9,89 +9,89 @@ tracks:
     title: QWorld Course Classes
     sessions:
       - id: c01
-        title: "Class 01"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=JxgsgqH9kxc"}]
+        title: 'Class 01'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=JxgsgqH9kxc' }]
       - id: c02
-        title: "Class 02"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=dXr7gx9GJPs"}]
+        title: 'Class 02'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=dXr7gx9GJPs' }]
       - id: c03
-        title: "Class 03"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=wjeV7qBorD4"}]
+        title: 'Class 03'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=wjeV7qBorD4' }]
       - id: c04
-        title: "Class 04"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=apI9ov9x-K0"}]
+        title: 'Class 04'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=apI9ov9x-K0' }]
       - id: c05
-        title: "Class 05"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=UxLMmrpuMKU"}]
+        title: 'Class 05'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=UxLMmrpuMKU' }]
       - id: c06
-        title: "Class 06"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=KWvgBEdK_qw"}]
+        title: 'Class 06'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=KWvgBEdK_qw' }]
       - id: c07
-        title: "Class 07"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=Ww3wTqAZ75E"}]
+        title: 'Class 07'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=Ww3wTqAZ75E' }]
       - id: c08
-        title: "Class 08"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=ezHaNCoEY6M"}]
+        title: 'Class 08'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=ezHaNCoEY6M' }]
       - id: c09
-        title: "Class 09"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=5ib4s2iLAo8"}]
+        title: 'Class 09'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=5ib4s2iLAo8' }]
       - id: c10
-        title: "Class 10"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=ZI-fJCbYUqk"}]
+        title: 'Class 10'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=ZI-fJCbYUqk' }]
       - id: c11
-        title: "Class 11"
-        sources: [{kind: youtube, ref: "https://www.youtube.com/watch?v=vHG0I7UdAAE"}]
+        title: 'Class 11'
+        sources: [{ kind: youtube, ref: 'https://www.youtube.com/watch?v=vHG0I7UdAAE' }]
       - id: c-materials
-        title: "Course materials (slides/docs)"
+        title: 'Course materials (slides/docs)'
         sources:
-          - {kind: drive, ref: "1yG3tQSKZw6TD9gS0_j4DcKkfNDPvej4S"}
-          - {kind: drive, ref: "1qhQ_ji0koewSFQxGJqHoyHrAi9ksg6xt"}
-          - {kind: drive, ref: "1lA_O3AcaJhj_0xL4qbhFCtjxySrzuQYw"}
-          - {kind: drive, ref: "1I73Px4cVgPJt4tLwjsJMLpDVT0BshOx0"}
-          - {kind: drive, ref: "1FCW_AXSX9BkM3rwzoLdzpccPLDHF0oGo"}
+          - { kind: drive, ref: '1yG3tQSKZw6TD9gS0_j4DcKkfNDPvej4S' }
+          - { kind: drive, ref: '1qhQ_ji0koewSFQxGJqHoyHrAi9ksg6xt' }
+          - { kind: drive, ref: '1lA_O3AcaJhj_0xL4qbhFCtjxySrzuQYw' }
+          - { kind: drive, ref: '1I73Px4cVgPJt4tLwjsJMLpDVT0BshOx0' }
+          - { kind: drive, ref: '1FCW_AXSX9BkM3rwzoLdzpccPLDHF0oGo' }
 
   - id: bootcamp
     title: Quantathon Bootcamp
     sessions:
       - id: b01
-        title: "Fundamentos de mecánica cuántica"
-        speaker: "Felipe Montealegre"
+        title: 'Fundamentos de mecánica cuántica'
+        speaker: 'Felipe Montealegre'
         sources:
-          - {kind: drive, ref: "1eEUMfHOYfx8NHBKs5fW0L3s_U2xv-1SR"}
-          - {kind: drive, ref: "1tCVsYHZolHbILFxswPcJwYyFvIJwXJdD"}
+          - { kind: drive, ref: '1eEUMfHOYfx8NHBKs5fW0L3s_U2xv-1SR' }
+          - { kind: drive, ref: '1tCVsYHZolHbILFxswPcJwYyFvIJwXJdD' }
       - id: b02
-        title: "Quantum Error Correction (QEC)"
-        speaker: "Pedro Parrado"
+        title: 'Quantum Error Correction (QEC)'
+        speaker: 'Pedro Parrado'
         sources:
-          - {kind: drive, ref: "1FgjWNetXk0XAf-gBnh-DcBeCAZl8BGjL"}
-          - {kind: drive, ref: "1GErud8VCUl-bQ72x_zv8Fgg_aZ6yjGwz"}
+          - { kind: drive, ref: '1FgjWNetXk0XAf-gBnh-DcBeCAZl8BGjL' }
+          - { kind: drive, ref: '1GErud8VCUl-bQ72x_zv8Fgg_aZ6yjGwz' }
       - id: b03
         title: "Introduction to Quantinuum's technology"
-        speaker: "Callum Macpherson"
+        speaker: 'Callum Macpherson'
         sources:
-          - {kind: drive, ref: "1JCCrnrT9SvS2mXi9q2rqPn6gKTaIz7Nk"}
+          - { kind: drive, ref: '1JCCrnrT9SvS2mXi9q2rqPn6gKTaIz7Nk' }
       - id: b04
-        title: "Simulación de moléculas y materiales en computadoras cuánticas"
-        speaker: "Mauricio Gutiérrez"
+        title: 'Simulación de moléculas y materiales en computadoras cuánticas'
+        speaker: 'Mauricio Gutiérrez'
         sources:
-          - {kind: drive, ref: "1LyWzBeLwQQHYm4xRCJBkC-ipXxwux3gh"}
-          - {kind: drive, ref: "1tg5H7Y9rqYeETc5yIWAZ9fEuj5zYvyPJ"}
+          - { kind: drive, ref: '1LyWzBeLwQQHYm4xRCJBkC-ipXxwux3gh' }
+          - { kind: drive, ref: '1tg5H7Y9rqYeETc5yIWAZ9fEuj5zYvyPJ' }
       - id: b05
-        title: "Modelo de Ising"
-        speaker: "Jose Alfredo de León"
+        title: 'Modelo de Ising'
+        speaker: 'Jose Alfredo de León'
         sources:
-          - {kind: drive, ref: "14Z-DOwA5msVnkgMz5UARBQ5NEQRWReKQ"}
-          - {kind: drive, ref: "1-hQ-eKV-7Kl9TSs-19DAC4l3hDZcgrZy"}
+          - { kind: drive, ref: '14Z-DOwA5msVnkgMz5UARBQ5NEQRWReKQ' }
+          - { kind: drive, ref: '1-hQ-eKV-7Kl9TSs-19DAC4l3hDZcgrZy' }
       - id: b06
-        title: "Quantum machine learning y Trotterización"
-        speaker: "William Aguilar"
+        title: 'Quantum machine learning y Trotterización'
+        speaker: 'William Aguilar'
         sources:
-          - {kind: drive, ref: "130tyEW9lFQHETrtqGxmoW6bY2fQb0-mC"}
-          - {kind: drive, ref: "11-WChr_4KmmARc16b-BQ3sMGO_UwxhRT"}
-          - {kind: drive, ref: "1UOkTBSRjY6z_oJ87Lh-BmSRLHITO8gtK"}
+          - { kind: drive, ref: '130tyEW9lFQHETrtqGxmoW6bY2fQb0-mC' }
+          - { kind: drive, ref: '11-WChr_4KmmARc16b-BQ3sMGO_UwxhRT' }
+          - { kind: drive, ref: '1UOkTBSRjY6z_oJ87Lh-BmSRLHITO8gtK' }
       - id: b07
-        title: "Introducción a Quantum Singular Value Transformation"
-        speaker: "Daniela Angulo"
+        title: 'Introducción a Quantum Singular Value Transformation'
+        speaker: 'Daniela Angulo'
         sources:
-          - {kind: drive, ref: "1z0-0t9V62VAZEddhQm5bwlhsNwKP55EI"}
-          - {kind: drive, ref: "11NtsTbW7yUpzzmcxWIMXJWneSSIfc3so"}
+          - { kind: drive, ref: '1z0-0t9V62VAZEddhQm5bwlhsNwKP55EI' }
+          - { kind: drive, ref: '11NtsTbW7yUpzzmcxWIMXJWneSSIfc3so' }

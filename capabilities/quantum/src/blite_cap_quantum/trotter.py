@@ -107,7 +107,9 @@ def _validate_initial_bitstring(raw: Any, n_sites: int) -> str:
         )
         raise ValueError(msg)
     if not set(bitstring) <= {"0", "1"}:
-        msg = f"TrotterEvolve: initial_bitstring debe usar solo '0'/'1', no {bitstring!r}"
+        msg = (
+            f"TrotterEvolve: initial_bitstring debe usar solo '0'/'1', no {bitstring!r}"
+        )
         raise ValueError(msg)
     return bitstring
 
@@ -157,7 +159,9 @@ def _validate_order(raw: Any) -> int:
 def _paulis_commute(a: str, b: str) -> bool:
     """Dos Pauli strings conmutan sii el número de posiciones donde ambos son
     no-identidad y DISTINTOS es par."""
-    mismatches = sum(1 for ca, cb in zip(a, b, strict=True) if ca != "I" and cb != "I" and ca != cb)
+    mismatches = sum(
+        1 for ca, cb in zip(a, b, strict=True) if ca != "I" and cb != "I" and ca != cb
+    )
     return mismatches % 2 == 0
 
 

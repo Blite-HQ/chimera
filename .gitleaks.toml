@@ -1,0 +1,47 @@
+# Secret scanning — used by CI (`Security` job, full history) and by the
+# pre-commit hook (`scripts/pre-commit-secrets.sh`, staged changes only).
+#
+# The two halves are deliberate: the hook gives fast feedback on what you are
+# about to commit, CI is the gate that nothing bypasses.
+#
+# ── Local extension ───────────────────────────────────────────────────────────
+# If a `.gitleaks.local.toml` exists at the repo root (git-ignored), the hook
+# uses it INSTEAD of this file. That is the place for patterns that are specific
+# to you or to your organisation and have no business being versioned — client
+# names, internal hostnames, private identifiers. Start it with:
+#
+#     [extend]
+#     path = ".gitleaks.toml"     # keep everything below
+#     # ...then add your own [[rules]]
+#
+# Nothing here changes if you never create that file.
+
+title = "Chimera secret scanning"
+
+[extend]
+# The upstream rule set (~170 providers). We add allowlists, not exceptions to
+# the detection itself.
+useDefault = true
+
+[[allowlists]]
+description = """
+A type annotation is not a secret. `generic-api-key` fires on lines like
+`signing_key: ed25519.Ed25519PrivateKey` — a Python field DECLARATION with no
+value at all. Scoped to annotation-shaped lines (`name: Type`, no `=`), so a
+real assignment on the same field name still trips the scanner.
+"""
+regexTarget = "line"
+regexes = [
+  '''^\s*[A-Za-z_][A-Za-z0-9_]*(key|token|secret|password)[A-Za-z0-9_]*\s*:\s*[A-Za-z_][A-Za-z0-9_.\[\], |"']*\s*$''',
+]
+
+[[allowlists]]
+description = """
+Placeholder values in the example environment file and in the secret-generation
+script: they exist to be replaced, and a scanner that flags them trains people
+to ignore it.
+"""
+paths = [
+  '''^\.env\.example$''',
+  '''^secrets/.*\.example$''',
+]

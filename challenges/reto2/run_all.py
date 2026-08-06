@@ -134,7 +134,9 @@ def _cargar_corpus() -> tuple[list[list[float | None]], list[int]]:
 def _paso_1_sello_folds(
     rows: list[list[float | None]], labels: list[int]
 ) -> tuple[dict[str, Any], str]:
-    print("\n== Paso 1: sello previo de folds (compromiso ANTES de cualquier ajuste) ==")
+    print(
+        "\n== Paso 1: sello previo de folds (compromiso ANTES de cualquier ajuste) =="
+    )
     prep = TabularPrep().invoke(
         {
             "rows": rows,
@@ -156,14 +158,18 @@ def _paso_1_sello_folds(
         "docs/specs/generalidad-retos.md SS-Contrato-4)"
     )
     for fold_idx, sizes in enumerate(prep["fold_sizes"]):
-        print(f"    fold {fold_idx}: train={sizes['train']:>5}  test={sizes['test']:>4}")
+        print(
+            f"    fold {fold_idx}: train={sizes['train']:>5}  test={sizes['test']:>4}"
+        )
     return prep, folds_digest
 
 
 def _paso_2_brazo_cuantico(
     prep: dict[str, Any], labels: list[int]
 ) -> tuple[list[int], list[dict[str, Any]]]:
-    print("\n== Paso 2: brazo cuantico -- fidelity_kernel -> svm_precomputado por fold ==")
+    print(
+        "\n== Paso 2: brazo cuantico -- fidelity_kernel -> svm_precomputado por fold =="
+    )
     n_rows = len(labels)
     oof_predictions: list[int | None] = [None] * n_rows
     per_fold: list[dict[str, Any]] = []
@@ -183,7 +189,9 @@ def _paso_2_brazo_cuantico(
         test_labels = fold_data["test"]["labels"]
 
         kernel_train = FidelityKernel().invoke({"x": train_features})
-        kernel_cross = FidelityKernel().invoke({"x": test_features, "y": train_features})
+        kernel_cross = FidelityKernel().invoke(
+            {"x": test_features, "y": train_features}
+        )
 
         svm_result = SvmPrecomputed().invoke(
             {
@@ -196,7 +204,9 @@ def _paso_2_brazo_cuantico(
         )
 
         test_indices = test_indices_by_fold[fold_idx]
-        for row_idx, prediction in zip(test_indices, svm_result["predictions"], strict=True):
+        for row_idx, prediction in zip(
+            test_indices, svm_result["predictions"], strict=True
+        ):
             oof_predictions[row_idx] = prediction
 
         per_fold.append(
@@ -224,7 +234,9 @@ def _paso_2_brazo_cuantico(
         predictions.append(value)
 
     correct = sum(1 for p, y in zip(predictions, labels, strict=True) if p == y)
-    print(f"  accuracy OOF agregada (brazo cuantico, {n_rows} filas): {correct / n_rows:.4f}")
+    print(
+        f"  accuracy OOF agregada (brazo cuantico, {n_rows} filas): {correct / n_rows:.4f}"
+    )
     return predictions, per_fold
 
 
@@ -262,7 +274,9 @@ def _paso_3_brazo_clasico_mismo_pipeline(
     print(f"  f1        : {aggregate['f1']:.4f}")
 
     mcnemar = classical["mcnemar"]
-    print("\n== Paso 4: McNemar (brazo clasico vs brazo cuantico, MISMO pipeline+folds) ==")
+    print(
+        "\n== Paso 4: McNemar (brazo clasico vs brazo cuantico, MISMO pipeline+folds) =="
+    )
     print(f"  b (clasico acierta, cuantico falla): {mcnemar['b']}")
     print(f"  c (cuantico acierta, clasico falla): {mcnemar['c']}")
     print(
@@ -288,7 +302,9 @@ def _paso_3b_brazo_clasico_features_crudas(
         {"rows": rows, "labels": labels, "n_folds": _N_FOLDS, "seed": _SEED}
     )
     aggregate = raw_baseline["aggregate"]
-    print(f"  accuracy  : {aggregate['accuracy']:.4f}  (informativo -- fuera del certificado)")
+    print(
+        f"  accuracy  : {aggregate['accuracy']:.4f}  (informativo -- fuera del certificado)"
+    )
     return raw_baseline
 
 
@@ -300,7 +316,9 @@ def _predicate_of(bundle: dict[str, Any]) -> dict[str, Any]:
 def _paso_5_certificado(
     prep: dict[str, Any], quantum_predictions: list[int], salida: Path
 ) -> dict[str, Any]:
-    print(f"\n== Paso 5: certificado REAL sobre {_INSTANCIA_CERTIFICADO} (en proceso) ==")
+    print(
+        f"\n== Paso 5: certificado REAL sobre {_INSTANCIA_CERTIFICADO} (en proceso) =="
+    )
 
     store = create_event_store()
     registry = EntryPointRegistry({"cap.echo": _CapabilidadEco()})
@@ -435,7 +453,7 @@ def _paso_6_resumen(
         "## 3 · Brazo clasico -- MISMO pipeline que el cuantico (CERTIFICADO)",
         "",
         "SVM-RBF ajustado sobre las MISMAS matrices preparadas que el brazo "
-        "cuantico (`prep[\"prepared\"]`/`prep[\"folds\"]`, modo "
+        'cuantico (`prep["prepared"]`/`prep["folds"]`, modo '
         "`prepared_folds` de `blite.ml.classifier_baseline`) -- el unico "
         "grado de libertad entre los dos brazos es el KERNEL, no el "
         "preprocesamiento (`knowledge/quantum/07-catalogo-algoritmos.md` "
@@ -466,7 +484,7 @@ def _paso_6_resumen(
         "",
         f"**Lectura**: {frase} (Δaccuracy = {delta_accuracy:+.4f}, "
         f"McNemar p = {_format_p_value(p_value)}) -- regla de lenguaje de "
-        "`knowledge/quantum/04-estadistica-evidencia.md` §6: \"competitivo\" "
+        '`knowledge/quantum/04-estadistica-evidencia.md` §6: "competitivo" '
         "salvo significancia estadistica GENUINA y a favor del brazo cuantico; "
         "si el brazo cuantico rinde peor, se dice llanamente. Esta lectura "
         "usa el brazo clasico de MISMO pipeline (§3), nunca el de features "
@@ -476,8 +494,7 @@ def _paso_6_resumen(
         f"## 5 · Certificado ({_INSTANCIA_CERTIFICADO})",
         "",
         f"- Nivel titular: **{predicado['titular_level']}**",
-        "- Anclas: "
-        f"{sorted({a['anchor_kind'] for a in predicado['attestations']})}",
+        f"- Anclas: {sorted({a['anchor_kind'] for a in predicado['attestations']})}",
         f"- Veredicto de la conclusion: **{predicado['conclusions'][0]['verdict']}**",
         "- Verificado offline: `uv run python scripts/verify-bundle.py "
         f"results/reto2/certificado_{_INSTANCIA_CERTIFICADO}.json`",

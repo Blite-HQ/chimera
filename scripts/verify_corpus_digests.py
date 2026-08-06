@@ -108,9 +108,7 @@ def _tabla_pin(nombre: str) -> tuple[str, str | None]:
 
 def main() -> int:
     ok = True
-    archivos = sorted(
-        f for d in DIRECTORIOS_CORPUS for f in glob.glob(f"{d}/*.json")
-    )
+    archivos = sorted(f for d in DIRECTORIOS_CORPUS for f in glob.glob(f"{d}/*.json"))
     internos_ok = 0
     pinneados_ok = 0
     pinneados_total = 0

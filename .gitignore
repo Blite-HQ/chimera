@@ -58,6 +58,10 @@ coverage/
 *.key
 *.pem
 
+# Per-developer scanning config (scripts/pre-commit-secrets.sh) — patterns
+# that are yours or your organisation's and have no business being versioned.
+.gitleaks.local.toml
+
 # OS
 .DS_Store
 Thumbs.db

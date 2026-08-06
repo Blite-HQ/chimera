@@ -127,7 +127,9 @@ def _errores(registro: dict[str, Any], pasos: int) -> tuple[float, float]:
 
 def _paso_1_2_malla(puntos: dict[str, dict[str, Any]], salida: Path) -> dict[str, Any]:
     print("\n== Malla del enunciado: Trotter (orden 1, r=16) vs ED del corpus ==")
-    print(f"{'instancia':>16} {'N':>3} {'h/J':>5} {'err<Z>':>10} {'err<ZZ>':>10} {'veredicto':>10}")
+    print(
+        f"{'instancia':>16} {'N':>3} {'h/J':>5} {'err<Z>':>10} {'err<ZZ>':>10} {'veredicto':>10}"
+    )
     malla: list[dict[str, Any]] = []
     for nombre, registro in sorted(puntos.items()):
         err_z, err_zz = _errores(registro, _PASOS_CORPUS)
@@ -177,8 +179,13 @@ def _paso_1_2_malla(puntos: dict[str, dict[str, Any]], salida: Path) -> dict[str
         err_z, err_zz = _errores(registro, pasos)
         razon = previo / err_z if previo else None
         barrido.append(
-            {"pasos": pasos, "dt": registro["tiempo"] / pasos, "err_z": err_z,
-             "err_zz": err_zz, "razon": razon}
+            {
+                "pasos": pasos,
+                "dt": registro["tiempo"] / pasos,
+                "err_z": err_z,
+                "err_zz": err_zz,
+                "razon": razon,
+            }
         )
         print(
             f"{pasos:>6} {registro['tiempo'] / pasos:>8.4f} {err_z:>10.5f} "
@@ -262,7 +269,9 @@ def _paso_3_certificado(registro: dict[str, Any], salida: Path) -> dict[str, Any
     predicado = _predicate_of(bundle)
     print(f"  run_id            : {run_id}")
     print(f"  titular_level     : {predicado['titular_level']}")
-    print(f"  anclas            : {sorted({a['anchor_kind'] for a in predicado['attestations']})}")
+    print(
+        f"  anclas            : {sorted({a['anchor_kind'] for a in predicado['attestations']})}"
+    )
     print(f"  veredicto         : {predicado['conclusions'][0]['verdict']}")
     print(f"  check_bundle      : {len(resultados)}/{len(resultados)} puntos OK")
     print(f"  bundle            : {destino}")

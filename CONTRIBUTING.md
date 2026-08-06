@@ -47,6 +47,21 @@ Two Husky hooks run on every `git commit` and can reject it outright:
   | `*.md`                             | `markdownlint --fix` → `prettier --write` (this order matters — prettier must run last so its formatting isn't undone) |
   | `apps/studio/**/*.{ts,tsx,js,jsx}` | `eslint --fix` → `prettier --write`                                                                                    |
 
+- **`pre-commit`** → `scripts/pre-commit-secrets.sh`, a **gitleaks scan of your staged
+  changes**. CI already scans the full history and blocks the merge; this is the fast
+  half, so you find a secret before it is in the log rather than after — once it reaches a
+  commit it has to be rotated even if that commit never leaves your machine.
+
+  Config resolution: `.gitleaks.local.toml` if it exists (git-ignored), otherwise the
+  shared `.gitleaks.toml`. The local file is the place for patterns specific to you or
+  your organisation — client names, internal hostnames, private identifiers — that have no
+  business being versioned. Start it with `[extend] path = ".gitleaks.toml"` and add your
+  own rules below.
+
+  Not installed? Without a local config the hook warns and lets you through (CI still
+  blocks). **With** one it fails: you configured extra patterns, and enforcement you
+  believe in but do not have is the worst of both.
+
 - **`commit-msg`** → `commitlint` (rules in `commitlint.config.cjs`, extends
   `@commitlint/config-conventional`). Your message must be **Conventional Commits**:
 
@@ -88,6 +103,20 @@ If a hook rejects your commit, **fix the code/message, don't bypass it** — see
    the protocols adapter (ModelServer)" —, Inv-E, INV-5, INV-6, SDK-standalone).
 2. `pnpm -C apps/studio exec tsc --noEmit` — TypeScript typecheck.
 3. `uv run pytest tests/invariants -q` — invariant tests.
+
+#### Before you push: the two gates people forget
+
+`lint-staged` only touches files **you staged**, so a file someone else left unformatted
+stays unformatted until CI says so. CI checks the whole tree. These two are the ones that
+go red most often, and neither is covered by the hooks:
+
+```bash
+uv run ruff format --check .                # whole repo, not just staged
+pnpm -C apps/studio exec depcruise src      # INV-1 / layering (no-circular, F3)
+```
+
+Run them before pushing — that is exactly the difference between "my local gates were
+green" and a red pipeline.
 
 ### 4. Open a PR
 

@@ -91,7 +91,9 @@ def _validate_initial_bitstring(raw: Any, n_sites: int) -> str:
         )
         raise ValueError(msg)
     if not set(bitstring) <= {"0", "1"}:
-        msg = f"exact_evolve: initial_bitstring debe usar solo '0'/'1', no {bitstring!r}"
+        msg = (
+            f"exact_evolve: initial_bitstring debe usar solo '0'/'1', no {bitstring!r}"
+        )
         raise ValueError(msg)
     return bitstring
 

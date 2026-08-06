@@ -43,7 +43,9 @@ def impute_median_fit_train(
     # out at runtime for this capability's inputs.
     imputer = SimpleImputer(strategy="median")
     train_imputed = cast("np.ndarray", imputer.fit_transform(train))
-    test_imputed = cast("np.ndarray", imputer.transform(test)) if test.shape[0] else test
+    test_imputed = (
+        cast("np.ndarray", imputer.transform(test)) if test.shape[0] else test
+    )
     return train_imputed, test_imputed
 
 

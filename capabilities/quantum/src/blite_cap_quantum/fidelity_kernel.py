@@ -88,7 +88,9 @@ def _validate_vectors(raw: Any, name: str, n_qubits: int | None) -> list[list[fl
         parsed: list[float] = []
         for j, value in enumerate(row):
             if not _is_number(value):
-                msg = f"FidelityKernel: {name}[{i}][{j}] debe ser numerico, no {value!r}"
+                msg = (
+                    f"FidelityKernel: {name}[{i}][{j}] debe ser numerico, no {value!r}"
+                )
                 raise ValueError(msg)
             parsed.append(float(value))
         validated.append(parsed)

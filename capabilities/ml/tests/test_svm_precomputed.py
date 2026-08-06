@@ -116,7 +116,10 @@ class TestGenericitySelfCheck:
 
     def test_manifest_has_no_scenario_vocabulary(self) -> None:
         denylist_path = (
-            Path(__file__).resolve().parents[3] / "tests" / "invariants" / "scenario_denylist.txt"
+            Path(__file__).resolve().parents[3]
+            / "tests"
+            / "invariants"
+            / "scenario_denylist.txt"
         )
         denylist = [
             line.strip().lower()
@@ -128,4 +131,6 @@ class TestGenericitySelfCheck:
         text = json.dumps(dataclasses.asdict(manifest), default=str).lower()
 
         violations = [term for term in denylist if term in text]
-        assert not violations, f"manifest contiene vocabulario de escenario: {violations}"
+        assert not violations, (
+            f"manifest contiene vocabulario de escenario: {violations}"
+        )

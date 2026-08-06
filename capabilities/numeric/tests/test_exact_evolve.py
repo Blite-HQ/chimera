@@ -20,7 +20,9 @@ from typing import Any
 
 import pytest
 
-pytest.importorskip("scipy", reason="extra opcional: uv sync --all-packages --extra full")
+pytest.importorskip(
+    "scipy", reason="extra opcional: uv sync --all-packages --extra full"
+)
 
 from blite_cap_numeric import ExactEvolve  # noqa: E402
 
@@ -131,35 +133,63 @@ class TestGoldenValues:
 class TestInputValidation:
     def test_missing_n_sites_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="n_sites"):
-            ExactEvolve().invoke({"terms": _chain_terms(2, 1.0), "time": 1.0, "observables": _z_observables(2)})
+            ExactEvolve().invoke(
+                {
+                    "terms": _chain_terms(2, 1.0),
+                    "time": 1.0,
+                    "observables": _z_observables(2),
+                }
+            )
 
     def test_non_integer_n_sites_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="n_sites"):
             ExactEvolve().invoke(
-                {"n_sites": "2", "terms": _chain_terms(2, 1.0), "time": 1.0, "observables": _z_observables(2)}
+                {
+                    "n_sites": "2",
+                    "terms": _chain_terms(2, 1.0),
+                    "time": 1.0,
+                    "observables": _z_observables(2),
+                }
             )
 
     def test_boolean_n_sites_raises_value_error(self) -> None:
         # bool es subclase de int: True se colaría como n_sites=1
         with pytest.raises(ValueError, match="n_sites"):
             ExactEvolve().invoke(
-                {"n_sites": True, "terms": _chain_terms(2, 1.0), "time": 1.0, "observables": _z_observables(2)}
+                {
+                    "n_sites": True,
+                    "terms": _chain_terms(2, 1.0),
+                    "time": 1.0,
+                    "observables": _z_observables(2),
+                }
             )
 
     def test_n_sites_out_of_range_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="n_sites"):
             ExactEvolve().invoke(
-                {"n_sites": 15, "terms": _chain_terms(2, 1.0), "time": 1.0, "observables": _z_observables(2)}
+                {
+                    "n_sites": 15,
+                    "terms": _chain_terms(2, 1.0),
+                    "time": 1.0,
+                    "observables": _z_observables(2),
+                }
             )
 
     def test_missing_terms_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="terms"):
-            ExactEvolve().invoke({"n_sites": 2, "time": 1.0, "observables": _z_observables(2)})
+            ExactEvolve().invoke(
+                {"n_sites": 2, "time": 1.0, "observables": _z_observables(2)}
+            )
 
     def test_empty_terms_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="terms"):
             ExactEvolve().invoke(
-                {"n_sites": 2, "terms": [], "time": 1.0, "observables": _z_observables(2)}
+                {
+                    "n_sites": 2,
+                    "terms": [],
+                    "time": 1.0,
+                    "observables": _z_observables(2),
+                }
             )
 
     def test_term_pauli_wrong_length_raises_value_error(self) -> None:
@@ -210,7 +240,12 @@ class TestInputValidation:
     def test_non_numeric_time_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="time"):
             ExactEvolve().invoke(
-                {"n_sites": 2, "terms": _chain_terms(2, 1.0), "time": "1.0", "observables": _z_observables(2)}
+                {
+                    "n_sites": 2,
+                    "terms": _chain_terms(2, 1.0),
+                    "time": "1.0",
+                    "observables": _z_observables(2),
+                }
             )
 
     def test_initial_bitstring_wrong_length_raises_value_error(self) -> None:
@@ -239,12 +274,19 @@ class TestInputValidation:
 
     def test_missing_observables_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="observables"):
-            ExactEvolve().invoke({"n_sites": 2, "terms": _chain_terms(2, 1.0), "time": 1.0})
+            ExactEvolve().invoke(
+                {"n_sites": 2, "terms": _chain_terms(2, 1.0), "time": 1.0}
+            )
 
     def test_empty_observables_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="observables"):
             ExactEvolve().invoke(
-                {"n_sites": 2, "terms": _chain_terms(2, 1.0), "time": 1.0, "observables": []}
+                {
+                    "n_sites": 2,
+                    "terms": _chain_terms(2, 1.0),
+                    "time": 1.0,
+                    "observables": [],
+                }
             )
 
     def test_observable_missing_label_raises_value_error(self) -> None:
@@ -266,7 +308,10 @@ class TestGenericitySelfCheck:
 
     def test_manifest_has_no_scenario_vocabulary(self) -> None:
         denylist_path = (
-            Path(__file__).resolve().parents[3] / "tests" / "invariants" / "scenario_denylist.txt"
+            Path(__file__).resolve().parents[3]
+            / "tests"
+            / "invariants"
+            / "scenario_denylist.txt"
         )
         denylist = [
             line.strip().lower()
@@ -278,4 +323,6 @@ class TestGenericitySelfCheck:
         text = json.dumps(dataclasses.asdict(manifest), default=str).lower()
 
         violations = [term for term in denylist if term in text]
-        assert not violations, f"manifest contiene vocabulario de escenario: {violations}"
+        assert not violations, (
+            f"manifest contiene vocabulario de escenario: {violations}"
+        )

@@ -19,7 +19,9 @@ from blite_cap_ml import ClassifierBaseline  # noqa: E402
 _SEED = 1
 
 
-def _separable_rows_and_labels(n: int = 60) -> tuple[list[list[float | None]], list[int]]:
+def _separable_rows_and_labels(
+    n: int = 60,
+) -> tuple[list[list[float | None]], list[int]]:
     import numpy as np
 
     rng = np.random.default_rng(_SEED)
@@ -163,7 +165,9 @@ class TestInputValidation:
     def test_invalid_gamma_string_raises_value_error(self) -> None:
         rows, labels = _separable_rows_and_labels()
         with pytest.raises(ValueError, match="gamma"):
-            ClassifierBaseline().invoke({"rows": rows, "labels": labels, "gamma": "bogus"})
+            ClassifierBaseline().invoke(
+                {"rows": rows, "labels": labels, "gamma": "bogus"}
+            )
 
     def test_negative_gamma_number_raises_value_error(self) -> None:
         rows, labels = _separable_rows_and_labels()
@@ -258,7 +262,9 @@ class TestPreparedFoldsSharedPipeline:
     def test_prepared_folds_sin_folds_raises_value_error(self) -> None:
         rows, labels, prepared_folds, _folds = _prepared_folds_fixture()
 
-        with pytest.raises(ValueError, match="prepared_folds.*folds|folds.*prepared_folds"):
+        with pytest.raises(
+            ValueError, match="prepared_folds.*folds|folds.*prepared_folds"
+        ):
             ClassifierBaseline().invoke(
                 {
                     "rows": rows,
@@ -271,7 +277,9 @@ class TestPreparedFoldsSharedPipeline:
     def test_folds_sin_prepared_folds_raises_value_error(self) -> None:
         rows, labels, _prepared_folds, folds = _prepared_folds_fixture()
 
-        with pytest.raises(ValueError, match="prepared_folds.*folds|folds.*prepared_folds"):
+        with pytest.raises(
+            ValueError, match="prepared_folds.*folds|folds.*prepared_folds"
+        ):
             ClassifierBaseline().invoke(
                 {"rows": rows, "labels": labels, "n_folds": 2, "folds": folds}
             )
@@ -314,7 +322,10 @@ class TestPreparedFoldsSharedPipeline:
         tampered = [dict(entry) for entry in prepared_folds]
         tampered[0] = {
             "train": tampered[0]["train"],
-            "test": {"features": tampered[0]["test"]["features"], "labels": [1, 1, 1, 1]},
+            "test": {
+                "features": tampered[0]["test"]["features"],
+                "labels": [1, 1, 1, 1],
+            },
         }
 
         with pytest.raises(ValueError, match="desincronizados"):
@@ -336,7 +347,10 @@ class TestGenericitySelfCheck:
 
     def test_manifest_has_no_scenario_vocabulary(self) -> None:
         denylist_path = (
-            Path(__file__).resolve().parents[3] / "tests" / "invariants" / "scenario_denylist.txt"
+            Path(__file__).resolve().parents[3]
+            / "tests"
+            / "invariants"
+            / "scenario_denylist.txt"
         )
         denylist = [
             line.strip().lower()
@@ -348,4 +362,6 @@ class TestGenericitySelfCheck:
         text = json.dumps(dataclasses.asdict(manifest), default=str).lower()
 
         violations = [term for term in denylist if term in text]
-        assert not violations, f"manifest contiene vocabulario de escenario: {violations}"
+        assert not violations, (
+            f"manifest contiene vocabulario de escenario: {violations}"
+        )

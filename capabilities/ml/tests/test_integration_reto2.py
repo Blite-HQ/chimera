@@ -102,7 +102,9 @@ def _quantum_oof_predictions(
         test_labels = fold_data["test"]["labels"]
 
         kernel_train = FidelityKernel().invoke({"x": train_features})
-        kernel_cross = FidelityKernel().invoke({"x": test_features, "y": train_features})
+        kernel_cross = FidelityKernel().invoke(
+            {"x": test_features, "y": train_features}
+        )
 
         svm_result = SvmPrecomputed().invoke(
             {
@@ -116,20 +118,30 @@ def _quantum_oof_predictions(
 
         test_indices = test_indices_by_fold[fold_idx]
         assert len(test_indices) == len(svm_result["predictions"])
-        for row_idx, prediction in zip(test_indices, svm_result["predictions"], strict=True):
+        for row_idx, prediction in zip(
+            test_indices, svm_result["predictions"], strict=True
+        ):
             oof_predictions[row_idx] = prediction
 
         per_fold_results.append(
             _FoldResult(
                 fold=fold_idx,
-                kernel_train_shape=(len(kernel_train["kernel"]), len(kernel_train["kernel"][0])),
-                kernel_cross_shape=(len(kernel_cross["kernel"]), len(kernel_cross["kernel"][0])),
+                kernel_train_shape=(
+                    len(kernel_train["kernel"]),
+                    len(kernel_train["kernel"][0]),
+                ),
+                kernel_cross_shape=(
+                    len(kernel_cross["kernel"]),
+                    len(kernel_cross["kernel"][0]),
+                ),
                 lambda_min=kernel_train["lambda_min"],
                 svm_result=svm_result,
             )
         )
 
-    assert all(p is not None for p in oof_predictions), "toda fila debe caer en exactamente un fold"
+    assert all(p is not None for p in oof_predictions), (
+        "toda fila debe caer en exactamente un fold"
+    )
     return [int(p) for p in oof_predictions], per_fold_results  # type: ignore[arg-type]
 
 
@@ -153,7 +165,9 @@ class TestFullChainOnCorpusSlice:
         )
 
         elapsed = time.monotonic() - started
-        assert elapsed < 10.0, f"la integracion debe correr en <10s, tomo {elapsed:.2f}s"
+        assert elapsed < 10.0, (
+            f"la integracion debe correr en <10s, tomo {elapsed:.2f}s"
+        )
 
         # shapes: cada fold produce un kernel_train cuadrado (m_train) y un
         # kernel_cross (m_test x m_train) — y svm_precomputed predice
@@ -207,7 +221,8 @@ class TestLeakageControl:
         )
 
         correct = sum(
-            1 for pred, true in zip(quantum_predictions, shuffled_labels, strict=True)
+            1
+            for pred, true in zip(quantum_predictions, shuffled_labels, strict=True)
             if pred == true
         )
         accuracy = correct / len(shuffled_labels)

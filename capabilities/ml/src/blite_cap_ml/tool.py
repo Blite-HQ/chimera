@@ -112,7 +112,10 @@ _TABULAR_PREP_MANIFEST = CapabilityManifest(
                 "type": "array",
                 "description": "Per-fold prepared train/test feature matrices and labels",
             },
-            "fold_sizes": {"type": "array", "description": "Per-fold train/test row counts"},
+            "fold_sizes": {
+                "type": "array",
+                "description": "Per-fold train/test row counts",
+            },
         },
         "required": [
             "folds",
@@ -168,19 +171,38 @@ _SVM_PRECOMPUTED_MANIFEST = CapabilityManifest(
     input_schema={
         "type": "object",
         "properties": {
-            "kernel_train": {"type": "array", "description": "Train-vs-train Gram matrix (m x m)"},
-            "kernel_test": {"type": "array", "description": "Test-vs-train Gram matrix (k x m)"},
-            "labels_train": {"type": "array", "description": "Binary (0/1) labels, length m"},
-            "labels_test": {"type": "array", "description": "Binary (0/1) labels, length k"},
+            "kernel_train": {
+                "type": "array",
+                "description": "Train-vs-train Gram matrix (m x m)",
+            },
+            "kernel_test": {
+                "type": "array",
+                "description": "Test-vs-train Gram matrix (k x m)",
+            },
+            "labels_train": {
+                "type": "array",
+                "description": "Binary (0/1) labels, length m",
+            },
+            "labels_test": {
+                "type": "array",
+                "description": "Binary (0/1) labels, length k",
+            },
             "seed": {"type": "integer", "default": 1},
-            "c": {"type": "number", "default": 1.0, "description": "SVM regularization strength"},
+            "c": {
+                "type": "number",
+                "default": 1.0,
+                "description": "SVM regularization strength",
+            },
         },
         "required": ["kernel_train", "kernel_test", "labels_train", "labels_test"],
     },
     output_schema={
         "type": "object",
         "properties": {
-            "predictions": {"type": "array", "description": "Predicted labels on the test set"},
+            "predictions": {
+                "type": "array",
+                "description": "Predicted labels on the test set",
+            },
             "dual_coef": {"type": "array"},
             "intercept": {"type": "array"},
             "support_indices": {"type": "array"},
@@ -300,7 +322,10 @@ _CLASSIFIER_BASELINE_MANIFEST = CapabilityManifest(
             "seed": {"type": "integer"},
             "predictions": {"type": "array", "description": "Out-of-fold predictions"},
             "fold_metrics": {"type": "array", "description": "Per-fold metrics"},
-            "aggregate": {"type": "object", "description": "Metrics over concatenated OOF predictions"},
+            "aggregate": {
+                "type": "object",
+                "description": "Metrics over concatenated OOF predictions",
+            },
             "mcnemar": {
                 "type": "object",
                 "description": "b/c discordant pairs and exact p-value (present only when compare_predictions was supplied)",

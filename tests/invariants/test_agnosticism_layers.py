@@ -146,7 +146,9 @@ class TestElEscaner:
         assert found[0].line == 1
         assert found[0].path == "leak.py"
 
-    def test_matchea_por_palabra_completa_no_por_subcadena(self, tmp_path: Path) -> None:
+    def test_matchea_por_palabra_completa_no_por_subcadena(
+        self, tmp_path: Path
+    ) -> None:
         """`ice` dentro de `service` NO es una fuga — el ruido mata gates."""
         from tests.invariants.agnosticism_scan import scan_paths
 

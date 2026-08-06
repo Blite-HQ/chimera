@@ -24,7 +24,9 @@ def _is_number(value: Any) -> bool:
     return not isinstance(value, bool) and isinstance(value, int | float)
 
 
-def _validate_matrix(raw: Any, name: str, expected_cols: int | None) -> list[list[float]]:
+def _validate_matrix(
+    raw: Any, name: str, expected_cols: int | None
+) -> list[list[float]]:
     if not isinstance(raw, list) or not raw:
         msg = f"SvmPrecomputed: '{name}' (lista no vacia) es requerido"
         raise ValueError(msg)
@@ -45,7 +47,9 @@ def _validate_matrix(raw: Any, name: str, expected_cols: int | None) -> list[lis
         parsed: list[float] = []
         for j, value in enumerate(row):
             if not _is_number(value):
-                msg = f"SvmPrecomputed: {name}[{i}][{j}] debe ser numerico, no {value!r}"
+                msg = (
+                    f"SvmPrecomputed: {name}[{i}][{j}] debe ser numerico, no {value!r}"
+                )
                 raise ValueError(msg)
             parsed.append(float(value))
         validated.append(parsed)

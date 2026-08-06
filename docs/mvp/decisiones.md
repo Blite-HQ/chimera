@@ -3012,3 +3012,191 @@ determinismo merece dueño: queda REPORTADO, sin decisión, para G.
 | `docs/tres-planos.md` + índice `docs/README.md`       | docs (autoridad) | NUEVO — marco transversal; cero cambios de contrato                   |
 | `chimera_eval` (paquete)                              | eval (nuevo)     | NUEVO — fuera de `blite.*`, sin deps de runtime                       |
 | `results/eval/*.json`                                 | evidencia        | NUEVO — log reproducible (mismo sha256 en dos corridas)               |
+
+### #156 — CI de `mejorado/base` estaba ROJA, y por qué nadie lo vio
+
+**Hallazgo al empezar O2.** El último push de la fase (#152, `cebbfe5`) dejó CI
+en rojo — tres jobs fallando — y ninguna sesión lo notó porque **los gates
+locales que el bloque REGLAS manda correr no incluyen los que fallan**:
+
+| job fallando             | causa REAL (reproducida local)                                                                                            | ¿lo cubre el gate local?                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Python → Format check    | `ruff format --check .` con **21 archivos** sin formatear (ml, numeric, quantum, `challenges/reto{2,3}`, `scripts/gen_*`) | **NO** — el bloque REGLAS dice `ruff check`, que es OTRA cosa |
+| Security → gitleaks      | falso positivo: `signing_key: ed25519.Ed25519PrivateKey` en `api/.../runs.py:396` — una ANOTACIÓN DE TIPO, sin valor      | **NO** — no había gitleaks local                              |
+| Web → dependency-cruiser | 2 violaciones reales del Studio (abajo)                                                                                   | **NO** — no está en el bloque REGLAS                          |
+
+`lint-staged` solo toca lo que UNO stagea: un archivo que otra sesión dejó sin
+formatear sobrevive hasta que CI lo dice. Y el `pre-commit` de husky no corre en
+un worktree sin `node_modules` — bypassearlo es exactamente cómo se acumularon
+los 21.
+
+**Corregido acá**: `ruff format` sobre el árbol (21 archivos, cambio puramente
+mecánico; las sesiones que los escribieron ya cerraron), el falso positivo de
+gitleaks (vía `.gitleaks.toml`, abajo), y CONTRIBUTING gana la sección «los dos
+gates que la gente olvida» con `ruff format --check .` y `depcruise`.
+
+**Hueco de CI cerrado de paso**: el filtro de rutas del job Python NO incluía
+`api/**` — un cambio SOLO en la capa HTTP se saltaba pytest, pyright y
+lint-imports enteros. Entran también `distributions/`, `tools/`, `challenges/`
+y `scripts/`.
+
+**REPORTADO, no arreglado — depcruise (decisión de arquitectura del Studio, no
+mía):** `src/App.tsx → src/router.tsx → src/App.tsx` (`no-circular`) y
+`src/App.tsx → src/gatewayClient.ts` (`F3: views-consume-only-the-data-layer`).
+Las dos llegaron con el router de P7 y las dos son estructurales: romper el
+ciclo mueve dónde vive el árbol de rutas, y F3 dice que una vista no habla con
+el cliente HTTP. Es alcance de P-ui/V; hasta que se resuelva, **CI seguirá roja
+en el job Web**.
+
+### #157 — O2: enforcement versionado de patrones, y el árbol de terceros fuera
+
+**Ejecuta la decisión #153.**
+
+**Enforcement.** `.gitleaks.toml` versionado (extiende el set upstream) +
+`scripts/pre-commit-secrets.sh` colgado del `pre-commit` de husky, que escanea
+lo STAGED. Lo específico vive en `.gitleaks.local.toml`, gitignoreado: si
+existe, el hook lo usa EN LUGAR del compartido. Lo que viaja en el repo es
+genérico —escaneo de secretos, lo que cualquier repo serio tiene— y no dice
+nada de qué patrones hay del otro lado.
+
+Comportamiento sin gitleaks instalado, decidido a propósito:
+
+- **sin** config local → avisa y deja pasar (CI escanea la historia y bloquea;
+  una herramienta de dev faltante no debe frenar a alguien en su primer día);
+- **con** config local → **falla**. Configuraste patrones extra: saltárselos en
+  silencio sería lo peor de los dos mundos, enforcement que crees tener y no
+  tienes.
+
+**Verificado en vivo** con el binario pinneado de CI (v8.30.1, sha256
+verificado): (1) sin gitleaks y sin config local → exit 0 con aviso; (2) sin
+gitleaks y con config local → exit 1; (3) con gitleaks y un token de Stripe
+staged → **exit 1, commit bloqueado**. Y la allowlist es ANGOSTA, probada por
+separado: `signing_key: str = "sk_live_…"` (anotación CON valor) **sí** se
+detecta; solo se perdona la declaración sin valor.
+
+**Desvendorizado.** `knowledge/quantum/quantathon/` (81 archivos, 16 MB:
+transcripciones de YouTube de QWorld + 7 ponentes nominados, sin licencia
+declarada) salió del árbol a
+`~/projects/blite/hackathons/2026/Quantathon/quantathon-material/`. Quedan dos
+archivos: `catalog.yaml` (índice de fuentes PÚBLICAS — URLs y ponente, se
+referencia, no se reproduce) y un `README.md` con la causa.
+
+- **Consecuencia buena e inesperada**: las exclusiones de `.markdownlintignore`
+  y `.prettierignore` para ese árbol se BORRAN — el gate de docs vuelve a cubrir
+  el repo COMPLETO, sin un agujero de 671 errores «que no son nuestros».
+- **Ítem nuevo al backlog** (razón de Dylan): destilar ese material a skills /
+  afinado del harness. El valor nunca fue el material, era el destilado — y el
+  destilado es escritura nuestra que cita las URLs públicas.
+- **BLOQUEADOR PRE-FLIP**: publicar el repo publica la HISTORIA. Sacarlo de HEAD
+  no lo saca del repo público: falta `git filter-repo` sobre esa ruta antes del
+  flip, y lo corre Dylan (el clasificador de la sesión bloquea filter-repo).
+
+### Tabla de interacciones — #156/#157
+
+| Interfaz tocada                              | Dominio afectado | Estado del contrato                                                          |
+| -------------------------------------------- | ---------------- | ---------------------------------------------------------------------------- |
+| `.gitleaks.toml` + `pre-commit-secrets.sh`   | repo/CI          | NUEVO — genérico versionado; lo específico fuera de git                      |
+| `.husky/pre-commit`                          | repo             | EXTENDIDO — `lint-staged` + escaneo de lo staged                             |
+| `.github/workflows/ci.yml` — filtro `python` | CI               | CORREGIDO — `api/**` faltaba; +distributions/tools/challenges/scripts        |
+| 21 archivos `ruff format`                    | G (cerrada)      | MECÁNICO — cero cambio semántico; desbloquea el job Python                   |
+| `.markdownlintignore` / `.prettierignore`    | docs             | ENDURECIDO — muere la exclusión del vendorizado; gate cubre todo             |
+| `knowledge/quantum/quantathon/`              | knowledge        | REDUCIDO a índice + causa; el crudo vive fuera del repo                      |
+| `apps/studio` depcruise ×2                   | D (P-ui/V)       | **ROTO — reportado, sin decisión**: CI Web seguirá roja hasta que se arregle |
+
+### #158 — EL REPO YA ES PÚBLICO: el bloqueador pre-flip de #157 no es pre-flip
+
+**Verificado en vivo hoy (2026-08-05), no inferido:**
+
+```
+gh repo view Blite-HQ/chimera → {"isPrivate": false, "visibility": "PUBLIC"}
+gh api repos/Blite-HQ/chimera/contents/knowledge/quantum/quantathon
+  → CLAUDE.md · catalog.yaml · corpus-spec.md · knowledge · slides_png
+```
+
+El árbol vendorizado de terceros **está publicado ahora mismo** en GitHub. La
+decisión #157 lo sacó del árbol, y eso sirve para HEAD — pero la historia
+también es pública, así que la cirugía (`git filter-repo` sobre
+`knowledge/quantum/quantathon/` + force-push) deja de ser «antes de publicar» y
+pasa a ser **remediación de una exposición viva**. La corre Dylan (el
+clasificador de la sesión bloquea filter-repo/force-push), y conviene además
+pedirle a GitHub Support que purgue los objetos sueltos: un force-push deja los
+blobs accesibles por SHA.
+
+Esto NO cambia el diseño de #157 — el enforcement versionado sigue siendo
+genérico y el patrón sigue fuera de git, que es justo lo que hay que hacer con
+un repo público. Cambia la urgencia y el orden.
+
+### #159 — hallazgos 9 y 10 del handoff S3, cerrados con evidencia
+
+**Hallazgo 9a — el ignore de CVE con fecha vencida.** RE-EVALUADO hoy:
+`pip-audit -f json` reporta `PYSEC-2026-2447` (diskcache 5.6.3, alias
+CVE-2025-69872) con **`fix_versions: []`** — upstream sigue sin release
+arreglada, así que el ignore SIGUE justificado. El comentario de `ci.yml` deja
+de tener una fecha muerta: dice cómo re-evaluarlo y que se quita en cuanto
+aparezca un fix.
+
+**Y lo que la re-evaluación destapó — dos CVEs con arreglo disponible,
+tapados por la CI roja:**
+
+| paquete               | vuln           | fix disponible | estado                            |
+| --------------------- | -------------- | -------------- | --------------------------------- |
+| `aiohttp` 3.14.2      | CVE-2026-69244 | **3.14.3**     | PR de dependabot ABIERTO, CI roja |
+| `cryptography` 49.0.0 | CVE-2026-69247 | **50.0.0**     | PR de dependabot ABIERTO, CI roja |
+| `diskcache` 5.6.3     | CVE-2025-69872 | ninguna        | ignore justificado                |
+
+El job Security corre gitleaks ANTES que pip-audit, así que el falso positivo
+de #156 abortaba el job y `pip-audit` **nunca llegaba a correr**: dos parches de
+seguridad esperando detrás de un fallo que no tenía nada que ver. Con #156/#157
+el job vuelve a llegar a ese paso. **NO se bumpean acá**: los PRs de dependabot
+son el vehículo correcto y duplicarlos en `uv.lock` solo crearía conflicto.
+
+**Hallazgo 9b — URL rota de `ISSUE_TEMPLATE/config.yml`.** RESUELTA POR LOS
+HECHOS: `https://github.com/Blite-HQ/Chimera/blob/main/SECURITY.md` responde
+**200** (comprobado con curl; el nombre real del repo es `Blite-HQ/chimera` y
+GitHub no distingue mayúsculas). Estaba «rota» solo mientras el repo era
+privado. Sin cambio.
+
+**Hallazgo 10 — pin frágil `68af0c1`.** VERIFICADO alcanzable: el commit existe
+local y en origin (`gh api .../commits/68af0c1` →
+`68af0c19cf56f95474ffb6e5b14aecf62d5f803f`), lo contiene la rama
+`ejercicio/sf-ratificacion-simulada` (local y remota) y
+`protocolo-auditoria-ratificaciones.md` se lee ahí. **No podar esa rama.** La
+fragilidad se retira de verdad en O9, que necesita ese mismo protocolo como
+fuente y lo trae al árbol — a partir de ahí el pin deja de ser la única vía.
+
+### #160 — O12: los datos estampados dejan de depender de que alguien se acuerde
+
+`verify_corpus_digests.py` existía y **nadie lo corría en CI**; `knowledge/nexus/`
+—19 corridas externas de Nexus con cadena de digests in-toto— no tenía guard del
+todo, solo un README que declara «NADA se re-digesta ni se regenera».
+
+**`scripts/verify_nexus_digests.py`** (nuevo) verifica, por fila de `index.json`:
+`sha256(canonicalize(normalized_counts))` = `normalized_digest` · el statement
+entero = `statement_digest` · **el eslabón in-toto**: `subject[0].digest.sha256`
+= `normalized_digest`, que es lo que hace que la attestation certifique ESTOS
+counts y no otros · coherencia de los digests dentro de `event` · **cero
+huérfanos** en `normalized/`/`statements/` · y que cada `job_id` de
+`consensus.json` exista en el índice.
+
+Recanonicaliza en vez de comparar bytes (el digest manda, no el formato) y usa
+el MISMO `canonicalize` del anexo congelado que usó el importador — un guard con
+su propia serialización estaría verificando otra cosa.
+
+**Verificado que MUERDE, no solo que pasa**: sobre los datos reales, 19/19 y
+cadena íntegra; con `counts["000000"] += 1` en una corrida, **exit 1** citando
+digest esperado y recomputado; con un archivo extra en `normalized/`, exit 1 por
+huérfano; restaurado, verde otra vez.
+
+**CI**: job nuevo `Data guards` con filtro de rutas propio (`knowledge/*/corpus/**`,
+`knowledge/nexus/**`, los dos scripts) — un corpus editado no arrastra la suite
+de Python entera, y el `ci-gate` agregador ya lo exige.
+
+### Tabla de interacciones — #158/#159/#160
+
+| Interfaz tocada                         | Dominio afectado | Estado del contrato                                                         |
+| --------------------------------------- | ---------------- | --------------------------------------------------------------------------- |
+| `scripts/verify_nexus_digests.py`       | datos/confianza  | NUEVO — solo lee y recomputa; cero re-digest                                |
+| `.github/workflows/ci.yml` — job `data` | CI               | NUEVO — + filtro propio + entra al `ci-gate`                                |
+| `ci.yml` — ignore de CVE                | seguridad        | RE-EVALUADO con evidencia; sigue justificado (sin fix upstream)             |
+| `knowledge/nexus/`, corpus              | datos            | **NO TOCADOS** — el guard los lee, jamás los escribe                        |
+| exposición pública del vendorizado      | repo             | **ABIERTO — requiere a Dylan**: filter-repo + force-push + purga de objetos |
