@@ -169,6 +169,40 @@ De objeto plano a **Statement in-toto + envelope DSSE firmado**, con la **letra 
 > de una MISMA corrida comparten `independence_group` (extensión del punto 7 —
 > jamás inflan patas); el puerto gana `verify_all() -> tuple[Attestation, ...]`
 > con default `= (verify(),)` (compat total). Implementación = ítem C4/M4.
+>
+> **[MEJORADO · sesión CONFIANZA-2 · 2026-08-05] Supersedes de §7 aplicados con
+> causa (ítems C5–C7; ceremonia registrada en `docs/mvp/decisiones.md`):**
+> **(d) Checklist = DIEZ puntos.** Entran el **9 — recompute del
+> `sub_run_provenance_hash`** de cada sub-run aportante (lo MANDA el anexo de
+> canonicalización §4 desde que se congeló; era letra muerta porque el stream
+> del sub-run no viajaba en el Bundle y el hash se computaba con otra fórmula —
+> M28 lo reconcilió) y el **10 — recompute del hash-chain** contra el
+> `provenance_chain_head` firmado. Ninguno puede reprobar un Bundle emitido
+> antes de existir: el 9 solo mira claims de sub-run y el 10 solo verifica si
+> el certificado DECLARA un head. **Bundle mínimo extendido (aditivo):**
+> `sub_run_streams` (los streams de los sub-runs que aportaron claims) y, en
+> el predicate firmado, `provenance_chain_head`.
+> **(e) El hash-chain de Fase 2 se implementa (C5/M8 pieza 1).** Las columnas
+> `prev_hash`/`hash` de §2 dejan de estar vacías: el writer único encadena cada
+> evento con la fórmula del anexo §4. **El `provenance_hash` NO se sustituye
+> todavía** — la promoción del head a `subject.digest` («sin cambiar forma»)
+> cambiaría el digest de todo certificado ya emitido, así que el head viaja
+> como campo propio y la promoción queda como ceremonia aparte, con el
+> sustrato ya puesto.
+> **(f) T6 SUPERSEDIDO — DSSE por attestation deja de ser Fase 2 (C6/M8 pieza
+> 2).** El Bundle puede traer `attestation_envelopes`: un sobre DSSE por
+> constancia con predicate modelado sobre **SLSA VSA** (`verifier`,
+> `timeVerified`, `policy`, `verificationResult` + los campos propios
+> `assuranceLevel`/`verifierClass`/`anchor`/`independenceGroup`), `subject` =
+> el claim, y `resourceUri` = `run/<id>[/step/<island>]`. Las attestations
+> SIGUEN embebidas en el payload del certificado (compat total); el punto 7
+> exige que las dos vistas coincidan EXACTAMENTE — un sobre sin constancia
+> embebida es evidencia por fuera del payload firmado, y una constancia sin
+> sobre cuando el resto los trae es una firma que alguien decidió no dar.
+> Con `attestation_public_keys` (anillo opcional keyid→llave), la separación
+> **S2 (Signer ≠ Verifier) deja de ser limitación declarada**: cada verificador
+> puede firmar SU constancia. La `assumption` correspondiente se mantiene solo
+> mientras la distribución siga firmando todo con la llave del certificado.
 
 ## 8 · `Identity` + JWT + intersección de permisos **[confianza / frontera en la etapa 1]** — trust/08
 

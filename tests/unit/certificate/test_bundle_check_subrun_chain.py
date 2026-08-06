@@ -174,14 +174,15 @@ def test_punto_10_no_verifica_lo_que_el_certificado_no_declara(
 
 
 def _resign_without_c5(bundle: dict[str, Any]) -> dict[str, Any]:
-    """Reconstruye el Bundle tal como lo habría emitido el repo ANTES de C5:
-    sin `provenance_chain_head` en el predicate y sin `sub_run_streams`. Se
-    RE-FIRMA de verdad (llave propia del test) para que el punto 1 siga
-    siendo un chequeo real y no un adorno."""
+    """Reconstruye el Bundle tal como lo habría emitido el repo ANTES de esta
+    sesión: sin `provenance_chain_head`, sin `sub_run_streams` (C5) y sin
+    `attestation_envelopes` (C6). Se RE-FIRMA de verdad (llave propia del
+    test) para que el punto 1 siga siendo un chequeo real y no un adorno."""
     viejo = copy.deepcopy(bundle)
     statement = json.loads(base64.b64decode(viejo["envelope"]["payload"]))
     statement["predicate"].pop("provenance_chain_head", None)
     viejo.pop("sub_run_streams", None)
+    viejo.pop("attestation_envelopes", None)
 
     private_key = ed25519.Ed25519PrivateKey.generate()
     envelope = sign(

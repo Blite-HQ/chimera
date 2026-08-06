@@ -32,6 +32,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from blite.certificate.bundle_check import CLAIM_PREFIX, check_bundle
 from blite.certificate.canonical import canonicalize
+from blite.certificate.vsa import envelope_to_wire, sign_attestation
 from blite.events.chain import chain_head_of_views, provenance_hash_of_views
 
 REPO = Path(__file__).resolve().parent.parent
@@ -117,6 +118,7 @@ def main() -> int:
         {
             "verifier_id": "ortools-cpsat",
             "verifier_class": "formal_exact",
+            "run_id": RUN_ID,
             "anchor_kind": "solver",
             "verdict": "pass",
             "level": "AL3",
@@ -132,6 +134,7 @@ def main() -> int:
         {
             "verifier_id": "pandapower-powerflow",
             "verifier_class": "execution",
+            "run_id": RUN_ID,
             "anchor_kind": "execution",
             "verdict": "pass",
             "level": "AL3",
@@ -246,6 +249,18 @@ def main() -> int:
         "deliverable_contents": {
             deliverable_digest: base64.b64encode(deliverable_bytes).decode("ascii")
         },
+        # [C6/M8 pieza 2] Un sobre DSSE por constancia (predicate forma-VSA).
+        "attestation_envelopes": [
+            envelope_to_wire(
+                sign_attestation(
+                    attestation,
+                    policy_digest=policy_digest,
+                    private_key=private_key,
+                    keyid="attestation:v1-example",
+                )
+            )
+            for attestation in attestations
+        ],
     }
 
     # --- Auto-validación: el generador jamás escribe un bundle que no dé el 100% ---

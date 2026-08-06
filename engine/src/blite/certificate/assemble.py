@@ -38,6 +38,7 @@ from blite.certificate.predicate import (
     ConclusionVerdict,
     compute_titular_level,
 )
+from blite.certificate.vsa import envelope_to_wire, sign_attestation
 from blite.events.chain import (
     chain_head_of_views,
     event_view,
@@ -279,6 +280,23 @@ def assemble_bundle(
         "verifier_descriptors": verifier_descriptors,
         "policy_yaml_b64": base64.b64encode(policy_yaml).decode("ascii"),
         "deliverable_contents": deliverable_contents,
+        # [C6/M8 pieza 2] Un sobre DSSE POR constancia, con predicate
+        # forma-VSA. Material ADITIVO: las attestations siguen embebidas en
+        # el certificado (los bundles viejos y sus verificadores no cambian),
+        # y el punto 7 exige que las dos vistas coincidan exactamente. Es lo
+        # que hace a la constancia por isla un documento firmado en vez de
+        # una fila en una lista que firmó otro.
+        "attestation_envelopes": [
+            envelope_to_wire(
+                sign_attestation(
+                    attestation,
+                    policy_digest=policy_digest,
+                    private_key=signing_key,
+                    keyid=keyid,
+                )
+            )
+            for attestation in attestations
+        ],
         # [M28 · C5] Los streams de los sub-runs que aportaron claims. Sin
         # ellos, el `sub_run_provenance_hash` que el stream del raíz estampa
         # es letra muerta: el anexo §4 manda RECOMPUTARLO offline, y no se

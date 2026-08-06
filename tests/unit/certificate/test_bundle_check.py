@@ -157,4 +157,11 @@ def test_point_7_accepts_per_island_attestations_that_share_the_group(
             {**ejecucion, "step_id": "island-1"},
         ]
 
-    assert 7 not in _failed_points(_retamper_payload(bundle, mutate))
+    forjado = _retamper_payload(bundle, mutate)
+    # Los sobres DSSE por constancia (C6) se quitan: este test mide el CONTEO
+    # DE PATAS sobre un predicate manipulado a mano, y unos sobres que ya no
+    # corresponden a esas constancias harían fallar el punto por otra causa
+    # —la que su propio test cubre en test_attestation_dsse.py—.
+    forjado.pop("attestation_envelopes", None)
+
+    assert 7 not in _failed_points(forjado)

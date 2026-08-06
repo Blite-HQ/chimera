@@ -225,10 +225,98 @@ def _coherencia_de_grupos(attestations: list[dict[str, Any]]) -> tuple[str, ...]
     )
 
 
+def _clave_de_cobertura(attestation: dict[str, Any]) -> tuple[str, str, str | None]:
+    """Qué constancia es esta, sin ambigüedad: el claim que ampara, quién la
+    emitió y sobre qué sub-entidad. Sin `step_id`, dos constancias por isla
+    del mismo verificador serían la misma clave y un sobre podría cubrir a la
+    otra (M4 volvería a ser una lista sin firmar)."""
+    return (
+        attestation["claim_digest"],
+        attestation["verifier_id"],
+        attestation.get("step_id"),
+    )
+
+
+def _sobres_de_attestation(
+    bundle: dict[str, Any], predicate: dict[str, Any]
+) -> tuple[str, ...]:
+    """[C6/M8 pieza 2 — supersede del punto 7] Verifica los sobres DSSE por
+    constancia, cuando el Bundle los trae.
+
+    El freeze §7 [S-F · T6] fijó para Fase 1 «attestations embebidas, UNA
+    firma» y dejó el sobre individual declarado como Fase 2. Al levantarlo,
+    la pregunta que este chequeo responde no es «¿están firmados?» sino
+    **¿firman lo mismo que el certificado dice?**: un sobre que ampare una
+    constancia que el certificado no lleva es evidencia colada por la puerta
+    de atrás, y una constancia sin sobre cuando el resto sí los tiene es una
+    firma que alguien decidió no dar.
+
+    Opt-in: un Bundle sin sobres (todos los emitidos antes de C6) no falla —
+    las attestations embebidas bajo la firma del certificado siguen siendo el
+    respaldo, exactamente como antes."""
+    sobres: list[dict[str, Any]] = bundle.get("attestation_envelopes", [])
+    if not sobres:
+        return ()
+
+    failures: list[str] = []
+    anillo: dict[str, str] = bundle.get("attestation_public_keys", {})
+    default_key: str = bundle.get("public_key", "")
+
+    cubiertos: set[tuple[str, str, str | None]] = set()
+    for sobre in sobres:
+        try:
+            envelope = DSSEEnvelope(
+                payload_type=sobre["payloadType"],
+                payload_b64=sobre["payload"],
+                signatures=tuple(
+                    DSSESignature(keyid=s["keyid"], sig=s["sig"])
+                    for s in sobre["signatures"]
+                ),
+            )
+            keyid = envelope.signatures[0].keyid
+            material = anillo.get(keyid, default_key)
+            dsse_verify(
+                envelope,
+                ed25519.Ed25519PublicKey.from_public_bytes(base64.b64decode(material)),
+            )
+        except InvalidSignature:
+            failures.append("un sobre de attestation NO verifica sobre su PAE")
+            continue
+        except (IndexError, KeyError, ValueError) as exc:
+            failures.append(f"sobre de attestation malformado: {exc}")
+            continue
+        statement = json.loads(base64.b64decode(envelope.payload_b64))
+        predicado = statement["predicate"]
+        recurso = str(predicado.get("resourceUri", ""))
+        step_id = recurso.split("/step/")[1] if "/step/" in recurso else None
+        cubiertos.add(
+            (
+                str(statement["subject"][0]["digest"]["sha256"]),
+                str(predicado["verifier"]["id"]),
+                step_id,
+            )
+        )
+
+    embebidas = {_clave_de_cobertura(att) for att in predicate.get("attestations", [])}
+    for clave in sorted(cubiertos - embebidas):
+        failures.append(
+            f"sobre firmado para {clave[1]}/{clave[2]} que el certificado NO "
+            "embebe (evidencia por fuera del payload firmado)"
+        )
+    for clave in sorted(embebidas - cubiertos):
+        failures.append(
+            f"constancia {clave[1]}/{clave[2]} embebida SIN sobre propio "
+            "(el resto del bundle sí los trae)"
+        )
+    return tuple(failures)
+
+
 def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
     """(7) Conclusión↔attestations (pass↔verified) · techo por clase · proof AL4
     · patas por independence_group ≥ Policy pinneada; not_required_declared EXENTAS.
-    Extensión C-6/#106: coherencia de grupos por verificador (anti-inflación)."""
+    Extensión C-6/#106: coherencia de grupos por verificador (anti-inflación).
+    Extensión C6/M8 pieza 2: los sobres DSSE por constancia, cuando viajan,
+    deben cubrir EXACTAMENTE las attestations que el certificado embebe."""
     failures: list[str] = []
     _, predicate = _decode_predicate(bundle)
 
@@ -244,6 +332,7 @@ def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
 
     attestations = predicate.get("attestations", [])
     failures.extend(_coherencia_de_grupos(attestations))
+    failures.extend(_sobres_de_attestation(bundle, predicate))
     for conclusion in predicate.get("conclusions", []):
         verdict = conclusion["verdict"]
         if verdict == "not_required_declared":
