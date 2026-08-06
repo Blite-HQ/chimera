@@ -16,5 +16,6 @@
       "transform_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     }
   ],
-  "seed": 7
+  "seed": 7,
+  "unsat_core": []
 }

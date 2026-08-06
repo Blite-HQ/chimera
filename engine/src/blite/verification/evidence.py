@@ -165,8 +165,27 @@ class PropertyRulePredicate(BaseModel):
     seed: int | None = None
     generator_version: str | None = None
     backend: str | None = None
-    status: str | None = None
-    unsat_core: str | None = None
+    status: Literal["sat", "unsat", "unknown"] | None = None
+    """Crudo del backend formal (freeze §4; trust/11 §1.1). [C3/M3 #103]
+    Estrechado de `str` al vocabulario real: `sat|unsat|unknown` es un
+    conjunto cerrado de la spec y un `status` fuera de él nunca fue
+    representable en la intención — sin emisores ni consumidores previos
+    (el campo entró con la semilla y nadie lo llenaba), estrecharlo es
+    aditivo en la práctica y vuelve irrepresentable el estado ilegal."""
+    unsat_core: tuple[str, ...] = ()
+    """Nombres de las reglas en conflicto (trust/11 §1.1: `list[str]`).
+    [C3/M3 #103] Corregido de `str | None`: el core ES un subconjunto de
+    reglas y un solo string no podía cargarlo — el campo era intipable
+    según su propia spec. Limitación documentada (§1.4): Z3 devuelve un
+    subconjunto insatisfacible PEQUEÑO, no garantizado mínimo; la lista
+    autoritativa de qué rompió el candidato es `properties`."""
+    rule_set_id: str | None = None
+    """Identidad del artefacto de reglas (`particion-rules@0.1.0`) — campo
+    aditivo que trust/11 §1.5 propuso para el ítem C3/M3."""
+    rule_digest: str | None = None
+    """SHA-256 de los BYTES EXACTOS del artefacto de reglas (Regla 1 del
+    anexo, como `policy_digest`): sin él, «se verificó contra las reglas» no
+    dice contra QUÉ versión de las reglas."""
 
 
 class ConsensusLeg(BaseModel):

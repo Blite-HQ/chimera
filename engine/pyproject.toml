@@ -20,6 +20,14 @@ dependencies = [
     "pandapower>=3.5.4",
     "cvxpy>=1.9.2",
     "pyjwt>=2.13.0",
+    # z3 (MIT) es el backend formal del ancla `rule` (C3/M3, freeze §4 —
+    # `blite.verification.rule_z3`). Va como dependencia DIRECTA del engine,
+    # igual que ortools para `formal_exact` y pandapower para `execution`:
+    # el adapter del ancla vive en el engine (ADR-008 prohíbe importar
+    # capabilities), así que el engine debe declarar lo que importa. Que la
+    # distribución ya lo instalara vía `blite-cap-smt[z3]` no lo declaraba:
+    # era una dependencia implícita que se rompía al instalar el engine solo.
+    "z3-solver>=4.16",
 ]
 
 [dependency-groups]
