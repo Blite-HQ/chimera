@@ -76,6 +76,7 @@ corrected by a NEW dated note — never by deleting the seal (#109).
 | ---------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------- |
 | [`invariants.md`](invariants.md)                                                         | CONGELADO                     | The logical invariants (INV-\*, AX\*) enforced by CI gates                    |
 | [`base-logica-formal.md`](base-logica-formal.md)                                         | CONGELADO                     | The formal logical system (AX/PR/D) that `invariants.md` distills             |
+| [`tres-planos.md`](tres-planos.md)                                                       | VIGENTE                       | verification ≠ guardrail ≠ evaluation — which plane may decide what (O8)      |
 | [`contract-freeze.md`](contract-freeze.md)                                               | CONGELADO (+[MEJORADO] marks) | The data contracts. §-map by plane in §4 below                                |
 | [`contract-freeze-anexo-canonicalizacion.md`](contract-freeze-anexo-canonicalizacion.md) | CONGELADO                     | Byte-level canonicalization (RFC 8785 + DSSE) with test vectors               |
 | [`spec-confianza-v3-2.md`](spec-confianza-v3-2.md)                                       | CONGELADO                     | Normative kernel spec of the trust layer (delegated vocabulary of the freeze) |

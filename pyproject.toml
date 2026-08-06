@@ -23,7 +23,7 @@ override-dependencies = ["highspy==1.14.0"]
 default-groups = ["dev", "experiment"]
 
 [tool.uv.workspace]
-members = ["sdk", "engine", "api", "capabilities/*", "distributions/*"]
+members = ["sdk", "engine", "api", "capabilities/*", "distributions/*", "tools/corpus-runner"]
 
 [tool.uv.sources]
 blite-capability = { workspace = true }
@@ -56,6 +56,7 @@ src = [
     "capabilities/quantum/src",
     "capabilities/report/src",
     "capabilities/ingesta/src",
+    "tools/corpus-runner/src",
     "tests",
 ]
 
@@ -101,13 +102,14 @@ include = [
     # recorrer payloads.
     "api/src",
     "capabilities",
+    "tools/corpus-runner",
     "tests",
 ]
 
 # ── Pytest + Coverage ─────────────────────────────────────────────────────────
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "capabilities/*/tests"]
+testpaths = ["tests", "capabilities/*/tests", "tools/corpus-runner/tests"]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
@@ -130,6 +132,7 @@ source = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "chimera_eval",
 ]
 branch = true
 omit = ["*/tests/*"]
@@ -162,6 +165,7 @@ root_packages = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "chimera_eval",
 ]
 include_external_packages = true
 
@@ -392,3 +396,31 @@ forbidden_modules = [
     "blite_cap_report",
     "blite_cap_ingesta",
 ]
+
+[[tool.importlinter.contracts]]
+name = "O8: evaluation is downstream — nothing imports the corpus runner"
+type = "forbidden"
+# El TERCER plano (evaluación agregada, offline) mide el sistema; el sistema
+# jamás depende de él. Si un día `blite` o `chimera_api` importaran
+# `chimera_eval`, una métrica retrospectiva habría entrado al camino crítico de
+# un run — exactamente la confusión eval≈verificación que el marco de los tres
+# planos existe para evitar (docs/tres-planos.md · knowledge/trust/17 §1.6).
+# La flecha inversa SÍ es legítima y por eso no se prohíbe: la tarea
+# `chimera_eval.tasks.verification_plane` importa el plano de verificación para
+# medirlo.
+source_modules = [
+    "blite",
+    "blite_capability",
+    "chimera_api",
+    "blite_cap_solvers",
+    "blite_cap_graphs",
+    "blite_cap_numeric",
+    "blite_cap_sim",
+    "capabilities_sim_api",
+    "blite_cap_ml",
+    "blite_cap_smt",
+    "blite_cap_quantum",
+    "blite_cap_report",
+    "blite_cap_ingesta",
+]
+forbidden_modules = ["chimera_eval"]

@@ -2920,3 +2920,95 @@ lleva rutas absolutas de esta máquina). `ruff` limpio. `markdownlint` y
 | `docs/invariants.md` — ADR-029b          | TODOS (doctrina) | NUEVO — aditivo; ADR-029 intacto                                     |
 | `agnosticism_exceptions.toml`            | engine · api · D | NUEVO — mapa declarado de deuda; solo puede encoger                  |
 | Baseline del worktree                    | n/a              | 1205 passed / 13 skipped / 9 xfailed / 4 xpassed / cov 91.62 %       |
+
+### #155 — O8: el tercer plano existe, y su primera medición encontró algo
+
+**El hueco (censo 07 §7.1-1).** G1-G7 metieron los retos 2 y 3, C-1/C-2 profundizan
+la confianza, V pinta los productores — y **no había forma de medir si el sistema
+MEJORA**. El `false_reject_proxy` que trust/05 §1.3 define como KPI de primer
+nivel llevaba meses sin consumidor.
+
+**Lo construido.** `chimera_eval` (`tools/corpus-runner/`, miembro nuevo del
+workspace), con la forma de Inspect (UK AISI) —`Dataset → Task → Solver →
+Scorer`— y su vocabulario `C/I/P/N`, **portados sin la dependencia** (la decisión
+ya estaba tomada en trust/17 §2: adoptar el framework metería su ciclo de vida
+dentro del nuestro). Más `docs/tres-planos.md`, el marco transversal promovido
+desde trust/17 §1.6, y `scripts/run_eval_corpus.py`, que arma el dataset desde el
+corpus C3 y corre los verificadores REALES.
+
+**Tres decisiones de diseño que no son de Inspect:**
+
+1. **`config_digest`.** El `EvalSpec` de Inspect captura `revision` y `packages`
+   pero ningún digest de configuración: la reproducibilidad había que computarla
+   igual. Acá la identidad de una evaluación ES su digest.
+2. **Cero reloj en el log.** Dos corridas idénticas dan bytes idénticos
+   (verificado: mismo sha256 en dos corridas seguidas). Con timestamp, comparar
+   dos variantes de una ablación sería lectura a ojo en vez de un `diff`.
+3. **Un error de PROCESO no es un veredicto** — la misma doctrina que
+   `VerificationProcessError` en el engine. Si el solver explota, la muestra sale
+   de las tasas y se reporta aparte: contarla como `I` inventaría un error del
+   sistema, y como `N` inventaría una abstención que nadie tomó. Las dos mentiras
+   corrompen justo el KPI que el runner existe para medir.
+
+**`target` estructurado, no string.** Es la única fricción de forma que trust/17
+§1.2 anotaba («`Target` es estrictamente `str | list[str]`»): una partición de
+grafo o una serie numérica no son texto. El corpus de esta casa tiene óptimos y
+series; el tipo lo dice.
+
+**La frontera, hecha gate.** Contrato de import-linter nuevo — **«O8: evaluation
+is downstream — nothing imports the corpus runner»**: `blite`, `chimera_api`, el
+SDK y las 9 capabilities tienen prohibido importar `chimera_eval`. La flecha
+inversa es legítima y por eso NO se prohíbe (la tarea importa el plano de
+verificación para medirlo). Si un día se invirtiera, una métrica retrospectiva
+habría entrado al camino crítico de un run — que es exactamente la confusión
+eval≈verificación que el marco existe para evitar.
+
+**LA MEDICIÓN (corpus C3, 9 instancias × 2 polaridades, verificadores reales):**
+
+| KPI                   | valor     |
+| --------------------- | --------- |
+| `scored`              | 18        |
+| `process_errors`      | 0         |
+| `accuracy`            | 0.667     |
+| `over_refusal_rate`   | **0.333** |
+| `decisive_error_rate` | **0.0**   |
+
+Las dos polaridades importan: sin la muestra perturbada, un verificador que
+dijera `pass` a todo sacaría 100 %. La perturbación es MULTIPLICATIVA (×1.5) y no
+aditiva a propósito — un offset aditivo sobre valores cercanos a cero no mueve el
+error L∞-RELATIVO que estos verificadores usan, y la «mentira» se colaría como
+verdad.
+
+**El hallazgo — HANDOFF a G / C-2.** Cero errores decisivos (el sistema nunca se
+pronunció equivocado, en ninguna polaridad). Pero el 33 % de sobre-rechazo está
+**enteramente en `N = 12`**: `verifier:ed-dense` se abstiene con
+`budget_exhausted` porque 2¹² = 4096 supera su `_DEFAULT_MAX_DENSE_DIMENSION =
+1024`. La abstención es honesta y diseñada así (rehúso explícito antes que cambio
+silencioso de algoritmo, §Deliverable-1 punto 2). La consecuencia NO estaba
+medida: **en `N = 12` los claims del reto 3 quedan sostenidos por UNA pata** (el
+corpus congelado), no por las dos independientes que la receta 11 promete — la
+independencia se degrada justo en las instancias más grandes. No es bug de nadie;
+es una medición que antes no existía. Decidir es de G/C-2: subir el presupuesto,
+declarar `N=12` como single-leg con causa, o traer una segunda pata que escale.
+
+**Hallazgo de arnés (corrige la receta #83).** `uv sync --locked --all-packages
+--all-extras` DENTRO del worktree crea un `.venv` completo, con los editables
+apuntando al worktree. La receta anterior (venv del principal + `PYTHONPATH`) ya
+no hace falta y además ocultaba errores de tipo de módulos nuevos (#149). Los
+gates de esta sesión corren con `uv run` a secas.
+
+**Flake preexistente registrado (NO introducido acá).** En la PRIMERA corrida del
+baseline, `capabilities/ml/tests/test_integration_reto2.py::TestFullChainOnCorpusSlice::test_both_arms_produce_metrics_with_aligned_shapes`
+falló; en las tres corridas siguientes (misma config, con y sin cobertura) pasó.
+Aislado pasa siempre. Un test no determinista en un repo cuyo argumento es el
+determinismo merece dueño: queda REPORTADO, sin decisión, para G.
+
+### Tabla de interacciones — #155
+
+| Interfaz tocada                                       | Dominio afectado | Estado del contrato                                                   |
+| ----------------------------------------------------- | ---------------- | --------------------------------------------------------------------- |
+| `pyproject.toml` — workspace + testpaths + coverage   | build            | EXTENDIDO — miembro nuevo `tools/corpus-runner`; `uv.lock` regenerado |
+| contrato import-linter «O8: evaluation is downstream» | TODOS            | NUEVO — 15 contratos kept, 0 broken                                   |
+| `docs/tres-planos.md` + índice `docs/README.md`       | docs (autoridad) | NUEVO — marco transversal; cero cambios de contrato                   |
+| `chimera_eval` (paquete)                              | eval (nuevo)     | NUEVO — fuera de `blite.*`, sin deps de runtime                       |
+| `results/eval/*.json`                                 | evidencia        | NUEVO — log reproducible (mismo sha256 en dos corridas)               |

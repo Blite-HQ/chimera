@@ -1,0 +1,203 @@
+{
+  "config_digest": "5196cf1c8175b7c066c6c7cfd91fa8e976ef7de6c4eeb1dbd47cbbc48db2ad0a",
+  "dataset_digest": "c486500ccc314404c56abfe01b37b1fb5c7f1e076b838328edf184028a34c806",
+  "dataset_name": "corpus",
+  "metrics": {
+    "accuracy": 0.6666666666666666,
+    "decisive_error_rate": 0.0,
+    "over_refusal_rate": 0.3333333333333333,
+    "process_errors": 0.0,
+    "scored": 18.0
+  },
+  "packages": {
+    "python": "3.12.3"
+  },
+  "params": {},
+  "results": [
+    {
+      "error": null,
+      "sample_id": "chain-n12-h05:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=inconclusive,verifier:tfim-corpus=pass",
+        "explanation": "al menos una pata se abstuvo — sobre-rechazo: cuesta utilidad sin ganar corrección (razones: budget_exhausted)",
+        "metadata": {},
+        "value": "N"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n12-h05:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=inconclusive,verifier:tfim-corpus=fail",
+        "explanation": "al menos una pata se abstuvo — sobre-rechazo: cuesta utilidad sin ganar corrección (razones: budget_exhausted)",
+        "metadata": {},
+        "value": "N"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n12-h10:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=inconclusive,verifier:tfim-corpus=pass",
+        "explanation": "al menos una pata se abstuvo — sobre-rechazo: cuesta utilidad sin ganar corrección (razones: budget_exhausted)",
+        "metadata": {},
+        "value": "N"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n12-h10:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=inconclusive,verifier:tfim-corpus=fail",
+        "explanation": "al menos una pata se abstuvo — sobre-rechazo: cuesta utilidad sin ganar corrección (razones: budget_exhausted)",
+        "metadata": {},
+        "value": "N"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n12-h20:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=inconclusive,verifier:tfim-corpus=pass",
+        "explanation": "al menos una pata se abstuvo — sobre-rechazo: cuesta utilidad sin ganar corrección (razones: budget_exhausted)",
+        "metadata": {},
+        "value": "N"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n12-h20:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=inconclusive,verifier:tfim-corpus=fail",
+        "explanation": "al menos una pata se abstuvo — sobre-rechazo: cuesta utilidad sin ganar corrección (razones: budget_exhausted)",
+        "metadata": {},
+        "value": "N"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n6-h05:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=pass,verifier:tfim-corpus=pass",
+        "explanation": "todas las patas: pass",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n6-h05:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=fail,verifier:tfim-corpus=fail",
+        "explanation": "todas las patas: fail",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n6-h10:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=pass,verifier:tfim-corpus=pass",
+        "explanation": "todas las patas: pass",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n6-h10:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=fail,verifier:tfim-corpus=fail",
+        "explanation": "todas las patas: fail",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n6-h20:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=pass,verifier:tfim-corpus=pass",
+        "explanation": "todas las patas: pass",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n6-h20:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=fail,verifier:tfim-corpus=fail",
+        "explanation": "todas las patas: fail",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n8-h05:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=pass,verifier:tfim-corpus=pass",
+        "explanation": "todas las patas: pass",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n8-h05:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=fail,verifier:tfim-corpus=fail",
+        "explanation": "todas las patas: fail",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n8-h10:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=pass,verifier:tfim-corpus=pass",
+        "explanation": "todas las patas: pass",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n8-h10:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=fail,verifier:tfim-corpus=fail",
+        "explanation": "todas las patas: fail",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n8-h20:faithful",
+      "score": {
+        "answer": "verifier:ed-dense=pass,verifier:tfim-corpus=pass",
+        "explanation": "todas las patas: pass",
+        "metadata": {},
+        "value": "C"
+      }
+    },
+    {
+      "error": null,
+      "sample_id": "chain-n8-h20:perturbed",
+      "score": {
+        "answer": "verifier:ed-dense=fail,verifier:tfim-corpus=fail",
+        "explanation": "todas las patas: fail",
+        "metadata": {},
+        "value": "C"
+      }
+    }
+  ],
+  "revision": "ce0596d979a958fe6e09763c6e01d746a6203aac-dirty",
+  "scorer_id": "expected-verdict-v1",
+  "solver_id": "verification-plane-v1",
+  "task": "verification-plane-over-refusal",
+  "task_version": "1"
+}

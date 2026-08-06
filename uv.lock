@@ -25,6 +25,7 @@ members = [
     "chimera-api",
     "chimera-distribution",
     "chimera-engine",
+    "chimera-eval",
     "chimera-workspace",
 ]
 overrides = [{ name = "highspy", specifier = "==1.14.0" }]
@@ -834,6 +835,11 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "hypothesis", specifier = ">=6.156.4" }]
+
+[[package]]
+name = "chimera-eval"
+version = "0.1.0"
+source = { editable = "tools/corpus-runner" }
 
 [[package]]
 name = "chimera-workspace"
