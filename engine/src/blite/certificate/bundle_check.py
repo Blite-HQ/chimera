@@ -326,7 +326,7 @@ def _sobres_de_attestation(
 
 
 @dataclass(frozen=True)
-class _Exigencia:
+class Exigencia:
     """Lo que la Policy exige para una conclusión — el MÁXIMO de todas las
     reglas aplicables, no la primera que casó."""
 
@@ -374,11 +374,11 @@ def _regla_aplica(
     return bool(match)
 
 
-def _exigencia_de_policy(
+def requirement_for(
     rules: list[dict[str, Any]],
     conclusion: dict[str, Any],
     efectos: dict[str, str],
-) -> _Exigencia | None:
+) -> Exigencia | None:
     """El MÁXIMO de las reglas aplicables — «forma monotónica, deny unless
     proven» (freeze §6). Tomar la primera que casa dejaría que el orden del
     YAML decidiera la exigencia, y que una regla laxa tapara a una estricta
@@ -390,7 +390,7 @@ def _exigencia_de_policy(
     anclas: list[str] = []
     for rule in aplicables:
         anclas.extend(str(kind) for kind in rule.get("required_anchors", []))
-    return _Exigencia(
+    return Exigencia(
         min_level=max(
             (str(r.get("min_level", "AL0")) for r in aplicables),
             key=_LEVEL_ORDER.__getitem__,
@@ -461,7 +461,7 @@ def punto_7_attestations_patas(bundle: dict[str, Any]) -> tuple[str, ...]:
                     failures.append(
                         f"{att['verifier_id']}: AL4 sin proof completo (§4-iii)"
                     )
-        exigencia = _exigencia_de_policy(rules, conclusion, efectos)
+        exigencia = requirement_for(rules, conclusion, efectos)
         if exigencia is None:
             failures.append(
                 f"claim {cid}…: sin regla de Policy para claim_type "
