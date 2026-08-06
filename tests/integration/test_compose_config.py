@@ -22,14 +22,26 @@ def _load_compose() -> dict[str, Any]:
 
 
 def test_services_are_exactly_the_four_frozen_by_the_freeze() -> None:
+    """Los servicios del compose CANÓNICO (freeze §15.4) son cuatro. Los que
+    entran bajo `profiles:` no cuentan: no se levantan con `docker compose
+    up` y por definición no cambian el despliegue por defecto — es la vía por
+    la que el freeze admite piezas opcionales (custodia, observabilidad) sin
+    que el mínimo crezca. Un servicio nuevo SIN perfil sí rompe este test, que
+    es exactamente lo que debe hacer."""
     # Arrange
     compose = _load_compose()
 
-    # Act
-    service_names = set(compose["services"].keys())
+    # Act — el mínimo es lo que corre sin pedir perfil
+    canonicos = {
+        name
+        for name, service in compose["services"].items()
+        if not service.get("profiles")
+    }
 
     # Assert
-    assert service_names == {"postgres", "api", "worker", "studio"}
+    assert canonicos == {"postgres", "api", "studio"}
+    assert set(compose["services"]["worker"]["profiles"]) == {"queue"}
+    assert set(compose["services"]["openbao"]["profiles"]) == {"custody"}
 
 
 def test_top_level_secret_declares_the_postgres_password_file() -> None:

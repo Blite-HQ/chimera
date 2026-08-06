@@ -32,10 +32,9 @@ from __future__ import annotations
 import base64
 from typing import Any
 
-from cryptography.hazmat.primitives.asymmetric import ed25519
-
 from blite.certificate.canonical import canonicalize
-from blite.certificate.dsse import DSSEEnvelope, sign
+from blite.certificate.dsse import DSSEEnvelope
+from blite.certificate.keys import ATTESTATION_PURPOSE, KeyProvider, sign_envelope
 
 ATTESTATION_PAYLOAD_TYPE = "application/vnd.blite.verification-summary+json"
 ATTESTATION_PREDICATE_TYPE = "https://blite.dev/VerificationSummary/v1"
@@ -99,18 +98,22 @@ def sign_attestation(
     attestation: dict[str, Any],
     *,
     policy_digest: str,
-    private_key: ed25519.Ed25519PrivateKey,
-    keyid: str,
+    key_provider: KeyProvider,
 ) -> DSSEEnvelope:
-    """Firma UNA constancia como sobre DSSE independiente (Regla 1: se firman
-    los bytes canónicos exactos, y son esos los que viajan)."""
-    return sign(
+    """Firma UNA constancia como sobre DSSE independiente, POR EL PUERTO y con
+    su propio `purpose` (Regla 1: se firman los bytes canónicos exactos, y son
+    esos los que viajan).
+
+    El `purpose` separado es lo que permite que la custodia le dé al
+    verificador una llave propia — sin él, «cada verificador firma lo suyo»
+    seguiría dependiendo de que alguien se acuerde."""
+    return sign_envelope(
+        key_provider,
+        purpose=ATTESTATION_PURPOSE,
         payload_type=ATTESTATION_PAYLOAD_TYPE,
         payload=canonicalize(
             attestation_statement(attestation, policy_digest=policy_digest)
         ),
-        private_key=private_key,
-        keyid=keyid,
     )
 
 

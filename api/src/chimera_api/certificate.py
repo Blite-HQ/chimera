@@ -64,8 +64,7 @@ def create_certificate_router(resources: RunResources) -> APIRouter:
                 stream=stream,
                 conclusions=ticket.conclusions,
                 policy_yaml=resources.policy_bytes,
-                signing_key=resources.signing_key,
-                keyid=resources.keyid,
+                key_provider=resources.key_provider,
                 anchor_descriptors=ticket.anchor_descriptors,
                 sub_run_streams=sub_run_streams_for(resources.store, stream),
             )

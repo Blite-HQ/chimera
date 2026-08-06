@@ -31,6 +31,7 @@ from blite.certificate.assemble import (
     assemble_bundle,
 )
 from blite.certificate.bundle_check import check_bundle
+from blite.certificate.keys import LocalKeyProvider
 from blite.events import create_event_store
 from blite.events.event import Event
 from blite.runtime.content_store import InMemoryContentStore
@@ -199,8 +200,7 @@ def _assemble(stream: tuple[Event, ...]) -> dict[str, Any]:
             ),
         ),
         policy_yaml=POLICY_BYTES,
-        signing_key=ed25519.Ed25519PrivateKey.generate(),
-        keyid="certificate:test",
+        key_provider=LocalKeyProvider(ed25519.Ed25519PrivateKey.generate()),
         anchor_descriptors=ANCHOR_DESCRIPTORS,
         deliverables=(("partition.json", b'{"assignment":[0,0,1]}\n'),),
     )
@@ -338,8 +338,7 @@ class TestDosPatasReales:
                 ),
             ),
             policy_yaml=POLICY_BYTES,
-            signing_key=ed25519.Ed25519PrivateKey.generate(),
-            keyid="certificate:test",
+            key_provider=LocalKeyProvider(ed25519.Ed25519PrivateKey.generate()),
             anchor_descriptors=(
                 ANCHOR_DESCRIPTORS[0],
                 {
@@ -386,8 +385,7 @@ class TestFailClosed:
                     ),
                 ),
                 policy_yaml=POLICY_BYTES,
-                signing_key=ed25519.Ed25519PrivateKey.generate(),
-                keyid="certificate:test",
+                key_provider=LocalKeyProvider(ed25519.Ed25519PrivateKey.generate()),
                 anchor_descriptors=ANCHOR_DESCRIPTORS,
             )
 
@@ -405,7 +403,6 @@ class TestFailClosed:
                     ),
                 ),
                 policy_yaml=POLICY_BYTES,
-                signing_key=ed25519.Ed25519PrivateKey.generate(),
-                keyid="certificate:test",
+                key_provider=LocalKeyProvider(ed25519.Ed25519PrivateKey.generate()),
                 anchor_descriptors=ANCHOR_DESCRIPTORS,
             )

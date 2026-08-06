@@ -32,6 +32,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from blite.certificate.bundle_check import CLAIM_PREFIX, check_bundle
 from blite.certificate.canonical import canonicalize
+from blite.certificate.keys import LocalKeyProvider
 from blite.certificate.vsa import envelope_to_wire, sign_attestation
 from blite.events.chain import chain_head_of_views, provenance_hash_of_views
 
@@ -197,6 +198,7 @@ def main() -> int:
 
     payload_bytes = canonicalize(statement)
     private_key = ed25519.Ed25519PrivateKey.generate()
+    key_provider = LocalKeyProvider(private_key)
     signature = private_key.sign(
         b"DSSEv1 "
         + str(len(PAYLOAD_TYPE.encode())).encode()
@@ -255,8 +257,7 @@ def main() -> int:
                 sign_attestation(
                     attestation,
                     policy_digest=policy_digest,
-                    private_key=private_key,
-                    keyid="attestation:v1-example",
+                    key_provider=key_provider,
                 )
             )
             for attestation in attestations

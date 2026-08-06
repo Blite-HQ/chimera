@@ -21,6 +21,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from blite.certificate.bundle_check import check_bundle
+from blite.certificate.keys import LocalKeyProvider
 from blite.certificate.status_list import (
     MIN_ENTRIES,
     StatusListEntry,
@@ -167,7 +168,7 @@ def test_la_lista_firmada_se_verifica_desde_sus_bytes() -> None:
         issued_at="2026-08-05T00:00:00Z",
     )
 
-    artefacto = sign_status_list(lista, private_key=key, keyid="status-list:v1")
+    artefacto = sign_status_list(lista, key_provider=LocalKeyProvider(key))
 
     assert verify_status_list(artefacto, _publica(key)) == lista
 
@@ -181,7 +182,7 @@ def test_una_lista_forjada_no_verifica() -> None:
     lista = build_status_list(
         status_list_id=LISTA_ID, revoked_indices=set(), issued_at="2026-08-05T00:00:00Z"
     )
-    artefacto = sign_status_list(lista, private_key=key, keyid="status-list:v1")
+    artefacto = sign_status_list(lista, key_provider=LocalKeyProvider(key))
 
     with pytest.raises(InvalidSignature):
         verify_status_list(artefacto, _publica(_clave()))
@@ -211,8 +212,7 @@ def test_un_certificado_revocado_reprueba(bundle: dict[str, Any]) -> None:
             revoked_indices={INDICE},
             issued_at="2026-08-05T00:00:00Z",
         ),
-        private_key=key,
-        keyid="status-list:v1",
+        key_provider=LocalKeyProvider(key),
     )
 
     resultados = {r.number: r for r in check_bundle(con_entrada, status_list=artefacto)}
@@ -233,8 +233,7 @@ def test_un_certificado_vigente_pasa_con_la_fecha_de_la_lista(
             revoked_indices={INDICE + 1},
             issued_at="2026-08-05T00:00:00Z",
         ),
-        private_key=key,
-        keyid="status-list:v1",
+        key_provider=LocalKeyProvider(key),
     )
 
     resultados = {r.number: r for r in check_bundle(con_entrada, status_list=artefacto)}
@@ -255,8 +254,7 @@ def test_una_lista_de_otro_id_no_responde_la_pregunta(bundle: dict[str, Any]) ->
             revoked_indices=set(),
             issued_at="2026-08-05T00:00:00Z",
         ),
-        private_key=key,
-        keyid="status-list:v1",
+        key_provider=LocalKeyProvider(key),
     )
 
     resultados = {r.number: r for r in check_bundle(con_entrada, status_list=artefacto)}

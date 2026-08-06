@@ -27,11 +27,14 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, cast
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ed25519
-
 from blite.certificate.canonical import canonicalize
-from blite.certificate.dsse import sign
+from blite.certificate.keys import (
+    ATTESTATION_PURPOSE,
+    CERTIFICATE_PURPOSE,
+    KeyProvider,
+    public_key_b64,
+    sign_envelope,
+)
 from blite.certificate.predicate import (
     AssuranceLevel,
     Conclusion,
@@ -157,8 +160,7 @@ def assemble_bundle(
     stream: Sequence[Event],
     conclusions: Sequence[ConclusionDeclaration],
     policy_yaml: bytes,
-    signing_key: ed25519.Ed25519PrivateKey,
-    keyid: str,
+    key_provider: KeyProvider,
     anchor_descriptors: Sequence[dict[str, Any]] = (),
     deliverables: Sequence[tuple[str, bytes]] = (),
     sub_run_streams: Mapping[str, Sequence[Event]] = MappingProxyType({}),
@@ -252,18 +254,20 @@ def assemble_bundle(
     }
 
     payload_bytes = canonicalize(statement)
-    envelope = sign(
+    # [C8/M8 pieza 4] La firma se pide por el PUERTO `KeyProvider`: el
+    # material de la llave jamás sale de la custodia. Con el escalón 1
+    # (`LocalKeyProvider`) el efecto es idéntico al de antes; con el escalón 2
+    # (OpenBao Transit) este mismo código firma sin ver la llave — que es
+    # justo lo que "el keypair pertenece a la organización, no al software"
+    # (freeze §7) quería decir.
+    envelope = sign_envelope(
+        key_provider,
+        purpose=CERTIFICATE_PURPOSE,
         payload_type=PAYLOAD_TYPE,
         payload=payload_bytes,
-        private_key=signing_key,
-        keyid=keyid,
     )
-    public_b64 = base64.b64encode(
-        signing_key.public_key().public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw,
-        )
-    ).decode("ascii")
+    public_b64 = public_key_b64(key_provider, CERTIFICATE_PURPOSE)
+    attestation_public = public_key_b64(key_provider, ATTESTATION_PURPOSE)
 
     seen: set[str] = set()
     verifier_descriptors: list[dict[str, str]] = []
@@ -302,12 +306,19 @@ def assemble_bundle(
                 sign_attestation(
                     attestation,
                     policy_digest=policy_digest,
-                    private_key=signing_key,
-                    keyid=keyid,
+                    key_provider=key_provider,
                 )
             )
             for attestation in attestations
         ],
+        # El anillo hace REAL la separación S2: si la custodia le da al
+        # propósito `attestation` una llave distinta, el verificador offline
+        # la necesita para comprobar los sobres. Se publica siempre — no
+        # cuesta nada y evita que "funcionaba porque era la misma llave" se
+        # descubra el día del despliegue con custodia de verdad.
+        "attestation_public_keys": {
+            key_provider.keyid(ATTESTATION_PURPOSE): attestation_public
+        },
         # [M28 · C5] Los streams de los sub-runs que aportaron claims. Sin
         # ellos, el `sub_run_provenance_hash` que el stream del raíz estampa
         # es letra muerta: el anexo §4 manda RECOMPUTARLO offline, y no se

@@ -42,8 +42,9 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 from pydantic import BaseModel, ConfigDict, Field
 
 from blite.certificate.canonical import canonicalize
-from blite.certificate.dsse import DSSEEnvelope, DSSESignature, sign
+from blite.certificate.dsse import DSSEEnvelope, DSSESignature
 from blite.certificate.dsse import verify as dsse_verify
+from blite.certificate.keys import STATUS_LIST_PURPOSE, KeyProvider, sign_envelope
 from blite.events.store import EventStore
 
 STATUS_LIST_PAYLOAD_TYPE = "application/vnd.blite.status-list+json"
@@ -196,17 +197,14 @@ def status_list_statement(status_list: StatusList) -> dict[str, Any]:
 
 
 def sign_status_list(
-    status_list: StatusList,
-    *,
-    private_key: ed25519.Ed25519PrivateKey,
-    keyid: str,
+    status_list: StatusList, *, key_provider: KeyProvider
 ) -> dict[str, Any]:
-    """Firma la lista y devuelve el artefacto listo para distribuir."""
-    envelope = sign(
+    """Firma la lista POR EL PUERTO y devuelve el artefacto a distribuir."""
+    envelope = sign_envelope(
+        key_provider,
+        purpose=STATUS_LIST_PURPOSE,
         payload_type=STATUS_LIST_PAYLOAD_TYPE,
         payload=canonicalize(status_list_statement(status_list)),
-        private_key=private_key,
-        keyid=keyid,
     )
     return {
         "envelope": {

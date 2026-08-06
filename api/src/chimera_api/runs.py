@@ -51,11 +51,11 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from cryptography.hazmat.primitives.asymmetric import ed25519
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from blite.certificate.assemble import ConclusionDeclaration
+from blite.certificate.keys import KeyProvider, LocalKeyProvider
 from blite.content import ContentStore
 from blite.events.rules import TERMINAL_RUN_EVENTS
 from blite.events.store import EventStore
@@ -86,7 +86,39 @@ from chimera_api.model_session import load_session
 # `SessionAuth.identity_from(request)` resuelve la Identity real y el
 # pipeline inyectado la estampa en los eventos del job (AX1).
 _DEFAULT_DOMAIN = "domain-default"
-_KEYID = "certificate:api-ephemeral"
+
+# [C8/M8 pieza 4] Custodia por env, con la escalera del freeze §7 (P1-3):
+#   sin variables            → escalón 1 efímero (despliegue local, dev)
+#   CHIMERA_SIGNING_KEY_FILE → escalón 1 con la llave DEL DESPLIEGUE
+#   CHIMERA_TRANSIT_ADDR     → escalón 2, OpenBao Transit (la llave no vive acá)
+# Quién firma es dato de operación, jamás del código.
+_SIGNING_KEY_FILE_ENV = "CHIMERA_SIGNING_KEY_FILE"
+_TRANSIT_ADDR_ENV = "CHIMERA_TRANSIT_ADDR"
+_TRANSIT_TOKEN_FILE_ENV = "CHIMERA_TRANSIT_TOKEN_FILE"  # noqa: S105 — nombre de la env var que apunta al archivo, jamás el token
+
+
+def _build_key_provider() -> KeyProvider:
+    """La custodia que el despliegue declaró — fail-loud si la declara a
+    medias: un Transit sin token no puede degradar a llave efímera en
+    silencio, porque el operador creería que su llave está custodiada."""
+    address = os.environ.get(_TRANSIT_ADDR_ENV)
+    if address:
+        token_file = os.environ.get(_TRANSIT_TOKEN_FILE_ENV)
+        if not token_file:
+            msg = (
+                f"{_TRANSIT_ADDR_ENV} definido sin {_TRANSIT_TOKEN_FILE_ENV}: "
+                "la custodia no se configura a medias (fail-closed)"
+            )
+            raise RuntimeError(msg)
+        from chimera_api.transit import build_transit_provider  # noqa: PLC0415
+
+        return build_transit_provider(address, Path(token_file))
+    key_file = os.environ.get(_SIGNING_KEY_FILE_ENV)
+    if key_file:
+        return LocalKeyProvider.from_file(Path(key_file))
+    return LocalKeyProvider()
+
+
 _MODEL_CTX: dict[str, str] = {"domain_id": _DEFAULT_DOMAIN}
 
 # Flip del agente real (P4, decisión #92 · el camino dorado de
@@ -393,8 +425,10 @@ class RunResources:
     dispatcher: Dispatcher
     content: ContentStore
     policy_bytes: bytes
-    signing_key: ed25519.Ed25519PrivateKey
-    keyid: str
+    key_provider: KeyProvider
+    """[C8] La custodia, por el PUERTO (freeze §7): con `LocalKeyProvider` el
+    despliegue local firma como siempre; con `TransitKeyProvider` la llave del
+    certificado deja de vivir en la memoria del proceso. El api no distingue."""
     run_tickets: dict[str, RunTicket]
     session_auth: SessionAuth
     _registry: Registry | None = None
@@ -420,8 +454,7 @@ def build_run_resources(
         dispatcher=ProfileDispatcher(),
         content=content,
         policy_bytes=_DEFAULT_POLICY_PATH.read_bytes(),
-        signing_key=ed25519.Ed25519PrivateKey.generate(),
-        keyid=_KEYID,
+        key_provider=_build_key_provider(),
         run_tickets={},
         session_auth=SessionAuth(_DEFAULT_DOMAIN),
         _registry=registry,

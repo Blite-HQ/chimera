@@ -25,6 +25,11 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from blite.certificate.bundle_check import check_bundle
+from blite.certificate.keys import (
+    ATTESTATION_PURPOSE,
+    LocalKeyProvider,
+    public_key_b64,
+)
 from blite.certificate.vsa import (
     ATTESTATION_PREDICATE_TYPE,
     attestation_statement,
@@ -150,8 +155,7 @@ def test_un_sobre_de_mas_reprueba_el_punto_7(bundle: dict[str, Any]) -> None:
             sign_attestation(
                 {**ATTESTATION, "verifier_id": "verificador-fantasma"},
                 policy_digest=POLICY_DIGEST,
-                private_key=private_key,
-                keyid="attestation:intruso",
+                key_provider=LocalKeyProvider(private_key),
             )
         )
     )
@@ -188,25 +192,21 @@ def test_el_sobre_puede_venir_de_otra_llave_que_la_del_certificado(
     firma lo que verificó» era una limitación declarada, no un hecho."""
     # Arrange — se re-firman TODAS las constancias con una llave distinta
     payload = json.loads(base64.b64decode(bundle["envelope"]["payload"]))
-    otra = ed25519.Ed25519PrivateKey.generate()
+    del_verificador = LocalKeyProvider(ed25519.Ed25519PrivateKey.generate())
     bundle["attestation_envelopes"] = [
         envelope_to_wire(
             sign_attestation(
                 att,
                 policy_digest=payload["predicate"]["policy_digest"],
-                private_key=otra,
-                keyid="attestation:verificador-propio",
+                key_provider=del_verificador,
             )
         )
         for att in payload["predicate"]["attestations"]
     ]
     bundle["attestation_public_keys"] = {
-        "attestation:verificador-propio": base64.b64encode(
-            otra.public_key().public_bytes(
-                encoding=serialization.Encoding.Raw,
-                format=serialization.PublicFormat.Raw,
-            )
-        ).decode("ascii")
+        del_verificador.keyid(ATTESTATION_PURPOSE): public_key_b64(
+            del_verificador, ATTESTATION_PURPOSE
+        )
     }
 
     # Assert

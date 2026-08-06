@@ -56,6 +56,17 @@ services:
       # no bind: son contenido direccionado por digest, y perderlos en un
       # rebuild rompería toda cita `ref{name, digest}` que los nombre.
       CHIMERA_FILES_DIR: /app/var/files
+      # [C8/M8 pieza 4] Custodia de llaves (escalera del freeze §7, P1-3).
+      # AUSENTES por default ⇒ escalón 1 efímero, comportamiento intacto.
+      # Con el perfil `custody` levantado, descomentar para que la llave del
+      # certificado deje de vivir en la memoria del proceso:
+      #
+      # CHIMERA_TRANSIT_ADDR: http://openbao:8200
+      # CHIMERA_TRANSIT_TOKEN_FILE: /run/secrets/transit_token
+      #
+      # (y agregar `transit_token` a la lista de `secrets:` de abajo). Definir
+      # la dirección SIN el token es fail-closed a propósito: la custodia no
+      # se configura a medias.
     volumes:
       - filesdata:/app/var/files
     secrets:
@@ -129,12 +140,53 @@ services:
     ports:
       - '3000:80'
 
+  # [C8/M8 pieza 4] OpenBao Transit — escalón 2 de la custodia (research R3
+  # §6). SINGLE INSTANCE a propósito: el quorum de 3 de OpenBao es para ALTA
+  # DISPONIBILIDAD, no para seguridad; un nodo con Raft integrado ya da
+  # custodia real. Perfil OPCIONAL: `docker compose --profile custody up`.
+  #
+  # El unseal automatizado vive en `scripts/openbao-init.sh` y guarda las
+  # llaves de unseal en el volumen `baodata`. Eso es aceptable para un
+  # despliegue local de operador único y NO para producción: ahí las llaves
+  # de unseal se custodian fuera de la máquina que las usa, o el sello no
+  # protege de nada. El script lo dice en su encabezado, no solo este
+  # comentario.
+  openbao:
+    profiles: ['custody']
+    image: openbao/openbao:2.6.1
+    # Sin `-config=...`: el entrypoint de la imagen YA carga /openbao/config,
+    # y pasarlo explícito hace que lea el mismo archivo dos veces
+    # ("ignoring duplicate configuration", verificado en vivo).
+    command: ['server']
+    # Sin `cap_add: IPC_LOCK`: OpenBao 2.6 eliminó mlock (arranca con error si
+    # se configura). Lo que protege el material de llave en memoria pasa a ser
+    # el swap del host, cifrado o deshabilitado — ver docker/openbao.hcl.
+    volumes:
+      - baodata:/openbao/file
+      - ./docker/openbao.hcl:/openbao/config/openbao.hcl:ro
+    ports:
+      - '8200:8200'
+    healthcheck:
+      # 501 = inicializado pero sellado; 200 = listo. Ambos prueban que el
+      # proceso responde — el init/unseal lo hace el script, no el health.
+      test: ['CMD', 'bao', 'status', '-address=http://127.0.0.1:8200']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 secrets:
   postgres_password:
     file: ./secrets/postgres_password.txt
+  # Token de Transit para el api — lo produce `scripts/openbao-init.sh`.
+  # Archivo, jamás env var: una env var viaja en `docker inspect`, en los
+  # logs del orquestador y en el entorno de todo proceso hijo.
+  transit_token:
+    file: ./secrets/transit_token.txt
 
 volumes:
   pgdata: {}
+  # Datos de OpenBao (Raft integrado) — perfil `custody`.
+  baodata: {}
   # P10/M24 — archivos del proyecto (Papers). Direccionados por contenido:
   # sin volumen se perderían en cada rebuild, que es justo lo que un almacén
   # por digest no puede hacer.
