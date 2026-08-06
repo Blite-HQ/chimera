@@ -2810,3 +2810,124 @@ piden decisión propia: content store durable (plano de confianza), flip
 
 **Veredicto:** el paso 2 del plan está COMPLETO. Quedan por lanzar C-2 (Fable),
 V y O — paso 3, paralelizable.
+
+## Sesión VISUAL/CIENCIA (worktree `mejorado/visual`, 2026-08-05)
+
+Dominio V de `docs/mejorado/04-consolidacion.md` §4. Mandato: **los
+honest-empty del Studio mueren DONDE exista productor real** — el énfasis es
+de la sesión, no una licencia para fabricar el productor.
+
+### #153 — V1/M18: el productor de partición y la convención de branch-ids C-8
+
+**Qué faltaba, exactamente:** el payload de mapa estaba fijado por contrato
+desde trust/07, la ruta de lectura lo esperaba (`reads::_project_topology`), el
+Zod espejo existía y el fixture de costura estaba generado — y NADIE lo
+emitía. El honest-empty no era falta de diseño: era un cable que nunca se
+conectó.
+
+Decisiones de esta sesión (analizadas contra la letra, no inventadas):
+
+1. **La convención canónica de branch-ids vive en el SDK**
+   (`blite_capability.branch_ids`), no en el engine ni en la capability. Es lo
+   único que ambos lados deben producir BYTE-IDÉNTICO, y ADR-008 declara
+   `blite_capability` como la única interfaz compartida. Una copia por lado
+   sería el drift que C-8 cierra.
+2. **`edge_id_property` exige estrategia 1:1 feature↔arista.** Con
+   `endpoint-name-match` (que AGREGA paralelas) se rechaza en frontera: un id
+   del portal por rama agregada sería una mentira sobre N features. La mitad
+   canónica queda para esos casos.
+3. **Los ids canónicos son DERIVADOS, no estampados.** El corpus ya sellado no
+   se re-etiqueta ni cambia de digest — quien lo consuma recomputa los mismos
+   ids con la misma función. Por eso la receta de `geojson_to_graph` NO sube de
+   versión al ganar el campo.
+4. **`build_partition` devuelve `None` sin checks por isla.** Un badge por isla
+   derivado del veredicto global sería el mock silencioso que la regla 1 del
+   plan prohíbe. Y una isla nunca reporta MÁS nivel que la attestation que la
+   ampara.
+5. **`ABSTENTION_CHECKS` pasa a ser DATO en `execution.py`.** Estaba enterrada
+   en el flujo de `verify()`; quien LEE la attestation después necesita la
+   misma regla para no leer una abstención como un fail.
+6. **`StructuralPartitionVerifier` (AL2, ancla `rule`) — decisión de alcance.**
+   La red real del ICE no trae impedancias, así que pandapower no puede correr
+   sobre ella y sin checks `island-{k}:*` no hay badges posibles. La salida
+   honesta no era inventar dato eléctrico: es verificar lo que el grafo SÍ
+   permite (conectividad por isla, corte no vacío) con el techo que le
+   corresponde. Entra **solo** donde no hay dato eléctrico registrado — donde
+   pandapower corre, sumarla inflaría las patas del punto 7 sin aportar un
+   método realmente nuevo.
+
+**M23a/N3 cerrado:** el orquestador hilvana el `step_id` que el loop siempre le
+pasó. La evidencia por paso deja de llegar `attestations: []`; el test que
+afirmaba ese defecto ahora afirma el arreglo.
+
+### #154 — V2/M19: el cierre métrico existe, y se DERIVA del log
+
+**El choque C-4 en una frase:** el evento estaba congelado con campos de
+confianza, el consumidor esperaba campos científicos por variante, y nadie lo
+emitía.
+
+- **Las métricas se derivan del stream, no se acumulan en memoria.** Por eso el
+  orquestador estampa `latency_ms` por attestation: un tercero que replaye el
+  log obtiene los mismos números; un acumulador del proceso emisor no ofrece
+  eso.
+- **`false_reject_proxy` se DEFINE en vez de fabricarse:** de los claims que
+  alguna pata rechazó, qué fracción otra pata independiente aceptó. La
+  medición fuerte (contra corpus de óptimos conocidos, trust/05 §1.3) es el
+  ítem O8 y se dice en el código, no se aproxima con un número inventado.
+- **`AblationMetric` importa el enum del emisor** en vez de repetir el
+  `Literal`: extensión coordinada de los 4 espejos (Pydantic, Zod, tipo TS,
+  chart), disciplina C-15.
+- **`AblationArm` no tiene campo de policy:** la herencia fail-closed de §13
+  regla 3 queda garantizada POR CONSTRUCCIÓN. Comparar brazos bajo exigencias
+  distintas no sería una ablación.
+- **La agregación de brazos es de LECTURA:** `GET /runs/{id}/ablation` suma los
+  sub-runs directos; cada brazo conserva su stream, su procedencia y su propia
+  respuesta.
+
+### #155 — V8/M23b: el cable de `deliverables` y las rutas de proyecto
+
+`assemble_bundle` aceptaba `deliverables=` desde siempre y nadie se lo pasaba
+(N4/#70b) — honest-empty ESTRUCTURAL. Decisión: el deliverable es el
+**artefacto de salida del run**, el único que el log identifica sin ambigüedad
+(`run.completed.output_digest`) y cuyos bytes son recuperables byte a byte del
+content store; o sea, el único que un tercero puede re-verificar contra el
+digest que el certificado cita. Un artefacto no recuperable NO se cita: un
+certificado no se cae porque falte uno, se cae si MIENTE sobre uno.
+
+### DEFECTO PROPIO cazado por este cambio (y cerrado)
+
+`certificate.py`/`reads.py` decidían «el run terminó» mirando `stream[-1]`. El
+freeze §2 [stress-final] admite familias de CIERRE post-terminales, así que el
+primer `run.metrics.recorded` produjo un **409 en el certificado** — y pasarle
+el stream completo a `assemble_bundle` habría metido un evento post-terminal
+DENTRO del `provenance_hash`. Corregido: terminado = TIENE terminal, y lo que
+se certifica es `provenance_slice(stream)`. Era un defecto latente desde antes
+de esta sesión; lo destapó el primer productor de la familia de cierre.
+
+### Tabla de interacciones — sesión VISUAL/CIENCIA
+
+| Interfaz                                                     | Dominio afectado | Estado del contrato                                                          |
+| ------------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------- |
+| `blite_capability.branch_ids` (SDK, módulo nuevo)            | engine ↔ caps    | NUEVO — convención C-8 versionada (`canonical-l-min-max@v1`)                 |
+| `blite.ingesta.geojson.to_graph` output + `edge_id_property` | caps → corpus    | ADITIVO — `branch_ids`/`branch_id_convention`; el corpus estampado no cambia |
+| `blite.verification.partition` (módulo nuevo)                | engine           | NUEVO — productor del payload §4                                             |
+| `blite.verification.structural_partition` (módulo nuevo)     | engine           | NUEVO — pata AL2 para instancias sin dato eléctrico                          |
+| `ClaimDeclaration.result_projection` + `step_id` top-level   | engine ↔ api     | ADITIVO — binding de confianza intocable (llaves reservadas)                 |
+| `verification.completed.latency_ms`                          | engine ↔ api     | ADITIVO — reservado; base de la derivación de métricas                       |
+| `blite.runtime.metrics` (módulo nuevo)                       | engine ↔ api ↔ D | NUEVO — payload v2 C-4; `variant` enum de 4 en 4 espejos                     |
+| `blite.runtime.ablation` (módulo nuevo)                      | engine           | NUEVO — brazos como sub-runs §13                                             |
+| `chimera_api.deliverables` (módulo nuevo)                    | api              | NUEVO — cable de `deliverables=`                                             |
+| `GET /runs/{id}/topology` (consumidor)                       | E ↔ D            | VERDE — el Zod espejo del fixture valida el wire vivo                        |
+| `GET /runs/{id}/ablation` (agrega sub-runs)                  | E ↔ D            | ADITIVO de lectura — cada brazo conserva su propia respuesta                 |
+| `GET /artifacts`, `GET /knowledge` (nivel proyecto)          | E ↔ D            | NUEVAS — allowlist de nginx ampliado en el MISMO cambio (lección de `/me`)   |
+| `topologySnapshotSchema` / `ablationVariantSchema` (Zod)     | D                | ESPEJO — `ablationVariantSchema` compartido por fixture y wire               |
+| `GridMap.partition` (seam → implementado)                    | D                | El seam declarado en D4 deja de ser seam                                     |
+| `apps/studio/src/fixtures/ice/instancia.json`                | D                | NUEVO — proyección del corpus estampado con anti-drift                       |
+
+### Hallazgo heredado (NO introducido acá)
+
+`pnpm run arch` está **rojo en `mejorado/base`**, reproducido con el árbol
+limpio: `no-circular App.tsx → router.tsx → App.tsx` y
+`F3: App.tsx → gatewayClient`. Ambas vienen de P7 (router real). No está en la
+lista de gates del bloque REGLAS, así que no bloquea — pero es un gate de
+arquitectura en rojo y merece dueño.
