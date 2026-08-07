@@ -3475,3 +3475,36 @@ Mejorado, en una sola pasada. Queda anotada en el checklist §4, no ejecutada.
 | `docs/pre-flip-checklist.md` + índice | docs             | NUEVO                                                                   |
 | `SECURITY.md`                         | seguridad        | ANOTADO — la ruta de reporte cambia al flujo privado en el flip         |
 | topics del repo                       | repo             | 10, desde vacío                                                         |
+
+### #165 — el override de `undici` rompía el Studio entero: se corrige por la vía correcta
+
+**Cazado verificando, no en review.** El override `undici: '>=7.29.0'` de #163
+dejaba los **32 archivos de test del Studio sin arrancar**:
+
+```
+Failed to start threads worker for test files …
+Caused by: Error: Cannot find module 'undici/lib/handler/wrap-handler.js'
+  … jsdom@29.1.1/lib/jsdom/browser/resources/jsdom-dispatcher.js
+```
+
+`jsdom@29.1.1` declara `undici: ^7.25.0` — o sea que 7.29.0 está DENTRO de su
+rango — pero requiere `lib/handler/wrap-handler.js` por ruta interna, y undici
+lo eliminó en un release **menor**. El rango semver decía «compatible» y no lo
+era.
+
+**Corregido subiendo `jsdom` a ^30.0.1**, que pide `undici ^8` — fuera del rango
+afectado por la alerta (7.0.0–7.28.x). El override de `undici` se BORRA: ya no
+hace falta, y mantener uno que no se necesita es deuda que alguien va a tener
+que descifrar después. `pnpm audit`: **sin vulnerabilidades conocidas**.
+
+La lección, escrita porque se repite: **un override de seguridad es un cambio de
+comportamiento, no un número**. Forzar una versión «dentro del rango» de un
+consumidor no garantiza nada si ese consumidor usa rutas internas. Se verifica
+corriendo la suite, no leyendo el semver.
+
+**Flake preexistente encontrado de paso (para P-ui/V, no lo toco).**
+`apps/studio/src/lenses/registry.test.ts` → «los jobs del fixture llevan
+capability_id» falla intermitente con **timeout de 5000 ms** (1 de 3 corridas,
+con la máquina cargada). No es corrección: el test hace `await import()`
+dinámico y bajo carga la transformación del módulo pasa los 5 s. Lo arregla su
+dueño subiendo el timeout o quitando el import dinámico.

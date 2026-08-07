@@ -39,7 +39,12 @@ overrides:
   fast-uri: '>=3.1.5'
   js-yaml: '>=4.3.1'
   postcss: '>=8.5.23'
-  undici: '>=7.29.0'
+  # `undici` NO lleva override: la alerta (moderate) afecta a 7.0.0–7.28.x, y
+  # forzar >=7.29.0 ROMPE jsdom 29 — undici quitó `lib/handler/wrap-handler.js`
+  # en un release MENOR y jsdom lo requería por ruta interna, así que los 32
+  # archivos de test del Studio no arrancaban («Failed to start threads
+  # worker»). Se resuelve por la vía correcta: jsdom 30, que ya pide undici ^8
+  # — fuera del rango afectado. Sin override que mantener.
 
 # pnpm 11 blocks dependency install scripts by default (replaces
 # onlyBuiltDependencies). Keep this allowlist minimal — every entry here is
