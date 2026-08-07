@@ -3358,3 +3358,120 @@ arreglen, el job Web de CI sigue rojo** aunque todo lo demás esté verde.
 
 **El stack quedó ARRIBA** (`docker compose --profile otel`) para el DoD de O5.
 Bajarlo: `docker compose --profile otel down`.
+
+### #163 — dependabot desbloqueado: 15 vulnerabilidades cerradas, y por qué estaban ahí
+
+**Encargo de Dylan (2026-08-06): «podés arreglar los errores del dependabot».**
+
+**El diagnóstico, no el síntoma.** Los updates de npm fallaban TODOS con el
+mismo error, en el log del updater:
+
+```
+corepack pnpm update brace-expansion@5.0.9 --lockfile-only --no-save -r
+[ERR_PNPM_MISSING_TIME] The metadata of @radix-ui/react-id is missing the "time" field
+This error happened while installing the dependencies of radix-ui@1.6.0
+```
+
+`minimumReleaseAge` (cuarentena de 14 días) vivía en `pnpm-workspace.yaml` y
+terminaba haciendo **lo contrario de lo que promete: bloquear las
+actualizaciones de SEGURIDAD**. El proxy sandboxeado del updater no devuelve el
+campo `time` de todos los paquetes; con `resolutionMode: highest` los de primer
+nivel solo sacan un WARN («skipping the minimumReleaseAge check»), pero al
+re-validar el árbol TRANSITIVO revienta y aborta el update entero
+(pnpm/pnpm#9963, dependabot/dependabot-core#13165).
+
+La sesión anterior ya lo había topado y respondió agregando paquetes a
+`minimumReleaseAgeExclude` — cinco entradas. **No se gana así**: el paquete que
+revienta cambia en cada corrida y es transitivo. Seguían fallando cinco
+actualizaciones de seguridad.
+
+**Decisión: la cuarentena se muda entera a Dependabot.** `dependabot.yml` ya
+declara EXACTAMENTE la misma política (`cooldown` 14/90/14/7) y además la
+implementa bien — las actualizaciones de seguridad la saltan a propósito, que es
+justo lo que `minimumReleaseAge` no sabía hacer. Lo único que se cede es la
+cuarentena de un `pnpm add` MANUAL: un acto raro, deliberado, y todavía cubierto
+por `pnpm audit --audit-level=high` en CI. Vuelve el día que el bug upstream se
+resuelva; el porqué queda escrito en el archivo.
+
+**Y el resultado, medido:**
+
+| ecosistema | antes                            | después                                  |
+| ---------- | -------------------------------- | ---------------------------------------- |
+| npm        | **13 vulnerabilidades** (8 high) | **0** — «No known vulnerabilities found» |
+| Python     | 3 (2 con fix disponible)         | **1** — solo diskcache, sin fix upstream |
+
+npm: `overrides` para las cinco transitivas (`brace-expansion`, `fast-uri`,
+`js-yaml`, `postcss`, `undici`) — ninguna es dependencia directa nuestra, así
+que no hay `pnpm update` que las mueva; el override es el único camino.
+Python: `aiohttp` 3.14.2→3.14.3 (CVE-2026-69244) y `cryptography` 49→50
+(CVE-2026-69247), los dos que #159 había encontrado esperando detrás de la CI
+roja.
+
+**Nota de proceso (mía).** Los tres archivos de dependencias aterrizaron primero
+en el checkout PRINCIPAL en vez de en el worktree, por confusión de directorio
+de trabajo. Se detectó, se movió el cambio al worktree, se restauró
+`mejorado/base` (`git status` limpio) y se reinstaló su `node_modules` — sus
+tests del Studio vuelven a dar 299/32. Queda escrito porque el modo de falla es
+real y silencioso: en un repo con cuatro worktrees vivos, un comando sin `cd`
+explícito edita el árbol equivocado.
+
+### #164 — el repo queda LISTO para el flip: todo lo configurable, configurado
+
+**Contexto de Dylan (2026-08-06):** el repo pasó a privado para hacer estas
+limpiezas y volverá a ser público; quiere dejarlo listo para cuando eso sea
+definitivo, con lo que se pueda hacer hoy y **sin parches ni trucos**. Referencia
+de estilo: `qnexus-mcp`.
+
+**Configurado hoy (verificado contra la API, no supuesto):**
+
+- **Topics**: 10, de vacío (`verifiable-computing`, `agentic-ai`, `provenance`,
+  `in-toto`, `supply-chain-security`, `event-sourcing`, `quantum-computing`,
+  `combinatorial-optimization`, `reproducible-research`, `mcp`).
+- **`NOTICE`** (nuevo): el material de terceros que SÍ viaja en el árbol —
+  benchmarks IEEE vía pandapower (BSD-3), red del ICE, evidencia de Nexus (con
+  el descargo nominativo de marca, como qnexus-mcp), y el árbol que ya NO está.
+- **`CITATION.cff`** (nuevo): GitHub renderiza «Cite this repository» — una
+  plataforma de investigación tiene que ser citable.
+- **`.github/rulesets/main.json`** (nuevo): la protección de `main` como DATO
+  versionado, con `scripts/apply-repo-rulesets.sh` que la aplica e **idempotente**
+  (actualiza si ya existe). Hoy la API responde 403 «Upgrade to GitHub Pro or
+  make this repository public»; el script lo dice con esas palabras en vez de
+  escupir el error crudo.
+- **`docs/pre-flip-checklist.md`** (nuevo): qué está listo, qué no se puede y
+  **con qué causa verificada**, y los cinco comandos del día del flip en orden.
+
+**Lo que NO se puede hoy, con la causa comprobada** (no inferida): rulesets →
+403 (Pro o público) · reporte privado de vulnerabilidades → **404** en repo
+privado · secret scanning + push protection → **422** (GHAS) · code scanning y
+Scorecard → mismo caso. Cada uno con su comando exacto en el checklist.
+
+**Lo que ya estaba bien y se deja constancia**: merge squash-only sin merge
+commits ni rebase (historia lineal por construcción — justo lo que Dylan pidió),
+borrado de rama al mergear, alertas de Dependabot activas, arreglos de seguridad
+automáticos activos.
+
+**Licencia del corpus ICE — investigada (parte de O4).** Contra el feed DCAT del
+portal `datos-ice-se.opendata.arcgis.com` (2026-08-06): publisher **ICE**,
+`accessLevel: "public"` en todo el catálogo incluidos `Subestaciones` y
+`LineasDeTransmision`, y **ningún identificador de licencia estándar** (no
+CC-BY, no ODbL, no dominio público; un dataset hermano dice «Uso Público» en
+texto libre). Queda estampado en `NOTICE` §2 con la pregunta abierta explícita:
+«datos abiertos, acceso público» **no es** una concesión de redistribución de
+obras derivadas. Antes del flip: conseguir los términos, o sacar del árbol
+publicado las instancias `ice-*`/`cr*-*` y quedarse con las IEEE, que no tienen
+esa ambigüedad.
+
+**Historia**: por decisión de Dylan, la corrección integral se hace DESPUÉS de
+Mejorado, en una sola pasada. Queda anotada en el checklist §4, no ejecutada.
+
+### Tabla de interacciones — #163/#164
+
+| Interfaz tocada                       | Dominio afectado | Estado del contrato                                                     |
+| ------------------------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `pnpm-workspace.yaml`                 | build/seguridad  | CAMBIO DE POSTURA — cuarentena delegada a Dependabot, con causa         |
+| `pnpm-lock.yaml` · `uv.lock`          | build            | 15 vulnerabilidades cerradas; suite y Studio verdes tras el bump        |
+| `NOTICE` · `CITATION.cff`             | legal/OSS        | NUEVOS                                                                  |
+| `.github/rulesets/` + script          | repo             | NUEVO — dato versionado, inerte hasta el flip por límite real de GitHub |
+| `docs/pre-flip-checklist.md` + índice | docs             | NUEVO                                                                   |
+| `SECURITY.md`                         | seguridad        | ANOTADO — la ruta de reporte cambia al flujo privado en el flip         |
+| topics del repo                       | repo             | 10, desde vacío                                                         |

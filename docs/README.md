@@ -72,22 +72,23 @@ corrected by a NEW dated note — never by deleting the seal (#109).
 
 ### Root — constitution and frozen references
 
-| Doc                                                                                      | Estado                        | What it is                                                                    |
-| ---------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------- |
-| [`invariants.md`](invariants.md)                                                         | CONGELADO                     | The logical invariants (INV-\*, AX\*) enforced by CI gates                    |
-| [`base-logica-formal.md`](base-logica-formal.md)                                         | CONGELADO                     | The formal logical system (AX/PR/D) that `invariants.md` distills             |
-| [`tres-planos.md`](tres-planos.md)                                                       | VIGENTE                       | verification ≠ guardrail ≠ evaluation — which plane may decide what (O8)      |
-| [`contract-freeze.md`](contract-freeze.md)                                               | CONGELADO (+[MEJORADO] marks) | The data contracts. §-map by plane in §4 below                                |
-| [`contract-freeze-anexo-canonicalizacion.md`](contract-freeze-anexo-canonicalizacion.md) | CONGELADO                     | Byte-level canonicalization (RFC 8785 + DSSE) with test vectors               |
-| [`spec-confianza-v3-2.md`](spec-confianza-v3-2.md)                                       | CONGELADO                     | Normative kernel spec of the trust layer (delegated vocabulary of the freeze) |
-| [`perfil-stem-v1-0.md`](perfil-stem-v1-0.md)                                             | CONGELADO                     | STEM Profile v1.0 — Chimera as first distribution of the trust layer          |
-| [`convergencia-diseno-v32.md`](convergencia-diseno-v32.md)                               | VIGENTE (registro)            | Executed convergence verdict; §2.1 is THE ladder→class+AL translation map     |
-| [`arquitectura-python.md`](arquitectura-python.md)                                       | VIGENTE-CON-DRIFT             | The active architecture (see [S3] marks: layout/stack deltas)                 |
-| [`arquitectura-arc42-adrs.md`](arquitectura-arc42-adrs.md)                               | VIGENTE-CON-DRIFT             | arc42/C4 views + invariant→component map (§6)                                 |
-| [`arquitectura-reconciliada.md`](arquitectura-reconciliada.md)                           | PARCIALMENTE SUPERSEDIDO      | Valid only per its section header (see map in §1)                             |
-| [`especificacion-contratos-v2.md`](especificacion-contratos-v2.md)                       | VIGENTE-CON-DRIFT             | Historical TS seed; executable truth = Python under the freeze                |
-| [`esquema-datos-v2.md`](esquema-datos-v2.md)                                             | VIGENTE                       | SQL seed with bidirectional CI lock doc⊆SQL⊆doc                               |
-| [`deployment.md`](deployment.md)                                                         | VIGENTE (Fase 2 ref)          | BYOC/managed hosting reference design                                         |
+| Doc                                                                                      | Estado                        | What it is                                                                                    |
+| ---------------------------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------- |
+| [`invariants.md`](invariants.md)                                                         | CONGELADO                     | The logical invariants (INV-\*, AX\*) enforced by CI gates                                    |
+| [`base-logica-formal.md`](base-logica-formal.md)                                         | CONGELADO                     | The formal logical system (AX/PR/D) that `invariants.md` distills                             |
+| [`tres-planos.md`](tres-planos.md)                                                       | VIGENTE                       | verification ≠ guardrail ≠ evaluation — which plane may decide what (O8)                      |
+| [`contract-freeze.md`](contract-freeze.md)                                               | CONGELADO (+[MEJORADO] marks) | The data contracts. §-map by plane in §4 below                                                |
+| [`contract-freeze-anexo-canonicalizacion.md`](contract-freeze-anexo-canonicalizacion.md) | CONGELADO                     | Byte-level canonicalization (RFC 8785 + DSSE) with test vectors                               |
+| [`spec-confianza-v3-2.md`](spec-confianza-v3-2.md)                                       | CONGELADO                     | Normative kernel spec of the trust layer (delegated vocabulary of the freeze)                 |
+| [`perfil-stem-v1-0.md`](perfil-stem-v1-0.md)                                             | CONGELADO                     | STEM Profile v1.0 — Chimera as first distribution of the trust layer                          |
+| [`convergencia-diseno-v32.md`](convergencia-diseno-v32.md)                               | VIGENTE (registro)            | Executed convergence verdict; §2.1 is THE ladder→class+AL translation map                     |
+| [`arquitectura-python.md`](arquitectura-python.md)                                       | VIGENTE-CON-DRIFT             | The active architecture (see [S3] marks: layout/stack deltas)                                 |
+| [`arquitectura-arc42-adrs.md`](arquitectura-arc42-adrs.md)                               | VIGENTE-CON-DRIFT             | arc42/C4 views + invariant→component map (§6)                                                 |
+| [`arquitectura-reconciliada.md`](arquitectura-reconciliada.md)                           | PARCIALMENTE SUPERSEDIDO      | Valid only per its section header (see map in §1)                                             |
+| [`especificacion-contratos-v2.md`](especificacion-contratos-v2.md)                       | VIGENTE-CON-DRIFT             | Historical TS seed; executable truth = Python under the freeze                                |
+| [`esquema-datos-v2.md`](esquema-datos-v2.md)                                             | VIGENTE                       | SQL seed with bidirectional CI lock doc⊆SQL⊆doc                                               |
+| [`deployment.md`](deployment.md)                                                         | VIGENTE (Fase 2 ref)          | BYOC/managed hosting reference design                                                         |
+| [`pre-flip-checklist.md`](pre-flip-checklist.md)                                         | VIGENTE                       | What is already configured for the OSS flip, and what cannot be yet (with the verified cause) |
 
 ### Folders
 

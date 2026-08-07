@@ -1,0 +1,77 @@
+Chimera
+Copyright 2026 Blite-HQ
+
+Licensed under the MIT License (see LICENSE).
+
+This file records THIRD-PARTY MATERIAL that is redistributed inside this
+repository. Runtime dependencies are not listed here — they are declared in
+`pyproject.toml` / `package.json`, pinned in `uv.lock` / `pnpm-lock.yaml`, and
+installed from their own registries under their own licenses. What follows is
+data and content that ships *in the tree*.
+
+--------------------------------------------------------------------------------
+1. IEEE benchmark power networks — `knowledge/islanding/corpus/ieee*.json`
+--------------------------------------------------------------------------------
+
+Derived from `pandapower.networks` (case6ww, case9, case14, case30), which
+packages the classic IEEE test cases long established in the power-systems
+literature. pandapower is BSD-3-Clause, (c) Fraunhofer IEE and University of
+Kassel.
+
+What ships here is not the pandapower data: it is a Max-Cut instance derived
+from each topology (integer edge weights, canonicalized assignment, proven
+optimum, embedded digest). The derivation recipe is in
+`knowledge/islanding/01-corpus-benchmarks.md` §1.9.
+
+--------------------------------------------------------------------------------
+2. Costa Rican transmission network — `knowledge/islanding/raw/ice-*.geojson`
+   and the `cr6-*`, `cr8-*`, `ice-*` corpus instances derived from it
+--------------------------------------------------------------------------------
+
+Source: Instituto Costarricense de Electricidad (ICE), open-data portal
+`datos-ice-se.opendata.arcgis.com` — datasets `Subestaciones` and
+`LineasDeTransmision`.
+
+Verified against the portal's DCAT feed on 2026-08-06:
+
+  * publisher: ICE (Instituto Costarricense de Electricidad)
+  * accessLevel: "public" for every dataset in the catalog, these two included
+  * a license FIELD exists for both datasets, but the catalog declares no
+    standard license identifier (no CC-BY, no ODbL, no public-domain
+    dedication). One sibling dataset carries the free-text value "Uso Público".
+
+**Open question, deliberately not papered over.** "Open data, public access"
+is not the same as an explicit grant to redistribute derived works. Attribution
+credits the source; it does not authorize redistribution on its own. Before
+this repository is public again, one of these has to happen:
+
+  a. obtain explicit terms from ICE (the portal's own "UsoOpenData" dataset
+     suggests a terms document exists — it has not been retrieved), or
+  b. drop the `ice-*` / `cr*-*` instances from the published tree and keep only
+     the IEEE ones, which have no such ambiguity.
+
+Tracked as part of backlog item O4 (`docs/mejorado/04-consolidacion.md`), and
+listed in `docs/pre-flip-checklist.md`.
+
+--------------------------------------------------------------------------------
+3. Quantinuum Nexus run evidence — `knowledge/nexus/`
+--------------------------------------------------------------------------------
+
+Measurement counts from QAOA jobs executed on Quantinuum's H2-1LE hardware and
+H2-Emulator, retrieved through the `qnexus` SDK under the project's own Nexus
+account. These are *our* run results, not Quantinuum's data product; each import
+carries its own in-toto attestation and digest chain (`index.json`).
+
+"Quantinuum" and "Nexus" are trademarks of their respective owners, used here
+nominatively to identify the hardware a measurement came from. This project is
+not affiliated with, endorsed by, or an official product of Quantinuum.
+
+--------------------------------------------------------------------------------
+4. Course material that is NOT here
+--------------------------------------------------------------------------------
+
+A vendored tree of third-party lecture transcripts and slide text
+(`knowledge/quantum/quantathon/`) was removed on 2026-08-05: talks by named
+speakers with no declared license cannot be redistributed, and attribution does
+not cure that. Only `catalog.yaml` remains — an index of the PUBLIC source URLs,
+which is a reference, not a reproduction. See that directory's README.
