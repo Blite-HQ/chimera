@@ -412,3 +412,13 @@ export async function loadFiles(): Promise<readonly ProjectFile[]> {
 export function filesQueryOptions() {
   return queryOptions({ queryKey: ['files'] as const, queryFn: loadFiles });
 }
+
+/**
+ * La URL de descarga de un archivo, re-expuesta por la capa de datos.
+ *
+ * No es egress (no hace fetch: arma una URL), pero la regla F3 es del GRAFO de
+ * módulos, no de la semántica: una pantalla que importa `gatewayClient` abre
+ * la puerta a que mañana importe algo que sí sale a la red. Pasa por acá y el
+ * gate vuelve a ser cierto sin excepciones declaradas.
+ */
+export { fileDownloadUrl } from '../gatewayClient';
