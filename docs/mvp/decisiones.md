@@ -3508,3 +3508,23 @@ capability_id» falla intermitente con **timeout de 5000 ms** (1 de 3 corridas,
 con la máquina cargada). No es corrección: el test hace `await import()`
 dinámico y bajo carga la transformación del módulo pasa los 5 s. Lo arregla su
 dueño subiendo el timeout o quitando el import dinámico.
+
+### Handoff de PLATAFORMA — actualización tras el encargo del 2026-08-06
+
+El handoff parcial de más arriba sigue vigente en su tabla de ítems (O4, O5, O9
+y O10 siguen PENDIENTES; O7 sin evaluar). Lo que cambió después:
+
+- **#163/#165 — dependencias**: 15 vulnerabilidades cerradas (npm 13→0,
+  Python 3→1). Dependabot vuelve a poder actualizar npm.
+- **#164 — flip**: todo lo configurable en un repo privado quedó configurado, y
+  lo que no se puede tiene su causa verificada y su comando listo en
+  `docs/pre-flip-checklist.md`.
+- **Historia**: por decisión de Dylan NO se ejecuta cirugía ahora; la corrección
+  integral va después de Mejorado, en una pasada única.
+- **depcruise del Studio**: lo toma otro agente (Dylan, 2026-08-06). Sigue
+  siendo lo único que mantiene rojo el job Web.
+
+**Gates al cierre de este tramo**: pytest **1283 passed** / cov 90.27 % ·
+lint-imports 17/0 · ruff check y `format --check` limpios · pyright 0 ·
+Studio **299 passed / 32 files** · eslint 0 · `pnpm audit` sin vulnerabilidades ·
+`pip-audit` solo diskcache (sin fix upstream) · guards de datos verdes.
