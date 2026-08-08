@@ -2930,4 +2930,82 @@ de esta sesión; lo destapó el primer productor de la familia de cierre.
 limpio: `no-circular App.tsx → router.tsx → App.tsx` y
 `F3: App.tsx → gatewayClient`. Ambas vienen de P7 (router real). No está en la
 lista de gates del bloque REGLAS, así que no bloquea — pero es un gate de
-arquitectura en rojo y merece dueño.
+arquitectura en rojo y merece dueño. **CERRADO** en esta sesión: la raíz
+dejó de ser también el módulo de pantallas (`screens.tsx`) y `fileDownloadUrl`
+pasa por `data/`; la regla F3 se extendió para cubrir el archivo nuevo.
+
+### #156 — V5: los ángulos de QAOA se reportan, se pueden dar, y se pueden escalar
+
+Tres capacidades aditivas sobre `solve_qaoa` — sin argumentos nuevos el
+comportamiento es idéntico.
+
+1. **`angles` siempre se reporta.** Sin ellos, `expected_energy` era un número
+   que nadie podía recomputar: el circuito que lo produjo quedaba sin
+   identificar.
+2. **`initial_angles` + `optimize=false`** — evaluar ⟨C⟩ en un calendario
+   ajeno SIN re-optimizar. Re-optimizar cambiaría los ángulos de la corrida
+   que se dice estar midiendo, que es exactamente lo que la haría
+   incomparable. El round-trip (optimizar → devolver ángulos → re-evaluar en
+   ellos → mismo ⟨C⟩) es exacto por construcción: ⟨H⟩ se recomputa siempre
+   sobre los ángulos finales en vez de leerse del `fun` de COBYLA.
+3. **`init_strategy="interp"`** — la escalera p=1…layers de Zhou et al. (2020)
+   §IV. Vive en `warm_start.py` porque es aritmética PURA y por tanto
+   verificable exactamente (extremos conservados, combinación convexa, +1 capa
+   por paso); enterrada dentro de `solve_qaoa` solo se podría comprobar de
+   refilón con un «la energía mejoró», que pasa aunque la fórmula esté mal.
+
+Decisión de implementación: los parámetros del ansatz se ligan por **NOMBRE**,
+no por posición. Confundir β con γ no produce un error — produce una energía
+plausible de un circuito distinto del que se reporta.
+
+### #157 — V3/M20: la curva r-vs-p se mide en los ángulos que corrió el hardware
+
+**Dónde viven los datos.** El barrido r vs p abarca p×semillas corridas y no
+cabe en el stream de UNA ejecución. Por eso `GET /runs/{run_id}/rvsp` es clave
+POR RUN pero datos POR INSTANCIA: el run aporta el único dato que es suyo —qué
+red se está resolviendo— y la curva sale de un corpus congelado nuevo,
+`knowledge/rvsp/<instancia>.json`, con la MISMA disciplina de identidad que el
+resto de `knowledge/` (digest embebido que cierra sobre el contenido).
+`results/exp_r_vs_p/` sigue siendo lo que su docstring dice: una instantánea
+ilustrativa del experimento, sin identidad.
+
+**Por qué ángulos de Nexus.** Con ángulos que optimizamos nosotros, el punto de
+la curva mide nuestro COBYLA tanto como mide QAOA. El importador ahora persiste
+`betas`/`gammas` (antes vivían SOLO en el espejo solo-lectura) y
+`gen_corpus_rvsp.py` evalúa ⟨C⟩ EN ellos vía `optimize=false` (#156). Los
+ángulos ya eran la FUENTE de `circuit_digest`, así que persistirlos no mueve
+ningún digest — hay un test que lo comprueba contra el índice committeado,
+porque si se moviera habría que parar y reportar, no re-estampar.
+
+**La ETIQUETA de la curva** (bloque `metodo` del record: backend, shots,
+semillas, origen de los ángulos, `circuit_digest` por capa) vive en el
+ARTEFACTO, no en el wire: la spec congeló el wire y dejó el método al dominio
+de ciencia. Sin esa etiqueta, un punto medido en hardware y uno medido en
+ángulos propios se ven idénticos y son afirmaciones distintas.
+
+**Resultado honesto:** la curva NO es monótona en p (cr6-uniforme: 0.7034 →
+0.8199 → 0.7601). Los ángulos de p=3 no fueron mejores que los de p=2. Se
+reporta tal cual — es un dato sobre la corrida vanilla, no un defecto a
+maquillar.
+
+**Tres 404 que no degradan:** run desconocido / run sin instancia declarada /
+instancia sin curva ingerida. Ninguno cae a `points: []` — un gráfico vacío se
+lee como «el experimento dio esto», que sería falso. El Studio distingue el 404
+(vacío honesto) del 500 (falla) vía el `status` que `fetchWireGet` propaga.
+
+### Tabla de interacciones — V5 y V3/M20
+
+| Interfaz                                                      | Dominio afectado | Estado del contrato                                                       |
+| ------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------- |
+| `blite_cap_quantum.warm_start` (módulo nuevo)                 | caps             | NUEVO — INTERP puro, sin qiskit                                           |
+| `solve_qaoa` + manifest `blite.quantum.qaoa`                  | caps ↔ runtime   | ADITIVO — `initial_angles`/`optimize`/`init_strategy`; salida `angles`    |
+| `scripts/import_nexus_runs.py` → `knowledge/nexus/index.json` | ciencia          | ADITIVO — `betas`/`gammas`; NINGÚN digest se mueve (test que lo prueba)   |
+| `knowledge/rvsp/<instancia>.json` (corpus nuevo)              | ciencia ↔ api    | NUEVO — regla de identidad §15.3; bloque `metodo` fuera del wire          |
+| `chimera_api.corpus_records` (módulo nuevo)                   | api              | EXTRAÍDO — una sola definición de identidad de corpus (tfim/tabular/rvsp) |
+| `chimera_api.rvsp` (módulo nuevo)                             | api ↔ D          | NUEVO — `RvspResponse`; `baselines` cerrado a 3 (C-15)                    |
+| `RunTicket.instance_id`                                       | api              | ADITIVO — qué instancia encargó el run; `None` ⇒ 404, jamás una adivinada |
+| `GET /runs/{run_id}/rvsp`                                     | E ↔ D            | IMPLEMENTA el contrato congelado; seed des-xfaileado                      |
+| `GatewayResponse.status` en las LECTURAS (`fetchWireGet`)     | D                | ADITIVO — sin él, un 404 del contrato es indistinguible de un 500         |
+| `rvspWireSchema` + `toRvsPExperiment` (Zod)                   | D                | ESPEJO — snake_case → camelCase, mismo patrón que `toAblationMetric`      |
+| `loadRvsP(runId?)` / `rvspQueryOptions`                       | D                | La rama live deja de devolver `null` fijo                                 |
+| fixture `get-runs-rvsp.json` (canónico + espejo Studio)       | E ↔ D            | NUEVO — generado desde `RvspResponse` sobre el corpus REAL, no a mano     |
