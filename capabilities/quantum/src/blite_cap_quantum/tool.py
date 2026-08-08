@@ -38,6 +38,37 @@ _MANIFEST = CapabilityManifest(
                 "type": "number",
                 "description": "Known optimum used to report approximation_ratio",
             },
+            "initial_angles": {
+                "type": "object",
+                "description": (
+                    "Explicit variational angle schedule to start from (or to "
+                    "evaluate at, with optimize=false); same shape as the "
+                    "'angles' output so a run's angles can be fed back verbatim"
+                ),
+                "properties": {
+                    "betas": {"type": "array", "items": {"type": "number"}},
+                    "gammas": {"type": "array", "items": {"type": "number"}},
+                },
+                "required": ["betas", "gammas"],
+            },
+            "optimize": {
+                "type": "boolean",
+                "default": True,
+                "description": (
+                    "When false, evaluate at initial_angles instead of running "
+                    "the classical angle optimizer (initial_angles required)"
+                ),
+            },
+            "init_strategy": {
+                "type": "string",
+                "enum": ["constant", "interp"],
+                "default": "constant",
+                "description": (
+                    "Where the angle optimizer starts: a constant schedule, or "
+                    "a level-by-level climb interpolating the previous level's "
+                    "optimum (mutually exclusive with initial_angles)"
+                ),
+            },
         },
         "required": ["matrix"],
     },
@@ -65,8 +96,48 @@ _MANIFEST = CapabilityManifest(
                 "type": "number",
                 "description": "expected_energy divided by reference_optimum, when provided",
             },
+            "angles": {
+                "type": "object",
+                "description": (
+                    "Variational angle schedule actually bound into the sampled "
+                    "circuit — re-injectable as initial_angles"
+                ),
+                "properties": {
+                    "betas": {"type": "array", "items": {"type": "number"}},
+                    "gammas": {"type": "array", "items": {"type": "number"}},
+                },
+                "required": ["betas", "gammas"],
+            },
+            "init_strategy": {
+                "type": "string",
+                "description": (
+                    "How the starting angles were chosen: 'constant', 'interp', "
+                    "or 'given' when the caller supplied them"
+                ),
+            },
+            "optimized": {
+                "type": "boolean",
+                "description": "Whether the classical angle optimizer ran",
+            },
+            "warm_start_levels": {
+                "type": "array",
+                "description": (
+                    "One entry per level climbed, present only under "
+                    "init_strategy='interp'"
+                ),
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "p": {"type": "integer"},
+                        "betas": {"type": "array", "items": {"type": "number"}},
+                        "gammas": {"type": "array", "items": {"type": "number"}},
+                        "expected_energy": {"type": "number"},
+                    },
+                    "required": ["p", "betas", "gammas", "expected_energy"],
+                },
+            },
         },
-        "required": ["assignment"],
+        "required": ["assignment", "angles", "init_strategy", "optimized"],
     },
     tags=("quantum", "qaoa", "optimization", "qubo"),
     side_effects="pure",
@@ -97,7 +168,7 @@ class QaoaSolver:
             ) from exc
 
     def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        from blite_cap_quantum.qaoa import solve_qaoa
+        from blite_cap_quantum.qaoa import CONSTANT_INIT, solve_qaoa
 
         backend = inputs.get("backend", "aer_simulator")
         if backend != "aer_simulator":
@@ -120,11 +191,24 @@ class QaoaSolver:
         ):
             msg = f"QaoaSolver: reference_optimum debe ser numérico, no {reference!r}"
             raise ValueError(msg)
+        optimize = inputs.get("optimize", True)
+        if not isinstance(optimize, bool):
+            # Un string no vacío es verdadero en Python: `"false"` colado acá
+            # re-optimizaría en silencio los ángulos que se pidió NO tocar.
+            msg = f"QaoaSolver: optimize debe ser booleano, no {optimize!r}"
+            raise ValueError(msg)
+        init_strategy = inputs.get("init_strategy", CONSTANT_INIT)
+        if not isinstance(init_strategy, str):
+            msg = f"QaoaSolver: init_strategy debe ser texto, no {init_strategy!r}"
+            raise ValueError(msg)
         return solve_qaoa(
             inputs.get("matrix"),
             layers=layers,
             seed=seed,
             reference_optimum=reference,
+            initial_angles=inputs.get("initial_angles"),
+            optimize=optimize,
+            init_strategy=init_strategy,
         )
 
 
