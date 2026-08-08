@@ -3523,6 +3523,8 @@ y O10 siguen PENDIENTES; O7 sin evaluar). Lo que cambió después:
   integral va después de Mejorado, en una pasada única.
 - **depcruise del Studio**: lo toma otro agente (Dylan, 2026-08-06). Sigue
   siendo lo único que mantiene rojo el job Web.
+- **#166 — O5 CERRADO** (DoD vivo en compose). El handoff de más arriba lo
+  listaba PENDIENTE: quedan **O4, O9 y O10**, más O7 sin evaluar.
 
 **Gates al cierre de este tramo**: pytest **1283 passed** / cov 90.27 % ·
 lint-imports 17/0 · ruff check y `format --check` limpios · pyright 0 ·
