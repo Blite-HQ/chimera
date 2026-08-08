@@ -142,12 +142,18 @@ async function fetchWireGet<T>(url: string): Promise<GatewayResponse<T>> {
     return {
       success: false,
       data: null,
-      error: `Gateway error: ${response.status} ${response.statusText}`
+      error: `Gateway error: ${response.status} ${response.statusText}`,
+      // V3/M20: el status viaja también en las lecturas. Sin él, un 404
+      // ("esta instancia no tiene curva ingerida" — una respuesta honesta del
+      // contrato) es indistinguible de un 500, y el consumidor tiene que
+      // elegir entre tratar los dos como error o los dos como vacío. Ambas
+      // opciones mienten en la mitad de los casos.
+      status: response.status
     };
   }
 
   const data = (await response.json()) as T;
-  return { success: true, data, error: null };
+  return { success: true, data, error: null, status: response.status };
 }
 
 /**
@@ -383,6 +389,19 @@ export async function getAblation(runId: string): Promise<GatewayResponse<unknow
  */
 export async function getTopology(runId: string): Promise<GatewayResponse<unknown>> {
   return fetchWireGet(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/topology`);
+}
+
+/**
+ * V3/M20 — `GET {VITE_API_URL}/runs/{id}/rvsp` (C-9/#125): la curva r-vs-p
+ * de la instancia que el run cita, wire snake_case.
+ *
+ * A diferencia de `getTopology`, acá el 404 es una respuesta del CONTRATO,
+ * no una falla: un run que no declara instancia, o una instancia sin barrido
+ * congelado, no tienen curva — y la ruta no fabrica puntos. El consumidor
+ * (`loadRvsP`) mira el `status` para distinguirlo de un error real.
+ */
+export async function getRvsp(runId: string): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/runs/${encodeURIComponent(runId)}/rvsp`);
 }
 
 /**

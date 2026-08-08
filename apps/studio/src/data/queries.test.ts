@@ -55,8 +55,31 @@ vi.mock('../gatewayClient', () => ({
   getProjectArtifacts: vi.fn(),
   getProjectKnowledge: vi.fn(),
   getStepEvidence: vi.fn(),
-  getAblation: vi.fn()
+  getAblation: vi.fn(),
+  getRvsp: vi.fn()
 }));
+
+/** Wire snake_case de la curva r-vs-p (V3/M20 — `GET /runs/{id}/rvsp`). */
+const RVSP_WIRE = {
+  instance: 'cr8-uniforme',
+  optimo: 7,
+  baselines: {
+    cpsat: { energy: 7, r: 1 },
+    greedy: { energy: 6, r: 6 / 7 },
+    gw: { energy: 7, r: 1 }
+  },
+  points: [
+    {
+      p: 1,
+      r_esperado_mean: 0.634,
+      r_muestral_mean: 0.6325,
+      r_muestral_std: 0.0031,
+      r_muestral_min: 0.628,
+      r_muestral_max: 0.637,
+      success_rate: 1
+    }
+  ]
+} as const;
 
 /** Wire de una fila real de cada agregado de proyecto (V8/M23b). */
 const ARTIFACT_WIRE = {
@@ -767,7 +790,7 @@ describe('loadRvsP (rama demo/live)', () => {
     expect(experiment).toEqual(RVSP_EXPERIMENT);
   });
 
-  it('modo live: sin GET /rvsp todavía — devuelve null, nunca el fixture', async () => {
+  it('modo live sin runId: null — la curva es de un run, no del proyecto', async () => {
     // Arrange
     vi.stubEnv('VITE_API_URL', 'http://api.test');
 
@@ -776,6 +799,84 @@ describe('loadRvsP (rama demo/live)', () => {
 
     // Assert
     expect(experiment).toBeNull();
+  });
+
+  it('modo live: mapea el wire snake_case a camelCase', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getRvsp).mockResolvedValue({
+      success: true,
+      data: RVSP_WIRE,
+      error: null,
+      status: 200
+    });
+
+    // Act
+    const experiment = await loadRvsP('run-42');
+
+    // Assert
+    expect(experiment?.instance).toBe('cr8-uniforme');
+    expect(experiment?.points[0]).toEqual({
+      p: 1,
+      rEsperadoMean: 0.634,
+      rMuestralMean: 0.6325,
+      rMuestralStd: 0.0031,
+      rMuestralMin: 0.628,
+      rMuestralMax: 0.637,
+      successRate: 1
+    });
+  });
+
+  it('modo live: un 404 es vacío honesto, no un error', async () => {
+    // 404 acá es respuesta del CONTRATO ("este run no declara instancia" /
+    // "esta instancia no tiene barrido ingerido"), no una falla — pintar un
+    // error rojo diría que algo se rompió cuando solo falta la ciencia.
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getRvsp).mockResolvedValue({
+      success: false,
+      data: null,
+      error: 'Gateway error: 404 Not Found',
+      status: 404
+    });
+
+    // Act
+    const experiment = await loadRvsP('run-42');
+
+    // Assert
+    expect(experiment).toBeNull();
+  });
+
+  it('modo live: un 500 SÍ explota — eso sí es una falla', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getRvsp).mockResolvedValue({
+      success: false,
+      data: null,
+      error: 'Gateway error: 500 Internal Server Error',
+      status: 500
+    });
+
+    // Act / Assert
+    await expect(loadRvsP('run-42')).rejects.toThrow(/500/);
+  });
+
+  it('modo live: un wire con r fuera de [0,1] no pasa la frontera', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getRvsp).mockResolvedValue({
+      success: true,
+      data: {
+        ...RVSP_WIRE,
+        points: [{ ...RVSP_WIRE.points[0], r_esperado_mean: 1.4 }]
+      },
+      error: null,
+      status: 200
+    });
+
+    // Act / Assert — un ratio > 1 es un defecto de la ciencia, y el Zod de
+    // frontera es donde se ve, no tres capas más adentro en el gráfico
+    await expect(loadRvsP('run-42')).rejects.toThrow();
   });
 });
 

@@ -50,6 +50,7 @@ from blite.runtime.metrics import AblationVariant
 from blite.runtime.projection import RunRow, project_runs
 from chimera_api.deliverables import collect_deliverables
 from chimera_api.runs import RunResources
+from chimera_api.rvsp import RvspResponse, load_rvsp_record
 
 RunStatusWire = Literal["en_curso", "completado", "fallido", "cancelado"]
 
@@ -624,5 +625,38 @@ def create_reads_router(resources: RunResources) -> APIRouter:
     def get_run_topology(run_id: str) -> TopologyResponse:
         stream = _require_known_run(resources, run_id)
         return TopologyResponse(**_project_topology(stream))
+
+    @router.get("/runs/{run_id}/rvsp")
+    def get_run_rvsp(run_id: str) -> RvspResponse:
+        """[V3/M20 · C-9] La curva r-vs-p de la instancia que el run cita.
+
+        Clave POR RUN, datos POR INSTANCIA: el barrido r vs p abarca p×semillas
+        corridas y no cabe en el stream de una sola ejecución, así que el run
+        aporta el ÚNICO dato que es suyo —qué red se está resolviendo— y la
+        curva sale del corpus congelado (`knowledge/rvsp/`, con su digest).
+
+        Los dos 404 dicen cosas distintas a propósito: "este run no declaró
+        instancia" y "esta instancia no tiene curva ingerida" son problemas
+        distintos, y colapsarlos dejaría al Studio sin saber cuál mostrar.
+        Ninguno degrada a `points: []` — un gráfico vacío se lee como "el
+        experimento dio esto", que sería falso."""
+        _require_known_run(resources, run_id)
+        ticket = resources.run_tickets.get(run_id)
+        instancia = ticket.instance_id if ticket is not None else None
+        if not instancia:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    "run sin instancia declarada — sin ella no se sabe de qué "
+                    "red es la curva rvsp, y servir otra sería inventarla"
+                ),
+            )
+        curva = load_rvsp_record(instancia)
+        if curva is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"instancia {instancia} sin datos rvsp ingeridos todavía",
+            )
+        return curva
 
     return router

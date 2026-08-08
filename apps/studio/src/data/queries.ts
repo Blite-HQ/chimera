@@ -20,6 +20,7 @@ import {
   getProjectArtifacts,
   getProjectKnowledge,
   getRuns,
+  getRvsp,
   getStepEvidence,
   getTopology
 } from '../gatewayClient';
@@ -42,10 +43,12 @@ import {
   projectedEventSchema,
   runSummaryWireSchema,
   rvspSchema,
+  rvspWireSchema,
   stepDetailSchema,
   stepDetailWireSchema,
   toAblationMetric,
   topologySnapshotSchema,
+  toRvsPExperiment,
   toKnowledgeClaim,
   toProjectArtifact,
   toRunSummary,
@@ -356,23 +359,40 @@ export function topologyQueryOptions(runId: string) {
 }
 
 /**
- * D5 (dataviz "r vs p") — rama demo/live: sin `GET /rvsp` todavía (ver
- * loadRunSummaries). A diferencia de los recursos en lista (`[]` vacío),
- * este es un experimento único por instancia, así que "nada todavía" en
- * vivo es `null`, no un array — el consumidor (App.tsx) lo trata igual que
- * las demás ramas vacías: EmptyState, jamás el fixture inventado.
+ * D5 (dataviz "r vs p") — rama demo/live. [V3/M20] En vivo ya hay a quién
+ * preguntarle: `GET /runs/{id}/rvsp` sirve la curva CONGELADA de la
+ * instancia que el run cita (`knowledge/rvsp/`, ⟨C⟩ evaluado en los ángulos
+ * que Quantinuum corrió).
+ *
+ * El 404 se trata como `null`, no como error, porque acá 404 es una
+ * respuesta del contrato: "este run no declara instancia" o "esta instancia
+ * no tiene barrido ingerido". La vista pinta un vacío honesto; un error
+ * rojo diría que algo se rompió cuando lo que pasa es que no hay ciencia
+ * todavía. Un 500 o una caída de red SÍ explotan — esos sí son fallas.
+ *
+ * En réplica sirve el experimento real copiado a fixture (`ieee6-flujo`).
  */
-export async function loadRvsP(): Promise<RvsPExperiment | null> {
-  if (isLiveMode()) {
+export async function loadRvsP(runId?: string): Promise<RvsPExperiment | null> {
+  if (!isLiveMode()) {
+    return rvspSchema.parse(RVSP_EXPERIMENT);
+  }
+  if (runId === undefined) {
     return null;
   }
-  return rvspSchema.parse(RVSP_EXPERIMENT);
+  const res = await getRvsp(runId);
+  if (res.status === 404) {
+    return null;
+  }
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudo obtener la curva r-vs-p del run');
+  }
+  return toRvsPExperiment(rvspWireSchema.parse(res.data));
 }
 
 export function rvspQueryOptions(runId: string) {
   return queryOptions({
     queryKey: ['runs', runId, 'rvsp'] as const,
-    queryFn: loadRvsP
+    queryFn: () => loadRvsP(runId)
   });
 }
 

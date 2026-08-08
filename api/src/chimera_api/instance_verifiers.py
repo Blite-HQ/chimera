@@ -67,8 +67,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import json
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -99,6 +97,7 @@ from blite.verification.partition import build_partition
 from blite.verification.property_rule import PropertyRuleClaim, PropertyRuleVerifier
 from blite.verification.structural_partition import StructuralPartitionVerifier
 from blite.verification.verifier import Determinism, Verifier
+from chimera_api.corpus_records import load_corpus_record
 
 # api/src/chimera_api/instance_verifiers.py -> parents[3] es la raíz del
 # repo (mismo cómputo que `_REPO_ROOT` en chimera_api.runs, misma
@@ -106,12 +105,6 @@ from blite.verification.verifier import Determinism, Verifier
 _REPO_ROOT = Path(__file__).parents[3]
 _TFIM_CORPUS_DIR = _REPO_ROOT / "knowledge" / "tfim" / "corpus"
 _TABULAR_CORPUS_DIR = _REPO_ROOT / "knowledge" / "tabular" / "corpus"
-
-# Mismo patrón de slug que `chimera_api.runs._load_corpus_matrix` — un
-# `instance_id` que viaja en el body HTTP jamás se interpola en una ruta de
-# archivo sin pasar por este guard primero (validación en frontera, ataque
-# de traversal incluido).
-_CORPUS_SLUG_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 _SOLVER_VERIFIER_ID = "verifier:cpsat-differential"
 _SOLVER_INDEPENDENCE_GROUP = "leg-formal"
@@ -318,49 +311,17 @@ def _model_validating_builder(
     return _build
 
 
-def _corpus_record_digest(record_without_digest: dict[str, Any]) -> str:
-    """La regla de digest del CORPUS (`scripts/verify_corpus_digests.py`,
-    regla 15.3 generalizada) — JSON canónico PLANO (`json.dumps` con
-    `sort_keys`), deliberadamente NO `blite.certificate.canonical` (ese es
-    el algoritmo JCS de otro anexo, para otro propósito: digests de
-    contenido de certificado, no identidad de corpus)."""
-    return hashlib.sha256(
-        json.dumps(
-            record_without_digest,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=True,
-        ).encode()
-    ).hexdigest()
-
-
 def _load_json_corpus_record(directory: Path, slug: str) -> dict[str, Any] | None:
     """Carga+valida CUALQUIER corpus `<slug>.json` bajo `directory` con la
-    MISMA disciplina de identidad (§15.3 generalizada, spec §Contrato-4):
-    slug fuera de forma, archivo ausente, o digest que no coincide con su
-    propio contenido ⇒ `None`, fail-closed — jamás deja pasar un dato no
-    verificado a un verificador, y jamás toca el filesystem con un slug
-    fuera de forma (path traversal). Compartido entre C3 (`tfim-corpus/`) y
-    C2 (`tabular-corpus/`) — la regla de identidad de corpus es UNA sola."""
-    if not _CORPUS_SLUG_PATTERN.fullmatch(slug):
-        return None
-    path = directory / f"{slug}.json"
-    if not path.is_file():
-        return None
-    try:
-        record: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-        embedded = record["digest"]
-        record_without_digest = {k: v for k, v in record.items() if k != "digest"}
-        if not isinstance(embedded, str):
-            return None
-        if _corpus_record_digest(record_without_digest) != embedded:
-            return None
-    except (OSError, KeyError, TypeError, ValueError):
-        # Corpus malformado (JSON roto, campo ausente, tipo inesperado) es
-        # la MISMA señal fail-closed que un digest que no coincide — jamás
-        # un 500 por un dato de conocimiento corrupto.
-        return None
-    return record
+    MISMA disciplina de identidad (§15.3 generalizada, spec §Contrato-4).
+
+    La regla vive en `chimera_api.corpus_records` desde que V3/M20 la
+    necesitó también para `knowledge/rvsp/`: dos definiciones de "este
+    corpus es el que dice ser" son una de más, y la que se relajara primero
+    sería por donde entraría un dato tamperado. Compartido hoy entre C3
+    (`tfim/`), C2 (`tabular/`) y la curva r-vs-p.
+    """
+    return load_corpus_record(directory, slug)
 
 
 def _load_tfim_corpus_record(slug: str) -> dict[str, Any] | None:

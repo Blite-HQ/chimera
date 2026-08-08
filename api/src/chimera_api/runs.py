@@ -277,6 +277,13 @@ class RunTicket:
 
     conclusions: tuple[ConclusionDeclaration, ...]
     anchor_descriptors: tuple[dict[str, Any], ...]
+    instance_id: str | None = None
+    """[V3/M20] Qué instancia del corpus encargó este run — la clave que
+    `GET /runs/{run_id}/rvsp` necesita para saber QUÉ curva servir. Vive acá
+    y no en el log porque es lo que el ARRANQUE declaró: el modo misión ni
+    siquiera pone la instancia en los inputs cuando el corpus resuelve
+    (`_resolve_mission_inputs` devuelve solo la matriz). `None` = el run no
+    la declaró, y la ruta responde 404 en vez de adivinar una red ajena."""
 
 
 @dataclass(frozen=True)
@@ -707,6 +714,7 @@ def _start_claim_run(
                 claim_type=body.claim.claim_type,
             ),
         ),
+        instance_id=instance_id or None,
         anchor_descriptors=resolution.anchor_descriptors,
     )
 
@@ -759,7 +767,9 @@ def _start_mission_run(
     # Ticket VACÍO: el modo misión no declara conclusiones — los claims los
     # emiten los sub-runs/steps. `GET /runs/{id}/certificate` no responde
     # 404 por desconocido; sin conclusiones no se fabrica certificado.
-    resources.run_tickets[run_id] = RunTicket(conclusions=(), anchor_descriptors=())
+    resources.run_tickets[run_id] = RunTicket(
+        conclusions=(), anchor_descriptors=(), instance_id=body.instance_id
+    )
 
     capability_id = (
         body.capability_id

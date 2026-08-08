@@ -277,3 +277,77 @@ class TestImportOnTheMirror:
             "imported_by",
             "imported_at",
         }
+
+
+@requires_mirror
+class TestAngulosIngeridos:
+    """V3/M20: los ángulos (β, γ) que Quantinuum realmente corrió viven HOY
+    solo en el espejo solo-lectura. Sin ellos ingeridos, evaluar ⟨C⟩ «en los
+    ángulos de la corrida» obliga a leer un directorio fuera del repo — o,
+    peor, a re-optimizar y llamar a eso la misma corrida.
+
+    Ya estaban DENTRO del `circuit_digest` (`canonicalize({kind, instance, p,
+    betas, gammas})`), así que persistirlos no agrega información nueva a la
+    procedencia: la vuelve legible.
+    """
+
+    def test_el_indice_persiste_los_angulos_de_cada_corrida(
+        self, tmp_path: Path
+    ) -> None:
+        # Act
+        out_dir = tmp_path / "out"
+        imp.run_import(_MIRROR_DIR, _CORPUS_DIR, out_dir)
+
+        # Assert — un calendario completo por corrida: p betas y p gammas
+        index = json.loads((out_dir / "index.json").read_text())
+        for entrada in index["imports"]:
+            assert len(entrada["betas"]) == entrada["p"]
+            assert len(entrada["gammas"]) == entrada["p"]
+            assert all(isinstance(a, float) for a in entrada["betas"])
+
+    def test_los_angulos_persistidos_son_los_del_espejo(self, tmp_path: Path) -> None:
+        """Copia fiel, no re-derivación: el ángulo ingerido tiene que ser el
+        mismo número que el archivo del espejo trae."""
+        # Arrange
+        out_dir = tmp_path / "out"
+        imp.run_import(_MIRROR_DIR, _CORPUS_DIR, out_dir)
+        index = json.loads((out_dir / "index.json").read_text())
+        por_job = {e["job_id"]: e for e in index["imports"]}
+
+        # Act / Assert
+        for archivo in sorted(_MIRROR_DIR.glob("*.json")):
+            corrida = json.loads(archivo.read_text())
+            entrada = por_job[corrida["job_id"]]
+            assert entrada["betas"] == corrida["betas"]
+            assert entrada["gammas"] == corrida["gammas"]
+
+    def test_persistir_los_angulos_no_mueve_ningun_digest(self, tmp_path: Path) -> None:
+        """El chequeo que decide si esta extensión es aditiva de verdad: los
+        ángulos ya entraban al `circuit_digest`, así que TODOS los digests
+        del índice committeado tienen que sobrevivir intactos. Si alguno se
+        moviera, la extensión estaría re-estampando procedencia — y eso se
+        para y se reporta, no se re-estampa."""
+        # Arrange
+        committeado = json.loads(
+            (_REPO / "knowledge" / "nexus" / "index.json").read_text()
+        )
+        anterior = {e["job_id"]: e for e in committeado["imports"]}
+
+        # Act
+        out_dir = tmp_path / "out"
+        imp.run_import(_MIRROR_DIR, _CORPUS_DIR, out_dir)
+        nuevo = json.loads((out_dir / "index.json").read_text())
+
+        # Assert
+        assert set(anterior) == {e["job_id"] for e in nuevo["imports"]}
+        for entrada in nuevo["imports"]:
+            previa = anterior[entrada["job_id"]]
+            for campo in (
+                "circuit_digest",
+                "transpiled_circuit_digest",
+                "noise_config_digest",
+                "raw_blob_digest",
+                "normalized_digest",
+                "statement_digest",
+            ):
+                assert entrada[campo] == previa[campo], campo

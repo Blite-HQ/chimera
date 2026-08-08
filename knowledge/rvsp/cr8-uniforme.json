@@ -1,0 +1,60 @@
+{
+  "baselines": {
+    "cpsat": {
+      "energy": 7.0,
+      "r": 1.0
+    },
+    "greedy": {
+      "energy": 7.0,
+      "r": 1.0
+    },
+    "gw": {
+      "energy": 7.0,
+      "r": 1.0
+    }
+  },
+  "digest": "23ec3b022a9271930c70b425498c0646fe57022b8fafb9ef3827b289e7d6cfe2",
+  "generated_by": "scripts/gen_corpus_rvsp.py",
+  "instance": "cr8-uniforme",
+  "metodo": {
+    "angle_digests": {
+      "1": "4fe00c1cf9fca4635571c407000b7bb2f237df9b5e5a95d4d7beff38937c8424",
+      "2": "ecb6cff2a5eeb601015c1e2f1112d948048301a013cd168af8da56798b9bbed6",
+      "3": "d67621e9e33b88b3c0d06c5716e6047674a2ce463ad87c0c18a78e531c8c73ea"
+    },
+    "angle_source": "nexus-import",
+    "backend": "aer_simulator",
+    "expectation": "statevector-exacto",
+    "seeds": [1, 2, 3, 4, 5]
+  },
+  "optimo": 7,
+  "points": [
+    {
+      "p": 1,
+      "r_esperado_mean": 0.6339581928559136,
+      "r_muestral_max": 0.6366489955357143,
+      "r_muestral_mean": 0.6324916294642857,
+      "r_muestral_min": 0.6270228794642857,
+      "r_muestral_std": 0.0031312218832753444,
+      "success_rate": 1.0
+    },
+    {
+      "p": 2,
+      "r_esperado_mean": 0.858391867735879,
+      "r_muestral_max": 0.8630719866071429,
+      "r_muestral_mean": 0.8571010044642857,
+      "r_muestral_min": 0.8521205357142857,
+      "r_muestral_std": 0.0037143449883395257,
+      "success_rate": 1.0
+    },
+    {
+      "p": 3,
+      "r_esperado_mean": 0.6444341709568308,
+      "r_muestral_max": 0.64794921875,
+      "r_muestral_mean": 0.6437360491071429,
+      "r_muestral_min": 0.6407645089285714,
+      "r_muestral_std": 0.0026027296603889907,
+      "success_rate": 1.0
+    }
+  ]
+}
