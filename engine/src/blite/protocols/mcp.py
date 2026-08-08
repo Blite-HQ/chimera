@@ -36,6 +36,7 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
 
 from blite.runtime.distribution import DistributionManifest, McpServerSpec
@@ -57,10 +58,17 @@ def build_child_env(home: str) -> dict[str, str]:
 
     Lista blanca, no lista negra: una denylist de secretos se queda corta el día
     que alguien agrega una variable nueva, y el modo de falla es entregarla.
+
+    El `HOME` es efímero (el servidor escribe su config ahí y no queremos que
+    persista entre invocaciones), pero la CACHÉ del gestor de paquetes se
+    preserva a propósito: sin eso, cada invocación vuelve a bajar el servidor
+    entero de la red — verificado en vivo, ~90 MB por llamada. Aislar el estado
+    del tercero no es lo mismo que tirar el trabajo ya hecho.
     """
     env = {
         "PATH": os.environ.get("PATH", ""),
         "HOME": home,
+        "UV_CACHE_DIR": _stable_uv_cache_dir(),
     }
     env.update(
         {
@@ -70,6 +78,15 @@ def build_child_env(home: str) -> dict[str, str]:
         }
     )
     return env
+
+
+def _stable_uv_cache_dir() -> str:
+    """La caché de `uv` del proceso PADRE, no la del HOME efímero."""
+    declared = os.environ.get("UV_CACHE_DIR")
+    if declared:
+        return declared
+    parent_home = os.environ.get("HOME", "")
+    return str(Path(parent_home) / ".cache" / "uv") if parent_home else ""
 
 
 class McpInvocationRefusedError(Exception):

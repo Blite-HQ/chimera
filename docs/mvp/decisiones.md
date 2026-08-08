@@ -3606,6 +3606,20 @@ antes de tocar la red. La respuesta «logged_in: false» es la correcta y honest
 el contenedor no tiene sesión de Nexus, y el punto del DoD es la ruta gobernada,
 no el contenido de la respuesta.
 
+**DoD VIVO EN COMPOSE** (`docker compose exec api`, imagen reconstruida con la
+distribución que declara el servidor):
+
+```
+perfil service -> ServiceStrategy
+is_error: False
+content: [{"type":"text","text":"{\"logged_in\":false,\"hint\":\"run: qnx login\"}"}]
+builder: mcp://qnexus-mcp/nexus_auth_status
+pin: qnexus-mcp==0.2.0 | reportado: qnexus-mcp 0.2.0
+manifest digest: b4e42a7e4e4f
+qnexus-mcp/nexus_submit_job -> McpInvocationRefusedError
+servidor-pirata/x          -> McpInvocationRefusedError
+```
+
 **Hallazgo de despliegue, corregido:** el usuario del contenedor se crea con
 `--no-create-home` (a propósito), así que `uvx` moría con «failed to create
 directory /home/chimera/.cache/uv». Se le da caché propia por volumen
@@ -3615,6 +3629,13 @@ queda de root y el proceso no puede escribir. **Nota para producción**: con
 caché fría, la primera invocación baja el paquete de PyPI. Pre-hornear el
 servidor en la imagen quita esa dependencia de red en runtime y es lo correcto
 para un despliegue real; queda anotado, no hecho.
+
+**Segundo hallazgo, del propio arreglo:** dar `HOME` efímero al proceso ajeno
+rompía la caché de `uv` — cada invocación volvía a bajar ~90 MB de la red
+(medido). Aislar el ESTADO del tercero no es lo mismo que tirar el trabajo ya
+hecho: el `HOME` sigue siendo efímero (su config no persiste) pero
+`UV_CACHE_DIR` apunta a la caché del proceso padre. Verificado: la segunda
+invocación instala desde caché en 2 s.
 
 **Efecto colateral del extra `mcp`, limpiado:** trajo tipos mejores de httpx y
 dejó **20 `# pyright: ignore[reportUnknownMemberType]` sin nada que silenciar**
