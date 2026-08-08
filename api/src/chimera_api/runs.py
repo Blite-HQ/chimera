@@ -63,7 +63,8 @@ from blite.gateway.crossing import RunCrossing, build_run_pipeline
 from blite.identity.identity import Identity
 from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
 from blite.runtime.content_store import InMemoryContentStore
-from blite.runtime.dispatch import Dispatcher, ProfileDispatcher
+from blite.runtime.dispatch import Dispatcher, ProfileDispatcher, ServiceStrategy
+from blite.runtime.distribution import load_distribution_manifest
 from blite.runtime.loop import (
     GatewayCrossing,
     ProposedStep,
@@ -409,6 +410,31 @@ class RunResources:
         return self._registry
 
 
+_DISTRIBUTION_MANIFEST_PATH = (
+    _REPO_ROOT / "distributions" / "chimera" / "distribution.yaml"
+)
+
+
+def _build_dispatcher() -> Dispatcher:
+    """Arma el despacho con lo que ESTE despliegue declara (O5/M13).
+
+    Sin `distribution.yaml`, o con él pero sin servidores MCP declarados, NO se
+    registra estrategia `service`: una capability de ese perfil queda sin
+    despachar (`NotImplementedError` explícito) en vez de caer a in-process,
+    donde se saltaría la allowlist, el pin y la attestation.
+
+    El import del invocador es perezoso porque arrastra el SDK de MCP (extra
+    `chimera-engine[mcp]`): un despliegue sin interop no debe pagarlo.
+    """
+    manifest = load_distribution_manifest(_DISTRIBUTION_MANIFEST_PATH)
+    if not manifest.mcp_servers:
+        return ProfileDispatcher()
+
+    from chimera_api.mcp_wiring import build_mcp_invoker
+
+    return ProfileDispatcher(service=ServiceStrategy(build_mcp_invoker(manifest)))
+
+
 def build_run_resources(
     store: EventStore, *, registry: Registry | None = None
 ) -> RunResources:
@@ -417,7 +443,7 @@ def build_run_resources(
     content = InMemoryContentStore()
     return RunResources(
         store=store,
-        dispatcher=ProfileDispatcher(),
+        dispatcher=_build_dispatcher(),
         content=content,
         policy_bytes=_DEFAULT_POLICY_PATH.read_bytes(),
         signing_key=ed25519.Ed25519PrivateKey.generate(),

@@ -60,8 +60,21 @@ services:
       # no bind: son contenido direccionado por digest, y perderlos en un
       # rebuild rompería toda cita `ref{name, digest}` que los nombre.
       CHIMERA_FILES_DIR: /app/var/files
+      # O5/M13 — caché de `uvx` para los servidores MCP externos que declara
+      # `distributions/chimera/distribution.yaml`. El usuario del contenedor no
+      # tiene HOME escribible (`--no-create-home`, a propósito), así que sin
+      # esto `uvx` muere con «failed to create directory /home/chimera/.cache».
+      # Volumen y no bind: la caché sobrevive al rebuild, y así el pin se
+      # resuelve UNA vez en vez de en cada invocación.
+      UV_CACHE_DIR: /app/var/uv-cache
+      # `uvx` necesita TRES rutas escribibles, no una: caché, directorio de
+      # herramientas y bin. Todas cuelgan del mismo volumen para que el
+      # Dockerfile no tenga que conocerlas una por una.
+      UV_TOOL_DIR: /app/var/uv-cache/tools
+      UV_TOOL_BIN_DIR: /app/var/uv-cache/bin
     volumes:
       - filesdata:/app/var/files
+      - uvcache:/app/var/uv-cache
     secrets:
       - postgres_password
     ports:
@@ -181,6 +194,8 @@ secrets:
 
 volumes:
   pgdata: {}
+  # Caché de `uvx` para los servidores MCP externos (O5/M13).
+  uvcache: {}
   # Cursor del proyector — FUERA del event store (S-F §2).
   otelcursor: {}
   # P10/M24 — archivos del proyecto (Papers). Direccionados por contenido:

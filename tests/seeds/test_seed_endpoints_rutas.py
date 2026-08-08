@@ -35,7 +35,7 @@ pytestmark = [pytest.mark.seed]
 def _get(client: TestClient, url: str) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+        client.get(url),
     )
 
 

@@ -56,6 +56,7 @@ src = [
     "capabilities/quantum/src",
     "capabilities/report/src",
     "capabilities/ingesta/src",
+    "capabilities/mcp/src",
     "tools/corpus-runner/src",
     "projectors/otel/src",
     "tests",
@@ -139,6 +140,7 @@ source = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
     "chimera_eval",
     "chimera_otel",
 ]
@@ -173,6 +175,7 @@ root_packages = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
     "chimera_eval",
     "chimera_otel",
 ]
@@ -193,6 +196,7 @@ forbidden_modules = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
 
 [[tool.importlinter.contracts]]
@@ -208,6 +212,7 @@ source_modules = [
     "blite_cap_smt",
     "blite_cap_quantum",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
 forbidden_modules = ["blite"]
 
@@ -252,6 +257,7 @@ forbidden_modules = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
 
 [[tool.importlinter.contracts]]
@@ -404,6 +410,7 @@ forbidden_modules = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
 
 [[tool.importlinter.contracts]]
@@ -431,6 +438,7 @@ source_modules = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
 forbidden_modules = ["chimera_eval"]
 

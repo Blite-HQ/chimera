@@ -86,7 +86,7 @@ def _get(
 ) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.get(url, headers=headers),  # pyright: ignore[reportUnknownMemberType]
+        client.get(url, headers=headers),
     )
 
 

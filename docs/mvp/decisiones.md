@@ -3528,3 +3528,97 @@ y O10 siguen PENDIENTES; O7 sin evaluar). Lo que cambió después:
 lint-imports 17/0 · ruff check y `format --check` limpios · pyright 0 ·
 Studio **299 passed / 32 files** · eslint 0 · `pnpm audit` sin vulnerabilidades ·
 `pip-audit` solo diskcache (sin fix upstream) · guards de datos verdes.
+
+### #166 — O5/M13: un tool MCP ajeno, invocado como capability GOBERNADA
+
+**Ejecuta C-12.** La resolución decía la parte difícil: los manifests de terceros
+NO son `CapabilityManifest` de primera clase. Si cada tool ajeno se registrara
+como capability propia, su vocabulario entraría a un manifest nuestro y ADR-029
+se caería el primer día.
+
+**Lo construido, y qué hueco tapa cada pieza:**
+
+| pieza                                     | qué es                                                 | hueco que cierra                                      |
+| ----------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| `blite.runtime.distribution`              | el `DistributionManifest`, MATERIALIZADO               | el freeze §1 lo daba por existente desde el principio |
+| `distributions/chimera/distribution.yaml` | la allowlist real (servers + tools + egress + pins)    | C-12: el vocabulario del tercero como DATO con digest |
+| `blite.protocols.mcp`                     | el round-trip (egreso, por eso vive en `protocols`)    | M13 no tenía adapter                                  |
+| `ServiceStrategy` (`runtime.dispatch`)    | la estrategia de red del perfil `service`              | la tabla de despacho tenía UNA sola entrada real      |
+| `blite_cap_mcp`                           | UNA capability genérica para cualquier tool ajeno      | C-12, literal                                         |
+| `chimera_api.mcp_wiring`                  | la attestation de importación (`builder.id = mcp://…`) | O5 lo pedía explícito                                 |
+
+**Y dos piezas que estaban construidas sin caller** (censo 07 §8.1-2) ahora lo
+tienen: `validate_interaction_profile` se llama al CARGAR el manifest —
+fail-closed en deploy, no en la primera invocación— y los `version_pins` que
+`registry.py` esperaba («trabajo pendiente del DistributionManifest») tienen de
+dónde salir.
+
+**Cuatro decisiones con su porqué:**
+
+1. **`side_effects: irreversible-external`.** Es el piso honesto: no sabemos qué
+   hace el tool de un extraño, y asumir reversibilidad inventaría una garantía
+   que no tenemos. La regla de reintentos del freeze §13 LEE ese campo — un
+   default optimista haría que el runtime reintente algo irreversible.
+2. **`invoke()` de la capability SIEMPRE levanta.** No es una limitación: es
+   `execution_profile: service`. Si el despacho llegara ahí, un fallback
+   silencioso a in-process ejecutaría un tool ajeno saltándose allowlist, pin y
+   attestation. Y sin invocador inyectado, `ProfileDispatcher` NO registra
+   estrategia `service` — misma doctrina anti-fallback que `remote-job` sin cola.
+3. **Que el servidor esté permitido NO permite todos sus tools.** Un servidor MCP
+   puede añadir tools entre versiones; heredar permiso por pertenecer al servidor
+   sería aceptar superficie que nadie revisó. Lista vacía = ninguno, jamás «todos».
+4. **El `package_pin` es obligatorio, sin default.** `uvx paquete` sin versión
+   trae lo que haya hoy en PyPI, y una capability gobernada no puede depender de
+   eso. Es además lo que la attestation cita como `builder`.
+
+**CEREMONIA REPORTADA, no ejecutada.** C-12 decía «reusa evidencia-externa» para
+la attestation. **No se puede sin mentir**: `ExternalImportStatement` valida
+llaves OBLIGATORIAS `circuit_digest` y `shots_requested` — es un import de job
+CUÁNTICO con nombre genérico (`ExternalImport/v1`). Una llamada a un tool MCP no
+tiene circuito ni shots, y rellenarlas sería fabricar campos para pasar un
+validador. Generalizar ese modelo toca contrato congelado ⇒ ceremonia, y una
+sesión de dominio no la ejecuta sola. Mientras tanto se emite un predicado
+propio y ADITIVO (`https://blite.dev/McpToolImport/v1`), misma forma in-toto
+Statement v1; el día de la ceremonia se fusionan. **Es también un hallazgo de
+agnosticismo en un CONTRATO, no en código.**
+
+**Qué certifica la attestation y qué no:** que este despliegue invocó ESTE tool,
+en ESTE servidor, con ESTE pin, bajo ESTA configuración (digest del manifest), y
+que el resultado tiene ESTE digest. **No** dice que el resultado sea correcto —
+un tool ajeno no es un ancla (misma ortogonalidad que la evidencia de Nexus). Los
+argumentos viajan por DIGEST: los pone el proponente y una attestation no es
+lugar para contenido.
+
+**DoD VIVO** — round-trip real contra `qnexus-mcp` 0.2.0 (10 tools publicados):
+
+```
+perfil: service → ServiceStrategy
+is_error: False
+content: [{"type":"text","text":"{\"logged_in\":false,\"hint\":\"run: qnx login\"}"}]
+builder: mcp://qnexus-mcp/nexus_auth_status
+pin: qnexus-mcp==0.2.0 | reportado: qnexus-mcp 0.2.0
+manifest digest: b4e42a7e4e4f8072…
+```
+
+Y las dos negativas, también en vivo: `nexus_submit_job` (tool fuera de la
+allowlist) y `servidor-pirata` (servidor no declarado) → `McpInvocationRefused`
+antes de tocar la red. La respuesta «logged_in: false» es la correcta y honesta:
+el contenedor no tiene sesión de Nexus, y el punto del DoD es la ruta gobernada,
+no el contenido de la respuesta.
+
+**Hallazgo de despliegue, corregido:** el usuario del contenedor se crea con
+`--no-create-home` (a propósito), así que `uvx` moría con «failed to create
+directory /home/chimera/.cache/uv». Se le da caché propia por volumen
+(`UV_CACHE_DIR=/app/var/uv-cache`) y el Dockerfile crea `var/` ANTES de que
+docker monte los volúmenes — sin eso, un volumen sobre un directorio inexistente
+queda de root y el proceso no puede escribir. **Nota para producción**: con
+caché fría, la primera invocación baja el paquete de PyPI. Pre-hornear el
+servidor en la imagen quita esa dependencia de red en runtime y es lo correcto
+para un despliegue real; queda anotado, no hecho.
+
+**Efecto colateral del extra `mcp`, limpiado:** trajo tipos mejores de httpx y
+dejó **20 `# pyright: ignore[reportUnknownMemberType]` sin nada que silenciar**
+en tests de otras sesiones. `reportUnnecessaryTypeIgnoreComment = "error"` es
+deliberado en este repo (un ignore que no silencia nada ES un error), así que se
+removieron. Uno llevaba prosa pegada al comentario y quedó como comentario
+propio, no borrado.

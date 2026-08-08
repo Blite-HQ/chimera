@@ -1,0 +1,40 @@
+# DistributionManifest — lo que ESTE despliegue declara (freeze §1, O5/M13).
+#
+# Se valida AL CARGAR, no en la primera invocación: un despliegue mal declarado
+# tiene que morir cuando alguien está mirando, no a mitad de un run.
+
+version: 1
+
+# ── Servidores MCP externos (resolución C-12) ─────────────────────────────────
+#
+# Esta lista ES la superficie de interop del despliegue. El vocabulario del
+# tercero vive acá, como DATO con digest — jamás en un `CapabilityManifest`
+# nuestro. Por eso registrar un servidor nuevo no toca ADR-029: no agrega
+# manifest, agrega configuración.
+#
+# Que un servidor esté permitido NO permite todos sus tools: un servidor MCP
+# puede añadir tools entre versiones, y heredar permiso por pertenecer al
+# servidor sería aceptar superficie que nadie revisó.
+mcp_servers:
+  qnexus-mcp:
+    transport: stdio
+    # PIN exacto: `uvx qnexus-mcp` sin versión trae lo que haya hoy en PyPI, y
+    # una capability gobernada no puede depender de eso. Es también lo que la
+    # attestation de importación cita como `builder`.
+    package_pin: 'qnexus-mcp==0.2.0'
+    command: uvx
+    args: ['qnexus-mcp==0.2.0']
+    # Declarativo: a dónde puede salir ESTE servidor. Lo consume la política de
+    # egreso — Inv-E: el egreso lo decide authz, nunca el adapter.
+    egress:
+      - nexus.quantinuum.com
+    # Solo lectura, a propósito. Los tools de gasto y los destructivos de
+    # qnexus-mcp exigen flags de arranque propios del servidor; no entran acá
+    # sin una decisión registrada que diga por qué.
+    tools:
+      - nexus_auth_status
+      - nexus_whoami
+      - nexus_list_devices
+      - nexus_device_status
+      - nexus_list_projects
+      - nexus_get_quota

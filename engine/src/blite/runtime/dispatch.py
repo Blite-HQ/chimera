@@ -16,6 +16,7 @@ la primera invocación. Override a `remote-job` solo si `interaction: job`;
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
@@ -88,6 +89,28 @@ class InProcessStrategy:
         return capability.invoke(inputs)
 
 
+class ServiceStrategy:
+    """`execution_profile: service` — la capability corre FUERA de este proceso.
+
+    Genérica a propósito: recibe el invocador INYECTADO en vez de importar el
+    adapter. `runtime` no hace egreso (eso vive en `blite.protocols`, por encima
+    de `authz` — INV-6), igual que no construye el gateway ni el proposer: define
+    el seam y la raíz de composición enchufa. Sin esta inyección, agregar un
+    transporte metería egreso dentro del loop.
+
+    Devuelve `Result`, no `JobRef`: `service` es síncrono por contrato — quien
+    quiera asincronía pide `remote-job`, que tiene su propia celda en la matriz.
+    """
+
+    def __init__(
+        self, invoker: Callable[[str, dict[str, Any]], dict[str, Any]]
+    ) -> None:
+        self._invoker = invoker
+
+    def execute(self, capability: Capability, inputs: dict[str, Any]) -> dict[str, Any]:
+        return self._invoker(capability.manifest.id, inputs)
+
+
 class ProfileDispatcher:
     """Tabla de despacho `{execution_profile: DispatchStrategy}` con UNA sola
     entrada real (nota execution/06 §11) — resuelve por VALOR del perfil, nunca
@@ -100,15 +123,24 @@ class ProfileDispatcher:
 
     `remote-job` gana estrategia SOLO si se inyecta una cola (P11): sin cola
     sigue siendo `NotImplementedError` — un despliegue sin cola no puede
-    fingir que corre trabajos largos.
+    fingir que corre trabajos largos. `service` gana estrategia SOLO si se
+    inyecta un invocador (O5/M13): sin él, una capability de perfil `service`
+    NO se ejecuta in-process a escondidas — se saltaría la allowlist, el pin y
+    la attestation del despliegue.
     """
 
-    def __init__(self, remote_job: DispatchStrategy | None = None) -> None:
+    def __init__(
+        self,
+        remote_job: DispatchStrategy | None = None,
+        service: DispatchStrategy | None = None,
+    ) -> None:
         self._strategies: dict[str, DispatchStrategy] = {
             "in-process": InProcessStrategy(),
         }
         if remote_job is not None:
             self._strategies["remote-job"] = remote_job
+        if service is not None:
+            self._strategies["service"] = service
 
     def resolve(self, execution_profile: str) -> DispatchStrategy:
         if execution_profile not in EXECUTION_PROFILES:
