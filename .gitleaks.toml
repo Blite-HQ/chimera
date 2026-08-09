@@ -37,6 +37,23 @@ regexes = [
 
 [[allowlists]]
 description = """
+La misma anotación, pero donde NO ocupa la línea entera: un parámetro de
+función (`def firmar(key: ed25519.Ed25519PrivateKey)`), un campo dentro de una
+firma multilínea, o código inline en un markdown. La regla de arriba ancla a
+línea completa y por eso se los pierde.
+
+Acá el criterio es el TIPO capturado, no la posición: `modulo.NombreDeTipo` —
+un identificador punteado cuyo segmento final arranca en mayúscula. Una
+credencial real no tiene esa forma; `sk_live_…`, un JWT o un blob base64 no
+pasan. Es lo que hace seguro aceptar la línea sin mirar dónde está.
+"""
+regexTarget = "match"
+regexes = [
+  '''(?i)^[a-z0-9_]*(key|token|secret|password)[a-z0-9_]*\s*:\s*[A-Za-z_][A-Za-z0-9_]*(\.[A-Z][A-Za-z0-9_]*)+[\s`'",)\]|]*$''',
+]
+
+[[allowlists]]
+description = """
 Placeholder values in the example environment file and in the secret-generation
 script: they exist to be replaced, and a scanner that flags them trains people
 to ignore it.
@@ -44,4 +61,20 @@ to ignore it.
 paths = [
   '''^\.env\.example$''',
   '''^secrets/.*\.example$''',
+]
+
+[[allowlists]]
+description = """
+El test de ESTA config. Su trabajo es contener fixtures con forma de secreto
+real, así que el escáner lo marca — correctamente — y no hay forma de evitarlo
+sin ofuscar los fixtures, que es peor: un test de un escáner de secretos tiene
+que poder leerse.
+
+La excepción no debilita nada: el test COPIA esos mismos fixtures a un archivo
+temporal, fuera de esta ruta, y afirma que ahí sí se detectan. La detección se
+sigue demostrando en cada corrida; lo único que se silencia es el archivo donde
+los fixtures viven.
+"""
+paths = [
+  '''^tests/integration/test_gitleaks_config\.py$''',
 ]

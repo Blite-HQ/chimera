@@ -286,14 +286,25 @@ jobs:
             https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz" | sha256sum -c -
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
-          /tmp/gitleaks git --redact --no-banner .
+          # A PATH: lo necesita el test de la config, más abajo en este mismo
+          # job — es el único sitio del CI donde el binario existe.
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks git --redact --no-banner .
 
       - name: Set up uv
         uses: ./.github/actions/setup-uv
 
-      - name: Audit Python deps (pip-audit)
+      # Las allowlists de `.gitleaks.toml` son lo único que puede QUITAR
+      # detección. Se ejercen contra el binario real acá, y no en el job
+      # Python, porque allá gitleaks no existe y el test se saltaría en
+      # silencio: un guard que se salta no es un guard.
+      - name: Test gitleaks allowlists
         run: |
           uv sync --locked --all-packages
+          uv run pytest tests/integration/test_gitleaks_config.py --no-cov -q
+
+      - name: Audit Python deps (pip-audit)
+        run: |
           # CVE-2025-69872 / PYSEC-2026-2447 (diskcache 5.6.3, via
           # dwave-ocean-sdk → the quantum capability's 'dwave' extra).
           # RE-EVALUATED 2026-08-05 (O, hallazgo 9): pip-audit still reports
