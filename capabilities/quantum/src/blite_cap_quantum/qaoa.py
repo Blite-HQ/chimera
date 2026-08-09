@@ -312,20 +312,40 @@ def _resolve_init(
     return GIVEN_INIT, _validate_initial_angles(initial_angles, layers)
 
 
-def solve_qaoa(  # noqa: PLR0913 — la superficie del proposer es su contrato con el experimento
+@dataclass(frozen=True)
+class QaoaPreparation:
+    """El circuito listo para medir, con todo lo que lo identifica.
+
+    Existe como tipo propio (V4/M6) porque el mitigador ZNE necesita
+    exactamente esto —el circuito SIN medición, el ⟨C⟩ ideal contra el cual
+    comparar, y la matriz para recomputar el corte de cada bitstring— y
+    obtenerlo re-implementando la mitad delantera de `solve_qaoa` habría dado
+    dos circuitos "iguales" que pueden divergir en silencio.
+
+    `circuit` NO trae medición: plegar (`zne.fold_global`) exige una unitaria,
+    y quien mide lo hace sobre una copia.
+    """
+
+    circuit: Any
+    matrix: list[list[float]]
+    angles: dict[str, list[float]]
+    expected_energy: float
+    init_strategy: str
+    optimized: bool
+    warm_start_levels: list[dict[str, Any]] | None
+
+
+def prepare_circuit(  # noqa: PLR0913 — misma superficie de arranque que `solve_qaoa`, que la envuelve
     raw_matrix: Any,
     *,
     layers: int = 2,
     seed: int = 1,
-    reference_optimum: float | None = None,
     initial_angles: Any = None,
     optimize: bool = True,
     init_strategy: str = CONSTANT_INIT,
-) -> dict[str, Any]:
-    """Corre QAOA y devuelve la mejor partición muestreada (con su energía)."""
+) -> QaoaPreparation:
+    """Construye el Ising, resuelve los ángulos y liga el circuito final."""
     import numpy as np
-    from qiskit import transpile
-    from qiskit_aer import AerSimulator
     from qiskit_optimization import QuadraticProgram
     from qiskit_optimization.translators import to_ising
 
@@ -358,15 +378,6 @@ def solve_qaoa(  # noqa: PLR0913 — la superficie del proposer es su contrato c
             optimize=optimize,
         )
 
-    final_circuit = nivel.circuit
-    final_circuit.measure_all()
-    simulator = AerSimulator(seed_simulator=seed)
-    compiled = transpile(final_circuit, simulator, seed_transpiler=seed)
-    counts_raw = simulator.run(compiled, shots=_SHOTS).result().get_counts()
-    counts = cast("dict[str, int]", counts_raw)
-
-    assignment, energy = _decode_best(counts, matrix)
-
     # Convención de signo (verificada empíricamente — ver task4b-brief.md):
     # `to_ising` produce H tal que offset + ⟨H⟩ == -(xᵀQx) para cada bitstring
     # x (H es diagonal en base computacional, solo términos Z ⇒ ⟨H⟩ en un
@@ -374,7 +385,67 @@ def solve_qaoa(  # noqa: PLR0913 — la superficie del proposer es su contrato c
     # COBYLA minimiza ⟨H⟩ = minimiza -corte; el valor esperado del CORTE bajo
     # la distribución variacional en los ángulos óptimos es, por tanto, el
     # positivo -offset - ⟨H⟩_óptimo (comparable a `energy`, NO su negación).
-    expected_energy = -float(offset) - nivel.expectation
+    return QaoaPreparation(
+        circuit=nivel.circuit,
+        matrix=matrix,
+        angles=_schedule(nivel.angles, layers),
+        expected_energy=-float(offset) - nivel.expectation,
+        init_strategy=estrategia,
+        optimized=optimize,
+        warm_start_levels=escalera,
+    )
+
+
+def sample_counts(
+    circuit: Any, *, seed: int, shots: int = _SHOTS, noise_model: Any = None
+) -> dict[str, int]:
+    """Mide el circuito en Aer con la seed pinneada (freeze §15.4).
+
+    `noise_model` (V4/M6) es el modo demostración honesto: ruido LOCAL
+    declarado con digest, jamás presentado como el del emulador del evento.
+    `None` = ideal.
+    """
+    from qiskit import transpile
+    from qiskit_aer import AerSimulator
+
+    medido = circuit.copy()
+    medido.measure_all()
+    simulator = AerSimulator(seed_simulator=seed, noise_model=noise_model)
+    compiled = transpile(medido, simulator, seed_transpiler=seed)
+    return cast(
+        "dict[str, int]", simulator.run(compiled, shots=shots).result().get_counts()
+    )
+
+
+def sampled_mean_cut(counts: dict[str, int], matrix: list[list[float]]) -> float:
+    """⟨C⟩ estimado sobre los shots — el observable que ZNE mitiga."""
+    return _sampled_mean_energy(counts, matrix)
+
+
+def solve_qaoa(  # noqa: PLR0913 — la superficie del proposer es su contrato con el experimento
+    raw_matrix: Any,
+    *,
+    layers: int = 2,
+    seed: int = 1,
+    reference_optimum: float | None = None,
+    initial_angles: Any = None,
+    optimize: bool = True,
+    init_strategy: str = CONSTANT_INIT,
+) -> dict[str, Any]:
+    """Corre QAOA y devuelve la mejor partición muestreada (con su energía)."""
+    preparation = prepare_circuit(
+        raw_matrix,
+        layers=layers,
+        seed=seed,
+        initial_angles=initial_angles,
+        optimize=optimize,
+        init_strategy=init_strategy,
+    )
+    matrix = preparation.matrix
+    counts = sample_counts(preparation.circuit, seed=seed)
+
+    assignment, energy = _decode_best(counts, matrix)
+    expected_energy = preparation.expected_energy
     sampled_mean_energy = _sampled_mean_energy(counts, matrix)
 
     result: dict[str, Any] = {
@@ -385,12 +456,12 @@ def solve_qaoa(  # noqa: PLR0913 — la superficie del proposer es su contrato c
         "shots": _SHOTS,
         "expected_energy": expected_energy,
         "sampled_mean_energy": sampled_mean_energy,
-        "angles": _schedule(nivel.angles, layers),
-        "init_strategy": estrategia,
-        "optimized": optimize,
+        "angles": preparation.angles,
+        "init_strategy": preparation.init_strategy,
+        "optimized": preparation.optimized,
     }
-    if escalera is not None:
-        result["warm_start_levels"] = escalera
+    if preparation.warm_start_levels is not None:
+        result["warm_start_levels"] = preparation.warm_start_levels
     if reference_optimum is not None:
         if reference_optimum <= 0:
             msg = f"reference_optimum debe ser > 0, no {reference_optimum!r}"

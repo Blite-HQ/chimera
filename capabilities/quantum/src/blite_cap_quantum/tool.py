@@ -8,7 +8,7 @@ Heavy dependencies are loaded lazily (install via extras):
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from blite_capability.manifest import CapabilityManifest
 
@@ -437,3 +437,221 @@ class FidelityKernel:
         from blite_cap_quantum.fidelity_kernel import fidelity_kernel
 
         return fidelity_kernel(inputs)
+
+
+_ZNE_MANIFEST = CapabilityManifest(
+    id="blite.quantum.zne",
+    description=(
+        "Estimate a noise-free expectation value by digital zero-noise "
+        "extrapolation: run the circuit at amplified noise levels via unitary "
+        "folding and extrapolate to zero, together with an equal-cost "
+        "negative control that says whether the improvement is real."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "matrix": {"type": "array", "description": "QUBO coefficient matrix"},
+            "layers": {"type": "integer", "default": 1},
+            "seed": {"type": "integer", "default": 1},
+            "initial_angles": {
+                "type": "object",
+                "description": (
+                    "Variational angle schedule to evaluate at; same shape as "
+                    "the 'angles' output of the QAOA capability"
+                ),
+                "properties": {
+                    "betas": {"type": "array", "items": {"type": "number"}},
+                    "gammas": {"type": "array", "items": {"type": "number"}},
+                },
+                "required": ["betas", "gammas"],
+            },
+            "optimize": {"type": "boolean", "default": True},
+            "scale_factors": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "default": [1, 3, 5],
+                "description": (
+                    "Odd noise amplification factors; the first must be 1 (the "
+                    "raw measurement that acts as baseline)"
+                ),
+            },
+            "extrapolator": {
+                "type": "string",
+                "enum": ["linear", "richardson"],
+                "default": "richardson",
+            },
+            "one_qubit_noise": {"type": "number", "default": 0.002},
+            "two_qubit_noise": {"type": "number", "default": 0.02},
+            "shots": {"type": "integer", "default": 2048},
+        },
+        "required": ["matrix"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "ideal_energy": {
+                "type": "number",
+                "description": "Exact expectation value with no noise (statevector)",
+            },
+            "unmitigated_energy": {
+                "type": "number",
+                "description": "Raw measurement under noise at amplification 1",
+            },
+            "mitigated_energy": {
+                "type": "number",
+                "description": "Value extrapolated to zero noise",
+            },
+            "scaled_energies": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "scale_factor": {"type": "integer"},
+                        "energy": {"type": "number"},
+                    },
+                    "required": ["scale_factor", "energy"],
+                },
+            },
+            "extrapolation_weights": {
+                "type": "array",
+                "items": {"type": "number"},
+                "description": (
+                    "Coefficients combining the measurements into the "
+                    "extrapolated value — published so a third party can "
+                    "recompute it from the raw measurements"
+                ),
+            },
+            "improvement": {
+                "type": "number",
+                "description": (
+                    "Fraction of the error against the ideal that the "
+                    "extrapolation removed; negative when it made things worse"
+                ),
+            },
+            "negative_control": {
+                "type": "object",
+                "description": (
+                    "Equal-cost control run on inflated circuits unrelated to "
+                    "the problem structure — its apparent improvement is what "
+                    "the real one must beat"
+                ),
+                "properties": {
+                    "kind": {"type": "string"},
+                    "reference": {"type": "string"},
+                    "unmitigated_energy": {"type": "number"},
+                    "mitigated_energy": {"type": "number"},
+                    "improvement": {"type": "number"},
+                },
+                "required": ["kind", "reference", "improvement"],
+            },
+            "improvement_survives_control": {
+                "type": "boolean",
+                "description": (
+                    "False means the improvement is not attributable to the "
+                    "method and must not be published as a result"
+                ),
+            },
+            "mitigation": {
+                "type": "object",
+                "description": "Provenance of the mitigation applied to this value",
+                "properties": {
+                    "method": {"type": "string"},
+                    "model_digest": {"type": "string"},
+                    "training_digest": {"type": ["string", "null"]},
+                    "noise_model_digest": {"type": "string"},
+                    "baseline": {"type": "string"},
+                },
+                "required": [
+                    "method",
+                    "model_digest",
+                    "training_digest",
+                    "noise_model_digest",
+                    "baseline",
+                ],
+            },
+            "noise": {
+                "type": "object",
+                "description": "Declarative noise descriptor the digest covers",
+            },
+            "angles": {"type": "object"},
+        },
+        "required": [
+            "ideal_energy",
+            "unmitigated_energy",
+            "mitigated_energy",
+            "improvement",
+            "negative_control",
+            "improvement_survives_control",
+            "mitigation",
+        ],
+    },
+    tags=("quantum", "mitigation", "extrapolation", "expectation-value"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
+)
+
+
+class ZeroNoiseExtrapolation:
+    """Generic capability: digital zero-noise extrapolation (unitary folding +
+    polynomial extrapolation) with a mandatory equal-cost negative control."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return _ZNE_MANIFEST
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        """Invoke the capability. Heavy deps loaded lazily on first call."""
+        return self._run(inputs)
+
+    def _run(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return self._invoke_impl(inputs)
+        except ImportError as exc:
+            raise ImportError(
+                f"ZeroNoiseExtrapolation: optional dependency missing. "
+                f"Install blite-cap-quantum[qaoa]: {exc}"
+            ) from exc
+
+    def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        from blite_cap_quantum.zne import (
+            DEFAULT_SCALE_FACTORS,
+            EXTRAPOLATOR_RICHARDSON,
+            mitigate_expectation,
+        )
+
+        optimize = inputs.get("optimize", True)
+        if not isinstance(optimize, bool):
+            msg = f"ZeroNoiseExtrapolation: optimize debe ser booleano, no {optimize!r}"
+            raise ValueError(msg)
+        crudas = inputs.get("scale_factors", list(DEFAULT_SCALE_FACTORS))
+        if not isinstance(crudas, list) or not crudas:
+            msg = (
+                "ZeroNoiseExtrapolation: scale_factors debe ser una lista no "
+                f"vacía de enteros impares, no {crudas!r}"
+            )
+            raise ValueError(msg)
+        escalas: list[int] = []
+        for valor in cast("list[object]", crudas):
+            # Un float acá se truncaría en silencio a un factor distinto del
+            # pedido, y el `mitigation.model_digest` diría otra cosa que la
+            # corrida: mejor explotar en la frontera.
+            if isinstance(valor, bool) or not isinstance(valor, int):
+                msg = (
+                    "ZeroNoiseExtrapolation: scale_factors debe traer enteros, "
+                    f"llegó {valor!r}"
+                )
+                raise ValueError(msg)
+            escalas.append(valor)
+        return mitigate_expectation(
+            inputs.get("matrix"),
+            layers=int(inputs.get("layers", 1)),
+            seed=int(inputs.get("seed", 1)),
+            initial_angles=inputs.get("initial_angles"),
+            optimize=optimize,
+            scale_factors=[int(e) for e in escalas],
+            extrapolator=str(inputs.get("extrapolator", EXTRAPOLATOR_RICHARDSON)),
+            one_qubit_noise=float(inputs.get("one_qubit_noise", 0.002)),
+            two_qubit_noise=float(inputs.get("two_qubit_noise", 0.02)),
+            shots=int(inputs.get("shots", 2048)),
+        )
