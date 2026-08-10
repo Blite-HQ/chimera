@@ -99,9 +99,7 @@ def test_fixture_discarded_es_lo_que_el_endpoint_emite_de_verdad() -> None:
 
     respuesta = cast(
         httpx.Response,
-        TestClient(create_app(store)).get(  # pyright: ignore[reportUnknownMemberType]
-            "/runs/discarded"
-        ),
+        TestClient(create_app(store)).get("/runs/discarded"),
     )
     vivo = respuesta.json()
 

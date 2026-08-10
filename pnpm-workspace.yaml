@@ -2,37 +2,49 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
-# Supply-chain quarantine: a newly published version must be at least 14 days
-# old (in minutes: 20160) before pnpm will resolve to it. Compromised releases
-# are typically detected and unpublished within days; known-CVE fixes still
-# arrive via Dependabot security updates, which bypass cooldowns.
-minimumReleaseAge: 20160
-# Some packages lack registry time metadata; 'highest' keeps the age check
-# (warn+skip on missing metadata) instead of failing resolution outright.
+# Supply-chain quarantine — POR QUÉ YA NO ESTÁ ACÁ (O, 2026-08-06)
+#
+# `minimumReleaseAge` (14 días) vivía en este archivo y terminó haciendo lo
+# contrario de lo que promete: **bloqueaba las actualizaciones de SEGURIDAD**.
+#
+# El mecanismo, verificado en los logs de Dependabot: su updater corre
+# `corepack pnpm update <pkg> --lockfile-only` detrás de un proxy sandboxeado
+# que NO devuelve el campo `time` de todos los paquetes. Con `resolutionMode:
+# highest`, a los paquetes de primer nivel eso solo les saca un WARN
+# («skipping the minimumReleaseAge check») — pero al re-validar el árbol
+# TRANSITIVO revienta con `ERR_PNPM_MISSING_TIME` y aborta el update entero
+# (pnpm/pnpm#9963, dependabot/dependabot-core#13165).
+#
+# El paquete que revienta CAMBIA en cada corrida (era `@radix-ui/react-id`
+# dentro de `radix-ui@1.6.0` la última vez), así que la lista de exclusiones
+# era un juego de topos que nunca se gana: cinco entradas y seguían fallando
+# cinco actualizaciones de seguridad (brace-expansion ×2, postcss, undici,
+# fast-uri, js-yaml).
+#
+# La cuarentena NO se pierde: `.github/dependabot.yml` ya declara EXACTAMENTE
+# la misma política (`cooldown` 14/90/14/7) y además la implementa bien —
+# las actualizaciones de seguridad la saltan a propósito. Lo único que se
+# cede es la cuarentena de un `pnpm add` MANUAL, que es un acto raro y
+# deliberado y sigue cubierto por `pnpm audit --audit-level=high` en CI.
+#
+# Vuelve acá el día que pnpm#9963 o dependabot-core#13165 se resuelvan.
 resolutionMode: highest
 
-# Excepción puntual (NO es el override global prohibido): esta versión exacta
-# ya está fijada en pnpm-lock.yaml y en uso; pnpm re-valida deps transitivas
-# existentes al agregar paquetes nuevos y bloquearía cualquier instalación
-# hasta que madure. Quitar cuando @tailwindcss/oxide 4.3.2 cumpla 14 días.
-#
-# ignore / es-toolkit: no son la dependencia vulnerable — son colateral de
-# Dependabot's security-update attempts para js-yaml (GHSA-52cp-r559-cp3m,
-# alerta #15) y fast-uri (GHSA-v2hh-gcrm-f6hx, alerta #16). El registry real
-# de npm SÍ trae "time" completo para ambos (verificado directo contra
-# registry.npmjs.org); es el proxy sandboxeado del updater de Dependabot el
-# que no lo está pasando, y minimumReleaseAge revienta con
-# ERR_PNPM_MISSING_TIME al re-validar el árbol transitivo en vez de solo
-# saltarse el paquete (resolutionMode: highest no cubre este caso — bug
-# conocido, ver pnpm/pnpm#9963 y dependabot/dependabot-core#13165). Ambos
-# intentos de Dependabot fallaron con security_update_not_possible por esto.
-# Quitar si dependabot-core#13165 se resuelve upstream.
-minimumReleaseAgeExclude:
-  - '@tailwindcss/oxide*'
-  - '@rolldown/binding*'
-  - '@types/node'
-  - 'ignore'
-  - 'es-toolkit'
+# Fuerza versiones parcheadas de dependencias TRANSITIVAS: ninguna de estas es
+# dependencia directa nuestra, así que no hay `pnpm update` que las mueva —
+# el override es el único camino. Cada línea es una alerta de seguridad real,
+# y se quita cuando el paquete que las arrastra suba solo.
+overrides:
+  brace-expansion: '>=5.0.9'
+  fast-uri: '>=3.1.5'
+  js-yaml: '>=4.3.1'
+  postcss: '>=8.5.23'
+  # `undici` NO lleva override: la alerta (moderate) afecta a 7.0.0–7.28.x, y
+  # forzar >=7.29.0 ROMPE jsdom 29 — undici quitó `lib/handler/wrap-handler.js`
+  # en un release MENOR y jsdom lo requería por ruta interna, así que los 32
+  # archivos de test del Studio no arrancaban («Failed to start threads
+  # worker»). Se resuelve por la vía correcta: jsdom 30, que ya pide undici ^8
+  # — fuera del rango afectado. Sin override que mantener.
 
 # pnpm 11 blocks dependency install scripts by default (replaces
 # onlyBuiltDependencies). Keep this allowlist minimal — every entry here is

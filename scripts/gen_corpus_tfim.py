@@ -73,7 +73,10 @@ def _pauli(n_sitios: int, sitios: dict[int, str]) -> str:
 def terminos_del_operador(n_sitios: int, campo_h: float) -> list[dict[str, Any]]:
     """H = -J sum Z_i Z_{i+1} - h sum X_i (cadena abierta) — receta SS1.1."""
     terminos: list[dict[str, Any]] = [
-        {"pauli": _pauli(n_sitios, {i: "Z", i + 1: "Z"}), "coefficient": -ACOPLAMIENTO_J}
+        {
+            "pauli": _pauli(n_sitios, {i: "Z", i + 1: "Z"}),
+            "coefficient": -ACOPLAMIENTO_J,
+        }
         for i in range(n_sitios - 1)
     ]
     terminos += [
@@ -159,9 +162,7 @@ def _chequeo_cono_de_luz(puntos: dict[str, dict[str, Any]]) -> None:
     de borde debe coincidir entre N=6, 8 y 12 al mismo h/J. Si no coincide, el
     bug esta en el generador y NO se escribe nada."""
     for razon in RAZONES_H_J:
-        bordes = {
-            n: puntos[nombre_instancia(n, razon)]["serie_z"][0] for n in N_SITIOS
-        }
+        bordes = {n: puntos[nombre_instancia(n, razon)]["serie_z"][0] for n in N_SITIOS}
         valores = list(bordes.values())
         if max(abs(v - valores[0]) for v in valores) > 1e-6:
             msg = (

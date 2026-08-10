@@ -20,7 +20,9 @@ from blite_cap_ml import TabularPrep  # noqa: E402
 _SEED = 1
 
 
-def _rows_and_labels(n: int = 40, n_features: int = 6) -> tuple[list[list[float | None]], list[int]]:
+def _rows_and_labels(
+    n: int = 40, n_features: int = 6
+) -> tuple[list[list[float | None]], list[int]]:
     import numpy as np
 
     rng = np.random.default_rng(_SEED)
@@ -61,7 +63,9 @@ class TestAntiLeakageFoldCommitment:
         import numpy as np
 
         rng = np.random.default_rng(999)
-        corrupted_rows = rng.uniform(-1000, 1000, size=(len(rows), len(rows[0]))).tolist()
+        corrupted_rows = rng.uniform(
+            -1000, 1000, size=(len(rows), len(rows[0]))
+        ).tolist()
 
         first = TabularPrep().invoke(
             {"rows": rows, "labels": labels, "n_folds": 4, "seed": _SEED}
@@ -93,7 +97,13 @@ class TestScalingRange:
         [0, pi] (min/max del propio fit)."""
         rows, labels = _rows_and_labels()
         result = TabularPrep().invoke(
-            {"rows": rows, "labels": labels, "n_folds": 3, "seed": _SEED, "n_features": 3}
+            {
+                "rows": rows,
+                "labels": labels,
+                "n_folds": 3,
+                "seed": _SEED,
+                "n_features": 3,
+            }
         )
 
         for fold in result["prepared"]:
@@ -109,7 +119,13 @@ class TestScalingRange:
         unica garantia exigible aqui es que el pipeline no produzca NaN/Inf."""
         rows, labels = _rows_and_labels()
         result = TabularPrep().invoke(
-            {"rows": rows, "labels": labels, "n_folds": 3, "seed": _SEED, "n_features": 3}
+            {
+                "rows": rows,
+                "labels": labels,
+                "n_folds": 3,
+                "seed": _SEED,
+                "n_features": 3,
+            }
         )
 
         for fold in result["prepared"]:
@@ -120,7 +136,13 @@ class TestScalingRange:
     def test_selected_feature_count_matches_n_features(self) -> None:
         rows, labels = _rows_and_labels(n_features=6)
         result = TabularPrep().invoke(
-            {"rows": rows, "labels": labels, "n_folds": 3, "seed": _SEED, "n_features": 3}
+            {
+                "rows": rows,
+                "labels": labels,
+                "n_folds": 3,
+                "seed": _SEED,
+                "n_features": 3,
+            }
         )
 
         for indices in result["feature_indices"]:
@@ -147,7 +169,13 @@ class TestMissingValueImputation:
 class TestDeterminism:
     def test_identical_invocations_return_identical_dicts(self) -> None:
         rows, labels = _rows_and_labels()
-        payload = {"rows": rows, "labels": labels, "n_folds": 4, "seed": _SEED, "n_features": 3}
+        payload = {
+            "rows": rows,
+            "labels": labels,
+            "n_folds": 4,
+            "seed": _SEED,
+            "n_features": 3,
+        }
 
         first = TabularPrep().invoke(payload)
         second = TabularPrep().invoke(payload)
@@ -221,7 +249,10 @@ class TestGenericitySelfCheck:
 
     def test_manifest_has_no_scenario_vocabulary(self) -> None:
         denylist_path = (
-            Path(__file__).resolve().parents[3] / "tests" / "invariants" / "scenario_denylist.txt"
+            Path(__file__).resolve().parents[3]
+            / "tests"
+            / "invariants"
+            / "scenario_denylist.txt"
         )
         denylist = [
             line.strip().lower()
@@ -233,4 +264,6 @@ class TestGenericitySelfCheck:
         text = json.dumps(dataclasses.asdict(manifest), default=str).lower()
 
         violations = [term for term in denylist if term in text]
-        assert not violations, f"manifest contiene vocabulario de escenario: {violations}"
+        assert not violations, (
+            f"manifest contiene vocabulario de escenario: {violations}"
+        )

@@ -75,14 +75,14 @@ def _make_client() -> TestClient:
 def _get(client: TestClient, url: str) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+        client.get(url),
     )
 
 
 def _post(client: TestClient, url: str, *, json_body: dict[str, Any]) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.post(url, json=json_body),  # pyright: ignore[reportUnknownMemberType]
+        client.post(url, json=json_body),
     )
 
 

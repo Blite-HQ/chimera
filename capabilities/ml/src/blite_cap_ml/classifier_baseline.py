@@ -162,7 +162,11 @@ def _validate_fold_assignment(raw: Any, n_rows: int, n_folds: int) -> list[int]:
         raise ValueError(msg)
     validated: list[int] = []
     for idx, value in enumerate(raw):
-        if isinstance(value, bool) or not isinstance(value, int) or not (0 <= value < n_folds):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not (0 <= value < n_folds)
+        ):
             msg = (
                 f"ClassifierBaseline: folds[{idx}] debe ser entero en "
                 f"[0, {n_folds}), no {value!r}"
@@ -198,8 +202,7 @@ def _validate_gamma(raw: Any) -> str | float:
     if _is_number(raw) and raw > 0:
         return float(raw)
     msg = (
-        f"ClassifierBaseline: gamma debe ser 'scale'/'auto' o numerico > 0, "
-        f"no {raw!r}"
+        f"ClassifierBaseline: gamma debe ser 'scale'/'auto' o numerico > 0, no {raw!r}"
     )
     raise ValueError(msg)
 
@@ -216,7 +219,9 @@ def _mcnemar(
 
     b = 0
     c = 0
-    for pred, other, label in zip(predictions, compare_predictions, labels, strict=True):
+    for pred, other, label in zip(
+        predictions, compare_predictions, labels, strict=True
+    ):
         own_correct = pred == label
         other_correct = other == label
         if own_correct and not other_correct:
@@ -225,12 +230,20 @@ def _mcnemar(
             c += 1
 
     n = b + c
-    p_value = 1.0 if n == 0 else binomtest(min(b, c), n, 0.5, alternative="two-sided").pvalue
+    p_value = (
+        1.0 if n == 0 else binomtest(min(b, c), n, 0.5, alternative="two-sided").pvalue
+    )
     return {"b": b, "c": c, "p_value": float(p_value)}
 
 
 def _fit_predict_rbf(
-    train_features: Any, train_labels: Any, test_features: Any, *, c: float, gamma: str | float, seed: int
+    train_features: Any,
+    train_labels: Any,
+    test_features: Any,
+    *,
+    c: float,
+    gamma: str | float,
+    seed: int,
 ) -> Any:
     """Un SVM-RBF ajustado sobre `(train_features, train_labels)` y
     evaluado sobre `test_features` — el ÚNICO lugar donde este modulo
@@ -252,7 +265,13 @@ def _fit_predict_rbf(
 
 
 def _cv_standalone(
-    features_arr: Any, labels_arr: Any, *, n_folds: int, seed: int, c: float, gamma: str | float
+    features_arr: Any,
+    labels_arr: Any,
+    *,
+    n_folds: int,
+    seed: int,
+    c: float,
+    gamma: str | float,
 ) -> tuple[Any, list[dict[str, Any]]]:
     """Camino OFICIAL sin contrato adicional (compat total): su PROPIO
     split estratificado + imputacion de mediana EN-FOLD sobre `rows`
@@ -270,19 +289,29 @@ def _cv_standalone(
     oof_predictions = np.empty(n_rows, dtype=int)
     fold_metrics: list[dict[str, Any]] = []
 
-    for fold_idx, (train_idx, test_idx) in enumerate(skf.split(features_arr, labels_arr)):
+    for fold_idx, (train_idx, test_idx) in enumerate(
+        skf.split(features_arr, labels_arr)
+    ):
         train_raw = features_arr[train_idx]
         test_raw = features_arr[test_idx]
         train_imputed, test_imputed = impute_median_fit_train(train_raw, test_raw)
 
         fold_predictions = _fit_predict_rbf(
-            train_imputed, labels_arr[train_idx], test_imputed, c=c, gamma=gamma, seed=seed
+            train_imputed,
+            labels_arr[train_idx],
+            test_imputed,
+            c=c,
+            gamma=gamma,
+            seed=seed,
         )
         oof_predictions[test_idx] = fold_predictions
 
         fold_labels = labels_arr[test_idx]
         fold_metrics.append(
-            {"fold": fold_idx, **binary_classification_metrics(fold_labels, fold_predictions)}
+            {
+                "fold": fold_idx,
+                **binary_classification_metrics(fold_labels, fold_predictions),
+            }
         )
     return oof_predictions, fold_metrics
 
@@ -407,7 +436,13 @@ def classifier_baseline(inputs: dict[str, Any]) -> dict[str, Any]:
 
     if prepared_folds is not None and folds is not None:
         oof_predictions, fold_metrics = _cv_over_prepared_folds(
-            prepared_folds, folds, labels_arr, n_rows=n_rows, c=c, gamma=gamma, seed=seed
+            prepared_folds,
+            folds,
+            labels_arr,
+            n_rows=n_rows,
+            c=c,
+            gamma=gamma,
+            seed=seed,
         )
     else:
         oof_predictions, fold_metrics = _cv_standalone(

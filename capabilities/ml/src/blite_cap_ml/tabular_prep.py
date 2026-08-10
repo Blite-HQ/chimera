@@ -84,8 +84,7 @@ def _validate_rows(raw: Any) -> list[list[float]]:
 def _validate_labels(raw: Any, n_rows: int) -> list[int]:
     if not isinstance(raw, list) or len(raw) != n_rows:
         msg = (
-            f"TabularPrep: 'labels' debe ser una lista de longitud {n_rows}, "
-            f"no {raw!r}"
+            f"TabularPrep: 'labels' debe ser una lista de longitud {n_rows}, no {raw!r}"
         )
         raise ValueError(msg)
     validated: list[int] = []
@@ -174,9 +173,7 @@ def tabular_prep(inputs: dict[str, Any]) -> dict[str, Any]:
         scaler = MinMaxScaler(feature_range=(0.0, float(np.pi)))
         train_scaled = scaler.fit_transform(train_selected)
         test_scaled = (
-            scaler.transform(test_selected)
-            if test_selected.shape[0]
-            else test_selected
+            scaler.transform(test_selected) if test_selected.shape[0] else test_selected
         )
 
         prepared.append(
@@ -191,9 +188,7 @@ def tabular_prep(inputs: dict[str, Any]) -> dict[str, Any]:
                 },
             }
         )
-        fold_sizes.append(
-            {"train": int(len(train_idx)), "test": int(len(test_idx))}
-        )
+        fold_sizes.append({"train": int(len(train_idx)), "test": int(len(test_idx))})
 
     return {
         "folds": folds.tolist(),

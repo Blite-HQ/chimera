@@ -23,7 +23,7 @@ override-dependencies = ["highspy==1.14.0"]
 default-groups = ["dev", "experiment"]
 
 [tool.uv.workspace]
-members = ["sdk", "engine", "api", "capabilities/*", "distributions/*"]
+members = ["sdk", "engine", "api", "capabilities/*", "distributions/*", "tools/corpus-runner", "tools/convergence", "projectors/otel"]
 
 [tool.uv.sources]
 blite-capability = { workspace = true }
@@ -37,6 +37,7 @@ dev = [
     "pytest-cov>=6.0",
     "import-linter>=2.1",
     "pip-audit>=2.7",
+    "mlcroissant>=1.1.0",
 ]
 experiment = ["matplotlib>=3.9"]
 
@@ -56,6 +57,10 @@ src = [
     "capabilities/quantum/src",
     "capabilities/report/src",
     "capabilities/ingesta/src",
+    "capabilities/mcp/src",
+    "tools/corpus-runner/src",
+    "tools/convergence/src",
+    "projectors/otel/src",
     "tests",
 ]
 
@@ -101,13 +106,22 @@ include = [
     # recorrer payloads.
     "api/src",
     "capabilities",
+    "tools/corpus-runner",
+    "tools/convergence",
+    "projectors/otel",
     "tests",
 ]
 
 # ── Pytest + Coverage ─────────────────────────────────────────────────────────
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "capabilities/*/tests"]
+testpaths = [
+    "tests",
+    "capabilities/*/tests",
+    "tools/corpus-runner/tests",
+    "tools/convergence/tests",
+    "projectors/otel/tests",
+]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
@@ -130,6 +144,10 @@ source = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
+    "chimera_eval",
+    "chimera_convergence",
+    "chimera_otel",
 ]
 branch = true
 omit = ["*/tests/*"]
@@ -162,6 +180,10 @@ root_packages = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
+    "chimera_eval",
+    "chimera_convergence",
+    "chimera_otel",
 ]
 include_external_packages = true
 
@@ -180,6 +202,7 @@ forbidden_modules = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
 
 [[tool.importlinter.contracts]]
@@ -195,6 +218,7 @@ source_modules = [
     "blite_cap_smt",
     "blite_cap_quantum",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
 forbidden_modules = ["blite"]
 
@@ -239,6 +263,7 @@ forbidden_modules = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
 
 [[tool.importlinter.contracts]]
@@ -391,4 +416,77 @@ forbidden_modules = [
     "blite_cap_quantum",
     "blite_cap_report",
     "blite_cap_ingesta",
+    "blite_cap_mcp",
 ]
+
+[[tool.importlinter.contracts]]
+name = "O8: evaluation is downstream — nothing imports the corpus runner"
+type = "forbidden"
+# El TERCER plano (evaluación agregada, offline) mide el sistema; el sistema
+# jamás depende de él. Si un día `blite` o `chimera_api` importaran
+# `chimera_eval`, una métrica retrospectiva habría entrado al camino crítico de
+# un run — exactamente la confusión eval≈verificación que el marco de los tres
+# planos existe para evitar (docs/tres-planos.md · knowledge/trust/17 §1.6).
+# La flecha inversa SÍ es legítima y por eso no se prohíbe: la tarea
+# `chimera_eval.tasks.verification_plane` importa el plano de verificación para
+# medirlo.
+source_modules = [
+    "blite",
+    "blite_capability",
+    "chimera_api",
+    "blite_cap_solvers",
+    "blite_cap_graphs",
+    "blite_cap_numeric",
+    "blite_cap_sim",
+    "capabilities_sim_api",
+    "blite_cap_ml",
+    "blite_cap_smt",
+    "blite_cap_quantum",
+    "blite_cap_report",
+    "blite_cap_ingesta",
+    "blite_cap_mcp",
+]
+forbidden_modules = ["chimera_eval"]
+
+[[tool.importlinter.contracts]]
+name = "O9: el auditor de convergencia es un instrumento de PROCESO, aislado"
+type = "forbidden"
+# `chimera_convergence` audita cómo DECIDIMOS, no lo que el sistema hace. La
+# flecha en cualquiera de los dos sentidos sería un error distinto y ambos
+# graves: que el producto lo importara metería una herramienta de proceso en el
+# camino crítico de un run; que él importara el producto ataría un método
+# general —aplicable a dos revisiones de cualquier cosa— a ESTE dominio.
+source_modules = ["chimera_convergence"]
+forbidden_modules = [
+    "blite",
+    "blite_capability",
+    "chimera_api",
+    "chimera_eval",
+    "chimera_otel",
+]
+
+[[tool.importlinter.contracts]]
+name = "C-11: the OTel projector never imports the engine"
+type = "forbidden"
+# El exportador OTLP es EGRESO. Dentro de `blite` chocaría con Inv-E/INV-6, así
+# que el proyector es un proceso aparte que parsea el WIRE — el mismo desacople
+# que el Studio (docs/specs/observabilidad-proyeccion.md §1). Si esta flecha
+# apareciera, la frontera se habría perdido en silencio.
+source_modules = ["chimera_otel"]
+forbidden_modules = [
+    "blite",
+    "blite_capability",
+    "chimera_api",
+]
+
+[[tool.importlinter.contracts]]
+name = "C-11: nothing depends on the OTel projector"
+type = "forbidden"
+# Y al revés: la observabilidad es opcional (perfil del compose). Un proyector
+# caído jamás debe poder afectar un run.
+source_modules = [
+    "blite",
+    "blite_capability",
+    "chimera_api",
+]
+forbidden_modules = ["chimera_otel"]

@@ -1,0 +1,51 @@
+{
+  "_comment": [
+    "Ruleset de `main`, LISTO PARA APLICAR — `scripts/apply-repo-rulesets.sh`.",
+    "",
+    "Hoy la org Blite-HQ está en GitHub Free y el repo es privado, así que la API",
+    "de rulesets responde 403 ('Upgrade to GitHub Pro or make this repository",
+    "public'). Verificado en vivo el 2026-08-06. Por eso el ruleset vive acá como",
+    "DATO versionado en vez de como un paso manual anotado en algún lado: el día",
+    "que el repo vuelva a ser público, aplicarlo es un comando, no una",
+    "reconstrucción desde la memoria de alguien.",
+    "",
+    "El único check requerido es `CI gate`, el job agregador de ci.yml. Marcar",
+    "python/web/docs individualmente dejaría colgado para siempre cualquier PR",
+    "que los saltee por filtro de rutas — `CI gate` trata `skipped` como válido",
+    "y solo falla ante un fallo real."
+  ],
+  "name": "main-protection",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/main"],
+      "exclude": []
+    }
+  },
+  "bypass_actors": [],
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "required_linear_history" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": true,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true,
+        "allowed_merge_methods": ["squash"]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [{ "context": "CI gate" }]
+      }
+    }
+  ]
+}

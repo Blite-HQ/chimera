@@ -32,9 +32,25 @@
 edit: declarar importadores/API/gate/instrumentación y reintentar idéntico; la regla
 de marca interna está vigilada por hook local — el codename JAMÁS se escribe en
 texto del repo; agnosticismo ADR-029 (denylist de escenario) aplica a toda capability
-nueva. **Gotcha de worktrees**: `uv sync` en un worktree NO instala los editables —
-correr los gates con el python del venv del repo PRINCIPAL + `PYTHONPATH` del
-worktree (receta probada en Planeado).
+nueva.
+
+**Gotchas de worktrees — los dos corregidos por la sesión O (2026-08-05):**
+
+1. ~~`uv sync` en un worktree NO instala los editables~~ — **caduco**:
+   `uv sync --locked --all-packages --all-extras` DENTRO del worktree crea un
+   `.venv` completo con los editables apuntando al worktree. Los gates corren con
+   `uv run` a secas; la receta vieja (venv del principal + `PYTHONPATH`) además
+   ocultaba errores de tipo de módulos nuevos (#149).
+2. **`git` no corre NINGÚN hook en un worktree recién creado**: `core.hooksPath`
+   apunta a `.husky/_`, que lo genera `prepare` y no está versionado. Sin error y
+   sin aviso, los commits dejan de revisarse. **Correr `npx husky` una vez** al
+   abrir el worktree. Es la causa de los 21 archivos sin formatear que dejaron la
+   CI roja (#156).
+
+**El bloque de gates está incompleto** (#156): `ruff check` NO es
+`ruff format --check`, y `depcruise` no aparece. Los dos fallan en CI y ningún
+gate local los cubre — corre también `uv run ruff format --check .` y
+`pnpm -C apps/studio exec depcruise src` antes de dar por cerrada una sesión.
 
 ## 1 · Fase 0 — contratos de costura (BLOQUEA la implementación)
 

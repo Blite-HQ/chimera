@@ -58,6 +58,10 @@ mkdir -p "$SECRETS_DIR"
 chmod 700 "$SECRETS_DIR"
 
 write_secret "postgres_password.txt"
+# Rol SOLO-SELECT del proyector OTel (perfil `otel`, O3). Se genera siempre
+# aunque el perfil no se use: un secreto que falta el día que alguien
+# levanta el perfil es una fricción evitable, y no cuesta nada.
+write_secret "otel_password.txt"
 
 cat <<'FIN'
 

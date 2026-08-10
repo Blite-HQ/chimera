@@ -2,7 +2,8 @@
 StructuralPartitionVerifier — la pata por sub-entidad que sí existe cuando no
 hay ancla de ejecución (V1/M18). [dominio V — visual/ciencia]
 
-El hueco que cierra: `ExecutionVerifier` (pandapower, AL3) es el único
+El hueco que cierra: `ExecutionVerifier` (AL3, anclado en un simulador de
+dominio) es el único
 productor de checks `island-{k}:*`, y exige dato eléctrico registrado
 (impedancias, cargas, slack). Una instancia derivada de un portal GIS —la red
 real que el mapa pinta— trae geometría y nombres, no impedancias. Sin este

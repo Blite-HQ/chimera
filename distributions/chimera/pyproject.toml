@@ -18,7 +18,10 @@ requires-python = ">=3.12"
 # ajeno, un solver comercial— y los paga el disco de cada despliegue.
 dependencies = [
     "chimera-api",
-    "chimera-engine",
+    # `[mcp]`: el SDK del protocolo, que solo hace falta si la distribución
+    # declara servidores externos en su `distribution.yaml` — y esta los
+    # declara (O5/M13).
+    "chimera-engine[mcp]",
     "blite-capability",
     # Ingesta no declara extras: su dependencia es la del engine.
     "blite-cap-ingesta",
@@ -44,6 +47,10 @@ dependencies = [
     "blite-cap-solvers[ortools]",
     # Informe: matplotlib para las figuras del entregable.
     "blite-cap-report[plot]",
+    # Interop: UNA capability genérica para cualquier tool MCP ajeno (C-12).
+    # Qué servidores y qué tools se pueden invocar NO está acá — está en
+    # `distribution.yaml`, como datos con digest.
+    "blite-cap-mcp",
 ]
 
 [project.urls]
@@ -62,6 +69,7 @@ blite-cap-sim = { workspace = true }
 blite-cap-smt = { workspace = true }
 blite-cap-solvers = { workspace = true }
 blite-cap-report = { workspace = true }
+blite-cap-mcp = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

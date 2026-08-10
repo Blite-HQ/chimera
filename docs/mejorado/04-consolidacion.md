@@ -191,6 +191,13 @@ costo de ingesta (arquitectura-ingesta-kg-fase2 §2) · Merkle + inclusion proof
 
 ### 7.3 · Ampliación de O2/M26 (N11, decisión #113)
 
+> **[O2 · #153 · 2026-08-05] RESUELTO.** El árbol salió del repositorio: son
+> charlas ajenas sin licencia declarada y la atribución acredita, no autoriza.
+> Queda `catalog.yaml` (índice de fuentes públicas) + un README con la causa;
+> el crudo vive fuera del repo como insumo de la destilación a skills/harness
+> (ítem nuevo). Bloqueador pre-flip registrado: publicar el repo publica la
+> historia, así que falta cirugía (`git filter-repo`) antes del flip.
+
 O2 gana enunciado EXPLÍCITO: **la licencia/atribución del árbol vendorizado
 `knowledge/quantum/quantathon/` (material de terceros con ponentes nominados,
 sin licencia declarada) se resuelve ANTES del flip OSS** — el árbol se queda
