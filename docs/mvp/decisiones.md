@@ -3645,3 +3645,81 @@ en tests de otras sesiones. `reportUnnecessaryTypeIgnoreComment = "error"` es
 deliberado en este repo (un ignore que no silencia nada ES un error), así que se
 removieron. Uno llevaba prosa pegada al comentario y quedó como comentario
 propio, no borrado.
+
+### #167 — O4/M10: el corpus deja de ser dato interno y pasa a dataset publicable
+
+**El problema real de C-13, en una frase:** un mismo documento JSON admite más
+de un digest legítimo, y publicar «el digest» sin decir cuál no verifica nada.
+
+Son tres, y las tres son correctas a la vez sobre el MISMO archivo:
+
+| digest             | sobre qué                              | quién lo usa                    |
+| ------------------ | -------------------------------------- | ------------------------------- |
+| `file_sha256`      | los BYTES distribuidos                 | quien descarga (`sha256sum`)    |
+| `embedded_digest`  | el JSON compacto SIN la llave `digest` | la identidad interna del corpus |
+| `canonical_digest` | `C(documento)` del anexo, entero       | el kernel de confianza          |
+
+Los bytes cambian con un final de línea y el interno no; el interno ignora su
+propia llave y el canónico no. Hay un test que lo demuestra guardando el mismo
+documento con otra indentación: cambia uno, los otros dos no.
+
+**Dónde va cada uno.** Croissant reserva `sha256` por archivo para los bytes
+distribuidos — literal. Meter ahí el digest interno haría que `sha256sum`
+fallara para todo el que descargue, y una verificación que falla siempre enseña
+a ignorar la verificación. Así que `sha256` son los bytes, y los tres viajan
+etiquetados —y con su explicación en inglés, DENTRO del export— en un
+`RecordSet` inline. Un tercero no debería tener que leer nuestro repo para
+saber cuál es cuál.
+
+**Ninguno se recalcula para que cuadre con otro.** El interno se comprueba al
+leer; si no coincide, `load_corpus` explota. La regla del freeze §15.3 es que
+el digest manda: un archivo que dejó de coincidir es un incidente, no una
+oportunidad de re-sellar. El modo de falla que el test prohíbe es el cómodo.
+
+**Un `FileObject` por instancia, sin archivo comprimido.** Lo idiomático en
+Croissant (un `.zip` + un `FileSet`) exigiría publicar el `sha256` de un
+archivo que no existe. Un digest inventado en el campo que el spec reserva para
+verificar es peor que un export menos elegante.
+
+**Validado con el cliente real, no con un modelo nuestro del formato.**
+`mlcroissant` —la implementación de referencia de MLCommons— sobre los datasets
+que el manifest declara de verdad: **cero errores y cero avisos**, más un
+round-trip que lee de vuelta las instancias y compara los tres digests contra
+el catálogo. Los avisos se exigen igual que los errores: son propiedades
+recomendadas (cita, fecha) y un dataset publicado sin decir cómo citarlo es
+menos usable, que es justo lo que este export existe para arreglar.
+
+**Agnosticismo por construcción, otra vez.** El código no sabe qué datos hay:
+un despliegue los DECLARA en `distribution.yaml` (`DatasetSpec`) y el catálogo
+sale de ahí. Cambiar de dominio es editar configuración. Misma forma que C-12
+usó para los servidores MCP, y por el mismo motivo: ADR-029 se sostiene sin
+vigilancia. `license` no tiene default a propósito — un default («desconocida»)
+sería una respuesta inventada a una pregunta legal.
+
+**Lo que NO se declara, y por qué.** El corpus de islanding se queda fuera del
+catálogo: procedencia mixta, datos de ejemplo de UN reto, portal de origen sin
+identificador de licencia (`NOTICE` §2). **Decisión de Dylan (2026-08-08):**
+esos datos eran el ejemplo del reto 1 y no tienen que sobrevivir a Mejorado
+salvo como datos de prueba. Un dataset que no se puede licenciar con claridad
+no se publica.
+
+**Hallazgo que eso destapó, y que hay que mirar antes del flip:**
+`knowledge/nexus/` —la evidencia real de H2-1LE, la más fuerte que tiene el
+proyecto— **se ancla a las instancias `cr6-*`/`cr8-*`**, que son derivadas del
+ICE. Borrarlas la huérfana. Por eso `NOTICE` §2 y el checklist pre-flip ahora
+recomiendan sacar el **geojson crudo** (la copia verbatim del portal) y
+conservar las instancias derivadas, con el mismo razonamiento que ya usa §1
+para pandapower. Queda escrito con sus dos comprobaciones obligatorias, no
+ejecutado: toca archivos de otras sesiones.
+
+**Un test ajeno cazó un hueco que introduje:** `test_studio_nginx_config.py`
+deriva el allowlist del proxy de las rutas reales del API, así que
+`/datasets` sin su prefijo en nginx se puso rojo acá y no en el navegador
+—donde el síntoma habría sido «HTML donde esperaba JSON», que no menciona a
+nginx por ningún lado.
+
+**Deuda que este ítem hace visible (no la resuelve):** `runs.py` y
+`instance_verifiers.py` siguen cableando tres directorios de corpus por ruta
+literal. El `datasets:` del manifest es la forma de quitarles eso, pero rehacer
+la resolución de verificadores es G3 («dispatch por clase de problema»), de
+otro dominio. Se reporta, no se toca.

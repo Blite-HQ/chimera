@@ -42,13 +42,33 @@ Verified against the portal's DCAT feed on 2026-08-06:
 
 **Open question, deliberately not papered over.** "Open data, public access"
 is not the same as an explicit grant to redistribute derived works. Attribution
-credits the source; it does not authorize redistribution on its own. Before
-this repository is public again, one of these has to happen:
+credits the source; it does not authorize redistribution on its own.
+
+**These instances are NOT published as a dataset.** The deployment catalog
+(`distributions/chimera/distribution.yaml`, `GET /datasets`) declares only
+corpora this project generated itself. Data whose licence cannot be stated
+plainly does not get published — decided 2026-08-08: this was example data for
+a single challenge, and the platform no longer depends on it.
+
+That narrows the question but does not close it, because publishing the
+repository still redistributes whatever is in the tree. What is left to decide,
+before the flip:
 
   a. obtain explicit terms from ICE (the portal's own "UsoOpenData" dataset
-     suggests a terms document exists — it has not been retrieved), or
-  b. drop the `ice-*` / `cr*-*` instances from the published tree and keep only
-     the IEEE ones, which have no such ambiguity.
+     suggests a terms document exists — it has not been retrieved); or
+  b. drop `knowledge/islanding/raw/ice-*.geojson` — the actual verbatim copy of
+     the portal's datasets — and keep the DERIVED Max-Cut instances under the
+     same reasoning as §1: what ships is a graph with integer edge weights, not
+     the substation and line geodata. Costs the ability to re-run
+     `scripts/gen_corpus_ice.py` from the tree; the recipe and the digests stay,
+     so anyone with the portal data can re-derive and check.
+
+Option (b) is the recommended one, and (c) "delete the derived instances too"
+is NOT on the list for a concrete reason: `knowledge/nexus/` — the real
+Quantinuum H2-1LE run evidence, the strongest evidence this project has — is
+anchored to the `cr6-*` / `cr8-*` instances. Deleting them orphans that
+evidence. Whoever executes this must check `knowledge/nexus/index.json` and
+`consensus.json` first.
 
 Tracked as part of backlog item O4 (`docs/mejorado/04-consolidacion.md`), and
 listed in `docs/pre-flip-checklist.md`.

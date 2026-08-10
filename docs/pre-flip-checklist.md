@@ -65,8 +65,21 @@ antes, y el script lo dice con esas palabras si se corre hoy.
    publica la historia. Decidido con Dylan (2026-08-06): la corrección integral
    de la historia se hace **después de Mejorado**, en una pasada única, cuando el
    proyecto deje de moverse tanto. Hasta entonces queda anotado, no ejecutado.
-2. **Licencia de los datos del ICE** — ver `NOTICE` §2: hay que conseguir los
-   términos explícitos o sacar las instancias derivadas del árbol publicado.
+2. **Licencia de los datos del ICE** — ver `NOTICE` §2. Parcialmente cerrado
+   (2026-08-08): esos datos **no se publican como dataset** (el catálogo de
+   `GET /datasets` declara solo corpus propios), y la decisión de fondo ya está
+   tomada — eran el ejemplo de UN reto y la plataforma no depende de ellos.
+
+   Lo que queda es que publicar el repo publica el árbol. Opción recomendada:
+   sacar `knowledge/islanding/raw/ice-*.geojson` —la copia verbatim del portal—
+   y conservar las instancias DERIVADAS con el mismo razonamiento de `NOTICE`
+   §1. Antes de ejecutarlo, dos comprobaciones que no son opcionales:
+
+   - **`knowledge/nexus/` se ancla a `cr6-*`/`cr8-*`.** La evidencia real de
+     H2-1LE cuelga de esas instancias (`index.json`, `consensus.json`).
+     Borrarlas huérfana la evidencia más fuerte del proyecto.
+   - `scripts/gen_corpus_ice.py` y `capabilities/ingesta/tests/test_geojson_to_graph.py`
+     leen el geojson crudo: sacarlo pide reubicar ese test a un fixture propio.
 
 ## 5 · El día del flip, en orden
 
