@@ -7,6 +7,7 @@ import APPROVAL_RESPONDED_CONTRACT_FIXTURE from '../fixtures/contract/harness/ap
 import MISSION_MESSAGE_CONTRACT_FIXTURE from '../fixtures/contract/harness/mission-message.json';
 import PLAN_CREATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-created.json';
 import PLAN_ITEM_UPDATED_CONTRACT_FIXTURE from '../fixtures/contract/harness/plan-item-updated.json';
+import runMetricsFixture from '../fixtures/contract/superficie/run-metrics-recorded.json';
 import TOPOLOGY_SNAPSHOT_CONTRACT_FIXTURE from '../fixtures/contract/superficie/topology-snapshot.json';
 import { RUN_EVENTS } from '../fixtures/runEvents';
 import { RVSP_EXPERIMENT } from '../fixtures/rvsp';
@@ -474,5 +475,59 @@ describe('Zod espejo de topología contra el fixture de costura (S-D #125, contr
       expect(island.verification.level).toMatch(/^AL[0-4]$/);
       expect(island.verification.verifier_class).toBe('execution');
     }
+  });
+});
+
+/**
+ * [V2/M19 · C-4] El fixture de costura `run-metrics-recorded` ES el contrato
+ * del payload extendido: confianza (congelado) + ciencia (aditivo) en un solo
+ * evento. Si el espejo Zod solo soportara uno de los dos grupos, fallaría acá
+ * y no en vivo.
+ */
+describe('ablación — enum de variantes ×4 (C-4) y el fixture del productor', () => {
+  it('acepta las cuatro variantes del enum coordinado', () => {
+    for (const variant of ['quantum', 'classical', 'mitigated', 'zne'] as const) {
+      const parsed = ablationWireSchema.parse({
+        variant,
+        cut_cost: 1,
+        wall_ms: 2,
+        verification_latency_ms: 3
+      });
+      expect(parsed.variant).toBe(variant);
+    }
+  });
+
+  it('rechaza una variante fuera del enum — jamás un catchall silencioso', () => {
+    expect(() =>
+      ablationWireSchema.parse({
+        variant: 'catchall',
+        cut_cost: 1,
+        wall_ms: 2,
+        verification_latency_ms: 3
+      })
+    ).toThrow();
+  });
+
+  it('el fixture del productor trae confianza Y ciencia en el mismo payload', () => {
+    expect(runMetricsFixture.variant).toBe('zne');
+    expect(runMetricsFixture.attestations_total).toBe(4);
+    expect(runMetricsFixture.cut_cost).toBe(57070);
+  });
+
+  it('la fila de ablación se arma con los campos científicos del cierre', () => {
+    const fila = toAblationMetric(
+      ablationWireSchema.parse({
+        variant: runMetricsFixture.variant,
+        cut_cost: runMetricsFixture.cut_cost,
+        wall_ms: runMetricsFixture.wall_ms,
+        verification_latency_ms: runMetricsFixture.verification_latency_ms
+      })
+    );
+    expect(fila).toEqual({
+      variant: 'zne',
+      cutCost: 57070,
+      wallMs: 1240,
+      verificationLatencyMs: 812.5
+    });
   });
 });

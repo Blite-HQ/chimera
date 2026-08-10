@@ -7,6 +7,7 @@
   "imports": [
     {
       "backend_id": "H2-1LE",
+      "betas": [0.35172807668927375],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -23,6 +24,7 @@
         "raw_blob_digest": "0cc7ac2ac6e827c9bf1ba0815bcbc790b454657ce675a711602c4f6933e213d7",
         "statement_digest": "54d05e11482628b5ef629256922d1d840411363444a600d6ed0a91a18590a482"
       },
+      "gammas": [2.7949856056771036],
       "instance": "cr6-uniforme",
       "job_id": "dfe1c421-7684-4696-a498-f8b5207d3346",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -35,6 +37,7 @@
     },
     {
       "backend_id": "H2-Emulator",
+      "betas": [0.35172807668927375],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -51,6 +54,7 @@
         "raw_blob_digest": "d84972186731bbb06a334d9c864db9dd6d51a04d3c35ce2abd644c25d8da1266",
         "statement_digest": "0dd85afb596ab1aa3f6045333f21525c7fc8b53e2f0dcc4b6df068fec0de803d"
       },
+      "gammas": [2.7949856056771036],
       "instance": "cr6-uniforme",
       "job_id": "b984c195-5a19-4d6c-a12e-d53780b0d05c",
       "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
@@ -63,6 +67,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.1128095711961188, 1.340779384995969],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -79,6 +84,7 @@
         "raw_blob_digest": "102f93e5129630ddda1defe5ea2c4126fb59d8ef5f18fb090231cf48fef72549",
         "statement_digest": "16e0d6523725314843f2bdb09c3281a5709edd1eac7e7453170e146bb890c0fd"
       },
+      "gammas": [0.2537967207819346, 0.5163259593248624],
       "instance": "cr6-uniforme",
       "job_id": "97fa88d2-c2c4-4243-a95e-485a1c1021c3",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -91,6 +97,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.2769107686067205, 1.207064331933636, 0.420714878745759],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -107,6 +114,7 @@
         "raw_blob_digest": "393cab34252ef01c5979e37c716bce1f47da25d6d70ee2d1d0d62b8d22a9e1a5",
         "statement_digest": "7a612a8adbb6b771db3de3604874bf01720b109c1ac24a5c99fbe87d2d052fbf"
       },
+      "gammas": [1.8424270930708526, 2.1764694153654607, 1.6413136436301072],
       "instance": "cr6-uniforme",
       "job_id": "e94cd80c-a705-4941-9220-08b75a26427f",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -119,6 +127,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.915574776801322],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -135,6 +144,7 @@
         "raw_blob_digest": "ca2edab99b9f2b7fed6c25e85b47ca1233b02f69f791fe86ac3b670c7c62f217",
         "statement_digest": "d43a93f29c3f7b28626b2c368fc4cb24b4ea0ce9999ce14198ce66ca70f25666"
       },
+      "gammas": [2.824408578162619],
       "instance": "cr8-uniforme",
       "job_id": "4a24ed97-9bf8-439f-aec9-d022c3e705b2",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -147,6 +157,7 @@
     },
     {
       "backend_id": "H2-Emulator",
+      "betas": [1.915574776801322],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -163,6 +174,7 @@
         "raw_blob_digest": "0df8ddac252e6438bb93f09df7ec089b27c7dd280b2e9f22f9f3fb76c4cc5ddc",
         "statement_digest": "9732e1c1cc3d12813d6025f0d1e1ab81015cc513495a534fe69033456223513c"
       },
+      "gammas": [2.824408578162619],
       "instance": "cr8-uniforme",
       "job_id": "489e7037-67fa-4fd6-b697-29d7ca8740e5",
       "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
@@ -175,6 +187,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.127732535033879, 1.3703672394042448],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -191,6 +204,7 @@
         "raw_blob_digest": "c994fc3cec25aaf48c344604e5074388f7938964bcf13fd123f1258435d39cbd",
         "statement_digest": "33a188a9ad5d02ef583d6bbbd0a648400f0bfdb6ad38bf092adf02bf64b6f82b"
       },
+      "gammas": [0.24643566753569626, 0.505627072541662],
       "instance": "cr8-uniforme",
       "job_id": "7add6a66-7fd6-44d6-b316-90aec5a360cb",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -203,6 +217,7 @@
     },
     {
       "backend_id": "H2-Emulator",
+      "betas": [1.127732535033879, 1.3703672394042448],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -219,6 +234,7 @@
         "raw_blob_digest": "83434b57325491a8b967a424576ccc27d96994732ac95c6b26770295b95f2787",
         "statement_digest": "9e50cd01ed50c02509bd9055cd74421287cdd09a499d74aa6a1ebf2e7c9de9d8"
       },
+      "gammas": [0.24643566753569626, 0.505627072541662],
       "instance": "cr8-uniforme",
       "job_id": "3ae607ec-94f9-4ae3-ad62-12b4418aa71d",
       "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
@@ -231,6 +247,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [0.19907059153531967, 1.2171823214389934, 1.3580884576443606],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -247,6 +264,7 @@
         "raw_blob_digest": "e58efe78021758bb76c82ebb62d7e154e9e069ed2488456f521fd7a8372b669d",
         "statement_digest": "5b3137a74f387000c892c293b656cbad40c43809da060f5040e1762654a14370"
       },
+      "gammas": [2.6599621334838863, 0.8949813389789002, 0.6060383995358957],
       "instance": "cr8-uniforme",
       "job_id": "f8d16ef7-9c3d-4fb6-9795-458e5563ae44",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -259,6 +277,7 @@
     },
     {
       "backend_id": "H2-Emulator",
+      "betas": [0.19907059153531967, 1.2171823214389934, 1.3580884576443606],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -275,6 +294,7 @@
         "raw_blob_digest": "761bcb160ce1476c16f6bae70b4ffd109877e1f6e3430f4b83d154d567d07e71",
         "statement_digest": "a072bab9ebc21f34a28e53c22494ad1292fc30e597b7e6bdff0f61ca1ffa4f92"
       },
+      "gammas": [2.6599621334838863, 0.8949813389789002, 0.6060383995358957],
       "instance": "cr8-uniforme",
       "job_id": "753d5f23-8d2d-4d93-82da-5740e04ab05f",
       "noise_config_digest": "ec31f48868d3bdc2ed4c22f1c358abd4ef85622991186c646f90369aa17ac136",
@@ -287,6 +307,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [-0.3302753352577049],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -303,6 +324,7 @@
         "raw_blob_digest": "a5e020cccd70706b742c00cc728d06edf7954cf8b7daef9fb62c4e1ea82932fa",
         "statement_digest": "60414cb6cc12ec5c7a33c9c82e9f34d96d406f605aadcc2c9c9a045c71e0ebdf"
       },
+      "gammas": [0.36124741257630283],
       "instance": "cr8-voltaje",
       "job_id": "184d125b-5485-4152-88ff-edf1f484ffa0",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -315,6 +337,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.1388716918700745, 1.3847489956181918],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -331,6 +354,7 @@
         "raw_blob_digest": "16403a6ea368bd68b4527d21dbe567a3c5d12e3740c1e0ea375f55105c40b895",
         "statement_digest": "f6fe3c1282007686d51c718eaee0d621f61cbd5e454bbb13f4022697372effda"
       },
+      "gammas": [0.31169403493727593, 0.667407744636632],
       "instance": "cr8-voltaje",
       "job_id": "50e140f9-7c30-4dff-a55e-aea8822262a2",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -343,6 +367,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.4149193446868635, 1.9147616914251238, -0.2017800866653438],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -359,6 +384,7 @@
         "raw_blob_digest": "5c166b0bfec239fe4bdeded9a69bc4cd2630ebc2fd2c27bc6fc0b7cee194a777",
         "statement_digest": "5b546c8bea10d2b06b40ec2ac46ca2e6229d2da061665e539068fd7d8bbe9091"
       },
+      "gammas": [2.2199385421903735, 2.3015492160694238, 1.840275835986795],
       "instance": "cr8-voltaje",
       "job_id": "cf628d8d-f639-439e-90e9-eee152c22d47",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -371,6 +397,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.2153472530288356],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left"],
@@ -387,6 +414,7 @@
         "raw_blob_digest": "4dc47ea7ce1f7f178dc88c3e1b26efc02cd1247b7c51519eace52bc271d07255",
         "statement_digest": "8328908003c8b25e172e5cb6a9b364eb8e7969f27bc90415ae0f53bbf1c4c81d"
       },
+      "gammas": [0.5875064578308968],
       "instance": "ieee14-flujo",
       "job_id": "bddedd47-821a-4be4-a796-015da4997f80",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -399,6 +427,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.103377318583479, 1.2929032519056336],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left"],
@@ -415,6 +444,7 @@
         "raw_blob_digest": "474d9eae07d9f7679d6045e39e8eda2bd272634d24f44143ff932e3ab846db0d",
         "statement_digest": "4f47b21cc747bfe9be867ad16e4af9fb383bd660a5cbff251744198cab5f33db"
       },
+      "gammas": [0.5660372628218093, 1.0190884722467428],
       "instance": "ieee14-flujo",
       "job_id": "876d1ac1-0060-4a2a-8851-1c025fac496c",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -427,6 +457,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.1044617690285317, 1.2589308690429744, 1.4631508786766043],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left"],
@@ -443,6 +474,7 @@
         "raw_blob_digest": "291c67ce56ce94e32ba9423afdd1d965831e0f64e5eed5cea14e0f56f861c918",
         "statement_digest": "021ab12b148e73ed2bebcf488b51aa1cea85e17f6e4a01a0cacad3b2a48c337e"
       },
+      "gammas": [0.5742694155535027, 1.1194772622495144, 3.479673198588015],
       "instance": "ieee14-flujo",
       "job_id": "0e0ae9b0-5a38-46eb-b492-47ef31bc34d9",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -455,6 +487,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.9635263832232022],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -471,6 +504,7 @@
         "raw_blob_digest": "03783afcb4824c696e53cedc8d051c99ee44e7f6a8a0227105be528f3d3fcde3",
         "statement_digest": "81e097cffd9e58918fcbc66e37c918397af312d5ec1b2e0e9c641d7ab0de1286"
       },
+      "gammas": [2.7661965256362278],
       "instance": "ieee9-uniforme",
       "job_id": "43638fad-0e53-4d9e-a499-870dce1f55d9",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -483,6 +517,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [1.0518258977734067, 1.2901679821893428],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -499,6 +534,7 @@
         "raw_blob_digest": "c835b61467dcece133e1241569141c073f5edae9fbc001da38eeb744508fdcf3",
         "statement_digest": "22b9f93cf839c590133d8e197e4b0330ccaa9c8e4ccb25dcbbc2c490184f31a1"
       },
+      "gammas": [0.3132868663208022, 0.5356827902589703],
       "instance": "ieee9-uniforme",
       "job_id": "a04ec66d-ecc5-4dbb-b0e5-0eff40619969",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",
@@ -511,6 +547,7 @@
     },
     {
       "backend_id": "H2-1LE",
+      "betas": [0.1372423655999566, 1.0757202585968455, 1.2673722332767796],
       "bit_order": "msb-left",
       "bit_order_resolution": {
         "consistent_orders": ["msb-left", "msb-right"],
@@ -527,6 +564,7 @@
         "raw_blob_digest": "90da6aa04d34ef4f0808ac258f06c9febd1abe82b35527761c3fe1f48ad809db",
         "statement_digest": "64bb9654446d8a5fbd6668b0fd5ca79b032707c6e7e0b88bb1ab50b26738b10f"
       },
+      "gammas": [2.5390369478932495, 0.9170111928986528, 0.5459365042081806],
       "instance": "ieee9-uniforme",
       "job_id": "aa27694b-5bb4-470b-b870-61b86dfb41b2",
       "noise_config_digest": "3ed501d1b0e8c47f35d796b9590f7538d68e1d67afaa23150cfbdfe78da89c66",

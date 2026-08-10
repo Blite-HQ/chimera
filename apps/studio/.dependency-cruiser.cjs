@@ -31,7 +31,11 @@ module.exports = {
       comment:
         'Las vistas/componentes consumen datos SOLO vía src/data/** (queryOptions + Zod en la frontera) — jamás fixtures ni gatewayClient directo (F3; S10 cambia la fuente sin tocar vistas).',
       from: {
-        path: '^src/(views|components|spike|App\\.tsx)',
+        // `screens.tsx` entra acá el mismo día que existe: separar la raíz
+        // de las pantallas rompió el ciclo App↔router, y si el gate no las
+        // siguiera, la separación habría comprado el ciclo a cambio de
+        // perder F3 sobre el archivo más grande del Studio.
+        path: '^src/(views|components|spike|screens\\.tsx|App\\.tsx)',
         pathNot: '\\.test\\.(ts|tsx)$'
       },
       to: {

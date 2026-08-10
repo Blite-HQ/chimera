@@ -146,13 +146,6 @@ causa = "Los tipos de las vistas re-exportan `AnchorKind`/`Verdict` desde `spike
 muere_con = "muerte del spike estático (V1/M18) — 04-consolidacion §4 V1"
 
 [[exception]]
-path = "apps/studio/src/views/GridMap.tsx"
-terms = ["ieee14"]
-kind = "deuda"
-causa = "Comentario que explica que el mapa del ICE es una red DISTINTA a la instancia benchmark del run."
-muere_con = "muerte del spike estático (V1/M18) — 04-consolidacion §4 V1"
-
-[[exception]]
 path = "apps/studio/src/data/iceGridSchemas.ts"
 terms = ["ieee14"]
 kind = "deuda"

@@ -23,7 +23,7 @@ import {
   RunDetailScreen,
   RunsScreen,
   SECTIONS
-} from './App';
+} from './screens';
 import { isLiveMode } from './data/env';
 import { meQueryOptions } from './data/queries';
 

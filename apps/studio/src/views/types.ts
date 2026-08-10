@@ -227,8 +227,17 @@ export interface ProvenanceFilters {
 }
 
 /** nota 07 §1.3 "Ablación" row — consumed by AblationPanel. */
+/**
+ * [V2/M19 · C-4] `variant` creció de 2 a 4 valores EN EL MISMO checkpoint que
+ * su productor (`blite.runtime.metrics.AblationVariant`) — `mitigated` y `zne`
+ * son los brazos de mitigación de M6. Extensión COORDINADA en los 4 espejos
+ * (Pydantic, Zod, este tipo y el chart); jamás un catchall que dejaría entrar
+ * una variante que ninguna superficie sabe pintar.
+ */
+export type AblationVariant = 'quantum' | 'classical' | 'mitigated' | 'zne';
+
 export interface AblationMetric {
-  readonly variant: 'quantum' | 'classical';
+  readonly variant: AblationVariant;
   readonly cutCost: number;
   readonly wallMs: number;
   readonly verificationLatencyMs: number;

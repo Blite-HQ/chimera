@@ -45,9 +45,12 @@ from pydantic import BaseModel, ConfigDict
 from blite.certificate.assemble import AssembleError, assemble_bundle
 from blite.certificate.predicate import AssuranceLevel, ConclusionVerdict
 from blite.events.event import Event
-from blite.events.rules import TERMINAL_RUN_EVENTS
+from blite.events.rules import TERMINAL_RUN_EVENTS, provenance_slice
+from blite.runtime.metrics import AblationVariant
 from blite.runtime.projection import RunRow, project_runs
+from chimera_api.deliverables import collect_deliverables
 from chimera_api.runs import RunResources
+from chimera_api.rvsp import RvspResponse, load_rvsp_record
 
 RunStatusWire = Literal["en_curso", "completado", "fallido", "cancelado"]
 
@@ -154,11 +157,17 @@ class StepDetail(BaseModel):
 
 
 class AblationMetric(BaseModel):
-    """`GET /runs/{run_id}/ablation` — `run.metrics.recorded` por variante."""
+    """`GET /runs/{run_id}/ablation` — `run.metrics.recorded` por variante.
+
+    [V2/M19 · C-4] `variant` pasa de 2 a 4 valores EN EL MISMO checkpoint que
+    su productor (`blite.runtime.metrics`), de donde se importa el enum: dos
+    copias del mismo Literal es exactamente el drift que C-15 prohíbe. Una
+    fila sin los 4 campos se OMITE (ver `_project_ablation`) — un run que solo
+    reportó confianza no aparece como un punto científico fabricado."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    variant: Literal["quantum", "classical"]
+    variant: AblationVariant
     cut_cost: float
     wall_ms: float
     verification_latency_ms: float
@@ -175,6 +184,25 @@ class TopologyResponse(BaseModel):
     islands: tuple[dict[str, Any], ...]
     cut_branch_ids: tuple[str, ...]
     cut_cost: float
+
+
+def _sub_run_ids(resources: RunResources, run_id: str) -> tuple[str, ...]:
+    """Sub-runs DIRECTOS de `run_id`, en orden determinista (§13: la
+    correlación padre-hijo viaja por `parent_run_id`, jamás por streams
+    anidados). Sin árboles profundos — misma frontera que la cascada de
+    `cancel_run_with_cascade`."""
+    rows, _ = _proyectar_salteando_envenenados(resources.store.read_all())
+    return tuple(
+        sorted(rid for rid, row in rows.items() if row.parent_run_id == run_id)
+    )
+
+
+def _run_ids_conocidos(resources: RunResources) -> tuple[str, ...]:
+    """Los runs que la proyección puede leer, en orden determinista. Un stream
+    envenenado se omite (#104, ruta de LECTURA) en vez de tumbar el agregado
+    de proyecto — el reporte de lo omitido sigue siendo `GET /runs/discarded`."""
+    rows, _ = _proyectar_salteando_envenenados(resources.store.read_all())
+    return tuple(sorted(rows))
 
 
 def _require_known_run(resources: RunResources, run_id: str) -> tuple[Event, ...]:
@@ -195,16 +223,28 @@ def _bundle_for(resources: RunResources, run_id: str) -> dict[str, Any] | None:
     if ticket is None:
         return None
     stream = resources.store.read_stream(run_id)
-    if not stream or stream[-1].type not in TERMINAL_RUN_EVENTS:
+    # [V2/M19] El corte NO es "el último evento del stream": freeze §2
+    # [stress-final] admite familias de CIERRE post-terminales
+    # (`run.metrics.recorded`, ● de cierre del case) que quedan FUERA del
+    # hash. Comprobar `stream[-1]` daba 409 en cuanto el cierre métrico
+    # existió — y pasarle el stream completo a `assemble_bundle` habría metido
+    # un evento post-terminal DENTRO del provenance_hash. Por eso: el run está
+    # terminado si TIENE terminal, y lo que se certifica es el corte.
+    if not stream or not any(e.type in TERMINAL_RUN_EVENTS for e in stream):
         return None
     try:
         return assemble_bundle(
-            stream=stream,
+            stream=provenance_slice(stream),
             conclusions=ticket.conclusions,
             policy_yaml=resources.policy_bytes,
             signing_key=resources.signing_key,
             keyid=resources.keyid,
             anchor_descriptors=ticket.anchor_descriptors,
+            deliverables=collect_deliverables(
+                resources.content,
+                run_id=run_id,
+                stream=stream,
+            ),
         )
     except AssembleError:
         return None
@@ -482,9 +522,7 @@ def create_reads_router(resources: RunResources) -> APIRouter:
         _, descartados = _listar()
         return DiscardedStreams(discarded_streams=descartados)
 
-    @router.get("/runs/{run_id}/artifacts")
-    def get_run_artifacts(run_id: str) -> list[ProjectArtifact]:
-        _require_known_run(resources, run_id)
+    def _artifacts_of(run_id: str) -> list[ProjectArtifact]:
         bundle = _bundle_for(resources, run_id)
         if bundle is None:
             return []
@@ -510,9 +548,7 @@ def create_reads_router(resources: RunResources) -> APIRouter:
             for deliverable in predicate["deliverables"]
         ]
 
-    @router.get("/runs/{run_id}/knowledge")
-    def get_run_knowledge(run_id: str) -> list[KnowledgeClaim]:
-        _require_known_run(resources, run_id)
+    def _knowledge_of(run_id: str) -> list[KnowledgeClaim]:
         bundle = _bundle_for(resources, run_id)
         if bundle is None:
             return []
@@ -530,6 +566,38 @@ def create_reads_router(resources: RunResources) -> APIRouter:
             for conclusion in predicate["conclusions"]
         ]
 
+    @router.get("/runs/{run_id}/artifacts")
+    def get_run_artifacts(run_id: str) -> list[ProjectArtifact]:
+        _require_known_run(resources, run_id)
+        return _artifacts_of(run_id)
+
+    @router.get("/runs/{run_id}/knowledge")
+    def get_run_knowledge(run_id: str) -> list[KnowledgeClaim]:
+        _require_known_run(resources, run_id)
+        return _knowledge_of(run_id)
+
+    @router.get("/artifacts")
+    def list_project_artifacts() -> list[ProjectArtifact]:
+        """[V8/M23b · N4] Nivel PROYECTO: los deliverables de todos los runs
+        que ya emitieron certificado. Antes esta superficie no existía y el
+        Studio devolvía `[]` en vivo por no tener a quién preguntarle.
+
+        Mismo skip honesto de #104: un run que no se puede resumir se omite
+        del agregado en vez de tumbarlo — la línea roja sigue siendo que la
+        ESCRITURA y los certificados fallen fuerte, no la lectura."""
+        return [
+            a for run_id in _run_ids_conocidos(resources) for a in _artifacts_of(run_id)
+        ]
+
+    @router.get("/knowledge")
+    def list_project_knowledge() -> list[KnowledgeClaim]:
+        """[V8/M23b · N4] Nivel PROYECTO: el conocimiento verificado que se
+        acumula a través de los runs — la vista que la doctrina siempre
+        prometió («conclusiones verificadas acumuladas»)."""
+        return [
+            k for run_id in _run_ids_conocidos(resources) for k in _knowledge_of(run_id)
+        ]
+
     @router.get("/runs/{run_id}/steps/{step_id}/evidence")
     def get_step_evidence(run_id: str, step_id: str) -> StepDetail:
         stream = _require_known_run(resources, run_id)
@@ -540,12 +608,55 @@ def create_reads_router(resources: RunResources) -> APIRouter:
 
     @router.get("/runs/{run_id}/ablation")
     def get_run_ablation(run_id: str) -> list[AblationMetric]:
+        """[V2/M19 · C-4] La ablación de un run INCLUYE la de sus sub-runs
+        DIRECTOS: los dos brazos son sub-runs (§13) y cada uno emite SU
+        `run.metrics.recorded` en SU stream, así que preguntarle solo al raíz
+        devolvería un panel de una sola barra para una comparación de dos.
+
+        Es agregación de LECTURA, no de escritura: cada brazo conserva su
+        stream, su procedencia y su certificado — nada se fusiona."""
         stream = _require_known_run(resources, run_id)
-        return _project_ablation(stream)
+        filas = _project_ablation(stream)
+        for sub_run_id in _sub_run_ids(resources, run_id):
+            filas.extend(_project_ablation(resources.store.read_stream(sub_run_id)))
+        return filas
 
     @router.get("/runs/{run_id}/topology")
     def get_run_topology(run_id: str) -> TopologyResponse:
         stream = _require_known_run(resources, run_id)
         return TopologyResponse(**_project_topology(stream))
+
+    @router.get("/runs/{run_id}/rvsp")
+    def get_run_rvsp(run_id: str) -> RvspResponse:
+        """[V3/M20 · C-9] La curva r-vs-p de la instancia que el run cita.
+
+        Clave POR RUN, datos POR INSTANCIA: el barrido r vs p abarca p×semillas
+        corridas y no cabe en el stream de una sola ejecución, así que el run
+        aporta el ÚNICO dato que es suyo —qué red se está resolviendo— y la
+        curva sale del corpus congelado (`knowledge/rvsp/`, con su digest).
+
+        Los dos 404 dicen cosas distintas a propósito: "este run no declaró
+        instancia" y "esta instancia no tiene curva ingerida" son problemas
+        distintos, y colapsarlos dejaría al Studio sin saber cuál mostrar.
+        Ninguno degrada a `points: []` — un gráfico vacío se lee como "el
+        experimento dio esto", que sería falso."""
+        _require_known_run(resources, run_id)
+        ticket = resources.run_tickets.get(run_id)
+        instancia = ticket.instance_id if ticket is not None else None
+        if not instancia:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    "run sin instancia declarada — sin ella no se sabe de qué "
+                    "red es la curva rvsp, y servir otra sería inventarla"
+                ),
+            )
+        curva = load_rvsp_record(instancia)
+        if curva is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"instancia {instancia} sin datos rvsp ingeridos todavía",
+            )
+        return curva
 
     return router
