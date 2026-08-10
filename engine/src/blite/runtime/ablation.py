@@ -18,10 +18,12 @@ ablar es decisión de quien diseña el experimento, jamás del runtime.
 
 from __future__ import annotations
 
+import json
+import logging
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from blite.content import ContentStore
 from blite.events.store import EventStore
@@ -36,16 +38,30 @@ from blite.runtime.registry import Registry
 from blite.runtime.subrun import contribute_sub_run_claims, spawn_sub_run
 
 _DEFAULT_MAX_STEPS = 8
+_LOGGER = logging.getLogger(__name__)
+
+CutCostFrom = Callable[[Mapping[str, Any]], float | None]
+"""Cómo LEER el costo de corte de la salida del brazo. Ver `AblationArm`."""
 
 
 @dataclass(frozen=True)
 class AblationArm:
     """Un brazo declarado: qué variante es y con qué se computa.
 
-    `cut_cost` es el resultado científico del brazo — lo declara quien corre el
-    experimento porque el log de verificación no lo conoce; `None` cuando el
-    brazo no produce un costo de corte (y entonces el brazo no aparece como
-    fila de ablación, en vez de aparecer con un cero fabricado).
+    El costo de corte es el resultado científico del brazo y el log de
+    verificación no lo conoce, así que lo declara quien corre el experimento.
+    Hay dos formas de declararlo, y son EXCLUYENTES:
+
+    - `cut_cost` — el valor, cuando el llamante ya lo sabe (un baseline
+      congelado, un número de corpus).
+    - `cut_cost_from` — cómo leerlo de la SALIDA del brazo, cuando el costo es
+      precisamente lo que el brazo computa. Sin esto, el llamante tendría que
+      correr la capability una vez para conocer el costo y otra como brazo —
+      y el `wall_ms` registrado sería el de la segunda corrida, midiendo un
+      trabajo que ya estaba hecho.
+
+    Ninguna de las dos ⇒ el brazo no aporta fila de ablación, en vez de
+    aparecer con un cero fabricado.
     """
 
     variant: AblationVariant
@@ -53,7 +69,57 @@ class AblationArm:
     inputs: dict[str, Any]
     post_invoke: PostInvokeDelegate | None = None
     cut_cost: float | None = None
+    cut_cost_from: CutCostFrom | None = None
     extra: dict[str, Any] = field(default_factory=dict[str, Any])
+
+    def __post_init__(self) -> None:
+        if self.cut_cost is not None and self.cut_cost_from is not None:
+            msg = (
+                f"brazo {self.variant}: `cut_cost` y `cut_cost_from` son "
+                "excluyentes — dos respuestas a cuál es el costo de corte, y la "
+                "que gane en silencio sería la que el panel muestre"
+            )
+            raise ValueError(msg)
+
+
+def _arm_output(
+    store: EventStore, content: ContentStore, sub_run_id: str, domain_id: str
+) -> Mapping[str, Any] | None:
+    """La salida del brazo, recuperada del content store por su digest.
+
+    `None` (no `{}`) cuando el brazo no dejó salida recuperable: un dict vacío
+    haría que `cut_cost_from` leyera "sin costo" y el brazo apareciera como si
+    hubiera corrido sin producir nada.
+    """
+    completado = next(
+        (
+            event
+            for event in reversed(store.read_stream(sub_run_id))
+            if event.type == "run.completed"
+        ),
+        None,
+    )
+    if completado is None:
+        return None
+    digest = completado.payload.get("output_digest")
+    if not isinstance(digest, str) or not digest:
+        return None
+    try:
+        crudo = content.get(digest, {"domain_id": domain_id})
+    except Exception:  # noqa: BLE001 — una salida no recuperable deja al brazo SIN costo, jamás con uno inventado
+        _LOGGER.warning(
+            "brazo %s: la salida %s no es recuperable — sin costo de corte",
+            sub_run_id,
+            digest[:12],
+        )
+        return None
+    salida: Any = json.loads(crudo)
+    if not isinstance(salida, dict):
+        return None
+    # El `isinstance` estrecha a `dict[Unknown, Unknown]`; el cast declara lo
+    # que el contrato ya garantiza (la salida de una capability es un objeto
+    # JSON) — mismo criterio que `metrics::_verifier_class_of`.
+    return cast("dict[str, Any]", salida)
 
 
 @dataclass(frozen=True)
@@ -116,12 +182,17 @@ def run_ablation_arms(  # noqa: PLR0913 — misma superficie que `spawn_sub_run`
         )
         wall_ms = (time.perf_counter() - started) * 1000.0
 
+        cut_cost = arm.cut_cost
+        if arm.cut_cost_from is not None:
+            salida = _arm_output(store, content, sub_run_id, domain_id)
+            cut_cost = None if salida is None else arm.cut_cost_from(salida)
+
         metrics = record_run_metrics(
             store,
             run_id=sub_run_id,
             domain_id=domain_id,
             variant=arm.variant,
-            cut_cost=arm.cut_cost,
+            cut_cost=cut_cost,
             wall_ms=wall_ms,
         )
 

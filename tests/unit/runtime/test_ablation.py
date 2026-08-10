@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from blite.events import create_event_store
 from blite.runtime.ablation import AblationArm, run_ablation_arms
 from blite.runtime.content_store import InMemoryContentStore
@@ -37,6 +39,14 @@ class _Solver:
 
     def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
         return {"cut": inputs["cut"]}
+
+
+class _Explosivo(_Solver):
+    """Brazo que falla — el sub-run no completa y por tanto no deja salida."""
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        msg = "el brazo no pudo resolver"
+        raise RuntimeError(msg)
 
 
 def _store_con_raiz():
@@ -155,6 +165,89 @@ class TestHerenciaYProcedencia:
         }
         assert digests == {_POLICY}
 
+
+class TestCostoDeCorteDerivadoDeLaSalida:
+    """El costo de corte ES lo que el brazo computa. Declararlo por adelantado
+    obligaría a correr la capability una vez para conocerlo y otra como brazo
+    — y el `wall_ms` registrado sería el de la segunda corrida, midiendo un
+    trabajo que ya estaba hecho."""
+
+    def test_el_brazo_lee_su_costo_de_su_propia_salida(self) -> None:
+        # Arrange
+        store = _store_con_raiz()
+
+        # Act
+        _correr(
+            store,
+            [
+                AblationArm(
+                    variant="quantum",
+                    capability_id="cap.solve",
+                    inputs={"cut": 42},
+                    cut_cost_from=lambda salida: float(salida["cut"]),
+                )
+            ],
+        )
+
+        # Assert
+        payload = next(
+            e.payload
+            for e in store.read_stream(f"{_ROOT}--arm-0-quantum")
+            if e.type == "run.metrics.recorded"
+        )
+        assert payload["cut_cost"] == 42.0
+
+    def test_declarar_las_dos_formas_a_la_vez_explota(self) -> None:
+        """Dos respuestas a cuál es el costo, y la que gane en silencio sería
+        la que el panel muestre."""
+        with pytest.raises(ValueError, match="excluyentes"):
+            AblationArm(
+                variant="quantum",
+                capability_id="cap.solve",
+                inputs={},
+                cut_cost=1.0,
+                cut_cost_from=lambda _: 2.0,
+            )
+
+    def test_un_brazo_que_no_completa_no_tiene_costo(self) -> None:
+        """Fail-closed sin ruido: sin salida no hay costo, y el brazo NO
+        aparece como fila de ablación — mejor una barra ausente que una en
+        cero, que se leería como «el corte costó cero»."""
+        # Arrange — capability que revienta: el sub-run no llega a completar
+        store = _store_con_raiz()
+
+        # Act
+        outcomes = run_ablation_arms(
+            store,
+            EntryPointRegistry({"cap.solve": _Explosivo()}),
+            ProfileDispatcher(),
+            InMemoryContentStore(),
+            root_run_id=_ROOT,
+            root_policy_digest=_POLICY,
+            actor_id="user:dylan",
+            domain_id=_DOMAIN,
+            arms=[
+                AblationArm(
+                    variant="quantum",
+                    capability_id="cap.solve",
+                    inputs={"cut": 42},
+                    cut_cost_from=lambda salida: float(salida["cut"]),
+                )
+            ],
+        )
+
+        # Assert
+        assert outcomes[0].status != "completed"
+        assert outcomes[0].sub_run_provenance_hash is None
+        payload = next(
+            e.payload
+            for e in store.read_stream(f"{_ROOT}--arm-0-quantum")
+            if e.type == "run.metrics.recorded"
+        )
+        assert "cut_cost" not in payload
+
+
+class TestHerenciaYProcedenciaContinuacion:
     def test_un_brazo_completado_aporta_su_hash_de_procedencia(self) -> None:
         store = _store_con_raiz()
 
