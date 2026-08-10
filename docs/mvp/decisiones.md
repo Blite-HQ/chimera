@@ -3009,3 +3009,67 @@ lee como «el experimento dio esto», que sería falso. El Studio distingue el 4
 | `rvspWireSchema` + `toRvsPExperiment` (Zod)                   | D                | ESPEJO — snake_case → camelCase, mismo patrón que `toAblationMetric`      |
 | `loadRvsP(runId?)` / `rvspQueryOptions`                       | D                | La rama live deja de devolver `null` fijo                                 |
 | fixture `get-runs-rvsp.json` (canónico + espejo Studio)       | E ↔ D            | NUEVO — generado desde `RvspResponse` sobre el corpus REAL, no a mano     |
+
+### #158 — V4/M6: el control negativo no es un extra, es la condición de publicación
+
+El bloque `mitigation.*` estaba congelado en el freeze §11 desde S-E y cero
+código lo emitía. Lo emite una capability propia (`blite.quantum.zne`) —
+propia y no Mitiq porque Mitiq es GPL-3.0 y este repo se distribuye MIT (nota
+09 §3); Mitiq entra como dependencia opcional del harness de benchmarks.
+
+**La decisión de diseño que manda todo lo demás:** `mitigate_expectation` corre
+SIEMPRE el control negativo de garbage-folding y devuelve
+`improvement_survives_control`. arXiv:2607.09360 demuestra que ZNE produce
+mejoras ARTEFACTUALES — cuando la amplificación supera la señal, la
+extrapolación colapsa a un reescalado de una medición ruidosa y «mejora» sin
+física detrás. Un mitigador que reporta solo su delta no se puede auditar.
+
+**Reproducimos el hallazgo en nuestro propio código.** Con extrapolación lineal
+sobre G6 al 5 % de ruido de 2 qubits: mejora legítima 0.1–0.3 %, control de
+basura 28–52 %. Dos órdenes de magnitud de «mejora» sin física. Con Richardson
+el control sale negativo (−0.08 a −1.19) y la mejora legítima (0.9–3.3 %) sí
+sobrevive. Fijado como test parametrizado sobre 3 semillas: asevera que el
+control FUNCIONA, no un número.
+
+`training_digest` viaja en `None` EXPLÍCITO — ZNE no entrena, y rellenar el
+campo fabricaría procedencia. El corrector aprendido (V9) sí lo llena: el
+mismo bloque distingue los dos métodos sin cambiar de forma.
+
+**Reproducibilidad medida, no prometida:** la rama legítima es bit-estable con
+la seed pinneada; la del control no siempre lo es entre corridas (circuitos
+mucho más profundos, Aer no garantiza el reparto de shots a esa profundidad).
+El VEREDICTO sí es estable sobre 5 semillas. Se dice así.
+
+### #159 — V2 cerrado: el costo de corte sale de la salida del brazo
+
+El productor (`scripts/run_ablation.py`) destapó un hueco del mecanismo:
+`cut_cost` había que declararlo ANTES de correr el brazo, pero es justo lo que
+el brazo computa. Declararlo por adelantado obligaba a correr la capability dos
+veces, y el `wall_ms` registrado sería el de la segunda corrida — midiendo un
+trabajo ya hecho. `AblationArm.cut_cost_from` lo lee de la salida (recuperada
+del content store por su digest). Las dos formas son EXCLUYENTES.
+
+**Las barras tienen que ser la misma CLASE de número.** La primera corrida
+comparaba el best-of-2048-shots del brazo cuántico contra un valor esperado
+mitigado — y hacía ver a la mitigación peor por una razón que no tiene nada
+que ver con mitigar. Corregido: cuántico reporta ⟨C⟩ (la lección del fix 4b),
+exacto su óptimo, ZNE su valor mitigado.
+
+**Regla de publicación del brazo ZNE:** si la mejora no sobrevivió al control,
+el brazo NO aporta costo — ni siquiera cuando el campo del veredicto falta
+(«no sé si es artefacto» no es «no lo es»). `mitigated` no se declara como
+brazo: su productor es V9 y una barra vacía CON nombre es peor que una ausente.
+
+Corrida real sobre `cr8-uniforme` (óptimo 7): quantum ⟨C⟩ 6.35 (r 0.907, 4.6 s)
+· classical 7.00 (r 1.000, 0.2 s) · zne mitigado 5.94 (r 0.848, 28.5 s).
+
+### Tabla de interacciones — V4/M6 y cierre de V2
+
+| Interfaz                                 | Dominio afectado | Estado del contrato                                                      |
+| ---------------------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| `blite_cap_quantum.zne` (módulo nuevo)   | caps             | NUEVO — folding, extrapoladores y el control negativo                    |
+| `blite.quantum.zne` (capability nueva)   | caps ↔ runtime   | NUEVA — emite el bloque `mitigation.*` del freeze §11                    |
+| `qaoa.prepare_circuit` / `sample_counts` | caps             | EXTRAÍDO — el mitigador usa EL MISMO circuito que el solver              |
+| `AblationArm.cut_cost_from`              | engine           | ADITIVO — excluyente con `cut_cost`; cierra el hueco que V2 dejó         |
+| `scripts/run_ablation.py`                | ciencia ↔ E ↔ D  | NUEVO — el llamante que a `blite.runtime.ablation` le faltaba            |
+| `AblationPanel` (test)                   | D                | El panel de 4 barras no tenía NINGÚN test; ahora fija la leyenda honesta |
