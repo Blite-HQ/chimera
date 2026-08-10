@@ -29,6 +29,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from blite.catalog.croissant import DatasetDescription
 from blite.runtime.dispatch import validate_interaction_profile
 
 SUPPORTED_VERSION = 1
@@ -81,6 +82,60 @@ class McpServerSpec(BaseModel):
         return value
 
 
+class DatasetSpec(BaseModel):
+    """Un dataset que ESTE despliegue publica (O4/M10).
+
+    La plataforma no sabe qué datos tiene: los descubre porque un despliegue
+    los declara. Por eso los nombres de dominio viven acá —en configuración—
+    y no en el código, que es justo lo que ADR-029 pide.
+
+    `license` es OBLIGATORIA y no tiene default. Publicar un dataset sin decir
+    bajo qué términos se puede usar traslada el problema a quien lo descargue,
+    que es quien menos puede resolverlo; y un default («desconocida», «propia»)
+    sería una respuesta inventada a una pregunta legal. Si el despliegue no
+    sabe la licencia, no publica el dataset.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    path: str
+    """Directorio de instancias, relativo a la raíz del repo."""
+    description: str
+    license: str
+    """Identificador SPDX o URL de la licencia bajo la que se publica."""
+    url: str
+    """Dónde vive el dataset — la página a la que apunta el export."""
+    title: str = ""
+    """Título legible. `name` en Croissant es el identificador, no el título."""
+    version: str = "1.0.0"
+    cite_as: str = ""
+    date_published: str = ""
+
+    @field_validator("path", "description", "license", "url")
+    @classmethod
+    def _sin_vacios(cls, value: str) -> str:
+        if not value.strip():
+            msg = (
+                "DatasetSpec: `path`, `description`, `license` y `url` son "
+                "obligatorios — un dataset publicado sin ellos no es usable "
+                "por un tercero, que es el único motivo para publicarlo"
+            )
+            raise ValueError(msg)
+        return value
+
+    def description_for_export(self, dataset_id: str) -> DatasetDescription:
+        return DatasetDescription(
+            dataset_id=dataset_id,
+            name=self.title,
+            description=self.description,
+            license=self.license,
+            url=self.url,
+            version=self.version,
+            cite_as=self.cite_as,
+            date_published=self.date_published,
+        )
+
+
 class DistributionManifest(BaseModel):
     """Lo que este despliegue declara. Vacío = todo in-process, sin externos."""
 
@@ -93,6 +148,8 @@ class DistributionManifest(BaseModel):
     execution_profiles: Mapping[str, str] = Field(default_factory=dict)
     """Override de perfil por capability. Validado contra la matriz AL CARGAR."""
     mcp_servers: Mapping[str, McpServerSpec] = Field(default_factory=dict)
+    datasets: Mapping[str, DatasetSpec] = Field(default_factory=dict)
+    """`{dataset_id: spec}` — el catálogo que este despliegue publica."""
 
     @field_validator("version")
     @classmethod

@@ -37,6 +37,7 @@ dev = [
     "pytest-cov>=6.0",
     "import-linter>=2.1",
     "pip-audit>=2.7",
+    "mlcroissant>=1.1.0",
 ]
 experiment = ["matplotlib>=3.9"]
 

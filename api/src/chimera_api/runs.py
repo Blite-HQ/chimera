@@ -118,11 +118,11 @@ grabar, no un default reconfigurable por accidente."""
 # api/src/chimera_api/runs.py -> parents[3] es la raíz del repo (mismo
 # cómputo que REPO en test_assemble.py, tres niveles menos porque este
 # archivo vive un nivel más adentro).
-_REPO_ROOT = Path(__file__).parents[3]
+REPO_ROOT = Path(__file__).parents[3]
 _DEFAULT_POLICY_PATH = (
-    _REPO_ROOT / "distributions" / "chimera" / "policies" / "verification-default.yaml"
+    REPO_ROOT / "distributions" / "chimera" / "policies" / "verification-default.yaml"
 )
-_ISLANDING_CORPUS_DIR = _REPO_ROOT / "knowledge" / "islanding" / "corpus"
+_ISLANDING_CORPUS_DIR = REPO_ROOT / "knowledge" / "islanding" / "corpus"
 
 
 class InstanceRequest(BaseModel):
@@ -410,8 +410,8 @@ class RunResources:
         return self._registry
 
 
-_DISTRIBUTION_MANIFEST_PATH = (
-    _REPO_ROOT / "distributions" / "chimera" / "distribution.yaml"
+DISTRIBUTION_MANIFEST_PATH = (
+    REPO_ROOT / "distributions" / "chimera" / "distribution.yaml"
 )
 
 
@@ -426,7 +426,7 @@ def _build_dispatcher() -> Dispatcher:
     El import del invocador es perezoso porque arrastra el SDK de MCP (extra
     `chimera-engine[mcp]`): un despliegue sin interop no debe pagarlo.
     """
-    manifest = load_distribution_manifest(_DISTRIBUTION_MANIFEST_PATH)
+    manifest = load_distribution_manifest(DISTRIBUTION_MANIFEST_PATH)
     if not manifest.mcp_servers:
         return ProfileDispatcher()
 

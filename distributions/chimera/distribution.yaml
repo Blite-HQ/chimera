@@ -38,3 +38,53 @@ mcp_servers:
       - nexus_device_status
       - nexus_list_projects
       - nexus_get_quota
+
+# ── Datasets publicados (O4/M10, resolución C-13) ─────────────────────────────
+#
+# El catálogo (`GET /datasets`) sale de acá y de ningún otro lado: la plataforma
+# no trae datos, un despliegue los declara. Los nombres de dominio viven en
+# ESTE archivo —configuración— y no en el código, que es exactamente lo que
+# ADR-029 pide y lo que el gate de agnosticismo verifica.
+#
+# `license` no tiene default a propósito. Publicar datos sin decir bajo qué
+# términos se pueden usar traslada el problema a quien los descargue, que es
+# quien menos puede resolverlo.
+#
+# NO se declara el corpus de `knowledge/islanding/`, y no es un olvido: sus
+# instancias tienen procedencia mixta (datos de ejemplo de UN reto, derivados
+# de un portal abierto de terceros cuyo catálogo no declara identificador de
+# licencia — ver NOTICE §2). Se quedan en el árbol como datos de prueba; un
+# dataset que no se puede licenciar con claridad no se publica.
+datasets:
+  tfim-corpus:
+    path: knowledge/tfim/corpus
+    title: Transverse-field Ising chain reference series
+    description: >-
+      Reference observable series for transverse-field Ising chains, produced by
+      exact diagonalisation. Each instance carries the Hamiltonian terms, the
+      quench protocol and the resulting single-site and two-site series, with an
+      embedded digest over its own contents.
+    license: https://creativecommons.org/publicdomain/zero/1.0/
+    url: https://github.com/Blite-HQ/Chimera/tree/main/knowledge/tfim/corpus
+    version: '1.0.0'
+    date_published: '2026-08-08'
+    cite_as: >-
+      Blite-HQ (2026). Transverse-field Ising chain reference series.
+      Chimera, version 1.0.0.
+      https://github.com/Blite-HQ/Chimera/tree/main/knowledge/tfim/corpus
+
+  tabular-corpus:
+    path: knowledge/tabular/corpus
+    title: Sealed synthetic tabular classification instance
+    description: >-
+      A synthetic binary-classification instance sealed before use: generator
+      seed, decision boundary, injected noise and missing-cell rate are all
+      declared, so the labels cannot have been chosen after seeing a result.
+    license: https://creativecommons.org/publicdomain/zero/1.0/
+    url: https://github.com/Blite-HQ/Chimera/tree/main/knowledge/tabular/corpus
+    version: '1.0.0'
+    date_published: '2026-08-08'
+    cite_as: >-
+      Blite-HQ (2026). Sealed synthetic tabular classification instance.
+      Chimera, version 1.0.0.
+      https://github.com/Blite-HQ/Chimera/tree/main/knowledge/tabular/corpus
