@@ -24,6 +24,7 @@ members = [
     "blite-cap-solvers",
     "blite-capability",
     "chimera-api",
+    "chimera-convergence",
     "chimera-distribution",
     "chimera-engine",
     "chimera-eval",
@@ -768,6 +769,11 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.26" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.51.0" },
 ]
+
+[[package]]
+name = "chimera-convergence"
+version = "0.1.0"
+source = { editable = "tools/convergence" }
 
 [[package]]
 name = "chimera-distribution"
