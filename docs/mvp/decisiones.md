@@ -2661,6 +2661,35 @@ Baseline al abrir: pytest 1166 / studio 224 en 27 files.
 **Alcance cerrado**: P3-D, P6 (parcial — ver abajo), P7, P9, P10, P13 y los
 hallazgos 4/5/6 del handoff S3.
 
+#### Cómo reproducir las verificaciones vivas (para la sesión de control)
+
+Los gates de esta sesión se corren con la receta de worktree (python del venv
+del repo PRINCIPAL + `PYTHONPATH` del worktree; `uv sync` en un worktree no
+instala los editables). Las tres corridas vivas, en orden de valor:
+
+```bash
+# 1 · CP7 offline — el checklist completo sobre el bundle vigente
+python scripts/verify-bundle.py scripts/example-bundle.json          # 12/12, exit 0
+
+# 2 · Custodia real (C8) — la llave vive en OpenBao, no en el proceso
+docker compose --profile custody up -d openbao
+scripts/openbao-init.sh                    # inicializa, desella, crea las 3 llaves
+# luego: TransitKeyProvider(address=..., token=secrets/transit_token.txt)
+#        → assemble_bundle(key_provider=...) → check_bundle 12/12
+
+# 3 · Hash-chain durable (C5) — contra Postgres real
+#     create_event_store(DSN) y comprobar prev_hash/hash + provenance_slice
+```
+
+**Trampa operativa (verificada en carne propia):** las sesiones paralelas
+levantan SU compose con los MISMOS puertos publicados (5544 postgres, 8000
+api, 3000 studio). Con `chimera-plataforma` arriba, `docker compose up` en
+este worktree falla con «port is already allocated» — no es un defecto del
+compose. Para verificar contra Postgres sin pelear por el puerto, se levanta
+un contenedor aparte en otro puerto con `engine/sql/init_v2.sql` montado, o se
+coordina el turno con la otra sesión. El perfil `custody` publica 8200 y el
+`transparency` 3003: mismo cuidado si dos sesiones los usan a la vez.
+
 #### Lo que NO se cerró, con causa
 
 1. **P8/M16 branding — BLOQUEADO-POR-DYLAN.** Las 21 referencias visuales no
@@ -3090,8 +3119,8 @@ desactualizado.
 **Alcance CERRADO:** C3, C4, C5 (+M28), C6, C7, C8, C9, C10 y las
 extensiones #120 (C12, C13, C14, C15). **C11 no entra** (ver encabezado de esta sesión).
 
-**Gates al cierre** (worktree `mejorado/confianza-2`, 12 commits sobre
-`mejorado/base` @cebbfe5, sin push):
+**Gates al cierre** (worktree `mejorado/confianza-2`, rama del mismo nombre
+sobre `mejorado/base` @cebbfe5, sin push):
 
 | Gate                           | Resultado                                        |
 | ------------------------------ | ------------------------------------------------ |
@@ -3123,6 +3152,35 @@ declaran lo que no comprobaron en vez de callarlo.
   corregidos ahí (ver #158).
 - **Hash-chain en Postgres 17 real**: cadena correcta desde la génesis y
   `ConcurrentAppendError` intacto.
+
+#### Cómo reproducir las verificaciones vivas (para la sesión de control)
+
+Los gates de esta sesión se corren con la receta de worktree (python del venv
+del repo PRINCIPAL + `PYTHONPATH` del worktree; `uv sync` en un worktree no
+instala los editables). Las tres corridas vivas, en orden de valor:
+
+```bash
+# 1 · CP7 offline — el checklist completo sobre el bundle vigente
+python scripts/verify-bundle.py scripts/example-bundle.json          # 12/12, exit 0
+
+# 2 · Custodia real (C8) — la llave vive en OpenBao, no en el proceso
+docker compose --profile custody up -d openbao
+scripts/openbao-init.sh                    # inicializa, desella, crea las 3 llaves
+# luego: TransitKeyProvider(address=..., token=secrets/transit_token.txt)
+#        → assemble_bundle(key_provider=...) → check_bundle 12/12
+
+# 3 · Hash-chain durable (C5) — contra Postgres real
+#     create_event_store(DSN) y comprobar prev_hash/hash + provenance_slice
+```
+
+**Trampa operativa (verificada en carne propia):** las sesiones paralelas
+levantan SU compose con los MISMOS puertos publicados (5544 postgres, 8000
+api, 3000 studio). Con `chimera-plataforma` arriba, `docker compose up` en
+este worktree falla con «port is already allocated» — no es un defecto del
+compose. Para verificar contra Postgres sin pelear por el puerto, se levanta
+un contenedor aparte en otro puerto con `engine/sql/init_v2.sql` montado, o se
+coordina el turno con la otra sesión. El perfil `custody` publica 8200 y el
+`transparency` 3003: mismo cuidado si dos sesiones los usan a la vez.
 
 #### Lo que NO se cerró, con causa
 
