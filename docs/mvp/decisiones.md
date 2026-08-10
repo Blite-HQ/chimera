@@ -3786,3 +3786,50 @@ exagerar:
    `"model"` y eso es deliberado. Confundirlas no exagera una función:
    **desarma la credibilidad de toda la arquitectura de confianza** frente a
    quien sepa preguntar, que es justo el público de este argumento.
+
+### Handoff de PLATAFORMA — cierre del alcance (2026-08-10)
+
+**El backlog O queda cerrado salvo O7.** Los tres ítems que el handoff anterior
+listaba pendientes están hechos: **#167 (O4)**, **#168 (O9)**, **#169 (O10)**.
+
+| ítem         | estado                                                                                                                                                                      |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| O1–O5        | **CERRADOS**                                                                                                                                                                |
+| O8, O11, O12 | **CERRADOS**                                                                                                                                                                |
+| O9, O10      | **CERRADOS** (#168, #169)                                                                                                                                                   |
+| **O7**       | **BLOQUEADO, no omitido** — el umbral de deck.gl exige medir FPS sobre un overlay de mapa que solo existe tras V1/M18, en la sesión V. No es compromiso (letra del encargo) |
+
+**Lo que este tramo destapó y NO es mío de arreglar:**
+
+1. **La evidencia de Nexus se ancla a instancias derivadas del ICE**
+   (`cr6-*`/`cr8-*`). La salida al problema de licencia no puede ser borrarlas:
+   huérfana la evidencia más fuerte del proyecto. `NOTICE` §2 y
+   `docs/pre-flip-checklist.md` recomiendan sacar el **geojson crudo** y
+   conservar las derivadas, con las dos comprobaciones obligatorias escritas.
+   **Toca archivos de otras sesiones: reportado, no ejecutado.**
+2. **`runs.py` e `instance_verifiers.py` cablean tres directorios de corpus por
+   ruta literal.** El `datasets:` del manifest es la forma de quitárselo, pero
+   rehacer la resolución de verificadores es **G3** («dispatch por clase de
+   problema»), de otro dominio.
+3. **Generalizar `ExternalImportStatement`** (toca contrato congelado ⇒
+   ceremonia) sigue reportado para la sesión de control, sin ejecutar.
+4. **La rama `ejercicio/sf-ratificacion-simulada` ya se puede podar**: su método
+   está en `docs/protocolo-convergencia.md` (#168). El hallazgo 10 del handoff
+   S3 queda cerrado.
+
+**Lo que sigue rojo, y por qué no es mío:** el job **Web** — las 2 violaciones
+de depcruise del Studio (App.tsx ↔ router.tsx circular; App.tsx → gatewayClient)
+las toma otro agente por decisión de Dylan (2026-08-06).
+
+**Gates al cierre** (worktree `mejorado/plataforma`, 2026-08-10):
+
+- pytest **1392 passed** / 13 skipped / 6 xfailed / 4 xpassed · cobertura **90.23 %**
+- `lint-imports` **18 contratos, 0 rotos** (el nuevo: aislamiento de `chimera_convergence`)
+- `ruff check` y `ruff format --check` limpios · `pyright` **0 errores**
+- Studio **299 passed / 32 files** — con el flake dependiente de carga ya
+  reportado (`lenses/registry.test.ts`, import dinámico): falló una corrida,
+  verde en la repetición
+- `docs:lint` y `format:check` limpios
+- `verify_corpus_digests` **24/24 internos, 24/24 contra tabla pinneada**
+- gitleaks **sin hallazgos** en árbol e historia (era lo que tenía roja la
+  compuerta Security — ver el arreglo de la allowlist)
