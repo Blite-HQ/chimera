@@ -3723,3 +3723,66 @@ nginx por ningún lado.
 literal. El `datasets:` del manifest es la forma de quitarles eso, pero rehacer
 la resolución de verificadores es G3 («dispatch por clase de problema»), de
 otro dominio. Se reporta, no se toca.
+
+### #168 — O9: el protocolo de convergencia deja de vivir en un commit huérfano
+
+**El problema no era la falta de método, era dónde vivía.** El procedimiento
+completo estaba pinneado a `git show 68af0c1:docs/research/protocolo-auditoria-ratificaciones.md`
+— un commit de una rama de ejercicio que no está en el árbol. Si alguien poda
+esa rama, el método desaparece y el acta de S-F queda citando un fantasma
+(hallazgo 10 del handoff S3). Un procedimiento que la organización usa no puede
+depender de que nadie limpie ramas. Portado a `docs/protocolo-convergencia.md`
+como MÉTODO —sin las cifras de aquella corrida, que son acta y no se tocan—.
+**La rama ya se puede podar.**
+
+**Qué se mecanizó, y qué no.** Clasificar NO: decidir si dos hallazgos son el
+mismo defecto es leer y juzgar, y una herramienta que lo adivinara produciría
+una matriz que se ve rigurosa sin serlo. Lo que sí se mecaniza es **impedir que
+una clasificación no ganada llegue a veredicto**, porque ahí está el sesgo y
+tiene dirección conocida: quien arma la matriz quiere que converja.
+
+No es teoría. En la única corrida real del protocolo, la pasada de refutación
+**reclasificó 3 ejes que estaban en A** — dos fallaban el test del paraguas y
+uno era ósmosis del auditor, no un avistamiento independiente. Y **A es lo que
+sostiene el veredicto**. Así que:
+
+- un eje en A exige **evidencia primaria de AMBAS fuentes** (sin eso no se
+  distingue convergencia de que el auditor ya supiera qué buscar);
+- una convergencia parcial exige el **test del paraguas** registrado y pasado;
+- los dos criterios del veredicto que no se computan desde la matriz
+  —«ninguna decisión congelada invalidada», «la sustancia sobrevivió ambas
+  pasadas»— hay que **declararlos con evidencia** o no hay veredicto.
+
+**Sale 2, no 1, cuando la matriz está mal formada.** «No se pudo leer» no es
+«divergen». Confundirlas dejaría que un gate encadenado tratara un error de
+sintaxis como una conclusión sobre el trabajo.
+
+**Contrato de imports en las dos direcciones.** El producto no importa el
+auditor (sería meter una herramienta de proceso en el camino crítico de un run)
+y el auditor no importa el producto (ataría un método general —dos revisiones
+de cualquier cosa— a ESTE dominio).
+
+### #169 — O10: el 1-pager white-box sale de la KB al árbol que un externo lee
+
+`trust/16` §1.5 era el único argumento del corpus del tipo «esto una API cerrada
+no lo puede copiar», y estaba enterrado en una nota de investigación. Extraído a
+`docs/white-box-sep.md`. La nota sigue siendo la fuente (evidencia, citas,
+licencias) y no se toca; el 1-pager es la versión entregable.
+
+**Lo que se cuidó al extraerlo,** porque es material de pitch y el riesgo es
+exagerar:
+
+1. **Encabezado que dice que NO está implementado.** Es una posición, no una
+   funcionalidad, y no hay compromiso de fecha.
+2. **La madurez va en el cuerpo, no en una nota al pie:** paper de WORKSHOP
+   (no track principal), código de investigación MIT con 91% notebooks y sin
+   releases, y nadie lo productizó en dos años. Decirlo así —en vez de «tenemos
+   SEPs»— es lo que hace que el argumento aguante una pregunta técnica.
+3. **El caveat del proxy analyzer**, que acota el claim a un objeto epistémico
+   preciso: la incertidumbre del GENERADOR sobre su propio significado, no
+   fundamentación en la fuente.
+4. **El encuadre no negociable, con su consecuencia dicha:** un score de SEP es
+   `GuardrailSignal`, jamás acuña `Attestation` — `AnchorKind` no tiene
+   `"model"` y eso es deliberado. Confundirlas no exagera una función:
+   **desarma la credibilidad de toda la arquitectura de confianza** frente a
+   quien sepa preguntar, que es justo el público de este argumento.
