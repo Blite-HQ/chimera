@@ -8,9 +8,14 @@ El caso ejercita el shape §4 completo — `verification` POR isla (freeze §9,
 sin excepción) — y AMBAS formas de la convención de branch-ids C-8 (§8):
 `edge_id_property` de GIS (FID numérico) y el id canónico `L{min}-{max}[-k]`.
 Espejo byte-idéntico al Studio; el par [fixture + `topologySnapshotSchema` a
-mano] es el contrato. Los casos de `run-metrics-recorded` (V2) y rvsp (V3)
-quedan DECLARADOS — sus modelos origen son Fase 1 (regla del README: donde el
-modelo aún no existe, el fixture verde lo entrega el dueño).
+mano] es el contrato.
+
+**[V2/M19 · 2026-08-05]** El caso `run-metrics-recorded` deja de estar
+DECLARADO y pasa a generarse: su modelo origen (`RunMetricsRecordedPayload`,
+`blite.runtime.metrics`) ya existe. Ejercita el payload v2 completo — los
+campos de confianza CONGELADOS más los científicos aditivos con una variante
+del enum de 4 — porque el choque que C-4 resolvió era justamente que ambos
+grupos convivieran en un solo evento. El caso rvsp (V3) sigue declarado.
 
 Falla-fuerte por construcción: mismo patrón anti-drift que
 `gen-contract-fixtures-harness.py` (el test exige byte-identidad con lo que
@@ -23,6 +28,8 @@ import json
 from pathlib import Path
 
 from chimera_api.reads import TopologyResponse
+
+from blite.runtime.metrics import RunMetricsRecordedPayload
 
 REPO = Path(__file__).resolve().parent.parent
 CANONICAL_DIR = REPO / "tests" / "fixtures" / "contract" / "superficie"
@@ -58,6 +65,19 @@ def _cases() -> dict[str, object]:
             # paralela, y un edge_id_property de GIS (FID numérico como string).
             cut_branch_ids=("L3-6", "L4-8-2", "70143"),
             cut_cost=57070.0,
+        ),
+        # C-4/§9: confianza (congelado) + ciencia (aditivo) EN EL MISMO
+        # payload — el caso existe para que un espejo que solo soporte uno de
+        # los dos grupos falle acá y no en vivo.
+        "run-metrics-recorded": RunMetricsRecordedPayload(
+            verification_latency_ms=812.5,
+            attestations_total=4,
+            inconclusive_count=1,
+            false_reject_proxy=0.5,
+            ms_por_clase={"formal_exact": 12.5, "execution": 800.0},
+            variant="zne",
+            cut_cost=57070.0,
+            wall_ms=1240.0,
         ),
     }
 

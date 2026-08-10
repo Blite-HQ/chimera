@@ -8,6 +8,8 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { RUN_EVENTS } from '../fixtures/runEvents';
+import { DOMAIN_LENSES } from './index';
 import { deriveLensContext, resolveLenses } from './registry';
 
 import type { DomainLens } from './types';
@@ -102,10 +104,11 @@ describe('resolveLenses — el shell no decide qué lente aplica', () => {
 });
 
 describe('el fixture de réplica ofrece las señales que el wire real ofrece', () => {
-  it('los jobs del fixture llevan capability_id — si no, la réplica pierde sus lentes', async () => {
-    const { RUN_EVENTS } = await import('../fixtures/runEvents');
-    const { DOMAIN_LENSES } = await import('./index');
-
+  // Los imports son ESTÁTICOS a propósito: este archivo no mockea nada, así
+  // que la carga perezosa no compraba aislamiento — solo metía el costo de
+  // transformar el árbol de lentes DENTRO del timeout de 5 s del test, que
+  // es lo que lo volvía flaky cuando la suite corre en paralelo.
+  it('los jobs del fixture llevan capability_id — si no, la réplica pierde sus lentes', () => {
     const context = deriveLensContext('8f2c1a9b', RUN_EVENTS);
     const ids = resolveLenses(DOMAIN_LENSES, context).map(l => l.id);
 

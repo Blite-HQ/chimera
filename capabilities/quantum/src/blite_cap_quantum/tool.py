@@ -8,7 +8,7 @@ Heavy dependencies are loaded lazily (install via extras):
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from blite_capability.manifest import CapabilityManifest
 
@@ -38,6 +38,37 @@ _MANIFEST = CapabilityManifest(
                 "type": "number",
                 "description": "Known optimum used to report approximation_ratio",
             },
+            "initial_angles": {
+                "type": "object",
+                "description": (
+                    "Explicit variational angle schedule to start from (or to "
+                    "evaluate at, with optimize=false); same shape as the "
+                    "'angles' output so a run's angles can be fed back verbatim"
+                ),
+                "properties": {
+                    "betas": {"type": "array", "items": {"type": "number"}},
+                    "gammas": {"type": "array", "items": {"type": "number"}},
+                },
+                "required": ["betas", "gammas"],
+            },
+            "optimize": {
+                "type": "boolean",
+                "default": True,
+                "description": (
+                    "When false, evaluate at initial_angles instead of running "
+                    "the classical angle optimizer (initial_angles required)"
+                ),
+            },
+            "init_strategy": {
+                "type": "string",
+                "enum": ["constant", "interp"],
+                "default": "constant",
+                "description": (
+                    "Where the angle optimizer starts: a constant schedule, or "
+                    "a level-by-level climb interpolating the previous level's "
+                    "optimum (mutually exclusive with initial_angles)"
+                ),
+            },
         },
         "required": ["matrix"],
     },
@@ -65,8 +96,48 @@ _MANIFEST = CapabilityManifest(
                 "type": "number",
                 "description": "expected_energy divided by reference_optimum, when provided",
             },
+            "angles": {
+                "type": "object",
+                "description": (
+                    "Variational angle schedule actually bound into the sampled "
+                    "circuit — re-injectable as initial_angles"
+                ),
+                "properties": {
+                    "betas": {"type": "array", "items": {"type": "number"}},
+                    "gammas": {"type": "array", "items": {"type": "number"}},
+                },
+                "required": ["betas", "gammas"],
+            },
+            "init_strategy": {
+                "type": "string",
+                "description": (
+                    "How the starting angles were chosen: 'constant', 'interp', "
+                    "or 'given' when the caller supplied them"
+                ),
+            },
+            "optimized": {
+                "type": "boolean",
+                "description": "Whether the classical angle optimizer ran",
+            },
+            "warm_start_levels": {
+                "type": "array",
+                "description": (
+                    "One entry per level climbed, present only under "
+                    "init_strategy='interp'"
+                ),
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "p": {"type": "integer"},
+                        "betas": {"type": "array", "items": {"type": "number"}},
+                        "gammas": {"type": "array", "items": {"type": "number"}},
+                        "expected_energy": {"type": "number"},
+                    },
+                    "required": ["p", "betas", "gammas", "expected_energy"],
+                },
+            },
         },
-        "required": ["assignment"],
+        "required": ["assignment", "angles", "init_strategy", "optimized"],
     },
     tags=("quantum", "qaoa", "optimization", "qubo"),
     side_effects="pure",
@@ -97,7 +168,7 @@ class QaoaSolver:
             ) from exc
 
     def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        from blite_cap_quantum.qaoa import solve_qaoa
+        from blite_cap_quantum.qaoa import CONSTANT_INIT, solve_qaoa
 
         backend = inputs.get("backend", "aer_simulator")
         if backend != "aer_simulator":
@@ -120,11 +191,24 @@ class QaoaSolver:
         ):
             msg = f"QaoaSolver: reference_optimum debe ser numérico, no {reference!r}"
             raise ValueError(msg)
+        optimize = inputs.get("optimize", True)
+        if not isinstance(optimize, bool):
+            # Un string no vacío es verdadero en Python: `"false"` colado acá
+            # re-optimizaría en silencio los ángulos que se pidió NO tocar.
+            msg = f"QaoaSolver: optimize debe ser booleano, no {optimize!r}"
+            raise ValueError(msg)
+        init_strategy = inputs.get("init_strategy", CONSTANT_INIT)
+        if not isinstance(init_strategy, str):
+            msg = f"QaoaSolver: init_strategy debe ser texto, no {init_strategy!r}"
+            raise ValueError(msg)
         return solve_qaoa(
             inputs.get("matrix"),
             layers=layers,
             seed=seed,
             reference_optimum=reference,
+            initial_angles=inputs.get("initial_angles"),
+            optimize=optimize,
+            init_strategy=init_strategy,
         )
 
 
@@ -353,3 +437,221 @@ class FidelityKernel:
         from blite_cap_quantum.fidelity_kernel import fidelity_kernel
 
         return fidelity_kernel(inputs)
+
+
+_ZNE_MANIFEST = CapabilityManifest(
+    id="blite.quantum.zne",
+    description=(
+        "Estimate a noise-free expectation value by digital zero-noise "
+        "extrapolation: run the circuit at amplified noise levels via unitary "
+        "folding and extrapolate to zero, together with an equal-cost "
+        "negative control that says whether the improvement is real."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "matrix": {"type": "array", "description": "QUBO coefficient matrix"},
+            "layers": {"type": "integer", "default": 1},
+            "seed": {"type": "integer", "default": 1},
+            "initial_angles": {
+                "type": "object",
+                "description": (
+                    "Variational angle schedule to evaluate at; same shape as "
+                    "the 'angles' output of the QAOA capability"
+                ),
+                "properties": {
+                    "betas": {"type": "array", "items": {"type": "number"}},
+                    "gammas": {"type": "array", "items": {"type": "number"}},
+                },
+                "required": ["betas", "gammas"],
+            },
+            "optimize": {"type": "boolean", "default": True},
+            "scale_factors": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "default": [1, 3, 5],
+                "description": (
+                    "Odd noise amplification factors; the first must be 1 (the "
+                    "raw measurement that acts as baseline)"
+                ),
+            },
+            "extrapolator": {
+                "type": "string",
+                "enum": ["linear", "richardson"],
+                "default": "richardson",
+            },
+            "one_qubit_noise": {"type": "number", "default": 0.002},
+            "two_qubit_noise": {"type": "number", "default": 0.02},
+            "shots": {"type": "integer", "default": 2048},
+        },
+        "required": ["matrix"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "ideal_energy": {
+                "type": "number",
+                "description": "Exact expectation value with no noise (statevector)",
+            },
+            "unmitigated_energy": {
+                "type": "number",
+                "description": "Raw measurement under noise at amplification 1",
+            },
+            "mitigated_energy": {
+                "type": "number",
+                "description": "Value extrapolated to zero noise",
+            },
+            "scaled_energies": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "scale_factor": {"type": "integer"},
+                        "energy": {"type": "number"},
+                    },
+                    "required": ["scale_factor", "energy"],
+                },
+            },
+            "extrapolation_weights": {
+                "type": "array",
+                "items": {"type": "number"},
+                "description": (
+                    "Coefficients combining the measurements into the "
+                    "extrapolated value — published so a third party can "
+                    "recompute it from the raw measurements"
+                ),
+            },
+            "improvement": {
+                "type": "number",
+                "description": (
+                    "Fraction of the error against the ideal that the "
+                    "extrapolation removed; negative when it made things worse"
+                ),
+            },
+            "negative_control": {
+                "type": "object",
+                "description": (
+                    "Equal-cost control run on inflated circuits unrelated to "
+                    "the problem structure — its apparent improvement is what "
+                    "the real one must beat"
+                ),
+                "properties": {
+                    "kind": {"type": "string"},
+                    "reference": {"type": "string"},
+                    "unmitigated_energy": {"type": "number"},
+                    "mitigated_energy": {"type": "number"},
+                    "improvement": {"type": "number"},
+                },
+                "required": ["kind", "reference", "improvement"],
+            },
+            "improvement_survives_control": {
+                "type": "boolean",
+                "description": (
+                    "False means the improvement is not attributable to the "
+                    "method and must not be published as a result"
+                ),
+            },
+            "mitigation": {
+                "type": "object",
+                "description": "Provenance of the mitigation applied to this value",
+                "properties": {
+                    "method": {"type": "string"},
+                    "model_digest": {"type": "string"},
+                    "training_digest": {"type": ["string", "null"]},
+                    "noise_model_digest": {"type": "string"},
+                    "baseline": {"type": "string"},
+                },
+                "required": [
+                    "method",
+                    "model_digest",
+                    "training_digest",
+                    "noise_model_digest",
+                    "baseline",
+                ],
+            },
+            "noise": {
+                "type": "object",
+                "description": "Declarative noise descriptor the digest covers",
+            },
+            "angles": {"type": "object"},
+        },
+        "required": [
+            "ideal_energy",
+            "unmitigated_energy",
+            "mitigated_energy",
+            "improvement",
+            "negative_control",
+            "improvement_survives_control",
+            "mitigation",
+        ],
+    },
+    tags=("quantum", "mitigation", "extrapolation", "expectation-value"),
+    side_effects="pure",
+    required_permission="capability:invoke",
+    interaction="request_response",
+)
+
+
+class ZeroNoiseExtrapolation:
+    """Generic capability: digital zero-noise extrapolation (unitary folding +
+    polynomial extrapolation) with a mandatory equal-cost negative control."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return _ZNE_MANIFEST
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        """Invoke the capability. Heavy deps loaded lazily on first call."""
+        return self._run(inputs)
+
+    def _run(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return self._invoke_impl(inputs)
+        except ImportError as exc:
+            raise ImportError(
+                f"ZeroNoiseExtrapolation: optional dependency missing. "
+                f"Install blite-cap-quantum[qaoa]: {exc}"
+            ) from exc
+
+    def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        from blite_cap_quantum.zne import (
+            DEFAULT_SCALE_FACTORS,
+            EXTRAPOLATOR_RICHARDSON,
+            mitigate_expectation,
+        )
+
+        optimize = inputs.get("optimize", True)
+        if not isinstance(optimize, bool):
+            msg = f"ZeroNoiseExtrapolation: optimize debe ser booleano, no {optimize!r}"
+            raise ValueError(msg)
+        crudas = inputs.get("scale_factors", list(DEFAULT_SCALE_FACTORS))
+        if not isinstance(crudas, list) or not crudas:
+            msg = (
+                "ZeroNoiseExtrapolation: scale_factors debe ser una lista no "
+                f"vacía de enteros impares, no {crudas!r}"
+            )
+            raise ValueError(msg)
+        escalas: list[int] = []
+        for valor in cast("list[object]", crudas):
+            # Un float acá se truncaría en silencio a un factor distinto del
+            # pedido, y el `mitigation.model_digest` diría otra cosa que la
+            # corrida: mejor explotar en la frontera.
+            if isinstance(valor, bool) or not isinstance(valor, int):
+                msg = (
+                    "ZeroNoiseExtrapolation: scale_factors debe traer enteros, "
+                    f"llegó {valor!r}"
+                )
+                raise ValueError(msg)
+            escalas.append(valor)
+        return mitigate_expectation(
+            inputs.get("matrix"),
+            layers=int(inputs.get("layers", 1)),
+            seed=int(inputs.get("seed", 1)),
+            initial_angles=inputs.get("initial_angles"),
+            optimize=optimize,
+            scale_factors=[int(e) for e in escalas],
+            extrapolator=str(inputs.get("extrapolator", EXTRAPOLATOR_RICHARDSON)),
+            one_qubit_noise=float(inputs.get("one_qubit_noise", 0.002)),
+            two_qubit_noise=float(inputs.get("two_qubit_noise", 0.02)),
+            shots=int(inputs.get("shots", 2048)),
+        )

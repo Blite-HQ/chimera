@@ -46,6 +46,26 @@ del input produce exactamente una entrada en `aristas` (mismo orden FID),
 incluidos self-loops o extremos lejos de cualquier nodo — la honestidad
 sobre esos casos vive en `assertions` (`no_self_loop_edges`,
 `edge_endpoints_within_tolerance`), nunca en un descarte silencioso.
+
+Branch-ids (C-8, `docs/specs/superficie-visual.md` §8): la salida estampa
+`branch_ids` alineado 1:1 con `aristas` más la `branch_id_convention` que los
+produjo. Dos mitades:
+
+- `edge_id_property` (opcional) — instancias derivadas de GIS: el id del
+  portal (FID/OBJECTID) ES el id de rama, así el dato del cliente conserva SU
+  identidad. Exige una estrategia 1:1 feature↔arista; con
+  `endpoint-name-match` (que AGREGA paralelas) se rechaza en frontera, porque
+  un id de origen por rama agregada sería una mentira sobre N features.
+- sin él — id canónico `L{min}-{max}[-k]` de `blite_capability.branch_ids`
+  (la única copia; engine y capability deben producirlo byte-idéntico).
+
+`branch_ids` es DERIVADO de `aristas` en la mitad canónica: las instancias ya
+estampadas (corpus con digest congelado) no se re-etiquetan — quien las
+consuma recomputa los mismos ids con la misma función, y por eso la receta no
+cambia de versión al ganar este campo. Cuando SÍ interviene
+`edge_id_property`, los ids dejan de ser derivables y el cambio viaja donde
+corresponde: en los params de la invocación, o sea en `params_digest` — una
+instancia distinta, con digest distinto.
 """
 
 from __future__ import annotations
@@ -60,6 +80,7 @@ import base64
 import json
 import math
 import unicodedata
+from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
@@ -68,6 +89,12 @@ from geojson_pydantic import Feature, FeatureCollection
 from geojson_pydantic.geometries import Geometry
 from pandera.errors import SchemaError
 from pydantic import ValidationError
+
+from blite_capability.branch_ids import (
+    CANONICAL_BRANCH_ID_CONVENTION,
+    GIS_BRANCH_ID_CONVENTION,
+    canonical_branch_ids,
+)
 
 _DEFAULT_NODE_ID_PROPERTY = "FID"
 
@@ -398,6 +425,30 @@ def _endpoint_name_match_params(inputs: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+@dataclass(frozen=True)
+class _Topology:
+    """Salida de la derivación: la topología más su convención de branch-ids
+    (C-8). `branch_ids` viaja alineado 1:1 con `aristas` — sin derivación no
+    hay ramas, así que ambos quedan vacíos juntos (jamás un id fabricado
+    sobre índices que no se computaron)."""
+
+    nodos: dict[str, dict[str, Any]]
+    aristas: list[list[Any]]
+    assertions: tuple[dict[str, Any], ...]
+    branch_ids: list[str]
+    branch_id_convention: str = CANONICAL_BRANCH_ID_CONVENTION
+
+
+def _gis_branch_ids(
+    edge_features: list[dict[str, Any]], *, id_property: str, edge_id_property: str
+) -> list[str]:
+    """Ids del portal (C-8, mitad GIS) para una estrategia 1:1 — MISMO orden
+    que `_build_edges` (ordenado por `id_property`), o los ids no casarían con
+    las aristas que acompañan."""
+    ordenadas = sorted(edge_features, key=lambda f: f["properties"][id_property])
+    return [str(feature["properties"][edge_id_property]) for feature in ordenadas]
+
+
 def _derive_topology(
     *,
     shape_valid: bool,
@@ -405,18 +456,24 @@ def _derive_topology(
     edge_features: list[dict[str, Any]],
     id_property: str,
     edge_strategy: str,
+    edge_id_property: str | None,
     strategy_params: dict[str, Any],
-) -> tuple[dict[str, dict[str, Any]], list[list[Any]], tuple[dict[str, Any], ...]]:
+) -> _Topology:
     if edge_strategy == _EDGE_STRATEGY_ENDPOINT_NAME_MATCH:
         if not shape_valid:
-            return {}, [], (_skipped_endpoint_name_match_assertion(),)
+            return _Topology({}, [], (_skipped_endpoint_name_match_assertion(),), [])
         nodos, aristas, resolved_assertion = _endpoint_name_match_topology(
             node_features,
             edge_features,
             id_property=id_property,
             **_endpoint_name_match_params(strategy_params),
         )
-        return nodos, aristas, (resolved_assertion,)
+        return _Topology(
+            nodos,
+            aristas,
+            (resolved_assertion,),
+            branch_ids=list(canonical_branch_ids(aristas)),
+        )
 
     if edge_strategy != _EDGE_STRATEGY_NEAREST_NEIGHBOR:
         msg = (
@@ -426,13 +483,28 @@ def _derive_topology(
         raise ValueError(msg)
 
     if not shape_valid:
-        return {}, [], _skipped_topology_assertions()
+        return _Topology({}, [], _skipped_topology_assertions(), [])
 
     nodos, node_coords = _build_nodes(node_features, id_property)
     aristas, tolerance_assertion, no_self_loop_assertion = _build_edges(
         edge_features, id_property, node_coords
     )
-    return nodos, aristas, (tolerance_assertion, no_self_loop_assertion)
+    if edge_id_property is None:
+        return _Topology(
+            nodos,
+            aristas,
+            (tolerance_assertion, no_self_loop_assertion),
+            branch_ids=list(canonical_branch_ids(aristas)),
+        )
+    return _Topology(
+        nodos,
+        aristas,
+        (tolerance_assertion, no_self_loop_assertion),
+        branch_ids=_gis_branch_ids(
+            edge_features, id_property=id_property, edge_id_property=edge_id_property
+        ),
+        branch_id_convention=GIS_BRANCH_ID_CONVENTION,
+    )
 
 
 def _build_recipe(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -464,6 +536,22 @@ def derive_graph(inputs: dict[str, Any]) -> dict[str, Any]:
             )
             raise ValueError(msg)
 
+    raw_edge_id_property = inputs.get("edge_id_property")
+    edge_id_property = (
+        None if raw_edge_id_property is None else str(raw_edge_id_property)
+    )
+    if (
+        edge_id_property is not None
+        and edge_strategy != _EDGE_STRATEGY_NEAREST_NEIGHBOR
+    ):
+        msg = (
+            "blite.ingesta.geojson.to_graph: edge_id_property exige una "
+            f"estrategia 1:1 feature↔arista; {edge_strategy!r} agrega "
+            "paralelas y un id de origen por arista agregada sería una "
+            "mentira — usá la convención canónica"
+        )
+        raise ValueError(msg)
+
     id_property = str(inputs.get("node_id_property", _DEFAULT_NODE_ID_PROPERTY))
     nodes_raw = _decode_feature_collection(inputs["nodes_content_base64"])
     edges_raw = _decode_feature_collection(inputs["edges_content_base64"])
@@ -483,16 +571,23 @@ def derive_graph(inputs: dict[str, Any]) -> dict[str, Any]:
         and tabular_assertion["passed"]
     )
 
-    nodos, aristas, strategy_assertions = _derive_topology(
+    topology = _derive_topology(
         shape_valid=shape_valid,
         node_features=node_features,
         edge_features=edge_features,
         id_property=id_property,
         edge_strategy=edge_strategy,
+        edge_id_property=edge_id_property,
         strategy_params=inputs,
     )
 
-    graph = {"n_nodos": len(nodos), "aristas": aristas, "nodos": nodos}
+    graph = {
+        "n_nodos": len(topology.nodos),
+        "aristas": topology.aristas,
+        "nodos": topology.nodos,
+        "branch_ids": topology.branch_ids,
+        "branch_id_convention": topology.branch_id_convention,
+    }
     provenance = {
         "kind": "derivation",
         "inputs": tuple(inputs["inputs"]),
@@ -502,7 +597,7 @@ def derive_graph(inputs: dict[str, Any]) -> dict[str, Any]:
             node_geometry_assertion,
             edge_geometry_assertion,
             tabular_assertion,
-            *strategy_assertions,
+            *topology.assertions,
         ),
     }
     return {"graph": graph, "provenance": provenance}

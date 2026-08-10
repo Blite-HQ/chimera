@@ -15,19 +15,22 @@
  * ResizeObserver/getBoundingClientRect, que jsdom no implementa realmente
  * (ver el workaround que sí necesita GridSpike con cytoscape).
  *
- * Honestidad de dato (B2/R5, mandato Dylan): el grid real del ICE es una
- * red DISTINTA a la instancia benchmark del run (ieee6/ieee14) — hoy no
- * existe un mapeo determinista bus↔subestación entre ambas. `partition` se
- * declara como seam para cuando ese mapeo exista, pero NO se renderiza: cero
- * islas/veredictos fabricados sobre datos reales. El grid se muestra
- * completo y sin partición.
+ * **[V1/M18] El seam de partición dejó de ser un seam.** Antes este archivo
+ * declaraba `partition` y NO lo renderizaba, con causa: no existía mapeo
+ * determinista bus↔subestación. Ese mapeo SÍ existe — la instancia derivada
+ * estampó su `nodos` (`data/iceInstance.ts`) — y ahora existe además el
+ * productor de particiones verificadas por isla. Lo que se pinta sale del
+ * run; lo que no casa se DECLARA (ver `PartitionLegend`), nunca se rellena.
  */
 
 import { geoMercator, geoPath } from 'd3-geo';
 import React, { useMemo } from 'react';
 
+import { AssuranceBadge } from '@chimera/assurance-ui';
+
 import { normalizeProvincia } from '../data/iceGridSchemas';
 
+import type { AssuranceLevel } from '@chimera/assurance-ui';
 import type { GeoJsonGridDataset, TransmissionLineFeature } from '../data/iceGridSchemas';
 
 const VIEWBOX_WIDTH = 800;
@@ -41,24 +44,55 @@ const LINE_WIDTH_PX_BY_KV: Readonly<Record<number, number>> = {
 };
 const DEFAULT_LINE_WIDTH_PX = 1;
 const SUBSTATION_RADIUS_PX = 4;
+const ISLAND_SUBSTATION_RADIUS_PX = 5.5;
 
 /**
- * Seam para la superposición de partición/verificación (B2/R5) — futuro
- * trabajo, NO implementado acá. Cuando exista un mapeo bus↔subestación real
- * entre la instancia benchmark del run y el grid del ICE, este prop puede
- * colorear islas sobre el mapa real sin cambiar el resto de GridMap.
+ * Color por isla: los tokens `--chart-*` del design system, en el mismo orden
+ * que el resto del Studio (DESIGN.md §5). Se reparten cíclicamente por índice
+ * de isla — el color identifica la ENTIDAD (la isla), nunca su veredicto: eso
+ * lo dice el badge, que además no depende del color para leerse.
  */
+const ISLAND_COLORS = [
+  'var(--color-chart-2)',
+  'var(--color-chart-3)',
+  'var(--color-chart-1)',
+  'var(--color-chart-4)',
+  'var(--color-chart-5)'
+] as const;
+
+/** Subestación que la partición no cubre — neutra y declarada, no oculta. */
+const UNASSIGNED_COLOR = 'var(--color-muted-foreground)';
+
+export interface IslandVerificationView {
+  readonly verdict: 'pass' | 'fail' | 'inconclusive';
+  readonly level: AssuranceLevel;
+  readonly verifierClass: string;
+  readonly method: string;
+  readonly summary: string;
+}
+
+/**
+ * Una isla lista para pintarse: qué subestaciones la componen (por nombre YA
+ * reconciliado) y con qué constancia — freeze §9: `verification` POR isla,
+ * sin excepción.
+ */
+export interface GridIslandOverlay {
+  readonly id: string;
+  readonly label: string;
+  readonly substationNames: readonly string[];
+  readonly verification: IslandVerificationView;
+}
+
 export interface GridPartitionOverlay {
-  readonly islands: readonly {
-    readonly id: string;
-    readonly label: string;
-    readonly substationNames: readonly string[];
-  }[];
+  readonly islands: readonly GridIslandOverlay[];
+  /** Subestaciones del mapa que la partición cubre. */
+  readonly matchedSubstations: number;
+  /** Digest de la instancia derivada que se reconcilió (procedencia). */
+  readonly instanceDigest: string;
 }
 
 export interface GridMapProps {
   readonly dataset: GeoJsonGridDataset;
-  /** Reservado (B2/R5) — declarado pero deliberadamente sin renderizar. */
   readonly partition?: GridPartitionOverlay;
 }
 
@@ -71,7 +105,67 @@ function lineTitle(feature: TransmissionLineFeature): string {
   return `${circuito} · ${feature.properties.Voltaje} kV`;
 }
 
-export default function GridMap({ dataset }: GridMapProps): React.ReactElement {
+/** nombre normalizado de subestación → { islandIndex, island }. */
+type IslandBySubstation = ReadonlyMap<string, { index: number; island: GridIslandOverlay }>;
+
+function buildIslandIndex(partition: GridPartitionOverlay | undefined): IslandBySubstation {
+  const index = new Map<string, { index: number; island: GridIslandOverlay }>();
+  partition?.islands.forEach((island, islandIndex) => {
+    for (const name of island.substationNames) {
+      index.set(name, { index: islandIndex, island });
+    }
+  });
+  return index;
+}
+
+function islandColor(index: number): string {
+  return ISLAND_COLORS[index % ISLAND_COLORS.length] ?? UNASSIGNED_COLOR;
+}
+
+function PartitionLegend({
+  partition,
+  totalSubstations
+}: {
+  readonly partition: GridPartitionOverlay;
+  readonly totalSubstations: number;
+}): React.ReactElement {
+  const sinAsignar = totalSubstations - partition.matchedSubstations;
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border bg-card p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        {partition.islands.map((island, index) => (
+          <span key={island.id} className="flex items-center gap-2 text-xs">
+            <span
+              aria-hidden
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: islandColor(index) }}
+            />
+            <span className="text-foreground">{island.label}</span>
+            <AssuranceBadge
+              level={island.verification.level}
+              verdict={island.verification.verdict}
+              verifierClass={island.verification.verifierClass}
+              detail={island.verification.method}
+            />
+          </span>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {partition.matchedSubstations} de {totalSubstations} subestaciones reconciliadas con la
+        instancia <code className="font-mono">{partition.instanceDigest.slice(0, 12)}</code>
+        {sinAsignar > 0 && (
+          <>
+            {' '}
+            · {sinAsignar} sin isla: ningún circuito del snapshot resuelve hacia ellas, así que la
+            instancia derivada nunca las incluyó. Se dibujan en gris.
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+export default function GridMap({ dataset, partition }: GridMapProps): React.ReactElement {
   const projection = useMemo(() => {
     const combined = {
       type: 'FeatureCollection' as const,
@@ -87,6 +181,9 @@ export default function GridMap({ dataset }: GridMapProps): React.ReactElement {
   }, [dataset]);
 
   const path = useMemo(() => geoPath(projection), [projection]);
+  const islandBySubstation = useMemo(() => buildIslandIndex(partition), [partition]);
+
+  const totalSubstations = dataset.substations.features.length;
 
   return (
     <div className="flex flex-col gap-2">
@@ -95,12 +192,17 @@ export default function GridMap({ dataset }: GridMapProps): React.ReactElement {
           Red nacional del ICE — mapa geográfico
         </h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          {dataset.substations.features.length} subestaciones · {dataset.lines.features.length}{' '}
-          líneas de transmisión (230/138 kV). Esta es la red real del país — no la partición de este
-          run (esa vive en la pestaña "Diagrama"); todavía no existe un mapeo determinista entre
-          ambas redes.
+          {totalSubstations} subestaciones · {dataset.lines.features.length} líneas de transmisión
+          (230/138 kV).{' '}
+          {partition === undefined
+            ? 'Esta es la red real del país; este run no produjo una partición verificada por isla, así que no se colorea nada.'
+            : 'Coloreada por la partición que este run verificó — cada isla con su propia constancia.'}
         </p>
       </header>
+
+      {partition !== undefined && (
+        <PartitionLegend partition={partition} totalSubstations={totalSubstations} />
+      )}
 
       <svg
         viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
@@ -137,17 +239,25 @@ export default function GridMap({ dataset }: GridMapProps): React.ReactElement {
             }
             const [cx, cy] = projected;
             const provincia = normalizeProvincia(feature.properties.Provincia);
+            const asignada = islandBySubstation.get(feature.properties.Subestacio);
+            const fill = asignada === undefined ? UNASSIGNED_COLOR : islandColor(asignada.index);
+            const sufijo =
+              asignada === undefined
+                ? partition === undefined
+                  ? ''
+                  : ' — sin isla'
+                : ` — ${asignada.island.label} (${asignada.island.verification.level})`;
             return (
               <circle
                 key={`sub-${index}`}
                 cx={cx}
                 cy={cy}
-                r={SUBSTATION_RADIUS_PX}
-                fill="var(--color-foreground)"
+                r={asignada === undefined ? SUBSTATION_RADIUS_PX : ISLAND_SUBSTATION_RADIUS_PX}
+                fill={fill}
                 stroke="var(--color-background)"
                 strokeWidth={1}
               >
-                <title>{`${feature.properties.Subestacio} — ${provincia}, ${feature.properties.Canton}`}</title>
+                <title>{`${feature.properties.Subestacio} — ${provincia}, ${feature.properties.Canton}${sufijo}`}</title>
               </circle>
             );
           })}

@@ -9,11 +9,26 @@
  * importa la SELECCIÓN de vista, así que ambos se mockean con dobles mínimos.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { GridLensView, gridLens } from './gridLens';
+
+/**
+ * [V1/M18] La lente consulta `GET /runs/{id}/topology` en vivo, así que
+ * necesita un QueryClient. `retry: false` para que un rechazo se vea de una
+ * en vez de reintentarse tres veces dentro del test.
+ */
+function renderLens(runId = 'run-1') {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <GridLensView runId={runId} />
+    </QueryClientProvider>
+  );
+}
 
 vi.mock('../spike/GridSpike', () => ({
   default: () => <div data-testid="cy-container" />
@@ -52,17 +67,17 @@ describe('GridLensView (D1 task 4 — mata el spike como vista "Red" en vivo)', 
     vi.unstubAllEnvs();
   });
 
-  test('en vivo: pendiente (falta productor de partición, decisión #88), nunca el spike IEEE-14 fabricado', () => {
+  test('en vivo SIN partición producida: lo dice, nunca el spike IEEE-14 fabricado', () => {
     vi.stubEnv('VITE_API_URL', 'http://api.test');
-    render(<GridLensView />);
+    renderLens();
 
-    expect(screen.getByText(/topología en vivo/i)).toBeInTheDocument();
+    expect(screen.getByText(/no produjo una partición verificada por isla/i)).toBeInTheDocument();
     expect(screen.queryByTestId('cy-container')).not.toBeInTheDocument();
   });
 
   test('en replay: el spike IEEE-14 (etiquetado por el banner global, no acá)', () => {
     vi.stubEnv('VITE_API_URL', undefined);
-    render(<GridLensView />);
+    renderLens();
 
     expect(screen.getByTestId('cy-container')).toBeInTheDocument();
   });
@@ -83,7 +98,7 @@ describe('GridLensView — toggle Diagrama/Mapa (D4 task 6, dual diagrama + mapa
 
   test('en replay: por defecto muestra Diagrama, y el toggle "Mapa" está disponible', () => {
     vi.stubEnv('VITE_API_URL', undefined);
-    render(<GridLensView />);
+    renderLens();
 
     expect(screen.getByTestId('cy-container')).toBeInTheDocument();
     expect(screen.queryByTestId('grid-map-stub')).not.toBeInTheDocument();
@@ -94,7 +109,7 @@ describe('GridLensView — toggle Diagrama/Mapa (D4 task 6, dual diagrama + mapa
   test('en replay: clic en "Mapa" oculta el diagrama y muestra el mapa real del ICE', async () => {
     vi.stubEnv('VITE_API_URL', undefined);
     const user = userEvent.setup();
-    render(<GridLensView />);
+    renderLens();
 
     await user.click(screen.getByRole('button', { name: /mapa/i }));
 
@@ -105,7 +120,7 @@ describe('GridLensView — toggle Diagrama/Mapa (D4 task 6, dual diagrama + mapa
   test('en replay: clic en "Mapa" y de vuelta en "Diagrama" restaura el spike', async () => {
     vi.stubEnv('VITE_API_URL', undefined);
     const user = userEvent.setup();
-    render(<GridLensView />);
+    renderLens();
 
     await user.click(screen.getByRole('button', { name: /mapa/i }));
     await user.click(screen.getByRole('button', { name: /diagrama/i }));
@@ -114,12 +129,12 @@ describe('GridLensView — toggle Diagrama/Mapa (D4 task 6, dual diagrama + mapa
     expect(screen.queryByTestId('grid-map-stub')).not.toBeInTheDocument();
   });
 
-  test('en vivo: el toggle no existe — sigue el EmptyState "pendiente" sin cambios', () => {
+  test('en vivo: el toggle no existe — la vista la manda el run, no el usuario', () => {
     vi.stubEnv('VITE_API_URL', 'http://api.test');
-    render(<GridLensView />);
+    renderLens();
 
     expect(screen.queryByRole('button', { name: /diagrama/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /mapa/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/topología en vivo/i)).toBeInTheDocument();
+    expect(screen.getByText(/no produjo una partición verificada por isla/i)).toBeInTheDocument();
   });
 });

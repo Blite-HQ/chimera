@@ -1,0 +1,41 @@
+{
+  "arms": [
+    {
+      "cut_cost": 6.3519322520543735,
+      "r": 0.9074188931506247,
+      "status": "completed",
+      "sub_run_id": "run-8843570895104dff927dd8c804849360--arm-0-quantum",
+      "sub_run_provenance_hash": "1df89981707896d3d30a51812ded5d34f85d7e44fecceada20e8fbad251641bd",
+      "variant": "quantum",
+      "verification_latency_ms": 0.0,
+      "wall_ms": 4566.720795992296
+    },
+    {
+      "cut_cost": 7.0,
+      "r": 1.0,
+      "status": "completed",
+      "sub_run_id": "run-8843570895104dff927dd8c804849360--arm-1-classical",
+      "sub_run_provenance_hash": "f61883ce0578105859bd813b21fa25e62cbbad17a9b75dad3a664f864f729e1c",
+      "variant": "classical",
+      "verification_latency_ms": 0.0,
+      "wall_ms": 203.0152130028
+    },
+    {
+      "cut_cost": 5.93896484375,
+      "r": 0.8484235491071429,
+      "status": "completed",
+      "sub_run_id": "run-8843570895104dff927dd8c804849360--arm-2-zne",
+      "sub_run_provenance_hash": "ec622a3b4da78d241697d29e3709b614965c4ca041fabc419d951a76200c1ce3",
+      "variant": "zne",
+      "verification_latency_ms": 0.0,
+      "wall_ms": 28484.293184999842
+    }
+  ],
+  "config": {
+    "layers": 2,
+    "seed": 1
+  },
+  "instance": "cr8-uniforme",
+  "optimo": 7,
+  "root_run_id": "run-8843570895104dff927dd8c804849360"
+}

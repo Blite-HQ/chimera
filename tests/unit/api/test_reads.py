@@ -205,6 +205,101 @@ class TestGetRuns:
         assert row["status"] == "cancelado"
 
 
+class TestDeliverablesDelCertificado:
+    """[V8/M23b · N4/#70b] `assemble_bundle` aceptaba `deliverables=` desde
+    siempre y NADIE se lo pasaba: `GET /runs/{id}/artifacts` devolvía `[]`
+    para todo run — honest-empty ESTRUCTURAL, no falta de datos."""
+
+    def test_un_run_completado_cita_su_artefacto_de_salida(self) -> None:
+        # Arrange / Act
+        client = _make_client()
+        run_id = _create_golden_run(client)
+
+        # Assert
+        body = _get(client, f"/runs/{run_id}/artifacts").json()
+        assert [a["artifact_ref"] for a in body] == [f"runs/{run_id}/output.json"]
+        assert body[0]["run_id"] == run_id
+        assert body[0]["titular_level"] == "AL3"
+        assert body[0]["verdict"] == "verified"
+
+    def test_el_digest_citado_es_el_output_digest_del_log(self) -> None:
+        """La cita es verificable: el certificado y el log nombran los MISMOS
+        bytes. Si divergieran, el enlace del certificado sería decorativo."""
+        # Arrange
+        store = create_event_store()
+        client = _make_client(store)
+
+        # Act
+        run_id = _create_golden_run(client)
+        artefactos = _get(client, f"/runs/{run_id}/artifacts").json()
+        completado = next(
+            e for e in store.read_stream(run_id) if e.type == "run.completed"
+        )
+
+        # Assert
+        assert artefactos[0]["digest"] == completado.payload["output_digest"]
+
+    def test_un_run_sin_salida_recuperable_no_cita_nada_roto(self) -> None:
+        """Fail-closed sin ruido: el certificado se emite con la lista vacía
+        antes que con un enlace que nadie puede resolver."""
+        store = create_event_store()
+        _seed_bare_run(store, "r1")
+        client = _make_client(store)
+
+        assert _get(client, "/runs/r1/artifacts").json() == []
+
+
+class TestRutasDeProyecto:
+    """[V8/M23b · N4] Artifacts/Knowledge de NIVEL PROYECTO: la superficie que
+    la doctrina prometía («conclusiones verificadas acumuladas») y que no
+    existía — el Studio devolvía `[]` en vivo por no tener a quién preguntar."""
+
+    def test_agrega_los_deliverables_de_todos_los_runs(self) -> None:
+        # Arrange
+        client = _make_client()
+        primero = _create_golden_run(client)
+        segundo = _create_golden_run(client)
+
+        # Act
+        body = _get(client, "/artifacts").json()
+
+        # Assert
+        assert sorted(a["run_id"] for a in body) == sorted([primero, segundo])
+
+    def test_agrega_el_conocimiento_verificado_de_todos_los_runs(self) -> None:
+        # Arrange
+        client = _make_client()
+        _create_golden_run(client)
+        _create_golden_run(client)
+
+        # Act
+        body = _get(client, "/knowledge").json()
+
+        # Assert
+        assert len(body) == 2
+        assert {k["statement"] for k in body} == {_STATEMENT_4BUS}
+
+    def test_un_proyecto_sin_runs_da_listas_vacias_honestas(self) -> None:
+        client = _make_client()
+        assert _get(client, "/artifacts").json() == []
+        assert _get(client, "/knowledge").json() == []
+
+    def test_un_run_sin_certificado_no_aporta_ni_rompe_el_agregado(self) -> None:
+        """Skip honesto (#104) aplicado al agregado: un run sin bundle no
+        aparece, y no impide que los demás sí."""
+        # Arrange
+        store = create_event_store()
+        _seed_bare_run(store, "r-sin-cert")
+        client = _make_client(store)
+        con_cert = _create_golden_run(client)
+
+        # Act
+        body = _get(client, "/artifacts").json()
+
+        # Assert
+        assert [a["run_id"] for a in body] == [con_cert]
+
+
 class TestGetRunArtifacts:
     def test_run_sin_certificado_da_lista_vacia_honesta(self) -> None:
         store = create_event_store()
@@ -257,13 +352,15 @@ class TestGetRunKnowledge:
 
 class TestGetStepEvidence:
     def test_step_con_capability_job_trae_los_digests(self) -> None:
-        # El paso "invoke" (step-2, freeze §3 step<->job 1:1) sí lleva
+        # El paso "invoke" (step-2, freeze §3 step<->job 1:1) lleva
         # `capability_id`/`input_digest`/`output_digest` — los emite
-        # `capability.job.*`, que SÍ carga `step_id` (loop.py). Las
-        # `attestations` quedan `[]` acá: el orquestador real
-        # (`make_verification_delegate`) todavía no hilvana `step_id` en
-        # `verification.completed`/`Attestation.step_id` (queda `None` en
-        # el log) — honesto, no fabricado; hallazgo para el reporte.
+        # `capability.job.*`, que SÍ carga `step_id` (loop.py).
+        #
+        # [V1/M18 — M23a/N3] Las `attestations` YA NO llegan vacías: el
+        # orquestador hilvana el `step_id` que el loop siempre le pasó, así
+        # que la ruta puede atribuir al paso las dos patas del golden path.
+        # El hallazgo previo ("honesto, no fabricado; hallazgo para el
+        # reporte") queda cerrado acá.
         client = _make_client()
         run_id = _create_golden_run(client)
 
@@ -275,7 +372,10 @@ class TestGetStepEvidence:
         assert body["capability_id"] == "cap.echo"
         assert body["input_digest"] is not None
         assert body["output_digest"] is not None
-        assert body["attestations"] == []
+        assert [a["verifier_id"] for a in body["attestations"]] == [
+            "verifier:cpsat-differential",
+            "verifier:pandapower-islanding",
+        ]
 
     def test_step_conocido_sin_verificacion_da_attestations_vacio(self) -> None:
         store = create_event_store()
@@ -386,6 +486,134 @@ class TestGetAblation:
         response = _get(client, "/runs/no-existe/ablation")
         assert response.status_code == 404
 
+    def test_las_cuatro_variantes_del_enum_pasan_la_ruta(self) -> None:
+        """[V2/M19 · C-4] El enum creció de 2 a 4 EN EL MISMO checkpoint que
+        su productor — `mitigated`/`zne` (M6) ya no rebotan en la frontera."""
+        store = create_event_store()
+        for indice, variante in enumerate(("quantum", "classical", "mitigated", "zne")):
+            run_id = f"r-{variante}"
+            store.append(
+                stream_id=run_id,
+                type="run.created",
+                actor_id="user:dylan",
+                domain_id="d-default",
+                payload={
+                    "run_id": run_id,
+                    "max_steps": 8,
+                    "policy_digest": "sha256:pp",
+                },
+            )
+            store.append(
+                stream_id=run_id,
+                type="run.metrics.recorded",
+                actor_id="service:runtime",
+                domain_id="d-default",
+                payload={
+                    "variant": variante,
+                    "cut_cost": float(indice),
+                    "wall_ms": 1.0,
+                    "verification_latency_ms": 1.0,
+                },
+                expected_seq=1,
+            )
+        client = _make_client(store)
+
+        for variante in ("quantum", "classical", "mitigated", "zne"):
+            body = _get(client, f"/runs/r-{variante}/ablation").json()
+            assert [fila["variant"] for fila in body] == [variante]
+
+    def test_un_cierre_solo_de_confianza_no_aparece_como_punto_cientifico(
+        self,
+    ) -> None:
+        """[V2/M19] TODO run terminado emite `run.metrics.recorded`, pero uno
+        sin `variant`/`cut_cost`/`wall_ms` no es una fila de ablación — se
+        omite en vez de inventarle una variante."""
+        # Arrange / Act
+        client = _make_client()
+        run_id = _create_golden_run(client)
+
+        # Assert
+        assert _get(client, f"/runs/{run_id}/ablation").json() == []
+
+
+class TestAblacionAgregaLosBrazos:
+    """[V2/M19 · C-4] Los dos brazos son SUB-RUNS (§13): cada uno emite SU
+    cierre en SU stream. Preguntarle solo al raíz devolvería un panel de una
+    barra para una comparación de dos."""
+
+    @staticmethod
+    def _con_dos_brazos(store: EventStore) -> None:
+        from blite.runtime.ablation import AblationArm, run_ablation_arms
+        from blite.runtime.content_store import InMemoryContentStore
+        from blite.runtime.dispatch import ProfileDispatcher
+
+        store.append(
+            stream_id="raiz",
+            type="run.created",
+            actor_id="user:dylan",
+            domain_id="d-default",
+            payload={
+                "run_id": "raiz",
+                "actor_id": "user:dylan",
+                "domain_id": "d-default",
+                "max_steps": 4,
+                "policy_digest": "p" * 64,
+            },
+        )
+        run_ablation_arms(
+            store,
+            _make_registry(),
+            ProfileDispatcher(),
+            InMemoryContentStore(),
+            root_run_id="raiz",
+            root_policy_digest="p" * 64,
+            actor_id="user:dylan",
+            domain_id="d-default",
+            arms=[
+                AblationArm(
+                    variant="quantum",
+                    capability_id="cap.echo",
+                    inputs={"x": 1},
+                    cut_cost=5.0,
+                ),
+                AblationArm(
+                    variant="classical",
+                    capability_id="cap.echo",
+                    inputs={"x": 2},
+                    cut_cost=7.0,
+                ),
+            ],
+        )
+
+    def test_el_panel_del_raiz_muestra_las_dos_barras(self) -> None:
+        # Arrange
+        store = create_event_store()
+        self._con_dos_brazos(store)
+        client = _make_client(store)
+
+        # Act
+        body = _get(client, "/runs/raiz/ablation").json()
+
+        # Assert — orden determinista y en el orden DECLARADO de los brazos:
+        # el id del sub-run lleva el índice, así que ordenar por id preserva
+        # el orden del experimento (dos renders dan el mismo panel).
+        assert [fila["variant"] for fila in body] == ["quantum", "classical"]
+        assert [fila["cut_cost"] for fila in body] == [5.0, 7.0]
+
+    def test_cada_brazo_conserva_su_propio_panel(self) -> None:
+        """Agregación de LECTURA: nada se fusiona — cada brazo sigue teniendo
+        su stream, su procedencia y su propia respuesta."""
+        # Arrange
+        store = create_event_store()
+        self._con_dos_brazos(store)
+        client = _make_client(store)
+
+        # Act
+        propio = _get(client, "/runs/raiz--arm-0-quantum/ablation").json()
+
+        # Assert
+        assert [fila["variant"] for fila in propio] == ["quantum"]
+
 
 class TestGetTopology:
     def test_sin_particion_embebida_da_payload_vacio_honesto(self) -> None:
@@ -405,3 +633,38 @@ class TestGetTopology:
         client = _make_client()
         response = _get(client, "/runs/no-existe/topology")
         assert response.status_code == 404
+
+    def test_el_golden_path_produce_la_particion_real(self) -> None:
+        """V1/M18: el productor que faltaba. Un run REAL de dos patas emite la
+        partición embebida en `verification.completed` y la ruta la proyecta —
+        los badges del mapa salen de la pata de ejecución que corrió de
+        verdad, no de un fixture."""
+        # Arrange
+        client = _make_client()
+
+        # Act
+        run_id = _create_golden_run(client)
+        body = _get(client, f"/runs/{run_id}/topology").json()
+
+        # Assert — dos islas verificadas, cada una con SU bloque (freeze §9)
+        assert body["topology_ref"] == "sintetica-4bus"
+        assert [isla["id"] for isla in body["islands"]] == ["island-0", "island-1"]
+        for isla in body["islands"]:
+            assert isla["verification"]["verdict"] == "pass"
+            assert isla["verification"]["verifier_class"] == "execution"
+            assert isla["verification"]["level"] == "AL3"
+        assert [isla["bus_ids"] for isla in body["islands"]] == [["0", "1"], ["2", "3"]]
+
+    def test_el_corte_cita_la_convencion_de_branch_ids(self) -> None:
+        """C-8: `cut_branch_ids` con identidad estable — la arista (1,2) es la
+        única que cruza en la partición del golden path."""
+        # Arrange
+        client = _make_client()
+
+        # Act
+        run_id = _create_golden_run(client)
+        body = _get(client, f"/runs/{run_id}/topology").json()
+
+        # Assert
+        assert body["cut_branch_ids"] == ["L1-2"]
+        assert body["cut_cost"] == 5.0

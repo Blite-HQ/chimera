@@ -22,6 +22,7 @@ from typing import cast
 import pytest
 from chimera_api.reads import DiscardedStreams
 from chimera_api.runs import MissionRequest
+from chimera_api.rvsp import RvspResponse
 from pydantic import BaseModel
 
 _REPO = Path(__file__).resolve().parents[3]
@@ -31,6 +32,7 @@ _STUDIO = _REPO / "apps" / "studio" / "src" / "fixtures" / "contract" / "endpoin
 _MODELS: dict[str, type[BaseModel]] = {
     "post-runs-mission": MissionRequest,
     "get-runs-discarded": DiscardedStreams,
+    "get-runs-rvsp": RvspResponse,
 }
 
 

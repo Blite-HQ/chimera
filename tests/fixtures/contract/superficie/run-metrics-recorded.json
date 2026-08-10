@@ -1,0 +1,13 @@
+{
+  "attestations_total": 4,
+  "cut_cost": 57070.0,
+  "false_reject_proxy": 0.5,
+  "inconclusive_count": 1,
+  "ms_por_clase": {
+    "execution": 800.0,
+    "formal_exact": 12.5
+  },
+  "variant": "zne",
+  "verification_latency_ms": 812.5,
+  "wall_ms": 1240.0
+}

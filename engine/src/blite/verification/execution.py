@@ -59,6 +59,15 @@ from blite.verification.verifier import Determinism
 
 HARNESS_ID = "pandapower-islanding-v1"
 
+POWERFLOW_CONVERGED_CHECK = "powerflow_converged"
+
+ABSTENTION_CHECKS = frozenset({POWERFLOW_CONVERGED_CHECK})
+"""Checks cuyo fallo es ABSTENCIÓN, no veredicto en contra (spec §1.3): la
+no-convergencia es cota del método. Declarado como DATO y no enterrado en el
+flujo de `verify()` porque quien LEE la attestation después — el productor de
+`partition` (C-8: verdict por isla desde los checks `island-{k}:*`) — necesita
+la misma regla para no leer una abstención como un fail."""
+
 
 class ExecutionLimits(BaseModel):
     """Límites eléctricos como DATO (nota 12). Los defaults son la banda
@@ -178,7 +187,9 @@ class ExecutionVerifier:
 
             converged, metrics = self._run_island_powerflow(island)
             checks.append(
-                ExecutionCheck(name=f"{prefix}:powerflow_converged", passed=converged)
+                ExecutionCheck(
+                    name=f"{prefix}:{POWERFLOW_CONVERGED_CHECK}", passed=converged
+                )
             )
             if not converged:
                 # Abstención honesta (spec §1.3): cota del método, no verdict

@@ -2810,3 +2810,371 @@ piden decisión propia: content store durable (plano de confianza), flip
 
 **Veredicto:** el paso 2 del plan está COMPLETO. Quedan por lanzar C-2 (Fable),
 V y O — paso 3, paralelizable.
+
+## Sesión VISUAL/CIENCIA (worktree `mejorado/visual`, 2026-08-05)
+
+Dominio V de `docs/mejorado/04-consolidacion.md` §4. Mandato: **los
+honest-empty del Studio mueren DONDE exista productor real** — el énfasis es
+de la sesión, no una licencia para fabricar el productor.
+
+### #153 — V1/M18: el productor de partición y la convención de branch-ids C-8
+
+**Qué faltaba, exactamente:** el payload de mapa estaba fijado por contrato
+desde trust/07, la ruta de lectura lo esperaba (`reads::_project_topology`), el
+Zod espejo existía y el fixture de costura estaba generado — y NADIE lo
+emitía. El honest-empty no era falta de diseño: era un cable que nunca se
+conectó.
+
+Decisiones de esta sesión (analizadas contra la letra, no inventadas):
+
+1. **La convención canónica de branch-ids vive en el SDK**
+   (`blite_capability.branch_ids`), no en el engine ni en la capability. Es lo
+   único que ambos lados deben producir BYTE-IDÉNTICO, y ADR-008 declara
+   `blite_capability` como la única interfaz compartida. Una copia por lado
+   sería el drift que C-8 cierra.
+2. **`edge_id_property` exige estrategia 1:1 feature↔arista.** Con
+   `endpoint-name-match` (que AGREGA paralelas) se rechaza en frontera: un id
+   del portal por rama agregada sería una mentira sobre N features. La mitad
+   canónica queda para esos casos.
+3. **Los ids canónicos son DERIVADOS, no estampados.** El corpus ya sellado no
+   se re-etiqueta ni cambia de digest — quien lo consuma recomputa los mismos
+   ids con la misma función. Por eso la receta de `geojson_to_graph` NO sube de
+   versión al ganar el campo.
+4. **`build_partition` devuelve `None` sin checks por isla.** Un badge por isla
+   derivado del veredicto global sería el mock silencioso que la regla 1 del
+   plan prohíbe. Y una isla nunca reporta MÁS nivel que la attestation que la
+   ampara.
+5. **`ABSTENTION_CHECKS` pasa a ser DATO en `execution.py`.** Estaba enterrada
+   en el flujo de `verify()`; quien LEE la attestation después necesita la
+   misma regla para no leer una abstención como un fail.
+6. **`StructuralPartitionVerifier` (AL2, ancla `rule`) — decisión de alcance.**
+   La red real del ICE no trae impedancias, así que pandapower no puede correr
+   sobre ella y sin checks `island-{k}:*` no hay badges posibles. La salida
+   honesta no era inventar dato eléctrico: es verificar lo que el grafo SÍ
+   permite (conectividad por isla, corte no vacío) con el techo que le
+   corresponde. Entra **solo** donde no hay dato eléctrico registrado — donde
+   pandapower corre, sumarla inflaría las patas del punto 7 sin aportar un
+   método realmente nuevo.
+
+**M23a/N3 cerrado:** el orquestador hilvana el `step_id` que el loop siempre le
+pasó. La evidencia por paso deja de llegar `attestations: []`; el test que
+afirmaba ese defecto ahora afirma el arreglo.
+
+### #154 — V2/M19: el cierre métrico existe, y se DERIVA del log
+
+**El choque C-4 en una frase:** el evento estaba congelado con campos de
+confianza, el consumidor esperaba campos científicos por variante, y nadie lo
+emitía.
+
+- **Las métricas se derivan del stream, no se acumulan en memoria.** Por eso el
+  orquestador estampa `latency_ms` por attestation: un tercero que replaye el
+  log obtiene los mismos números; un acumulador del proceso emisor no ofrece
+  eso.
+- **`false_reject_proxy` se DEFINE en vez de fabricarse:** de los claims que
+  alguna pata rechazó, qué fracción otra pata independiente aceptó. La
+  medición fuerte (contra corpus de óptimos conocidos, trust/05 §1.3) es el
+  ítem O8 y se dice en el código, no se aproxima con un número inventado.
+- **`AblationMetric` importa el enum del emisor** en vez de repetir el
+  `Literal`: extensión coordinada de los 4 espejos (Pydantic, Zod, tipo TS,
+  chart), disciplina C-15.
+- **`AblationArm` no tiene campo de policy:** la herencia fail-closed de §13
+  regla 3 queda garantizada POR CONSTRUCCIÓN. Comparar brazos bajo exigencias
+  distintas no sería una ablación.
+- **La agregación de brazos es de LECTURA:** `GET /runs/{id}/ablation` suma los
+  sub-runs directos; cada brazo conserva su stream, su procedencia y su propia
+  respuesta.
+
+### #155 — V8/M23b: el cable de `deliverables` y las rutas de proyecto
+
+`assemble_bundle` aceptaba `deliverables=` desde siempre y nadie se lo pasaba
+(N4/#70b) — honest-empty ESTRUCTURAL. Decisión: el deliverable es el
+**artefacto de salida del run**, el único que el log identifica sin ambigüedad
+(`run.completed.output_digest`) y cuyos bytes son recuperables byte a byte del
+content store; o sea, el único que un tercero puede re-verificar contra el
+digest que el certificado cita. Un artefacto no recuperable NO se cita: un
+certificado no se cae porque falte uno, se cae si MIENTE sobre uno.
+
+### DEFECTO PROPIO cazado por este cambio (y cerrado)
+
+`certificate.py`/`reads.py` decidían «el run terminó» mirando `stream[-1]`. El
+freeze §2 [stress-final] admite familias de CIERRE post-terminales, así que el
+primer `run.metrics.recorded` produjo un **409 en el certificado** — y pasarle
+el stream completo a `assemble_bundle` habría metido un evento post-terminal
+DENTRO del `provenance_hash`. Corregido: terminado = TIENE terminal, y lo que
+se certifica es `provenance_slice(stream)`. Era un defecto latente desde antes
+de esta sesión; lo destapó el primer productor de la familia de cierre.
+
+### Tabla de interacciones — sesión VISUAL/CIENCIA
+
+| Interfaz                                                     | Dominio afectado | Estado del contrato                                                          |
+| ------------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------- |
+| `blite_capability.branch_ids` (SDK, módulo nuevo)            | engine ↔ caps    | NUEVO — convención C-8 versionada (`canonical-l-min-max@v1`)                 |
+| `blite.ingesta.geojson.to_graph` output + `edge_id_property` | caps → corpus    | ADITIVO — `branch_ids`/`branch_id_convention`; el corpus estampado no cambia |
+| `blite.verification.partition` (módulo nuevo)                | engine           | NUEVO — productor del payload §4                                             |
+| `blite.verification.structural_partition` (módulo nuevo)     | engine           | NUEVO — pata AL2 para instancias sin dato eléctrico                          |
+| `ClaimDeclaration.result_projection` + `step_id` top-level   | engine ↔ api     | ADITIVO — binding de confianza intocable (llaves reservadas)                 |
+| `verification.completed.latency_ms`                          | engine ↔ api     | ADITIVO — reservado; base de la derivación de métricas                       |
+| `blite.runtime.metrics` (módulo nuevo)                       | engine ↔ api ↔ D | NUEVO — payload v2 C-4; `variant` enum de 4 en 4 espejos                     |
+| `blite.runtime.ablation` (módulo nuevo)                      | engine           | NUEVO — brazos como sub-runs §13                                             |
+| `chimera_api.deliverables` (módulo nuevo)                    | api              | NUEVO — cable de `deliverables=`                                             |
+| `GET /runs/{id}/topology` (consumidor)                       | E ↔ D            | VERDE — el Zod espejo del fixture valida el wire vivo                        |
+| `GET /runs/{id}/ablation` (agrega sub-runs)                  | E ↔ D            | ADITIVO de lectura — cada brazo conserva su propia respuesta                 |
+| `GET /artifacts`, `GET /knowledge` (nivel proyecto)          | E ↔ D            | NUEVAS — allowlist de nginx ampliado en el MISMO cambio (lección de `/me`)   |
+| `topologySnapshotSchema` / `ablationVariantSchema` (Zod)     | D                | ESPEJO — `ablationVariantSchema` compartido por fixture y wire               |
+| `GridMap.partition` (seam → implementado)                    | D                | El seam declarado en D4 deja de ser seam                                     |
+| `apps/studio/src/fixtures/ice/instancia.json`                | D                | NUEVO — proyección del corpus estampado con anti-drift                       |
+
+### Hallazgo heredado (NO introducido acá)
+
+`pnpm run arch` está **rojo en `mejorado/base`**, reproducido con el árbol
+limpio: `no-circular App.tsx → router.tsx → App.tsx` y
+`F3: App.tsx → gatewayClient`. Ambas vienen de P7 (router real). No está en la
+lista de gates del bloque REGLAS, así que no bloquea — pero es un gate de
+arquitectura en rojo y merece dueño. **CERRADO** en esta sesión: la raíz
+dejó de ser también el módulo de pantallas (`screens.tsx`) y `fileDownloadUrl`
+pasa por `data/`; la regla F3 se extendió para cubrir el archivo nuevo.
+
+### #156 — V5: los ángulos de QAOA se reportan, se pueden dar, y se pueden escalar
+
+Tres capacidades aditivas sobre `solve_qaoa` — sin argumentos nuevos el
+comportamiento es idéntico.
+
+1. **`angles` siempre se reporta.** Sin ellos, `expected_energy` era un número
+   que nadie podía recomputar: el circuito que lo produjo quedaba sin
+   identificar.
+2. **`initial_angles` + `optimize=false`** — evaluar ⟨C⟩ en un calendario
+   ajeno SIN re-optimizar. Re-optimizar cambiaría los ángulos de la corrida
+   que se dice estar midiendo, que es exactamente lo que la haría
+   incomparable. El round-trip (optimizar → devolver ángulos → re-evaluar en
+   ellos → mismo ⟨C⟩) es exacto por construcción: ⟨H⟩ se recomputa siempre
+   sobre los ángulos finales en vez de leerse del `fun` de COBYLA.
+3. **`init_strategy="interp"`** — la escalera p=1…layers de Zhou et al. (2020)
+   §IV. Vive en `warm_start.py` porque es aritmética PURA y por tanto
+   verificable exactamente (extremos conservados, combinación convexa, +1 capa
+   por paso); enterrada dentro de `solve_qaoa` solo se podría comprobar de
+   refilón con un «la energía mejoró», que pasa aunque la fórmula esté mal.
+
+Decisión de implementación: los parámetros del ansatz se ligan por **NOMBRE**,
+no por posición. Confundir β con γ no produce un error — produce una energía
+plausible de un circuito distinto del que se reporta.
+
+### #157 — V3/M20: la curva r-vs-p se mide en los ángulos que corrió el hardware
+
+**Dónde viven los datos.** El barrido r vs p abarca p×semillas corridas y no
+cabe en el stream de UNA ejecución. Por eso `GET /runs/{run_id}/rvsp` es clave
+POR RUN pero datos POR INSTANCIA: el run aporta el único dato que es suyo —qué
+red se está resolviendo— y la curva sale de un corpus congelado nuevo,
+`knowledge/rvsp/<instancia>.json`, con la MISMA disciplina de identidad que el
+resto de `knowledge/` (digest embebido que cierra sobre el contenido).
+`results/exp_r_vs_p/` sigue siendo lo que su docstring dice: una instantánea
+ilustrativa del experimento, sin identidad.
+
+**Por qué ángulos de Nexus.** Con ángulos que optimizamos nosotros, el punto de
+la curva mide nuestro COBYLA tanto como mide QAOA. El importador ahora persiste
+`betas`/`gammas` (antes vivían SOLO en el espejo solo-lectura) y
+`gen_corpus_rvsp.py` evalúa ⟨C⟩ EN ellos vía `optimize=false` (#156). Los
+ángulos ya eran la FUENTE de `circuit_digest`, así que persistirlos no mueve
+ningún digest — hay un test que lo comprueba contra el índice committeado,
+porque si se moviera habría que parar y reportar, no re-estampar.
+
+**La ETIQUETA de la curva** (bloque `metodo` del record: backend, shots,
+semillas, origen de los ángulos, `circuit_digest` por capa) vive en el
+ARTEFACTO, no en el wire: la spec congeló el wire y dejó el método al dominio
+de ciencia. Sin esa etiqueta, un punto medido en hardware y uno medido en
+ángulos propios se ven idénticos y son afirmaciones distintas.
+
+**Resultado honesto:** la curva NO es monótona en p (cr6-uniforme: 0.7034 →
+0.8199 → 0.7601). Los ángulos de p=3 no fueron mejores que los de p=2. Se
+reporta tal cual — es un dato sobre la corrida vanilla, no un defecto a
+maquillar.
+
+**Tres 404 que no degradan:** run desconocido / run sin instancia declarada /
+instancia sin curva ingerida. Ninguno cae a `points: []` — un gráfico vacío se
+lee como «el experimento dio esto», que sería falso. El Studio distingue el 404
+(vacío honesto) del 500 (falla) vía el `status` que `fetchWireGet` propaga.
+
+### Tabla de interacciones — V5 y V3/M20
+
+| Interfaz                                                      | Dominio afectado | Estado del contrato                                                       |
+| ------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------- |
+| `blite_cap_quantum.warm_start` (módulo nuevo)                 | caps             | NUEVO — INTERP puro, sin qiskit                                           |
+| `solve_qaoa` + manifest `blite.quantum.qaoa`                  | caps ↔ runtime   | ADITIVO — `initial_angles`/`optimize`/`init_strategy`; salida `angles`    |
+| `scripts/import_nexus_runs.py` → `knowledge/nexus/index.json` | ciencia          | ADITIVO — `betas`/`gammas`; NINGÚN digest se mueve (test que lo prueba)   |
+| `knowledge/rvsp/<instancia>.json` (corpus nuevo)              | ciencia ↔ api    | NUEVO — regla de identidad §15.3; bloque `metodo` fuera del wire          |
+| `chimera_api.corpus_records` (módulo nuevo)                   | api              | EXTRAÍDO — una sola definición de identidad de corpus (tfim/tabular/rvsp) |
+| `chimera_api.rvsp` (módulo nuevo)                             | api ↔ D          | NUEVO — `RvspResponse`; `baselines` cerrado a 3 (C-15)                    |
+| `RunTicket.instance_id`                                       | api              | ADITIVO — qué instancia encargó el run; `None` ⇒ 404, jamás una adivinada |
+| `GET /runs/{run_id}/rvsp`                                     | E ↔ D            | IMPLEMENTA el contrato congelado; seed des-xfaileado                      |
+| `GatewayResponse.status` en las LECTURAS (`fetchWireGet`)     | D                | ADITIVO — sin él, un 404 del contrato es indistinguible de un 500         |
+| `rvspWireSchema` + `toRvsPExperiment` (Zod)                   | D                | ESPEJO — snake_case → camelCase, mismo patrón que `toAblationMetric`      |
+| `loadRvsP(runId?)` / `rvspQueryOptions`                       | D                | La rama live deja de devolver `null` fijo                                 |
+| fixture `get-runs-rvsp.json` (canónico + espejo Studio)       | E ↔ D            | NUEVO — generado desde `RvspResponse` sobre el corpus REAL, no a mano     |
+
+### #158 — V4/M6: el control negativo no es un extra, es la condición de publicación
+
+El bloque `mitigation.*` estaba congelado en el freeze §11 desde S-E y cero
+código lo emitía. Lo emite una capability propia (`blite.quantum.zne`) —
+propia y no Mitiq porque Mitiq es GPL-3.0 y este repo se distribuye MIT (nota
+09 §3); Mitiq entra como dependencia opcional del harness de benchmarks.
+
+**La decisión de diseño que manda todo lo demás:** `mitigate_expectation` corre
+SIEMPRE el control negativo de garbage-folding y devuelve
+`improvement_survives_control`. arXiv:2607.09360 demuestra que ZNE produce
+mejoras ARTEFACTUALES — cuando la amplificación supera la señal, la
+extrapolación colapsa a un reescalado de una medición ruidosa y «mejora» sin
+física detrás. Un mitigador que reporta solo su delta no se puede auditar.
+
+**Reproducimos el hallazgo en nuestro propio código.** Con extrapolación lineal
+sobre G6 al 5 % de ruido de 2 qubits: mejora legítima 0.1–0.3 %, control de
+basura 28–52 %. Dos órdenes de magnitud de «mejora» sin física. Con Richardson
+el control sale negativo (−0.08 a −1.19) y la mejora legítima (0.9–3.3 %) sí
+sobrevive. Fijado como test parametrizado sobre 3 semillas: asevera que el
+control FUNCIONA, no un número.
+
+`training_digest` viaja en `None` EXPLÍCITO — ZNE no entrena, y rellenar el
+campo fabricaría procedencia. El corrector aprendido (V9) sí lo llena: el
+mismo bloque distingue los dos métodos sin cambiar de forma.
+
+**Reproducibilidad medida, no prometida:** la rama legítima es bit-estable con
+la seed pinneada; la del control no siempre lo es entre corridas (circuitos
+mucho más profundos, Aer no garantiza el reparto de shots a esa profundidad).
+El VEREDICTO sí es estable sobre 5 semillas. Se dice así.
+
+### #159 — V2 cerrado: el costo de corte sale de la salida del brazo
+
+El productor (`scripts/run_ablation.py`) destapó un hueco del mecanismo:
+`cut_cost` había que declararlo ANTES de correr el brazo, pero es justo lo que
+el brazo computa. Declararlo por adelantado obligaba a correr la capability dos
+veces, y el `wall_ms` registrado sería el de la segunda corrida — midiendo un
+trabajo ya hecho. `AblationArm.cut_cost_from` lo lee de la salida (recuperada
+del content store por su digest). Las dos formas son EXCLUYENTES.
+
+**Las barras tienen que ser la misma CLASE de número.** La primera corrida
+comparaba el best-of-2048-shots del brazo cuántico contra un valor esperado
+mitigado — y hacía ver a la mitigación peor por una razón que no tiene nada
+que ver con mitigar. Corregido: cuántico reporta ⟨C⟩ (la lección del fix 4b),
+exacto su óptimo, ZNE su valor mitigado.
+
+**Regla de publicación del brazo ZNE:** si la mejora no sobrevivió al control,
+el brazo NO aporta costo — ni siquiera cuando el campo del veredicto falta
+(«no sé si es artefacto» no es «no lo es»). `mitigated` no se declara como
+brazo: su productor es V9 y una barra vacía CON nombre es peor que una ausente.
+
+Corrida real sobre `cr8-uniforme` (óptimo 7): quantum ⟨C⟩ 6.35 (r 0.907, 4.6 s)
+· classical 7.00 (r 1.000, 0.2 s) · zne mitigado 5.94 (r 0.848, 28.5 s).
+
+### Tabla de interacciones — V4/M6 y cierre de V2
+
+| Interfaz                                 | Dominio afectado | Estado del contrato                                                      |
+| ---------------------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| `blite_cap_quantum.zne` (módulo nuevo)   | caps             | NUEVO — folding, extrapoladores y el control negativo                    |
+| `blite.quantum.zne` (capability nueva)   | caps ↔ runtime   | NUEVA — emite el bloque `mitigation.*` del freeze §11                    |
+| `qaoa.prepare_circuit` / `sample_counts` | caps             | EXTRAÍDO — el mitigador usa EL MISMO circuito que el solver              |
+| `AblationArm.cut_cost_from`              | engine           | ADITIVO — excluyente con `cut_cost`; cierra el hueco que V2 dejó         |
+| `scripts/run_ablation.py`                | ciencia ↔ E ↔ D  | NUEVO — el llamante que a `blite.runtime.ablation` le faltaba            |
+| `AblationPanel` (test)                   | D                | El panel de 4 barras no tenía NINGÚN test; ahora fija la leyenda honesta |
+
+### Handoff de la sesión VISUAL/CIENCIA — qué queda, qué NO, y con qué causa
+
+**Gates al cierre** (worktree `mejorado/visual`, 14 commits sobre
+`mejorado/base` @cebbfe5):
+
+| Gate                            | Resultado                                        |
+| ------------------------------- | ------------------------------------------------ |
+| `pytest`                        | **1409 passed**, 9 skipped, 4 xfailed, 4 xpassed |
+| `lint-imports`                  | **14 contratos kept, 0 broken**                  |
+| `ruff check`                    | limpio                                           |
+| `pyright`                       | **0 errores**                                    |
+| `pnpm -C apps/studio test:run`  | **327 passed** / 34 files                        |
+| `pnpm -C apps/studio typecheck` | limpio                                           |
+| `pnpm -C apps/studio lint`      | limpio                                           |
+| `pnpm run arch` (depcruise)     | **0 violaciones** (146 módulos, 506 deps)        |
+
+Baseline al abrir: studio 318 en 33 files; `pnpm run arch` **rojo** (ver abajo).
+
+**Alcance cerrado**: V1/M18, V2/M19 (con su productor), V3/M20, V4/M6-ZNE, V5,
+V8/M23b, más el gate de arquitectura heredado. Decisiones #153-#159.
+
+#### Lo que NO se cerró, con causa
+
+1. **V6/M5 adapter qnexus vivo — BLOQUEADO-POR-DYLAN (tres causas).**
+   - `qnexus`/`pytket` NO están instalados, y agregarlos toca el venv
+     **compartido** con la sesión de plataforma. No es una decisión de una
+     sesión sola.
+   - Submitir a Nexus consume cuota HQC: es gasto real y necesita autorización
+     explícita, no inferida del alcance.
+   - Sin poder importar el SDK no hay forma de verificarlo contra su API real.
+     Escribir un adapter que _parece_ correcto contra una API que no se puede
+     correr es exactamente lo que la regla de validar-con-cliente-real prohíbe:
+     produciría código plausible que hay que rehacer al primer contacto.
+
+   **Lo que SÍ está listo para cuando se desbloquee**: el pipeline del gateway
+   con su etapa `egress` gobernada solo por authz (`gateway/stages.py`), y la
+   maquinaria de aprobación humana (`blite.gateway.approval`,
+   `authorize_approval_response`).
+
+2. **V7 QEC/Iceberg — bloqueado por transitividad.** El entregable es el
+   tradeoff **MEDIDO**; medirlo contra un simulador local no responde la
+   pregunta que el enunciado hace. Depende de V6.
+
+3. **V9 (#120) corrector AI-QEM — NO bloqueado, no alcanzó.** sklearn y
+   xgboost ya están instalados, el corpus existe, y desde V4 tiene un baseline
+   real que batir: `zne.apparent_improvement` y el mismo control negativo de
+   costo igual. El bloque `mitigation.*` ya tiene forma emitida — V9 solo llena
+   `training_digest` y cambia `method` a `ml-rf`/`ml-gbm`. **Al cerrarlo**:
+   declarar el brazo `mitigated` en `scripts/run_ablation.py` (hoy NO se
+   declara a propósito) y el panel queda con las 4 barras reales.
+
+4. **DoD CP6 vivo contra compose — NO alcanzó.** Receta concreta: levantar
+   compose, correr `scripts/run_ablation.py` con `CHIMERA_DATABASE_URL`
+   apuntando a su Postgres, y verificar en el Studio el mapa con badges + el
+   panel de ablación + la curva rvsp. Los tres productores existen y están
+   probados por separado; falta la corrida de punta a punta.
+
+#### Hallazgos heredados (NO introducidos en esta sesión)
+
+1. **`ruff format --check .` está ROJO en `HEAD`** — 20 archivos
+   (`capabilities/{ml,numeric,quantum}`, `challenges/reto{2,3}`, `scripts/`).
+   Verificado con `git archive HEAD` que es anterior a esta rama. Es un gate de
+   CI real (`.github/workflows/ci.yml:103`), así que **cualquier PR está rojo
+   hoy**. No se arregló acá porque 16 de los 20 archivos son de otros dominios
+   y un reformateo masivo dentro de un commit de features es ruido que esconde
+   el cambio real. Necesita dueño y un commit propio.
+
+   Efecto colateral a tener presente: `ruff format <dir>` reformatea TODO el
+   directorio, así que arrastra ese drift al staging de quien formatee.
+
+2. **La invariante ADR-029 no ve capabilities nuevas.**
+   `tests/invariants/test_capability_genericity.py` enumera
+   `entry_points(group="blite.capabilities")`, que lee metadata **instalada**:
+   una capability nueva no entra al gate hasta un reinstall del paquete.
+   Mitigación ya usada dos veces (`FidelityKernel`, `ZeroNoiseExtrapolation`):
+   un `TestGenericitySelfCheck` local en el test de la capability, que corre la
+   misma denylist contra el manifest en vivo. Vale la pena decidir si esa
+   mitigación se vuelve convención escrita o si el gate cambia de fuente.
+
+3. **`side_effects` del manifest no tiene NINGÚN enforcement.** Verificado por
+   grep: no se consulta en `runtime/loop.py` ni en `gateway/*.py`. La regla de
+   §13 («`pure` se reintenta libre; `reversible`/`irreversible-external` sin
+   idempotencia NO se reintenta y escala a humano») no está expresada como
+   código. Hoy no hay lógica de reintento en absoluto, así que el «no
+   reintentar» es cierto **de facto** — lo que falta es la ESCALACIÓN. Es
+   precisamente el mecanismo que V6 necesita, y por eso se reporta acá y no se
+   improvisó: construir un motor de reintentos para colgarle una escalación es
+   inventar arquitectura que §13 no pidió.
+
+4. **La suite del Studio es sensible a la carga de la máquina.** Correr pytest
+   y vitest en paralelo hace que `userEvent.type` de `NewRunView.test.tsx` se
+   pase del timeout de 5 s. Verificado que NO es regresión (verde en
+   aislamiento y en corridas limpias consecutivas). Se arregló el caso análogo
+   de `registry.test.ts` (dos `import()` dinámicos DENTRO del test, sin ningún
+   mock que los justificara); el de `NewRunView` es el `delay` por tecla de
+   user-event y toca 6+ archivos, así que queda reportado en vez de barrido.
+
+#### Frontera de contrato reportada (no se cruzó)
+
+Exponer la ablación desde `POST /runs` necesita una **tercera forma de body**
+(hoy claim-first y misión-first) ⇒ toca `docs/specs/endpoints-studio.md` ⇒
+ceremonia de contrato, que el plan reserva a la sesión de control. El mecanismo
+completo ya existe y está probado (`blite.runtime.ablation` +
+`scripts/run_ablation.py`); lo único que falta es el wire.

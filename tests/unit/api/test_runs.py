@@ -130,8 +130,25 @@ def _parse_frames(body: str) -> list[dict[str, str]]:
 
 
 def _events_of(client: TestClient, run_id: str) -> list[dict[str, str]]:
+    """Frames del stream del run — INCLUIDA la familia de cierre.
+
+    [V2/M19] `run.metrics.recorded` se emite DESPUÉS del terminal (freeze §2
+    [stress-final]: familia de cierre, fuera del hash), así que el último
+    frame del stream ya no es el terminal. Los tests que preguntan «¿cómo
+    cerró este run?» usan `_events_hasta_el_terminal`, que corta donde corta
+    el provenance_hash — preguntar por `frames[-1]` sería preguntar por el
+    cierre métrico, no por el desenlace."""
     response = _get(client, f"/runs/{run_id}/events?live=0")
     return _parse_frames(response.text)
+
+
+_CLOSING_EVENT_TYPES = frozenset({"run.metrics.recorded"})
+
+
+def _events_hasta_el_terminal(client: TestClient, run_id: str) -> list[dict[str, str]]:
+    """El mismo corte que `provenance_slice`: hasta el terminal, inclusive."""
+    frames = _events_of(client, run_id)
+    return [f for f in frames if f["event"] not in _CLOSING_EVENT_TYPES]
 
 
 def _claim_body(
@@ -189,7 +206,7 @@ class TestGoldenPathDosPatas:
         run_id = response.json()["run_id"]
         assert _RUN_ID_PATTERN.match(run_id)
 
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         types = [f["event"] for f in frames]
         assert frames[-1]["event"] == "run.completed"
         assert types.count("claim.emitted") == 1
@@ -243,7 +260,11 @@ class TestClaimInvalido:
 
 
 class TestFormalOnly:
-    def test_instancia_desconocida_ampara_solo_con_cpsat(self) -> None:
+    def test_instancia_sin_dato_electrico_suma_la_pata_estructural(self) -> None:
+        """[V1/M18] El run de una instancia sin modelo eléctrico emite DOS
+        `verification.completed`: la formal (CP-SAT) y la estructural (AL2),
+        que es la que aporta los checks por isla que el mapa necesita. Antes
+        emitía una sola y la superficie se quedaba sin nada que pintar."""
         # Arrange
         client = _make_client()
         body = _run_body(
@@ -262,9 +283,9 @@ class TestFormalOnly:
         # Assert
         assert response.status_code == 202
         run_id = response.json()["run_id"]
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         assert frames[-1]["event"] == "run.completed"
-        assert [f["event"] for f in frames].count("verification.completed") == 1
+        assert [f["event"] for f in frames].count("verification.completed") == 2
 
 
 class TestCapabilityDesconocida:
@@ -288,7 +309,7 @@ class TestCapabilityDesconocida:
         # Assert — el arranque HTTP no falla; el fallo vive DENTRO del stream
         assert response.status_code == 202
         run_id = response.json()["run_id"]
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         assert frames[-1]["event"] == "run.failed"
 
 
@@ -323,7 +344,7 @@ class TestModoMision:
         run_id = response.json()["run_id"]
         assert _RUN_ID_PATTERN.match(run_id)
 
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         types = [f["event"] for f in frames]
 
         # El plan es un artefacto del stream (harness-agentico.md §Contrato-2)
@@ -356,7 +377,7 @@ class TestModoMision:
         # Assert
         assert response.status_code == 202
         run_id = response.json()["run_id"]
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         types = [f["event"] for f in frames]
         assert "plan.created" in types
         # FLAG (frontera Steven, no de este contrato): en el camino de error
@@ -534,7 +555,7 @@ class TestModoMisionProposerReal:
         # Assert — 202 + progresa de VERDAD (la sesión decidió, no el goal).
         assert response.status_code == 202
         run_id = response.json()["run_id"]
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         types = [f["event"] for f in frames]
         assert types.count("capability.job.completed") == 1
         assert "capability.job.failed" not in types
@@ -584,7 +605,7 @@ class TestModoMisionProposerReal:
         # verdadera del seam del modelo, no un `KeyError` prestado.
         assert response.status_code == 202
         run_id = response.json()["run_id"]
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         types = [f["event"] for f in frames]
         assert types.count("run.step.started") == 0
         assert types[-2:] == ["plan.item_updated", "run.failed"]
@@ -637,7 +658,7 @@ class TestContratoFixtureStudio:
         # REQUEST; lo demás vive fail-loud en el stream.
         assert response.status_code == 202
         run_id = response.json()["run_id"]
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         assert "plan.created" in [f["event"] for f in frames]
 
 
@@ -675,7 +696,7 @@ class TestModoMisionInstanciaReal:
         assert response.status_code == 202
         run_id = response.json()["run_id"]
 
-        frames = _events_of(client, run_id)
+        frames = _events_hasta_el_terminal(client, run_id)
         types = [f["event"] for f in frames]
 
         # El plan viaja como eventos, mismo contrato que el resto de la clase
@@ -755,10 +776,16 @@ class TestGuardDeNivelTask:
         # Act — el guard NO relanza: la tarea de fondo jamás tumba el worker.
         run_in_background(store, "run-colgado", _tarea_que_explota)
 
-        # Assert
+        # Assert — el terminal de último recurso, y solo después el cierre
+        # métrico (V2/M19: familia de cierre post-terminal, fuera del hash).
         eventos = store.read_stream("run-colgado")
-        assert [e.type for e in eventos] == ["run.created", "run.failed"]
-        assert eventos[-1].payload["error_kind"] == "RuntimeError"
+        assert [e.type for e in eventos] == [
+            "run.created",
+            "run.failed",
+            "run.metrics.recorded",
+        ]
+        terminal = next(e for e in eventos if e.type == "run.failed")
+        assert terminal.payload["error_kind"] == "RuntimeError"
 
     def test_no_duplica_el_terminal_que_la_tarea_ya_journalizo(self) -> None:
         from chimera_api.runs import run_in_background
@@ -795,7 +822,7 @@ class TestGuardDeNivelTask:
 
         tipos = [e.type for e in store.read_stream("run-ya-terminal")]
         assert tipos.count("run.failed") == 1
-        assert tipos == ["run.created", "run.failed"]
+        assert tipos == ["run.created", "run.failed", "run.metrics.recorded"]
 
     def test_tarea_que_termina_bien_no_agrega_nada(self) -> None:
         from chimera_api.runs import run_in_background
@@ -804,6 +831,8 @@ class TestGuardDeNivelTask:
         corridas: list[int] = []
         run_in_background(store, "run-inexistente", lambda: corridas.append(1))
         assert corridas == [1]
+        # Un run que el log jamás vio tampoco recibe cierre métrico: no hay
+        # terminal que cerrar (V2/M19).
         assert store.read_stream("run-inexistente") == ()
 
 
@@ -852,7 +881,7 @@ class TestModelCallEmitido:
 
         assert response.status_code == 202
         run_id = response.json()["run_id"]
-        types = [f["event"] for f in _events_of(client, run_id)]
+        types = [f["event"] for f in _events_hasta_el_terminal(client, run_id)]
         assert "model.call.requested" in types
         assert "model.call.completed" in types
         # El rastro del modelo precede al paso que su propuesta disparó — el

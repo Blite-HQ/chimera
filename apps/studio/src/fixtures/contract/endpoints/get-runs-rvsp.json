@@ -1,0 +1,47 @@
+{
+  "baselines": {
+    "cpsat": {
+      "energy": 7.0,
+      "r": 1.0
+    },
+    "greedy": {
+      "energy": 7.0,
+      "r": 1.0
+    },
+    "gw": {
+      "energy": 7.0,
+      "r": 1.0
+    }
+  },
+  "instance": "cr8-uniforme",
+  "optimo": 7.0,
+  "points": [
+    {
+      "p": 1,
+      "r_esperado_mean": 0.6339581928559136,
+      "r_muestral_max": 0.6366489955357143,
+      "r_muestral_mean": 0.6324916294642857,
+      "r_muestral_min": 0.6270228794642857,
+      "r_muestral_std": 0.0031312218832753444,
+      "success_rate": 1.0
+    },
+    {
+      "p": 2,
+      "r_esperado_mean": 0.858391867735879,
+      "r_muestral_max": 0.8630719866071429,
+      "r_muestral_mean": 0.8571010044642857,
+      "r_muestral_min": 0.8521205357142857,
+      "r_muestral_std": 0.0037143449883395257,
+      "success_rate": 1.0
+    },
+    {
+      "p": 3,
+      "r_esperado_mean": 0.6444341709568308,
+      "r_muestral_max": 0.64794921875,
+      "r_muestral_mean": 0.6437360491071429,
+      "r_muestral_min": 0.6407645089285714,
+      "r_muestral_std": 0.0026027296603889907,
+      "success_rate": 1.0
+    }
+  ]
+}
