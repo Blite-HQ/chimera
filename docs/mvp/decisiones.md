@@ -3073,3 +3073,108 @@ Corrida real sobre `cr8-uniforme` (óptimo 7): quantum ⟨C⟩ 6.35 (r 0.907, 4.
 | `AblationArm.cut_cost_from`              | engine           | ADITIVO — excluyente con `cut_cost`; cierra el hueco que V2 dejó         |
 | `scripts/run_ablation.py`                | ciencia ↔ E ↔ D  | NUEVO — el llamante que a `blite.runtime.ablation` le faltaba            |
 | `AblationPanel` (test)                   | D                | El panel de 4 barras no tenía NINGÚN test; ahora fija la leyenda honesta |
+
+### Handoff de la sesión VISUAL/CIENCIA — qué queda, qué NO, y con qué causa
+
+**Gates al cierre** (worktree `mejorado/visual`, 14 commits sobre
+`mejorado/base` @cebbfe5):
+
+| Gate                            | Resultado                                        |
+| ------------------------------- | ------------------------------------------------ |
+| `pytest`                        | **1409 passed**, 9 skipped, 4 xfailed, 4 xpassed |
+| `lint-imports`                  | **14 contratos kept, 0 broken**                  |
+| `ruff check`                    | limpio                                           |
+| `pyright`                       | **0 errores**                                    |
+| `pnpm -C apps/studio test:run`  | **327 passed** / 34 files                        |
+| `pnpm -C apps/studio typecheck` | limpio                                           |
+| `pnpm -C apps/studio lint`      | limpio                                           |
+| `pnpm run arch` (depcruise)     | **0 violaciones** (146 módulos, 506 deps)        |
+
+Baseline al abrir: studio 318 en 33 files; `pnpm run arch` **rojo** (ver abajo).
+
+**Alcance cerrado**: V1/M18, V2/M19 (con su productor), V3/M20, V4/M6-ZNE, V5,
+V8/M23b, más el gate de arquitectura heredado. Decisiones #153-#159.
+
+#### Lo que NO se cerró, con causa
+
+1. **V6/M5 adapter qnexus vivo — BLOQUEADO-POR-DYLAN (tres causas).**
+   - `qnexus`/`pytket` NO están instalados, y agregarlos toca el venv
+     **compartido** con la sesión de plataforma. No es una decisión de una
+     sesión sola.
+   - Submitir a Nexus consume cuota HQC: es gasto real y necesita autorización
+     explícita, no inferida del alcance.
+   - Sin poder importar el SDK no hay forma de verificarlo contra su API real.
+     Escribir un adapter que _parece_ correcto contra una API que no se puede
+     correr es exactamente lo que la regla de validar-con-cliente-real prohíbe:
+     produciría código plausible que hay que rehacer al primer contacto.
+
+   **Lo que SÍ está listo para cuando se desbloquee**: el pipeline del gateway
+   con su etapa `egress` gobernada solo por authz (`gateway/stages.py`), y la
+   maquinaria de aprobación humana (`blite.gateway.approval`,
+   `authorize_approval_response`).
+
+2. **V7 QEC/Iceberg — bloqueado por transitividad.** El entregable es el
+   tradeoff **MEDIDO**; medirlo contra un simulador local no responde la
+   pregunta que el enunciado hace. Depende de V6.
+
+3. **V9 (#120) corrector AI-QEM — NO bloqueado, no alcanzó.** sklearn y
+   xgboost ya están instalados, el corpus existe, y desde V4 tiene un baseline
+   real que batir: `zne.apparent_improvement` y el mismo control negativo de
+   costo igual. El bloque `mitigation.*` ya tiene forma emitida — V9 solo llena
+   `training_digest` y cambia `method` a `ml-rf`/`ml-gbm`. **Al cerrarlo**:
+   declarar el brazo `mitigated` en `scripts/run_ablation.py` (hoy NO se
+   declara a propósito) y el panel queda con las 4 barras reales.
+
+4. **DoD CP6 vivo contra compose — NO alcanzó.** Receta concreta: levantar
+   compose, correr `scripts/run_ablation.py` con `CHIMERA_DATABASE_URL`
+   apuntando a su Postgres, y verificar en el Studio el mapa con badges + el
+   panel de ablación + la curva rvsp. Los tres productores existen y están
+   probados por separado; falta la corrida de punta a punta.
+
+#### Hallazgos heredados (NO introducidos en esta sesión)
+
+1. **`ruff format --check .` está ROJO en `HEAD`** — 20 archivos
+   (`capabilities/{ml,numeric,quantum}`, `challenges/reto{2,3}`, `scripts/`).
+   Verificado con `git archive HEAD` que es anterior a esta rama. Es un gate de
+   CI real (`.github/workflows/ci.yml:103`), así que **cualquier PR está rojo
+   hoy**. No se arregló acá porque 16 de los 20 archivos son de otros dominios
+   y un reformateo masivo dentro de un commit de features es ruido que esconde
+   el cambio real. Necesita dueño y un commit propio.
+
+   Efecto colateral a tener presente: `ruff format <dir>` reformatea TODO el
+   directorio, así que arrastra ese drift al staging de quien formatee.
+
+2. **La invariante ADR-029 no ve capabilities nuevas.**
+   `tests/invariants/test_capability_genericity.py` enumera
+   `entry_points(group="blite.capabilities")`, que lee metadata **instalada**:
+   una capability nueva no entra al gate hasta un reinstall del paquete.
+   Mitigación ya usada dos veces (`FidelityKernel`, `ZeroNoiseExtrapolation`):
+   un `TestGenericitySelfCheck` local en el test de la capability, que corre la
+   misma denylist contra el manifest en vivo. Vale la pena decidir si esa
+   mitigación se vuelve convención escrita o si el gate cambia de fuente.
+
+3. **`side_effects` del manifest no tiene NINGÚN enforcement.** Verificado por
+   grep: no se consulta en `runtime/loop.py` ni en `gateway/*.py`. La regla de
+   §13 («`pure` se reintenta libre; `reversible`/`irreversible-external` sin
+   idempotencia NO se reintenta y escala a humano») no está expresada como
+   código. Hoy no hay lógica de reintento en absoluto, así que el «no
+   reintentar» es cierto **de facto** — lo que falta es la ESCALACIÓN. Es
+   precisamente el mecanismo que V6 necesita, y por eso se reporta acá y no se
+   improvisó: construir un motor de reintentos para colgarle una escalación es
+   inventar arquitectura que §13 no pidió.
+
+4. **La suite del Studio es sensible a la carga de la máquina.** Correr pytest
+   y vitest en paralelo hace que `userEvent.type` de `NewRunView.test.tsx` se
+   pase del timeout de 5 s. Verificado que NO es regresión (verde en
+   aislamiento y en corridas limpias consecutivas). Se arregló el caso análogo
+   de `registry.test.ts` (dos `import()` dinámicos DENTRO del test, sin ningún
+   mock que los justificara); el de `NewRunView` es el `delay` por tecla de
+   user-event y toca 6+ archivos, así que queda reportado en vez de barrido.
+
+#### Frontera de contrato reportada (no se cruzó)
+
+Exponer la ablación desde `POST /runs` necesita una **tercera forma de body**
+(hoy claim-first y misión-first) ⇒ toca `docs/specs/endpoints-studio.md` ⇒
+ceremonia de contrato, que el plan reserva a la sesión de control. El mecanismo
+completo ya existe y está probado (`blite.runtime.ablation` +
+`scripts/run_ablation.py`); lo único que falta es el wire.
