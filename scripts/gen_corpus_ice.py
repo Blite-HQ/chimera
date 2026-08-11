@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Genera el corpus ICE (Max-Cut, sin prueba de optimalidad) desde los
-snapshots ICE congelados en `knowledge/islanding/raw/`.
+snapshots ICE del portal (`ice-subestaciones.geojson` / `ice-lineas-transmision.geojson`,
+YA NO commiteados en el árbol -- ver el párrafo de reproducibilidad más abajo).
 
-Correr desde la raiz del repo:  uv run python scripts/gen_corpus_ice.py
+Correr desde la raiz del repo:  uv run python scripts/gen_corpus_ice.py --raw-dir <dir>
 Salida: knowledge/islanding/corpus/ice-{uniforme,voltaje}.json
 
 Paridad con `reto1-vanilla/scripts/build_cr_instances.py::load_national_graph`
@@ -24,17 +25,31 @@ desconocido. `n_nodos=68` (el grafo REAL, no las 70 del snapshot) y
 esta generacion no corre ningun solver de Max-Cut sobre la red completa; la
 razon queda en `notas`, nunca oculta.
 
-Reproducibilidad air-gap: lee los snapshots YA COMMITEADOS en este repo
-(`knowledge/islanding/raw/ice-{subestaciones,lineas-transmision}.geojson`,
-copia byte-a-byte del espejo `reto1-vanilla/data/raw/`) -- nunca la URL del
-FeatureServer en tiempo de generacion.
+Reproducibilidad air-gap (histórica): este script leía los snapshots YA
+COMMITEADOS en `knowledge/islanding/raw/ice-{subestaciones,lineas-transmision}.geojson`
+-- nunca la URL del FeatureServer en tiempo de generación. Decisión #173.1
+(opción b, `NOTICE` §2): esa copia verbatim del portal SALIÓ del árbol -- la
+licencia de redistribución de esos bytes concretos seguía sin confirmar, y el
+catálogo de datasets publicados ya no depende de ellos. Lo que se conserva es
+lo derivado (`knowledge/islanding/corpus/ice-*.json`, con
+`ExternalSourceProvenance` citando los snapshots por digest) bajo el mismo
+razonamiento que `NOTICE` §1 ya usa para pandapower.
+
+Este script sigue siendo la receta completa: quien tenga los snapshots del
+portal (`datos-ice-se.opendata.arcgis.com`, datasets `Subestaciones` y
+`LineasDeTransmision`) puede apuntar `--raw-dir`/`$CHIMERA_ICE_RAW_DIR` a un
+directorio propio y re-derivar, comparando el digest resultante contra el
+corpus congelado. Si los snapshots no están donde se los busca, falla fuerte
+y legible (`require_snapshots`) en vez de un `FileNotFoundError` críptico.
 """
 
 from __future__ import annotations
 
+import argparse
 import base64
 import hashlib
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -50,10 +65,11 @@ from blite.verification.provenance import (
 from blite_cap_ingesta import GeojsonToGraph
 
 REPO = Path(__file__).resolve().parent.parent
-RAW_DIR = REPO / "knowledge" / "islanding" / "raw"
 OUT_DIR = REPO / "knowledge" / "islanding" / "corpus"
-NODES_PATH = RAW_DIR / "ice-subestaciones.geojson"
-EDGES_PATH = RAW_DIR / "ice-lineas-transmision.geojson"
+DEFAULT_RAW_DIR = REPO / "knowledge" / "islanding" / "raw"
+RAW_DIR_ENV_VAR = "CHIMERA_ICE_RAW_DIR"
+NODES_FILENAME = "ice-subestaciones.geojson"
+EDGES_FILENAME = "ice-lineas-transmision.geojson"
 
 RETRIEVED_AT = datetime(2026, 7, 23, tzinfo=UTC)
 DESCARGADO = "2026-07-23"
@@ -76,6 +92,71 @@ NOTAS = (
     "70 subestaciones en snapshot; 68 en el componente conexo; 2 aisladas "
     "por nomenclatura; 8 lineas descartadas por endpoint desconocido",
 )
+
+
+class IceSnapshotsMissingError(FileNotFoundError):
+    """Faltan los snapshots verbatim del portal del ICE (decisión #173.1)."""
+
+
+def resolve_raw_dir(raw_dir_arg: str | None = None) -> Path:
+    """Prioridad: `--raw-dir` explícito > `$CHIMERA_ICE_RAW_DIR` > default del árbol.
+
+    El default (`knowledge/islanding/raw/`) ya no tiene los snapshots desde
+    la decisión #173.1 -- queda como valor por defecto igual porque es donde
+    vivían y es donde alguien con los datos del portal probablemente los
+    pondría de nuevo."""
+    if raw_dir_arg:
+        return Path(raw_dir_arg)
+    env_value = os.environ.get(RAW_DIR_ENV_VAR)
+    if env_value:
+        return Path(env_value)
+    return DEFAULT_RAW_DIR
+
+
+def require_snapshots(raw_dir: Path) -> tuple[Path, Path]:
+    """Verifica que los dos snapshots del portal existan en `raw_dir`.
+
+    Falla fuerte y legible en vez del `FileNotFoundError` críptico de
+    Python: dice qué faltó, por qué (decisión #173.1 -- la copia verbatim
+    del portal ya no viaja en el árbol, licencia de redistribución sin
+    confirmar), de dónde bajarla, dónde ponerla, y que la receta de
+    derivación + los digests del corpus congelado siguen intactos para
+    re-derivar y comprobar."""
+    nodes_path = raw_dir / NODES_FILENAME
+    edges_path = raw_dir / EDGES_FILENAME
+    faltantes = [p for p in (nodes_path, edges_path) if not p.is_file()]
+    if faltantes:
+        nombres = " y ".join(p.name for p in faltantes)
+        msg = (
+            f"No encontré {nombres} en {raw_dir}.\n"
+            "\n"
+            "La copia verbatim de los datasets del portal del ICE ya NO "
+            "viaja en este repo (decisión #173.1, opción b -- ver `NOTICE` "
+            "§2 y `docs/pre-flip-checklist.md` §4.2): la licencia para "
+            "redistribuir esos bytes concretos seguía sin confirmar, y la "
+            "plataforma no depende de ellos como dataset publicado.\n"
+            "\n"
+            "Para re-derivar el corpus ICE:\n"
+            "  1. Bajá los datasets 'Subestaciones' y 'LineasDeTransmision' "
+            "del portal abierto del ICE: "
+            "https://datos-ice-se.opendata.arcgis.com\n"
+            f"  2. Guardalos como {NODES_FILENAME} / {EDGES_FILENAME} en un "
+            "directorio propio.\n"
+            "  3. Corré este script apuntando ahí, por argumento:\n"
+            "       uv run python scripts/gen_corpus_ice.py --raw-dir <dir>\n"
+            "     o por variable de entorno:\n"
+            f"       {RAW_DIR_ENV_VAR}=<dir> "
+            "uv run python scripts/gen_corpus_ice.py\n"
+            "\n"
+            "La receta de derivación (blite.ingesta.geojson.to_graph, los "
+            "params exactos, y los digests esperados) sigue completa en "
+            "este archivo y en knowledge/islanding/01-corpus-benchmarks.md: "
+            "cualquiera con los datos del portal puede re-derivar y "
+            "comparar el digest resultante contra "
+            "knowledge/islanding/corpus/ice-*.json, que se queda como está."
+        )
+        raise IceSnapshotsMissingError(msg)
+    return nodes_path, edges_path
 
 
 def _b64(path: Path) -> str:
@@ -104,14 +185,16 @@ def _external_source_provenance(uri: str) -> dict[str, Any]:
     return dumped
 
 
-def _invoke_to_graph(weight_property: str | None, run_id: str) -> dict[str, Any]:
+def _invoke_to_graph(
+    weight_property: str | None, run_id: str, nodes_path: Path, edges_path: Path
+) -> dict[str, Any]:
     params_digest_source = json.dumps(
         {"edge_strategy": "endpoint-name-match", "weight_property": weight_property},
         sort_keys=True,
     )
     inputs = {
-        "nodes_content_base64": _b64(NODES_PATH),
-        "edges_content_base64": _b64(EDGES_PATH),
+        "nodes_content_base64": _b64(nodes_path),
+        "edges_content_base64": _b64(edges_path),
         "node_id_property": "FID",
         "edge_strategy": "endpoint-name-match",
         "node_match_property": "Subestacio",
@@ -125,11 +208,11 @@ def _invoke_to_graph(weight_property: str | None, run_id: str) -> dict[str, Any]
         "inputs": [
             {
                 "ref": "snapshot:ice-subestaciones",
-                "digest": "sha256:" + _sha256_hex(NODES_PATH),
+                "digest": "sha256:" + _sha256_hex(nodes_path),
             },
             {
                 "ref": "snapshot:ice-lineas-transmision",
-                "digest": "sha256:" + _sha256_hex(EDGES_PATH),
+                "digest": "sha256:" + _sha256_hex(edges_path),
             },
         ],
     }
@@ -163,8 +246,18 @@ def _con_digest(registro: dict[str, Any]) -> dict[str, Any]:
     return {**registro, "digest": hashlib.sha256(canonico.encode("utf-8")).hexdigest()}
 
 
-def _build_record(convention: str, weight_property: str | None) -> dict[str, Any]:
-    result = _invoke_to_graph(weight_property, run_id=f"gen-corpus-ice-{convention}")
+def _build_record(
+    convention: str,
+    weight_property: str | None,
+    nodes_path: Path,
+    edges_path: Path,
+) -> dict[str, Any]:
+    result = _invoke_to_graph(
+        weight_property,
+        run_id=f"gen-corpus-ice-{convention}",
+        nodes_path=nodes_path,
+        edges_path=edges_path,
+    )
     graph = result["graph"]
     _verify_topology(graph)
 
@@ -201,11 +294,40 @@ def _build_record(convention: str, weight_property: str | None) -> dict[str, Any
     return _con_digest(registro)
 
 
-def main() -> int:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Genera knowledge/islanding/corpus/ice-{uniforme,voltaje}.json "
+            "desde los snapshots del portal del ICE."
+        )
+    )
+    parser.add_argument(
+        "--raw-dir",
+        default=None,
+        help=(
+            "Directorio con "
+            f"{NODES_FILENAME} / {EDGES_FILENAME}. Default: "
+            f"${RAW_DIR_ENV_VAR} si está seteada, si no "
+            f"{DEFAULT_RAW_DIR.relative_to(REPO)} (vacío desde la decisión "
+            "#173.1 -- ver el docstring del módulo)."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    raw_dir = resolve_raw_dir(args.raw_dir)
+    try:
+        nodes_path, edges_path = require_snapshots(raw_dir)
+    except IceSnapshotsMissingError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     rows = []
     for convention, weight_property in CONVENTIONS.items():
-        record = _build_record(convention, weight_property)
+        record = _build_record(convention, weight_property, nodes_path, edges_path)
         path = OUT_DIR / f"ice-{convention}.json"
         path.write_text(
             json.dumps(record, sort_keys=True, indent=2, ensure_ascii=True) + "\n",

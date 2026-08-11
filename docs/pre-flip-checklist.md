@@ -65,21 +65,35 @@ antes, y el script lo dice con esas palabras si se corre hoy.
    publica la historia. Decidido con Dylan (2026-08-06): la corrección integral
    de la historia se hace **después de Mejorado**, en una pasada única, cuando el
    proyecto deje de moverse tanto. Hasta entonces queda anotado, no ejecutado.
-2. **Licencia de los datos del ICE** — ver `NOTICE` §2. Parcialmente cerrado
-   (2026-08-08): esos datos **no se publican como dataset** (el catálogo de
-   `GET /datasets` declara solo corpus propios), y la decisión de fondo ya está
-   tomada — eran el ejemplo de UN reto y la plataforma no depende de ellos.
+2. **Licencia de los datos del ICE** — ver `NOTICE` §2. **Opción (b) EJECUTADA
+   (2026-08-11, #173.1):** `knowledge/islanding/raw/ice-*.geojson` —la copia
+   verbatim del portal— salió del árbol. Las dos comprobaciones previas se
+   corrieron antes de borrar y dieron verde:
 
-   Lo que queda es que publicar el repo publica el árbol. Opción recomendada:
-   sacar `knowledge/islanding/raw/ice-*.geojson` —la copia verbatim del portal—
-   y conservar las instancias DERIVADAS con el mismo razonamiento de `NOTICE`
-   §1. Antes de ejecutarlo, dos comprobaciones que no son opcionales:
+   - `knowledge/nexus/index.json` y `consensus.json` **no** referencian el
+     geojson (0 ocurrencias) — solo las instancias derivadas `cr6-*`/`cr8-*`,
+     que se conservan intactas (mismo razonamiento de `NOTICE` §1) para no
+     huérfanar la evidencia real de H2-1LE.
+   - `capabilities/ingesta/tests/test_geojson_to_graph.py` ya leía su propio
+     fixture (`capabilities/ingesta/tests/fixtures/ice-*.geojson`, sha256
+     idéntico al crudo que salió) — no al directorio `raw/` — así que no hubo
+     que reubicar nada ahí.
 
-   - **`knowledge/nexus/` se ancla a `cr6-*`/`cr8-*`.** La evidencia real de
-     H2-1LE cuelga de esas instancias (`index.json`, `consensus.json`).
-     Borrarlas huérfana la evidencia más fuerte del proyecto.
-   - `scripts/gen_corpus_ice.py` y `capabilities/ingesta/tests/test_geojson_to_graph.py`
-     leen el geojson crudo: sacarlo pide reubicar ese test a un fixture propio.
+   Costo aceptado: `scripts/gen_corpus_ice.py` ya no corre desde un checkout
+   limpio. Falla fuerte y legible (`IceSnapshotsMissingError`, no un
+   `FileNotFoundError` críptico) con instrucciones de dónde bajar los
+   snapshots (`datos-ice-se.opendata.arcgis.com`, datasets `Subestaciones` y
+   `LineasDeTransmision`) y cómo apuntar el script a una copia propia
+   (`--raw-dir` o `$CHIMERA_ICE_RAW_DIR`). La receta y los digests siguen
+   completos en el árbol — `knowledge/islanding/corpus/ice-*.json` no se tocó
+   (regla del freeze: se reporta, no se sobreescribe).
+
+   **Lo que queda abierto, sin maquillar:** la copia de esos mismos dos
+   datasets que vive como fixture de test
+   (`capabilities/ingesta/tests/fixtures/ice-*.geojson`, autorizada
+   explícitamente por Dylan como material de prueba) es material redistribuido
+   con la MISMA pregunta de licencia sin cerrar — ver `NOTICE` §2, último
+   párrafo. La opción (a) (términos explícitos de ICE) sigue sin ejecutarse.
 
 ## 5 · El día del flip, en orden
 

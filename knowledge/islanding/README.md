@@ -47,9 +47,17 @@ red ICE n=68, **`optimo: null`** honesto — sin doble ancla a esa escala), cada
 la fuente de verdad: una regeneración que no reproduzca el digest se reporta, no se
 sobreescribe.
 
-Existen además dos artefactos de datos estampados con procedencia, hermanos del corpus:
-`raw/ice-{subestaciones,lineas-transmision}.geojson` (snapshots crudos de los datos abiertos
-del ICE, commiteados por decisión #75 para reproducibilidad air-gap — insumo de
-`scripts/gen_corpus_ice.py`) y `ieee14-topology.json` (topología ieee14 con `digest`, `limits`
-y `provenance` declarada — modelo single-voltage derivado de `pandapower.networks.case14`).
-Como todo dato estampado, se citan por digest y no se regeneran en silencio.
+Existió además `raw/ice-{subestaciones,lineas-transmision}.geojson` (snapshots crudos de
+los datos abiertos del ICE, commiteados por decisión #75 para reproducibilidad air-gap —
+insumo de `scripts/gen_corpus_ice.py`), hermano del corpus. **Ya no vive en el árbol**
+(decisión #173.1, 2026-08-11 — ver `NOTICE` §2 y `docs/pre-flip-checklist.md` §4.2): la
+licencia de redistribución de esos bytes seguía sin confirmar y la plataforma no depende de
+ellos. `scripts/gen_corpus_ice.py` falla fuerte y legible si se lo corre sin apuntar
+`--raw-dir`/`$CHIMERA_ICE_RAW_DIR` a una copia propia de los snapshots; la receta y los
+digests que produce siguen intactos, así que el corpus `ice-*.json` de abajo se puede
+re-derivar y comprobar.
+
+`ieee14-topology.json` sigue siendo un artefacto de datos estampado hermano del corpus
+(topología ieee14 con `digest`, `limits` y `provenance` declarada — modelo single-voltage
+derivado de `pandapower.networks.case14`). Como todo dato estampado, se cita por digest y
+no se regenera en silencio.

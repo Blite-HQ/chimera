@@ -24,8 +24,8 @@ optimum, embedded digest). The derivation recipe is in
 `knowledge/islanding/01-corpus-benchmarks.md` §1.9.
 
 --------------------------------------------------------------------------------
-2. Costa Rican transmission network — `knowledge/islanding/raw/ice-*.geojson`
-   and the `cr6-*`, `cr8-*`, `ice-*` corpus instances derived from it
+2. Costa Rican transmission network — `cr6-*`, `cr8-*`, `ice-*` corpus
+   instances derived from ICE open data (the verbatim source no longer ships)
 --------------------------------------------------------------------------------
 
 Source: Instituto Costarricense de Electricidad (ICE), open-data portal
@@ -42,36 +42,54 @@ Verified against the portal's DCAT feed on 2026-08-06:
 
 **Open question, deliberately not papered over.** "Open data, public access"
 is not the same as an explicit grant to redistribute derived works. Attribution
-credits the source; it does not authorize redistribution on its own.
+credits the source; it does not authorize redistribution on its own. That
+question is still open for the bytes described in the last paragraph below
+(test fixture data); it is the reason the verbatim portal copy that used to
+ship in this tree was removed.
 
-**These instances are NOT published as a dataset.** The deployment catalog
-(`distributions/chimera/distribution.yaml`, `GET /datasets`) declares only
-corpora this project generated itself. Data whose licence cannot be stated
-plainly does not get published — decided 2026-08-08: this was example data for
-a single challenge, and the platform no longer depends on it.
+**What no longer ships (decided 2026-08-10/11, #173.1, option b of the
+plataforma handoff §1.1 — executed):** `knowledge/islanding/raw/` and the two
+files it held, `ice-subestaciones.geojson` / `ice-lineas-transmision.geojson`
+— the actual verbatim copy of the portal's datasets — have been deleted from
+the tree. `scripts/gen_corpus_ice.py` can no longer run against a fresh
+checkout; it fails loud with download instructions instead of a bare
+`FileNotFoundError`. The derivation recipe and every digest it produces stay
+in the script and in the corpus below, so anyone who obtains the portal data
+independently can point the script at their own copy (`--raw-dir` /
+`$CHIMERA_ICE_RAW_DIR`) and re-derive to check.
 
-That narrows the question but does not close it, because publishing the
-repository still redistributes whatever is in the tree. What is left to decide,
-before the flip:
+**What still ships, and why:** the `cr6-*`, `cr8-*`, `ice-*` corpus instances
+(`knowledge/islanding/corpus/*.json`) — Max-Cut graphs with integer edge
+weights, plus an embedded `ExternalSourceProvenance` that cites the retired
+snapshots by digest, not their geodata. Same reasoning §1 already uses for
+pandapower: what ships is a derived graph, not the substation and line
+geometry it came from. These instances are NOT published as a dataset either
+— the deployment catalog (`distributions/chimera/distribution.yaml`,
+`GET /datasets`) declares only corpora this project generated itself, per the
+2026-08-08 decision that this was example data for a single challenge and the
+platform does not depend on it — but publishing the *repository* still
+redistributes whatever is in its tree, and these instances are in it.
 
-  a. obtain explicit terms from ICE (the portal's own "UsoOpenData" dataset
-     suggests a terms document exists — it has not been retrieved); or
-  b. drop `knowledge/islanding/raw/ice-*.geojson` — the actual verbatim copy of
-     the portal's datasets — and keep the DERIVED Max-Cut instances under the
-     same reasoning as §1: what ships is a graph with integer edge weights, not
-     the substation and line geodata. Costs the ability to re-run
-     `scripts/gen_corpus_ice.py` from the tree; the recipe and the digests stay,
-     so anyone with the portal data can re-derive and check.
+They stay for a concrete reason, and deleting them was explicitly rejected:
+`knowledge/nexus/` — the real Quantinuum H2-1LE run evidence, the strongest
+evidence this project has — is anchored to the `cr6-*` / `cr8-*` instances
+(`index.json`, `consensus.json` reference them, never the raw geojson).
+Deleting the derived instances would orphan that evidence.
 
-Option (b) is the recommended one, and (c) "delete the derived instances too"
-is NOT on the list for a concrete reason: `knowledge/nexus/` — the real
-Quantinuum H2-1LE run evidence, the strongest evidence this project has — is
-anchored to the `cr6-*` / `cr8-*` instances. Deleting them orphans that
-evidence. Whoever executes this must check `knowledge/nexus/index.json` and
-`consensus.json` first.
+**What ships as TEST material, and the same open question there:**
+`capabilities/ingesta/tests/fixtures/ice-subestaciones.geojson` and
+`ice-lineas-transmision.geojson` are a byte-identical copy of the same two
+portal datasets (same SHA-256 as the retired raw copy), kept specifically as
+fixture data for `capabilities/ingesta/tests/test_geojson_to_graph.py` —
+Dylan explicitly authorized this use as test material. Same publisher, same
+"public access, no stated license" status, same unresolved redistribution
+question as above: attribution here credits ICE; it does not resolve whether
+redistributing these bytes — even as test fixtures — is licensed. This is not
+papered over: the open question stated at the top of this section applies to
+this fixture exactly as it applied to the raw copy before removal.
 
 Tracked as part of backlog item O4 (`docs/mejorado/04-consolidacion.md`), and
-listed in `docs/pre-flip-checklist.md`.
+listed in `docs/pre-flip-checklist.md` §4.2.
 
 --------------------------------------------------------------------------------
 3. Quantinuum Nexus run evidence — `knowledge/nexus/`
