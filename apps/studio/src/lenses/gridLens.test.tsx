@@ -99,11 +99,16 @@ describe('GridLensView (D1 task 4 — mata el spike como vista "Red" en vivo)', 
     vi.unstubAllEnvs();
   });
 
-  test('en vivo SIN partición producida: lo dice, nunca el spike IEEE-14 fabricado', () => {
+  // CP6 vivo (2026-08-11): el mapa dejó de depender de que exista una
+  // partición verificada — pintar la geografía que el proyecto OFRECE es el
+  // artifact genérico, y la partición es superposición opcional. Sin archivo
+  // geoespacial el honest-empty ahora habla del dato ausente, no del veredicto.
+  // Lo que sigue intacto es #88: sin veredicto no se COLOREA isla alguna.
+  test('en vivo SIN archivo geoespacial: lo dice, nunca el spike IEEE-14 fabricado', () => {
     vi.stubEnv('VITE_API_URL', 'http://api.test');
     renderLens();
 
-    expect(screen.getByText(/no produjo una partición verificada por isla/i)).toBeInTheDocument();
+    expect(screen.getByText(/no ofrece ningún archivo geoespacial/i)).toBeInTheDocument();
     expect(screen.queryByTestId('cy-container')).not.toBeInTheDocument();
   });
 
@@ -167,6 +172,6 @@ describe('GridLensView — toggle Diagrama/Mapa en réplica (O7/#173.2, honestid
 
     expect(screen.queryByRole('button', { name: /diagrama/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /mapa/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/no produjo una partición verificada por isla/i)).toBeInTheDocument();
+    expect(screen.getByText(/no ofrece ningún archivo geoespacial/i)).toBeInTheDocument();
   });
 });

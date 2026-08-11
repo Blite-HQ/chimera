@@ -27,7 +27,9 @@ export function deriveLensContext(
   events: readonly ProjectedEvent[],
   conclusions: readonly CertificateConclusion[] = [],
   /** O7/#173.2 — archivos del proyecto (`GET /files`); ver `LensContext.offeredMediaTypes`. */
-  files: readonly ProjectFile[] = []
+  files: readonly ProjectFile[] = [],
+  /** #177/CP6 — filas de `GET /runs/{id}/ablation`; ver `LensContext.offeredAblationVariants`. */
+  ablation: readonly { readonly variant: string }[] = []
 ): LensContext {
   const claimTypes = new Set<string>();
   const capabilityIds = new Set<string>();
@@ -46,7 +48,8 @@ export function deriveLensContext(
     runId,
     claimTypes: [...claimTypes],
     capabilityIds: [...capabilityIds],
-    offeredMediaTypes: files.map(file => file.media_type)
+    offeredMediaTypes: files.map(file => file.media_type),
+    offeredAblationVariants: ablation.map(row => row.variant)
   };
 }
 

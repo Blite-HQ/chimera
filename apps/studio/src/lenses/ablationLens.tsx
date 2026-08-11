@@ -82,6 +82,7 @@ export const ablationLens: DomainLens = {
   id: 'ablacion',
   label: 'Ablación',
   appliesTo: (context: LensContext) =>
-    context.capabilityIds.some(id => OPTIMIZATION_CAPABILITIES.has(id)),
+    context.capabilityIds.some(id => OPTIMIZATION_CAPABILITIES.has(id)) ||
+    (context.offeredAblationVariants ?? []).length > 0,
   render: (context: LensContext) => <AblationLensView runId={context.runId} />
 };

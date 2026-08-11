@@ -104,14 +104,20 @@ export function GridLensView({ runId }: { readonly runId: string }): React.React
   );
 
   // O7/#173.2 — la fuente del dato geoespacial es el content store genérico
-  // del proyecto, jamás un fixture bundleado. Solo se piden bytes cuando hay
-  // algo verificado que pintar (`overlay !== null`): sin partición no hace
-  // falta el archivo, y pedirlo antes de tiempo desperdiciaría el fetch.
-  const filesQuery = useQuery({ ...filesQueryOptions(), enabled: live && overlay !== null });
+  // del proyecto, jamás un fixture bundleado.
+  //
+  // El mapa NO depende de que exista una partición verificada: pintar la
+  // geografía que el proyecto ofrece es el artifact genérico, y la partición
+  // por isla es una SUPERPOSICIÓN opcional encima. Atarlos (como estaban)
+  // dejaba la tab visible y vacía aunque el dato estuviera cargado —
+  // verificado contra compose en CP6 (2026-08-11). Lo que sigue intacto es la
+  // regla de #88: sin veredicto no se COLOREA isla alguna, que es distinto de
+  // no dibujar el mapa.
+  const filesQuery = useQuery({ ...filesQueryOptions(), enabled: live });
   const geoFile = filesQuery.data?.find(file => isGeospatialMediaType(file.media_type));
   const geoDatasetQuery = useQuery({
     ...geospatialDatasetQueryOptions(geoFile?.digest ?? '', geoFile?.filename),
-    enabled: live && overlay !== null && geoFile !== undefined
+    enabled: live && geoFile !== undefined
   });
 
   if (live) {
@@ -124,14 +130,6 @@ export function GridLensView({ runId }: { readonly runId: string }): React.React
               : 'No se pudo leer la topología de este run.'
           }
           onRetry={() => void topology.refetch()}
-        />
-      );
-    }
-    if (overlay === null) {
-      return (
-        <EmptyState
-          title="Este run no produjo una partición verificada por isla."
-          hint="El mapa se pinta desde `verification.completed`: hace falta una corrida sobre esta instancia cuyo verificador emita constancia POR ISLA. Sin eso no se colorea nada — un color por isla sin veredicto sería un badge inventado."
         />
       );
     }
@@ -150,8 +148,8 @@ export function GridLensView({ runId }: { readonly runId: string }): React.React
     if (geoFile === undefined) {
       return (
         <EmptyState
-          title="Hay una partición verificada, pero el proyecto no tiene un archivo geoespacial para pintarla."
-          hint="El mapa es un artifact genérico (O7): sube un GeoJSON al proyecto (`POST /files`) — el componente funciona con cualquier dataset, no solo con el del ICE."
+          title="Este proyecto no ofrece ningún archivo geoespacial para pintar."
+          hint="El mapa es un artifact genérico (O7) disparado por el TIPO de dato: subí un GeoJSON al proyecto (`POST /files`) y se pinta — funciona con cualquier dataset, no solo con el del ICE. Si además el run produce una partición verificada por isla, se superpone encima."
         />
       );
     }
@@ -170,7 +168,12 @@ export function GridLensView({ runId }: { readonly runId: string }): React.React
         />
       );
     }
-    return <DataFormatRouter dataset={geoDatasetQuery.data} overlay={toGeoOverlay(overlay)} />;
+    return (
+      <DataFormatRouter
+        dataset={geoDatasetQuery.data}
+        overlay={overlay === null ? undefined : toGeoOverlay(overlay)}
+      />
+    );
   }
 
   return (

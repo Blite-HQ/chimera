@@ -28,6 +28,7 @@ import {
   artifactsQueryOptions,
   fileDownloadUrl,
   filesQueryOptions,
+  ablationQueryOptions,
   certificateQueryOptions,
   knowledgeQueryOptions,
   runEventsQueryOptions,
@@ -130,6 +131,10 @@ export function RunDetailScreen({
   // (una lente de render geoespacial se reconoce por el TIPO de dato ofrecido,
   // no solo por capabilities de un dominio concreto).
   const filesQuery = useQuery(filesQueryOptions());
+  // #177/CP6 — en un run modo ablación los brazos son SUB-RUNS: el stream del
+  // raíz no trae capabilities, así que sin esto la lente de ablación nunca
+  // aplicaría al único run que SÍ tiene la agregación.
+  const ablationQuery = useQuery(ablationQueryOptions(runId));
   const { revealedEvents, playback } = usePlaybackReveal(runEvents);
   const [selectedGlobalSeq, setSelectedGlobalSeq] = useState<number | undefined>(undefined);
   const [timelineViewMode, setTimelineViewMode] = useState<'tree' | 'timeline'>('tree');
@@ -231,7 +236,8 @@ export function RunDetailScreen({
     runId,
     runEvents,
     certificateQuery.data?.envelope.payload.predicate.conclusions ?? [],
-    filesQuery.data ?? []
+    filesQuery.data ?? [],
+    ablationQuery.data ?? []
   );
   const lenses = resolveLenses(DOMAIN_LENSES, lensContext).map(lens => ({
     id: lens.id,

@@ -42,6 +42,17 @@ export interface LensContext {
    * existentes de este contexto que todavía no lo declaran.
    */
   readonly offeredMediaTypes?: readonly string[];
+  /**
+   * Variantes que `GET /runs/{run_id}/ablation` agrega para ESTE run.
+   *
+   * Misma doctrina que `offeredMediaTypes`: la lente se reconoce por lo que
+   * el run OFRECE. Hace falta porque en un run modo ablación (#177) los
+   * brazos son SUB-RUNS: las capabilities corren en SUS streams, y el del
+   * raíz solo trae `run.created` — pero el raíz es justo el único que tiene
+   * la agregación. Mirando solo `capabilityIds`, el panel existía y ninguna
+   * tab lo mostraba (hueco destapado por CP6 vivo, 2026-08-11).
+   */
+  readonly offeredAblationVariants?: readonly string[];
 }
 
 /**

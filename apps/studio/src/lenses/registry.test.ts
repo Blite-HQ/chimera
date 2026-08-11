@@ -149,3 +149,28 @@ describe('el fixture de réplica ofrece las señales que el wire real ofrece', (
     expect(ids).toContain('ablacion');
   });
 });
+
+describe('un run de ablación se reconoce por lo que OFRECE, no por sus capabilities', () => {
+  // CP6 vivo (2026-08-11) destapó el hueco: en un run modo ablación las
+  // capabilities corren en los SUB-RUNS, así que el stream del raíz solo
+  // trae `run.created` — y el raíz es justo el único que tiene la
+  // agregación de `GET /runs/{id}/ablation`. Con `appliesTo` mirando solo
+  // `capabilityIds`, el panel existía y nadie podía verlo.
+  it('la lente de ablación aplica cuando el raíz ofrece variantes', () => {
+    const context = deriveLensContext(
+      'run-raiz',
+      [],
+      [],
+      [],
+      [{ variant: 'quantum' }, { variant: 'classical' }]
+    );
+
+    expect(resolveLenses(DOMAIN_LENSES, context).map(l => l.id)).toContain('ablacion');
+  });
+
+  it('sin variantes ofrecidas ni capabilities, la lente NO aparece', () => {
+    const context = deriveLensContext('run-vacio', [], [], [], []);
+
+    expect(resolveLenses(DOMAIN_LENSES, context).map(l => l.id)).not.toContain('ablacion');
+  });
+});
