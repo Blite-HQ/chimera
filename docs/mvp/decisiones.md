@@ -4209,3 +4209,92 @@ las toma otro agente por decisión de Dylan (2026-08-06).
 - `verify_corpus_digests` **24/24 internos, 24/24 contra tabla pinneada**
 - gitleaks **sin hallazgos** en árbol e historia (era lo que tenía roja la
   compuerta Security — ver el arreglo de la allowlist)
+
+## Sesión de CONTROL — cierre de Mejorado (2026-08-10)
+
+### #170 — la colisión de numeración se resuelve por SUFIJO, no por renumeración
+
+Las sesiones paralelas V y O anexaron al ledger en sus ramas y ambas arrancaron
+en #153: V usó #153–#159 (bloque «sesión VISUAL/CIENCIA») y O usó #153–#169
+(bloque «sesión PLATAFORMA»). Los commits de ambas —ya pusheados y PÚBLICOS—
+citan sus números; renumerar cualquiera de los dos lados desincronizaría la
+historia publicada del ledger. **Decisión:** los números duplicados se citan con
+sufijo de dominio (`#153-V`…`#159-V` / `#153-O`…`#169-O`) y la secuencia
+continua retoma aquí, en #170. La regla para futuras olas paralelas: la sesión
+de control ASIGNA el rango a cada sesión en el prompt (p. ej. «usá #2xx»), para
+que la colisión no vuelva a existir.
+
+### #171 — validación de los merges V+O, y el veredicto terminado ≠ completado
+
+V y O se auto-mergearon a `mejorado/base` sin pasar por control (11d2044 y
+470e72c). Gates re-corridos EN VIVO sobre `HEAD @470e72c` en el repo principal:
+
+| gate               | resultado                                              |
+| ------------------ | ------------------------------------------------------ |
+| `uv run pytest`    | **1593 passed / 12 skipped / 1 xfailed / 4 xpassed**   |
+| cobertura          | **90.87%**                                             |
+| `lint-imports`     | 18 contratos kept, 0 broken                            |
+| `ruff check` + fmt | limpios (los 20 archivos rojos del handoff V: FIJADOS) |
+| `pyright`          | 0                                                      |
+| studio `test:run`  | **327 passed / 34 files** · eslint 0                   |
+| `pnpm run arch`    | **0 violaciones** (el bloqueador del job Web: MUERTO)  |
+| docs gate          | limpio                                                 |
+
+Los merges quedan CONVALIDADOS. Pero la fase NO está completa: **C-2 no tiene
+rastro en el repo** (ni rama local/remota ni entradas) — Dylan indica que pudo
+haber corrido en su laptop sin push; **queda EN ESPERA de su verificación**. Si
+existe: la sube, control la valida y mergea como checkpoint normal. Si no: su
+destino se decide junto con la sesión estratégica (ver #173).
+
+### #172 — `main` PÚBLICA sincronizada: el repo deja de mostrar el árbol viejo
+
+Hallazgo: el repo es público con `main` como default y `main` estaba ~113
+commits atrás — la cara pública era el árbol de la hackathon, con 14 alertas
+dependabot que #163/#165 ya habían cerrado en `mejorado/base`. Con autorización
+de Dylan (hoy): push fast-forward `0810d0a..470e72c` a `main`. Sin reescritura
+de historia; reversible retrocediendo la ref. Efecto: QUICKSTART, retos 2/3,
+Studio y los fixes de seguridad son ahora lo que un externo ve.
+
+### #173 — los reencuadres de Dylan (2026-08-10): qué entra al cierre y qué va a visión
+
+Dylan, disconforme con el estado del proyecto (features a medias, docs en caos,
+agentes con contexto viejo), fija dirección. Registrado como decisiones:
+
+1. **ICE = caso de uso / datos de prueba, jamás activo del producto.** Se
+   ratifica la opción (b) del handoff de plataforma §1.1: sale el geojson crudo,
+   se conserva lo derivado (que ancla la evidencia de Nexus), con las dos
+   comprobaciones previas (índices de nexus + fixture propio para
+   `test_geojson_to_graph.py`). Su único uso legítimo: CI, e2e, validación.
+2. **El mapa es un ARTIFACT genérico de render geoespacial** disparado por el
+   TIPO de dato (geojson/csv/json) o la salida del agente — al estilo de los
+   artifacts de chat de Claude/ChatGPT. Ratifica el reencuadre del 2026-08-08:
+   O7 se rediseña en el registry de lentes, no como vista del shell. El sistema
+   COMPLETO de artifacts (editores, plano cartesiano, documentos, imágenes) es
+   backlog de la fase VISIÓN.
+3. **El saneamiento documental FINAL entra al cierre** (era el «refactoring
+   documental final» diferido en #108–#118): la estructura y actualización de
+   docs «se hace cada vez más insostenible» (Dylan).
+4. **Auth/authz, sistema organizacional y chat se COMPLETAN** — «clave y
+   necesario»: flip 401-obligatorio, tabla `projects` (ceremonia sobre
+   `docs/esquema-datos-v2.md` con el DDL ya propuesto), formalización mínima de
+   projects/workspaces (nunca se documentó), approval card contra un
+   `approval.requested` real, cert 409 silenciado, P10 vivo.
+5. **Nuevas capacidades de valor** (editor tipo Overleaf, suite completa de
+   datos, research/deep-search, pipeline de publicación de papers, benchmark vs
+   co-scientist y afines) → **backlog de la fase VISIÓN**; la sesión
+   estratégica (Marco/valor/público meta) las ordena. No entran al cierre.
+6. **V6/V7 REENCUADRADOS:** Nexus era requisito de la hackathon. El camino
+   generalista ya existe — el patrón capability/MCP gobernada (#166-O); un
+   backend cuántico concreto es un plugin de distribución, no core. V6-como-
+   estaba se cierra por reencuadre; V7 (tradeoff QEC medido) pasa a visión.
+
+### #174 — plan de cierre y el arreglo de raíz del contexto viejo
+
+El plan de cierre vive en `docs/mejorado/09-cierre.md`: inventario completo
+terminado→completado, tres frentes de implementación (CIERRE-PRODUCTO,
+CIERRE-PLATAFORMA/CIENCIA, SANEAMIENTO-FINAL) + acciones de control, con rangos
+de numeración asignados (#180+/#200+/#220+). Y se crea **`CLAUDE.md` en la raíz
+del repo** — el arreglo de raíz al problema que Dylan señala («los agentes se
+quedan con contexto viejo y sacan conclusiones absurdas»): estado actual del
+proyecto como PRODUCTO, autoridades, reglas duras y gotchas, cargado por
+cualquier agente al abrir el repo.
