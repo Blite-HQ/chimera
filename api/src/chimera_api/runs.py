@@ -62,6 +62,12 @@ from blite.events.store import EventStore
 from blite.gateway.crossing import RunCrossing, build_run_pipeline
 from blite.identity.identity import Identity
 from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
+from blite.runtime.ablation import (
+    DEFAULT_LAYERS,
+    DEFAULT_SEED,
+    build_arms,
+    run_ablation_arms,
+)
 from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.dispatch import Dispatcher, ProfileDispatcher, ServiceStrategy
 from blite.runtime.distribution import load_distribution_manifest
@@ -293,6 +299,32 @@ class MissionRequest(BaseModel):
     """Referencia OPACA a la fila relacional `project` (M15, FUERA del event
     store). El evento no valida FK: la valida el API al crear el run cuando
     P6 exista — hoy viaja tal cual, sin inventar una tabla que no está."""
+
+
+class AblationSpec(BaseModel):
+    """`ablation` del body de `POST /runs` (ceremonia #177,
+    `docs/specs/endpoints-studio.md` §"POST /runs — modo ablación"):
+    instancia del corpus sobre la que corren los brazos + los dos parámetros
+    del brazo cuántico. Sin campo para elegir brazos — el set de variantes
+    lo produce `blite.runtime.ablation.build_arms`, nunca el caller."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    instance_id: str
+    layers: int | None = None
+    seed: int | None = None
+
+
+class AblationRequest(BaseModel):
+    """Body modo ablación de `POST /runs` — discriminado del claim-first y
+    de misión por presencia de campo (`ablation` vs `claim`/`mission`);
+    `extra="forbid"` en los tres lados de la unión hace la discriminación
+    excluyente: un body con dos formas (o ninguna) no valida contra
+    ninguna."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    ablation: AblationSpec
 
 
 class CreateRunResponse(BaseModel):
@@ -887,6 +919,126 @@ def _start_mission_run(
     return CreateRunResponse(run_id=run_id)
 
 
+_ABLATION_ROOT_MAX_STEPS = 8
+"""`max_steps` que el arranque del raíz declara en su propio `run.created` —
+el raíz no ejecuta steps propios (los brazos son sub-runs con su propio
+límite, `blite.runtime.ablation.run_ablation_arms`); mismo valor que
+`scripts/run_ablation.py::run` ya declaraba para el raíz."""
+
+
+def _run_ablation_task(  # noqa: PLR0913 — los mismos parámetros que el resto de las tareas de fondo (store/registry/dispatcher/content) más lo propio de este modo (instance_id/layers/seed)
+    store: EventStore,
+    registry: Registry,
+    dispatcher: Dispatcher,
+    content: ContentStore,
+    *,
+    run_id: str,
+    policy_digest: str,
+    actor_id: str,
+    domain_id: str,
+    instance_id: str,
+    layers: int,
+    seed: int,
+) -> None:
+    """Tarea de fondo del modo ablación (ceremonia #177): emite el
+    `run.created` del raíz, resuelve `instance_id`→matriz por el MISMO
+    camino que el modo misión (`_load_corpus_matrix`), y corre los brazos de
+    V2/M19 (`blite.runtime.ablation.run_ablation_arms`) como sub-runs sobre
+    el registry DEL API (`resources.registry()` — nunca el `_registry()`
+    explícito del script): si una capability de un brazo no resuelve ahí,
+    ESE brazo cierra fail-loud en su propio stream (mismo mecanismo que
+    `capability.job.failed`/`run.failed` de claim-first y misión), jamás un
+    500 del arranque HTTP.
+
+    Instancia desconocida o corpus malformado ⇒ `run.failed` DENTRO del
+    stream del raíz, directo (nunca se llega a construir brazos): el
+    arranque HTTP ya respondió 202, así que lo único que falta es dejar un
+    terminal honesto en el stream, en vez de dejar que la excepción escape
+    y caiga en el guard de último recurso de `run_in_background`."""
+    store.append(
+        stream_id=run_id,
+        type="run.created",
+        actor_id=actor_id,
+        domain_id=domain_id,
+        payload={
+            "run_id": run_id,
+            "actor_id": actor_id,
+            "domain_id": domain_id,
+            "max_steps": _ABLATION_ROOT_MAX_STEPS,
+            "policy_digest": policy_digest,
+        },
+    )
+    try:
+        matrix = _load_corpus_matrix(instance_id)
+    except _MISSION_INSTANCE_ERRORS as exc:
+        store.append(
+            stream_id=run_id,
+            type="run.failed",
+            actor_id=_RUNTIME_ACTOR,
+            domain_id=domain_id,
+            payload={"error_kind": type(exc).__name__},
+        )
+        return
+
+    run_ablation_arms(
+        store,
+        registry,
+        dispatcher,
+        content,
+        root_run_id=run_id,
+        root_policy_digest=policy_digest,
+        actor_id=actor_id,
+        domain_id=domain_id,
+        arms=build_arms(matrix, layers=layers, seed=seed),
+    )
+
+
+def _start_ablation_run(
+    resources: RunResources,
+    body: AblationRequest,
+    background_tasks: BackgroundTasks,
+    identity: Identity,
+) -> CreateRunResponse:
+    """Arranque modo ablación (ceremonia #177, spec §"POST /runs — modo
+    ablación"): agenda los brazos de V2/M19 como sub-runs del raíz que este
+    arranque crea. La regla de brazos (`blite.runtime.ablation.build_arms`)
+    decide QUÉ se compara — el caller solo declara la instancia y,
+    opcionalmente, `layers`/`seed` del brazo cuántico (ausentes ⇒ defaults
+    del productor, `DEFAULT_LAYERS`/`DEFAULT_SEED`)."""
+    run_id = f"run-{uuid4().hex}"
+    policy_digest = hashlib.sha256(resources.policy_bytes).hexdigest()
+    spec = body.ablation
+
+    # Ticket vacío (mismo patrón que misión, decisión #91): los brazos
+    # declaran SUS PROPIAS conclusiones vía `contribute_sub_run_claims` — el
+    # raíz no declara ninguna directo.
+    resources.run_tickets[run_id] = RunTicket(
+        conclusions=(), anchor_descriptors=(), instance_id=spec.instance_id
+    )
+
+    background_tasks.add_task(
+        run_in_background,
+        resources.store,
+        run_id,
+        functools.partial(
+            _run_ablation_task,
+            resources.store,
+            resources.registry(),
+            resources.dispatcher,
+            resources.content,
+            run_id=run_id,
+            policy_digest=policy_digest,
+            actor_id=identity.id,
+            domain_id=_DEFAULT_DOMAIN,
+            instance_id=spec.instance_id,
+            layers=spec.layers if spec.layers is not None else DEFAULT_LAYERS,
+            seed=spec.seed if spec.seed is not None else DEFAULT_SEED,
+        ),
+    )
+
+    return CreateRunResponse(run_id=run_id)
+
+
 def create_runs_router(resources: RunResources) -> APIRouter:
     """Router de `/runs` cerrado sobre la infra de vida-de-app (§14) — un
     `RunResources` por app, compartido con el SSE vía el mismo `store`."""
@@ -894,18 +1046,21 @@ def create_runs_router(resources: RunResources) -> APIRouter:
 
     @router.post("/runs", status_code=202)
     def start_run(
-        body: CreateRunRequest | MissionRequest,
+        body: CreateRunRequest | MissionRequest | AblationRequest,
         background_tasks: BackgroundTasks,
         request: Request,
     ) -> CreateRunResponse:
         # El actor de la request: cookie JWT válida o el operador default
         # del despliegue; cookie inválida ⇒ 401 fail-closed (C2/M2, §9 P1-9).
         identity = resources.session_auth.identity_from(request)
-        # Discriminación por presencia de campo (`mission` vs `claim`) —
-        # `extra="forbid"` en ambos modelos hace la unión excluyente: un
-        # body con ambos (o ninguno) no valida contra ningún lado → 422.
+        # Discriminación por presencia de campo (`claim`/`mission`/
+        # `ablation`) — `extra="forbid"` en los TRES modelos hace la unión
+        # excluyente: un body con dos formas (o ninguna) no valida contra
+        # ningún lado → 422 (ceremonia #177).
         if isinstance(body, MissionRequest):
             return _start_mission_run(resources, body, background_tasks, identity)
+        if isinstance(body, AblationRequest):
+            return _start_ablation_run(resources, body, background_tasks, identity)
         return _start_claim_run(resources, body, background_tasks, identity)
 
     return router

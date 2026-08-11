@@ -34,6 +34,16 @@ nombre, que es peor que una barra ausente.
 
 Correr desde la raíz del repo:
     uv run python scripts/run_ablation.py --instance cr8-uniforme
+
+## Ceremonia #177 (2026-08-11) — cliente delgado
+
+La regla de brazos (`build_arms`) y los lectores de energía
+(`expected_energy_of`/`exact_energy_of`/`mitigated_energy_of`) se movieron a
+`blite.runtime.ablation` para que `chimera_api.runs` (el wire HTTP de
+`POST /runs` modo ablación) los consuma sin importar este archivo —
+`scripts/` no es un paquete instalable. Este script queda como CLIENTE
+delgado de esa función: `load_matrix`/`_registry`/`_row`/`run`/`main` (lo
+propio de la CLI) siguen viviendo acá, comportamiento intacto.
 """
 
 from __future__ import annotations
@@ -42,16 +52,44 @@ import argparse
 import hashlib
 import json
 import os
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from blite.events import create_event_store
-from blite.runtime.ablation import AblationArm, ArmOutcome, run_ablation_arms
+from blite.runtime.ablation import (
+    DEFAULT_LAYERS,
+    DEFAULT_SEED,
+    AblationArm,
+    ArmOutcome,
+    build_arms,
+    exact_energy_of,
+    expected_energy_of,
+    mitigated_energy_of,
+    run_ablation_arms,
+)
 from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.dispatch import ProfileDispatcher
 from blite.runtime.registry import EntryPointRegistry
+
+# `AblationArm`/`ArmOutcome`/`exact_energy_of`/`expected_energy_of`/
+# `mitigated_energy_of` no los usa el código DE ESTE archivo (viven en
+# `blite.runtime.ablation` — ceremonia #177) — re-exportados a propósito:
+# `tests/unit/experiment/test_run_ablation.py` carga este script por ruta y
+# los lee como atributos del módulo (`prod.expected_energy_of`, etc.), mismo
+# patrón que un script CLI cliente delgado que documenta su propia API.
+__all__ = [
+    "AblationArm",
+    "ArmOutcome",
+    "build_arms",
+    "exact_energy_of",
+    "expected_energy_of",
+    "load_matrix",
+    "main",
+    "mitigated_energy_of",
+    "run",
+]
 
 REPO = Path(__file__).resolve().parent.parent
 CORPUS_DIR = REPO / "knowledge" / "islanding" / "corpus"
@@ -60,8 +98,6 @@ OUT_DIR = REPO / "results" / "ablation"
 DOMAIN_ID = "domain-default"
 ACTOR_ID = "user:dylan"
 _DEFAULT_INSTANCE = "cr8-uniforme"
-_DEFAULT_LAYERS = 2
-_DEFAULT_SEED = 1
 
 
 def load_matrix(name: str) -> tuple[list[list[int]], int | None]:
@@ -78,68 +114,6 @@ def load_matrix(name: str) -> tuple[list[list[int]], int | None]:
         matrix[v][u] -= w
     optimo = record.get("optimo")
     return matrix, None if optimo is None else int(optimo)
-
-
-def expected_energy_of(salida: Mapping[str, Any]) -> float | None:
-    """⟨C⟩ del brazo cuántico — el valor ESPERADO, no el best-of-samples.
-
-    Las tres barras tienen que ser la misma CLASE de número o el panel
-    compara peras con manzanas: `energy` es el mejor de 2048 muestras (en
-    instancias chicas alcanza el óptimo casi siempre — artefacto de muestreo,
-    fix 4b) y `mitigated_energy` es un valor esperado. Poner los dos en el
-    mismo eje haría ver a la mitigación peor de lo que es por una razón que
-    no tiene nada que ver con mitigar.
-    """
-    valor = salida.get("expected_energy")
-    return None if valor is None else float(valor)
-
-
-def exact_energy_of(salida: Mapping[str, Any]) -> float | None:
-    """El corte del solver exacto — la barra de referencia del panel.
-
-    CP-SAT no muestrea ni estima: su `energy` ES el óptimo, así que es
-    directamente comparable contra los ⟨C⟩ de los otros brazos (que son
-    esperanzas del MISMO observable).
-    """
-    valor = salida.get("energy")
-    return None if valor is None else float(valor)
-
-
-def mitigated_energy_of(salida: Mapping[str, Any]) -> float | None:
-    """Costo de corte del brazo ZNE — el valor MITIGADO, no el crudo.
-
-    Si la mejora no sobrevivió al control negativo, el brazo NO aporta costo:
-    publicar un número que el propio control desautoriza sería exactamente lo
-    que arXiv:2607.09360 advierte (ver `blite_cap_quantum.zne`).
-    """
-    if not salida.get("improvement_survives_control", False):
-        return None
-    valor = salida.get("mitigated_energy")
-    return None if valor is None else float(valor)
-
-
-def build_arms(matrix: list[list[int]], *, layers: int, seed: int) -> list[AblationArm]:
-    """Los brazos con productor REAL. `mitigated` es V9 y no se declara."""
-    return [
-        AblationArm(
-            variant="quantum",
-            capability_id="blite.quantum.qaoa",
-            inputs={"matrix": matrix, "layers": layers, "seed": seed},
-            cut_cost_from=expected_energy_of,
-        ),
-        AblationArm(
-            variant="classical",
-            capability_id="blite.solvers.qubo",
-            inputs={"matrix": matrix},
-            cut_cost_from=exact_energy_of,
-        ),
-        AblationArm(
-            variant="zne",
-            capability_id="blite.quantum.zne",
-            inputs={"matrix": matrix, "layers": layers, "seed": seed},
-            cut_cost_from=mitigated_energy_of,
-        ),
-    ]
 
 
 def _registry() -> EntryPointRegistry:
@@ -234,8 +208,8 @@ def run(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--instance", default=_DEFAULT_INSTANCE)
-    parser.add_argument("--layers", type=int, default=_DEFAULT_LAYERS)
-    parser.add_argument("--seed", type=int, default=_DEFAULT_SEED)
+    parser.add_argument("--layers", type=int, default=DEFAULT_LAYERS)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--output-dir", default=str(OUT_DIR))
     args = parser.parse_args(argv)
 

@@ -82,6 +82,96 @@ class AblationArm:
             raise ValueError(msg)
 
 
+# ── Regla de brazos (V2) — extraída de `scripts/run_ablation.py` (ceremonia
+# #177): `chimera_api.runs` necesita la MISMA regla para el modo ablación de
+# `POST /runs`, y no puede importar `scripts/run_ablation.py` (no es un
+# paquete instalable — no está en `tool.uv.workspace` ni en el `include` de
+# pyright). El script queda como CLIENTE delgado de lo de acá; su
+# comportamiento no cambia (`tests/unit/experiment/test_run_ablation.py` lo
+# ejercita cargando el script por ruta, como siempre).
+#
+# Lo que vive acá es DATO, nunca ciencia: `capability_id` es un string, jamás
+# un import de `capabilities/*` (ADR-008 — `blite` no importa paquetes de
+# capability). Qué comparar sigue siendo decisión de quien diseña el
+# experimento; esta función solo declara el conjunto con productor real.
+
+DEFAULT_LAYERS = 2
+"""Profundidad QAOA por defecto del brazo cuántico — el valor que
+`scripts/run_ablation.py` ya usaba antes de esta extracción; el productor
+del experimento lo fija, no el runtime."""
+
+DEFAULT_SEED = 1
+"""Semilla por defecto del brazo cuántico — mismo origen que `DEFAULT_LAYERS`."""
+
+
+def expected_energy_of(salida: Mapping[str, Any]) -> float | None:
+    """⟨C⟩ del brazo cuántico — el valor ESPERADO, no el best-of-samples.
+
+    Las tres barras tienen que ser la misma CLASE de número o el panel
+    compara peras con manzanas: `energy` es el mejor de 2048 muestras (en
+    instancias chicas alcanza el óptimo casi siempre — artefacto de muestreo,
+    fix 4b) y `mitigated_energy` es un valor esperado. Poner los dos en el
+    mismo eje haría ver a la mitigación peor de lo que es por una razón que
+    no tiene nada que ver con mitigar.
+    """
+    valor = salida.get("expected_energy")
+    return None if valor is None else float(valor)
+
+
+def exact_energy_of(salida: Mapping[str, Any]) -> float | None:
+    """El corte del solver exacto — la barra de referencia del panel.
+
+    CP-SAT no muestrea ni estima: su `energy` ES el óptimo, así que es
+    directamente comparable contra los ⟨C⟩ de los otros brazos (que son
+    esperanzas del MISMO observable).
+    """
+    valor = salida.get("energy")
+    return None if valor is None else float(valor)
+
+
+def mitigated_energy_of(salida: Mapping[str, Any]) -> float | None:
+    """Costo de corte del brazo ZNE — el valor MITIGADO, no el crudo.
+
+    Si la mejora no sobrevivió al control negativo, el brazo NO aporta costo:
+    publicar un número que el propio control desautoriza sería exactamente lo
+    que arXiv:2607.09360 advierte (ver `blite_cap_quantum.zne`).
+    """
+    if not salida.get("improvement_survives_control", False):
+        return None
+    valor = salida.get("mitigated_energy")
+    return None if valor is None else float(valor)
+
+
+def build_arms(matrix: list[list[int]], *, layers: int, seed: int) -> list[AblationArm]:
+    """Los brazos con productor REAL. `mitigated` es V9 y no se declara —
+    un brazo declarado sin productor sería una barra vacía CON nombre, peor
+    que una barra ausente.
+
+    El caller NO elige brazos: este es el ÚNICO productor del set de
+    variantes — ni el script ni el API (`chimera_api.runs`) exponen forma de
+    pasar otra cosa."""
+    return [
+        AblationArm(
+            variant="quantum",
+            capability_id="blite.quantum.qaoa",
+            inputs={"matrix": matrix, "layers": layers, "seed": seed},
+            cut_cost_from=expected_energy_of,
+        ),
+        AblationArm(
+            variant="classical",
+            capability_id="blite.solvers.qubo",
+            inputs={"matrix": matrix},
+            cut_cost_from=exact_energy_of,
+        ),
+        AblationArm(
+            variant="zne",
+            capability_id="blite.quantum.zne",
+            inputs={"matrix": matrix, "layers": layers, "seed": seed},
+            cut_cost_from=mitigated_energy_of,
+        ),
+    ]
+
+
 def _arm_output(
     store: EventStore, content: ContentStore, sub_run_id: str, domain_id: str
 ) -> Mapping[str, Any] | None:

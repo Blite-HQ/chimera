@@ -101,6 +101,22 @@ class TestLaReglaDePublicacionDelBrazoMitigado:
         assert prod.mitigated_energy_of({"mitigated_energy": 5.94}) is None
 
 
+class TestExtraccionSinDrift:
+    """Ceremonia #177: `build_arms`/los tres lectores de energía se movieron
+    a `blite.runtime.ablation` para que `chimera_api.runs` los consuma sin
+    importar este script (no instalable). El script queda como CLIENTE
+    delgado — esto comprueba que lo es de VERDAD: mismo objeto función, no
+    una reimplementación paralela que podría driftear."""
+
+    def test_el_script_reexporta_los_mismos_objetos_que_el_motor(self) -> None:
+        from blite.runtime import ablation as motor
+
+        assert prod.build_arms is motor.build_arms
+        assert prod.expected_energy_of is motor.expected_energy_of
+        assert prod.exact_energy_of is motor.exact_energy_of
+        assert prod.mitigated_energy_of is motor.mitigated_energy_of
+
+
 class TestBrazosDeclarados:
     def test_declara_los_tres_que_tienen_productor_real(self) -> None:
         # Act
