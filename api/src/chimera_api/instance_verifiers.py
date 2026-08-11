@@ -28,6 +28,16 @@ no necesita: el `csv_digest` embebido en el record se recomputa contra los
 BYTES del CSV hermano — el record pinnea el CSV, así que un CSV swapeado se
 detecta ahí, no solo un JSON tamperado.
 
+Esos dos directorios (`knowledge/tfim/corpus/`, `knowledge/tabular/corpus/`)
+son lo que ESTE despliegue declaró en `datasets:` del `DistributionManifest`
+(decisión #167, G3 residual) — `_load_corpus_dirs_from_manifest` los lee una
+vez al importar el módulo. Ya no son un literal clavado acá: un despliegue
+sirve un corpus nuevo (o mueve uno existente) declarándolo en
+`distributions/chimera/distribution.yaml`, sin tocar este archivo. Un
+despliegue que no declara la familia entera falla cerrado (`None` ⇒
+resolución vacía), la MISMA señal que un slug desconocido dentro de un
+corpus sí declarado.
+
 **Decisión de diseño (leg `ground_truth` de `statistical`, documentada aquí
 porque es la pieza que este módulo decide y no la spec):** un leg
 GROUND_TRUTH necesita valores esperados CONGELADOS. La fuente honesta son
@@ -74,6 +84,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from blite.runtime.distribution import DistributionManifest, load_distribution_manifest
 from blite.verification.anchor import AnchorKind
 from blite.verification.attestation import Attestation, VerifierClass
 from blite.verification.context import InvocationContext
@@ -103,8 +114,47 @@ from chimera_api.corpus_records import load_corpus_record
 # repo (mismo cómputo que `_REPO_ROOT` en chimera_api.runs, misma
 # profundidad de directorio).
 _REPO_ROOT = Path(__file__).parents[3]
-_TFIM_CORPUS_DIR = _REPO_ROOT / "knowledge" / "tfim" / "corpus"
-_TABULAR_CORPUS_DIR = _REPO_ROOT / "knowledge" / "tabular" / "corpus"
+
+# Mismo cómputo que `DISTRIBUTION_MANIFEST_PATH` en `chimera_api.runs` —
+# duplicado a propósito, no importado desde ahí: `runs` importa DE este
+# módulo (`CLAIM_TYPE_VERIFIERS`, `resolve_verifiers`), así que un import de
+# vuelta sería circular.
+_DISTRIBUTION_MANIFEST_PATH = (
+    _REPO_ROOT / "distributions" / "chimera" / "distribution.yaml"
+)
+
+_TFIM_DATASET_ID = "tfim-corpus"
+_TABULAR_DATASET_ID = "tabular-corpus"
+
+
+def _dataset_corpus_dir(manifest: DistributionManifest, dataset_id: str) -> Path | None:
+    """Resuelve el directorio de instancias que ESTE despliegue declaró para
+    `dataset_id` en `datasets:` (decisión #167, G3 residual) — `None` si el
+    despliegue no lo declaró: ninguna instancia de esa familia ampara nada,
+    la MISMA señal fail-closed que hoy da un slug desconocido
+    (`resolve_verifiers` responde vacío, `chimera_api.runs` corta 400 —
+    jamás un 500 por un despliegue que no declaró el dataset)."""
+    spec = manifest.datasets.get(dataset_id)
+    if spec is None:
+        return None
+    return _REPO_ROOT / spec.path
+
+
+def _load_corpus_dirs_from_manifest() -> tuple[Path | None, Path | None]:
+    """Se lee UNA vez al importar el módulo — mismo espíritu que
+    `chimera_api.runs._build_dispatcher`/`_build_model_backend`: configura-
+    ción de despliegue, no de request. `datasets:` reemplaza acá las dos
+    rutas que este módulo tenía clavadas antes (#167, G3 residual): declarar
+    un corpus nuevo (o mover uno existente) en el manifest alcanza, sin
+    tocar este archivo."""
+    manifest = load_distribution_manifest(_DISTRIBUTION_MANIFEST_PATH)
+    return (
+        _dataset_corpus_dir(manifest, _TFIM_DATASET_ID),
+        _dataset_corpus_dir(manifest, _TABULAR_DATASET_ID),
+    )
+
+
+_TFIM_CORPUS_DIR, _TABULAR_CORPUS_DIR = _load_corpus_dirs_from_manifest()
 
 _SOLVER_VERIFIER_ID = "verifier:cpsat-differential"
 _SOLVER_INDEPENDENCE_GROUP = "leg-formal"
@@ -325,12 +375,22 @@ def _load_json_corpus_record(directory: Path, slug: str) -> dict[str, Any] | Non
 
 
 def _load_tfim_corpus_record(slug: str) -> dict[str, Any] | None:
-    """Corpus C3 (`knowledge/tfim/corpus/`) — ver `_load_json_corpus_record`."""
+    """Corpus C3 (declarado en `datasets: tfim-corpus` del manifest, ver
+    `_load_corpus_dirs_from_manifest`) — ver `_load_json_corpus_record`.
+    Despliegue que no declaró el dataset ⇒ `None` sin tocar el filesystem,
+    la MISMA resolución vacía que da un slug desconocido."""
+    if _TFIM_CORPUS_DIR is None:
+        return None
     return _load_json_corpus_record(_TFIM_CORPUS_DIR, slug)
 
 
 def _load_tabular_corpus_record(slug: str) -> dict[str, Any] | None:
-    """Corpus C2 (`knowledge/tabular/corpus/`) — ver `_load_json_corpus_record`."""
+    """Corpus C2 (declarado en `datasets: tabular-corpus` del manifest, ver
+    `_load_corpus_dirs_from_manifest`) — ver `_load_json_corpus_record`.
+    Despliegue que no declaró el dataset ⇒ `None` sin tocar el filesystem,
+    la MISMA resolución vacía que da un slug desconocido."""
+    if _TABULAR_CORPUS_DIR is None:
+        return None
     return _load_json_corpus_record(_TABULAR_CORPUS_DIR, slug)
 
 
@@ -345,6 +405,8 @@ def _load_tabular_labels(slug: str, record: dict[str, Any]) -> tuple[int, ...] |
     congelada del leg `ground_truth` (ver docstring del módulo, diseño C2);
     cargarlos aquí, server-side, es precisamente lo que evita que el
     verificador tenga que tomarle la palabra al proponente."""
+    if _TABULAR_CORPUS_DIR is None:
+        return None
     path = _TABULAR_CORPUS_DIR / f"{slug}.csv"
     if not path.is_file():
         return None

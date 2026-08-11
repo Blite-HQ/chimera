@@ -18,6 +18,7 @@ import pytest
 from chimera_api import instance_verifiers
 from chimera_api.instance_verifiers import CLAIM_TYPE_VERIFIERS, resolve_verifiers
 
+from blite.runtime.distribution import DatasetSpec, DistributionManifest
 from blite.verification.exact_diagonalization import ExactDiagonalizationVerifier
 from blite.verification.exact_solver import ExactSolverVerifier
 from blite.verification.execution import ExecutionVerifier
@@ -410,3 +411,145 @@ class TestStatisticalFailClosed:
         resolution = resolve_verifiers(claim_type="statistical", instance_id="fake")
 
         assert len(resolution.verifiers) == 2
+
+
+def _build_dataset_spec(path: str) -> DatasetSpec:
+    """Fábrica mínima de `DatasetSpec` para los tests de resolución — los
+    campos legales (`license`/`url`/`description`) no importan para la
+    resolución de RUTAS, así que van con valores triviales no vacíos (el
+    `field_validator` de `DatasetSpec` los exige)."""
+    return DatasetSpec(path=path, description="d", license="l", url="u")
+
+
+class TestDatasetCorpusDirResolution:
+    """`_dataset_corpus_dir` — la pieza pura que reemplaza las rutas de
+    corpus clavadas por resolución vía `datasets:` del manifest (decisión
+    #167, G3 residual): un directorio de corpus SALE de configuración, no
+    de un literal en `instance_verifiers.py`."""
+
+    def test_dataset_declarado_resuelve_bajo_repo_root(self) -> None:
+        # Arrange
+        manifest = DistributionManifest(
+            datasets={"tfim-corpus": _build_dataset_spec("knowledge/tfim/corpus")}
+        )
+
+        # Act
+        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")
+
+        # Assert
+        assert (
+            resolved == instance_verifiers._REPO_ROOT / "knowledge" / "tfim" / "corpus"
+        )
+
+    def test_dataset_no_declarado_da_none(self) -> None:
+        # Arrange
+        manifest = DistributionManifest(datasets={})
+
+        # Act
+        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")
+
+        # Assert — ningún literal rescata un dataset que el despliegue no
+        # declaró; `None` es la señal para que el caller falle cerrado.
+        assert resolved is None
+
+
+class TestCorpusDirDesdeElManifestReal:
+    """Los módulos globales `_TFIM_CORPUS_DIR`/`_TABULAR_CORPUS_DIR` se
+    cargan UNA vez, al importar, desde `datasets:` del manifest REAL del
+    despliegue (`distributions/chimera/distribution.yaml`) — no-regresión:
+    mismo directorio que la ruta literal que reemplazan, pero YA NO
+    hardcodeado en este archivo."""
+
+    def test_tfim_resuelve_al_mismo_directorio_que_antes(self) -> None:
+        assert instance_verifiers._TFIM_CORPUS_DIR == (
+            instance_verifiers._REPO_ROOT / "knowledge" / "tfim" / "corpus"
+        )
+
+    def test_tabular_resuelve_al_mismo_directorio_que_antes(self) -> None:
+        assert instance_verifiers._TABULAR_CORPUS_DIR == (
+            instance_verifiers._REPO_ROOT / "knowledge" / "tabular" / "corpus"
+        )
+
+
+class TestCorpusDeclaradoSoloEnElManifest:
+    """La prueba de que la ruta ya NO está clavada en código: un corpus que
+    vive en un directorio DISTINTO del literal `knowledge/tfim/corpus` —
+    el que dice el manifest, ninguno otro, con un nombre que este archivo
+    jamás menciona — resuelve y ampara su instancia igual."""
+
+    def test_instancia_en_directorio_declarado_solo_en_manifest_resuelve(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import hashlib
+
+        # Arrange — "despliegue" ficticio: la raíz es tmp_path, y el
+        # manifest declara el corpus bajo un directorio que el código nunca
+        # nombra (`otro-directorio-de-corpus`).
+        monkeypatch.setattr(instance_verifiers, "_REPO_ROOT", tmp_path)
+        corpus_dir = tmp_path / "otro-directorio-de-corpus"
+        corpus_dir.mkdir()
+
+        record_sin_digest = {
+            "dataset_id": "tfim-corpus/fake@v1",
+            "instancia": "fake",
+            "tolerancia_relativa": 0.05,
+            "observables_z": [{"label": "Z0", "pauli": "Z"}],
+            "serie_z": [0.1],
+            "observables_zz": [],
+            "serie_zz": [],
+        }
+        digest = hashlib.sha256(
+            json.dumps(
+                record_sin_digest,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+            ).encode()
+        ).hexdigest()
+        record = {**record_sin_digest, "digest": digest}
+        (corpus_dir / "fake.json").write_text(json.dumps(record), encoding="utf-8")
+
+        manifest = DistributionManifest(
+            datasets={"tfim-corpus": _build_dataset_spec("otro-directorio-de-corpus")}
+        )
+        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")
+        assert resolved == corpus_dir
+        monkeypatch.setattr(instance_verifiers, "_TFIM_CORPUS_DIR", resolved)
+
+        # Act
+        resolution = resolve_verifiers(
+            claim_type="simulation_result", instance_id="fake"
+        )
+
+        # Assert
+        assert len(resolution.verifiers) == 2
+
+
+class TestCorpusFamiliaNoDeclaradaEnManifest:
+    """Un despliegue que no declara la familia ENTERA (no solo una instancia
+    dentro de ella) falla cerrado, jamás con un 500 ni tocando el filesystem
+    con una ruta que no existe — misma disciplina que un slug desconocido."""
+
+    def test_tfim_sin_declarar_en_el_manifest_no_ampara_nada(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(instance_verifiers, "_TFIM_CORPUS_DIR", None)
+
+        resolution = resolve_verifiers(
+            claim_type="simulation_result", instance_id=_TFIM_SLUG_REAL
+        )
+
+        assert resolution.verifiers == ()
+        assert resolution.anchor_descriptors == ()
+
+    def test_tabular_sin_declarar_en_el_manifest_no_ampara_nada(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(instance_verifiers, "_TABULAR_CORPUS_DIR", None)
+
+        resolution = resolve_verifiers(
+            claim_type="statistical", instance_id=_TABULAR_SLUG_REAL
+        )
+
+        assert resolution.verifiers == ()
+        assert resolution.anchor_descriptors == ()
