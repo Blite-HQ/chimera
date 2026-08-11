@@ -52,3 +52,7 @@ pnpm run docs:lint && pnpm run format:check
 - Tras mergear paquetes nuevos: `uv sync --locked --all-packages --all-extras`
   (sin `--all-packages` DESINSTALA miembros del workspace).
 - La suite del Studio es sensible a carga de máquina (timeouts de 5s).
+- Si `docker compose build` falla con `error getting credentials` /
+  `desktop.exe`: el `~/.docker/config.json` declara un credsStore ausente en
+  esta distro. Workaround: `export DOCKER_CONFIG=$(mktemp -d) && echo '{}' >
+$DOCKER_CONFIG/config.json` antes del build (#150).
