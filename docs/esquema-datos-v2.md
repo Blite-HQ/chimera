@@ -101,9 +101,22 @@ CREATE TABLE channels (
     allows         TEXT[] NOT NULL,              -- {read, invoke, egress}
     PRIMARY KEY (from_domain_id, to_domain_id)
 );
+
+-- [MEJORADO · ceremonia #176 · 2026-08-11] La fila organizacional de P6/M15.
+-- run.created.project_id es referencia OPACA (S-A Contrato-4): el evento NO
+-- valida FK — la valida el API al crear el run. Fuera del event store.
+CREATE TABLE projects (
+    id          TEXT PRIMARY KEY,
+    domain_id   TEXT NOT NULL REFERENCES domains (id),
+    name        TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 ```
 
 En Fase 1 existe un solo dominio; el constructo está presente aunque el dominio sea único.
+`projects` (ceremonia #176) agrupa runs dentro de un dominio — el Studio ya la consume
+(`AppShell` acepta `projects`/`onProjectChange`; el router lleva `:proj`): se termina
+llenando datos, sin reescribir rutas.
 
 ---
 

@@ -106,6 +106,36 @@ jamás en la respuesta HTTP.
   `GET /runs/{id}/certificate` no da 404 por desconocido, y sin conclusiones no se fabrica
   certificado — honestidad, no error.
 
+## POST /runs — modo ablación (extensión ADITIVA, ceremonia #177, 2026-08-11)
+
+> **[CONTROL 2026-08-11, decisión #177]** Tercera forma de body, discriminada por
+> presencia de campo como las dos anteriores (`claim` · `mission` · `ablation`;
+> `extra="forbid"` ⇒ un body con dos formas es 422). Contrato registrado por control
+> (frontera declarada por la sesión V); el wire lo implementa el frente F2 de
+> `docs/mejorado/09-cierre.md` — el mecanismo completo ya existe y está probado
+> (`blite.runtime.ablation` + `scripts/run_ablation.py`), solo falta la puerta HTTP.
+
+```
+POST /runs
+{
+  ablation: {
+    instance_id: str,     // instancia del corpus sobre la que corren los brazos
+    layers?: int,         // profundidad QAOA del brazo cuántico (default del productor)
+    seed?: int            // reproducibilidad (default del productor)
+  }
+}
+```
+
+- **Respuesta:** `202 {run_id}` — idéntica a claim-first y misión; el resultado vive
+  en el stream.
+- **Los brazos corren como SUB-RUNS del run** (V2/M19, freeze §13): cada brazo emite
+  sus claims y el cierre métrico se DERIVA del log, jamás se declara.
+- **Los brazos NO los elige el caller:** los produce la regla de V2 (quantum ⟨C⟩ ·
+  classical · zne solo si su mejora sobrevive al control negativo, #158-V). El brazo
+  `mitigated` entra cuando V9 exista.
+- **Fail-loud intacto:** instancia desconocida ⇒ `202` + `run.failed` DENTRO del
+  stream (el arranque HTTP solo falla por errores del REQUEST).
+
 ### Resolución instancia→inputs (capabilities reales, cierra "Análisis para discusión" #1)
 
 > **[S3 2026-07-30]** (Resolución de dominio Reto-1 — lente, no contrato genérico): esta

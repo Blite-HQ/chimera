@@ -9,28 +9,30 @@
 
 ### A. Estado incierto
 
-| ítem                            | estado                                                            | siguiente paso                                                                                           |
-| ------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **C-2** (C3→C11 + C12–C15, CP7) | sin rastro en el repo; pudo correr en la laptop de Dylan sin push | Dylan verifica; si existe → push y control valida/mergea; si no → decisión junto a la sesión estratégica |
+| ítem                            | estado                                                                    | siguiente paso |
+| ------------------------------- | ------------------------------------------------------------------------- | -------------- |
+| **C-2** (C3→C11 + C12–C15, CP7) | **VALIDADA Y CONVALIDADA (#175)** — mergeada @52c90fa, gates vivos verdes | — cerrado      |
 
 ### B. Bloqueados-por-Dylan (insumos humanos)
 
-- **P8 branding** — faltan las 21 referencias visuales.
-- **Grabar la sesión agéntica real** — API key de Dylan; runbook en #145.
+- **P8 branding** — **DESBLOQUEADO (#175)**: las 21 referencias están en
+  `~/projects/blite/hackathons/2026/Quantathon/branding-refs/`; entra a F1.
+- **Grabar la sesión agéntica real** — API key de Anthropic de Dylan (la
+  grabación paga llamadas reales del proposer); runbook en #145.
 - **Sesión estratégica** (valor/público/Marco) — ordena el backlog de VISIÓN.
 
 ### C. Acciones y ceremonias de CONTROL
 
-| acción                                                                       | estado                                                      |
-| ---------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Colisión de numeración del ledger                                            | RESUELTA (#170, sufijos -V/-O)                              |
-| `main` pública sincronizada                                                  | HECHA (#172)                                                |
-| `CLAUDE.md` (contexto fresco para agentes)                                   | HECHO (#174)                                                |
-| Ceremonia tabla `projects` (`docs/esquema-datos-v2.md`, DDL en handoff P-ui) | pendiente — control la registra, CIERRE-PRODUCTO implementa |
-| Ceremonia 3.ª forma de body `POST /runs` (ablación; spec endpoints-studio)   | pendiente — ídem, para el wire de CP6                       |
-| Ceremonia fusión `ExternalImportStatement` + `McpToolImport` (C-12)          | pendiente — puede esperar a C-2                             |
-| Podar `ejercicio/sf-ratificacion-simulada` y ramas viejas remotas            | pendiente (handoff O §3.2)                                  |
-| Historia del repo (pasada integral)                                          | POST-Mejorado por decisión previa                           |
+| acción                                                                       | estado                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Colisión de numeración del ledger                                            | RESUELTA (#170, sufijos -V/-O)                          |
+| `main` pública sincronizada                                                  | HECHA (#172)                                            |
+| `CLAUDE.md` (contexto fresco para agentes)                                   | HECHO (#174)                                            |
+| Ceremonia tabla `projects` (`docs/esquema-datos-v2.md`, DDL en handoff P-ui) | **HECHA (#176)** — F1 llena datos y valida FK en el API |
+| Ceremonia 3.ª forma de body `POST /runs` (ablación; spec endpoints-studio)   | **HECHA (#177)** — F2 implementa el wire                |
+| Ceremonia fusión `ExternalImportStatement` + `McpToolImport` (C-12)          | pendiente — puede esperar a C-2                         |
+| Podar `ejercicio/sf-ratificacion-simulada` y ramas viejas remotas            | pendiente (handoff O §3.2)                              |
+| Historia del repo (pasada integral)                                          | POST-Mejorado por decisión previa                       |
 
 ### D. Implementación pendiente → tres frentes
 
@@ -95,3 +97,69 @@ Editor tipo Overleaf · sistema completo de artifacts de chat · suite de datos
 (todas las etapas) · research/deep-search · pipeline de publicación de papers ·
 benchmark vs co-scientist y afines · V7 QEC medido · destino del diferenciador
 de confianza (análisis Marco).
+
+## 5 · Prompts de lanzamiento
+
+Los tres se pegan tal cual en una sesión nueva del repo principal. CLAUDE.md ya
+carga el contexto base; el bloque REGLAS de `05-plan-paralelo.md` §4 sigue
+vigente y se pega también.
+
+### F1 · CIERRE-PRODUCTO
+
+> Eres la sesión CIERRE-PRODUCTO del cierre de Mejorado. Creá el worktree
+> `mejorado/cierre-producto` desde `mejorado/base`. Lee PRIMERO: `CLAUDE.md` ·
+> `docs/mejorado/09-cierre.md` (tu alcance es §2·F1 completo) · el bloque
+> REGLAS de `docs/mejorado/05-plan-paralelo.md` §4 · el handoff P-ui (bloque
+> «Sesión PRODUCTO-STUDIO» del ledger) · decisiones #170–#177. Tu rango de
+> ledger: **#180–#199**. Modo #121: Opus orquesta → Sonnet implementa → Opus
+> valida.
+>
+> Notas de alcance: la tabla `projects` YA existe (ceremonia #176) — te toca
+> datos, validación de FK en el API al crear el run, y el doc corto de
+> projects/workspaces. P8 branding está DESBLOQUEADO: las 21 referencias están
+> en `~/projects/blite/hackathons/2026/Quantathon/branding-refs/`; la decisión
+> red-de-nodos vs 3-barras y el sistema 16px se toman CON Dylan
+> (AskUserQuestion) antes de implementar. DoD: gates completos verdes +
+> verificación VIVA contra compose de cada ítem (401, chat con
+> `approval.requested` real, P10, files). Cierre: registro en ledger + tabla de
+> interacciones + handoff a control. Nada de push sin coordinación.
+
+### F2 · CIERRE-PLATAFORMA/CIENCIA
+
+> Eres la sesión CIERRE-PLATAFORMA/CIENCIA del cierre de Mejorado. Creá el
+> worktree `mejorado/cierre-plataforma` desde `mejorado/base`. Lee PRIMERO:
+> `CLAUDE.md` · `docs/mejorado/09-cierre.md` (tu alcance es §2·F2 completo) ·
+> el bloque REGLAS de `docs/mejorado/05-plan-paralelo.md` §4 · el handoff de
+> plataforma (`docs/mejorado/08-handoff-plataforma.md`) y el handoff V (bloque
+> «sesión VISUAL/CIENCIA» del ledger) · decisiones #170–#177. Tu rango de
+> ledger: **#200–#219**. Modo #121: Opus orquesta → Sonnet implementa → Opus
+> valida.
+>
+> Notas de alcance: la 3.ª forma de body de `POST /runs` YA está registrada
+> (ceremonia #177) — implementá el wire exactamente como la spec lo declara.
+> Para ICE opción (b): las dos comprobaciones del handoff §1.1 son OBLIGATORIAS
+> antes de sacar el geojson crudo. DoD: gates completos verdes + CP6 VIVO
+> contra compose (ablación E2E: mapa + panel + curva en el Studio). Cierre:
+> registro en ledger + tabla de interacciones + handoff a control. Nada de push
+> sin coordinación. F1 corre en paralelo en otro worktree: el venv es
+> compartido — cualquier cambio de dependencias se coordina con control ANTES
+> de aplicarlo.
+
+### F3 · SANEAMIENTO-FINAL (lanzar SOLO tras el merge de F1+F2)
+
+> Eres la sesión SANEAMIENTO-FINAL del cierre de Mejorado. Creá el worktree
+> `mejorado/saneamiento-final` desde `mejorado/base` (ya con F1+F2 mergeados).
+> Lee PRIMERO: `CLAUDE.md` · `docs/mejorado/09-cierre.md` §2·F3 ·
+> `docs/mejorado/06-saneamiento.md` y `07-censo-documental.md` (tu antecesor y
+> su censo) · decisiones #170–#177 y los handoffs de F1/F2. Tu rango de ledger:
+> **#220–#239**. Modo #121.
+>
+> Alcance: el refactoring documental final diferido en #108–#118 — reestructurar
+> docs, actualizarlos a TODO lo que cambió en la fase, purgar lo obsoleto,
+> decidir el destino del ledger (partirlo/moverlo) CON control, y las
+> anotaciones sueltas heredadas (incluido el rename del remoto
+> `Chimera`→`chimera` sin propagar, #175). La migración a inglés se pregunta a
+> Dylan al arrancar (AskUserQuestion). LÍNEA ROJA: los artefactos con digest
+> embebido y los docs congelados NO se tocan sin ceremonia. DoD: gates de docs
+> verdes + `docs/README.md` como índice fiel. Cierre: registro + handoff a
+> control para la auditoría de fase (tres llaves de #101).

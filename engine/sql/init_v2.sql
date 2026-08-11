@@ -68,6 +68,14 @@ CREATE TABLE channels (
     PRIMARY KEY (from_domain_id, to_domain_id)
 );
 
+-- [MEJORADO · ceremonia #176] fila organizacional P6/M15 (ver esquema-datos-v2.md §2)
+CREATE TABLE projects (
+    id          TEXT PRIMARY KEY,
+    domain_id   TEXT NOT NULL REFERENCES domains (id),
+    name        TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE identities (
     id          TEXT PRIMARY KEY,                -- "user:dylan" | "agent:planner-7"
     kind        TEXT NOT NULL CHECK (kind IN ('human', 'agent', 'service')),

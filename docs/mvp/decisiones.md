@@ -4767,3 +4767,41 @@ Cosas que se vieron trabajando y NO se tocaron, para que no se pierdan:
 | `scripts/example-bundle.json` se construye a MANO, no con `assemble_bundle`                                                                                        | Por eso pudo vivir sin `claim.emitted` (lo que C15 destapó). Generarlo con el emisor real lo mantendría honesto por construcción                                                                         |
 | El remoto responde `This repository moved` en cada push: el origin apunta a `Blite-HQ/Chimera` y GitHub redirige a `Blite-HQ/chimera` (minúscula)                  | Funciona por redirección, pero es un rename sin propagar: conviene actualizar el `origin` de los worktrees y de la doc de onboarding antes del flip OSS, o un externo clonará la URL vieja               |
 | El `checklist` pasó de 8 a 12 puntos y `PointResult` ganó `notes`                                                                                                  | Cualquier consumidor que muestre el checklist (Studio incluido) debería mostrar las notas, o volverá a decir «verificado» callando lo que no comprobó                                                    |
+
+### #175 — C-2 VALIDADA Y CONVALIDADA (ya venía mergeada y pusheada) + P8 desbloqueado
+
+**Fecha:** 2026-08-11. Dylan subió C-2 (16 commits lineales sobre 1df1e15,
+C3→C15 completos) ya integrada en `mejorado/base` y pusheada @52c90fa. Forense:
+los supersedes de `contract-freeze.md` §7 tienen ceremonia registrada y son
+ADITIVOS (checklist 8→10→12 puntos sin invalidar bundles previos); `uv.lock` +2
+líneas; segmento lineal limpio. **Gates vivos en el principal:** 1741 passed /
+12 skipped / **0 xfailed** (las últimas semillas se implementaron) / 4 xpassed /
+90.84% / 18 contratos / ruff+format limpios / pyright 0 / studio 327/34 /
+`arch` 0 violaciones / docs verdes. **CP7 cerrado — el checkpoint de C-2 queda
+CONVALIDADO.**
+
+**P8 DESBLOQUEADO:** Dylan entregó las 21 referencias visuales; quedan en
+`~/projects/blite/hackathons/2026/Quantathon/branding-refs/` (fuera del árbol a
+propósito: material de terceros en repo público). Entra al alcance de F1.
+
+La nota del rename del remoto (`Chimera`→`chimera` sin propagar, anotación de
+C-2) queda asignada a F3/saneamiento-final.
+
+### #176 — CEREMONIA ejecutada: la tabla `projects` entra al esquema v2
+
+Supersede ADITIVO sobre `docs/esquema-datos-v2.md` §2 + espejo exacto en
+`engine/sql/init_v2.sql` (candado bidireccional verde: 3 passed). DDL: el
+propuesto por el handoff P-ui, sin cambios. Reglas que la acompañan:
+`run.created.project_id` sigue siendo referencia OPACA (S-A Contrato-4) — el
+evento NO valida FK; la valida el API al crear el run. F1 llena datos y cablea
+la validación; el Studio ya consume (`AppShell`, router `:proj`).
+
+### #177 — CEREMONIA ejecutada: tercera forma de body de `POST /runs` (ablación)
+
+Extensión ADITIVA registrada en `docs/specs/endpoints-studio.md`:
+`{ablation: {instance_id, layers?, seed?}}`, discriminada por presencia de campo
+como `claim`/`mission` (`extra="forbid"`). Los brazos corren como SUB-RUNS y el
+cierre métrico se DERIVA del log (V2/M19); los brazos NO los elige el caller
+(regla #158-V; `mitigated` cuando V9 exista); fail-loud intacto. El wire HTTP lo
+implementa F2. Con #176+#177 **F1 y F2 quedan desbloqueados**; prompts de
+lanzamiento en `09-cierre.md` §5.
