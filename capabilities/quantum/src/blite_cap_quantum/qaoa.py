@@ -33,6 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, cast
 
+from blite_cap_quantum.repair import repair_connectivity
 from blite_cap_quantum.warm_start import interp_angles
 
 _MAX_QUBITS = 20
@@ -431,8 +432,18 @@ def solve_qaoa(  # noqa: PLR0913 — la superficie del proposer es su contrato c
     initial_angles: Any = None,
     optimize: bool = True,
     init_strategy: str = CONSTANT_INIT,
+    repair: bool = False,
 ) -> dict[str, Any]:
-    """Corre QAOA y devuelve la mejor partición muestreada (con su energía)."""
+    """Corre QAOA y devuelve la mejor partición muestreada (con su energía).
+
+    `repair` (V6/G8, aditivo — default sin cambio de comportamiento): aplica
+    la reparación M.3 (`blite_cap_quantum.repair`, quantum/05 §1.5) sobre el
+    bitstring crudo best-of-samples antes de reportarlo. `assignment`/
+    `energy` pasan a describir la partición REPARADA (lo que efectivamente
+    se certifica); el bloque `repair.*` + `connectivity_violations`
+    documenta la transformación en vez de esconderla (freeze §11 — nunca
+    reparación silenciosa).
+    """
     preparation = prepare_circuit(
         raw_matrix,
         layers=layers,
@@ -462,6 +473,13 @@ def solve_qaoa(  # noqa: PLR0913 — la superficie del proposer es su contrato c
     }
     if preparation.warm_start_levels is not None:
         result["warm_start_levels"] = preparation.warm_start_levels
+    if repair:
+        repaired = repair_connectivity(matrix, assignment)
+        result["assignment"] = repaired["assignment"]
+        result["energy"] = repaired["repair"]["post_value"]
+        result["repair"] = repaired["repair"]
+        result["connectivity_violations"] = repaired["connectivity_violations"]
+        energy = result["energy"]
     if reference_optimum is not None:
         if reference_optimum <= 0:
             msg = f"reference_optimum debe ser > 0, no {reference_optimum!r}"

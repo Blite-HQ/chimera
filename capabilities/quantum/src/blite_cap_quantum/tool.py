@@ -69,6 +69,18 @@ _MANIFEST = CapabilityManifest(
                     "optimum (mutually exclusive with initial_angles)"
                 ),
             },
+            "repair": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "When true, apply a restricted greedy repair (method "
+                    "M.3) to the sampled assignment: partition classes that "
+                    "induce a disconnected subgraph are patched via flips "
+                    "that never make the objective worse; 'assignment' and "
+                    "'energy' report the repaired result, and 'repair' plus "
+                    "'connectivity_violations' document the transformation"
+                ),
+            },
         },
         "required": ["matrix"],
     },
@@ -136,6 +148,41 @@ _MANIFEST = CapabilityManifest(
                     "required": ["p", "betas", "gammas", "expected_energy"],
                 },
             },
+            "repair": {
+                "type": "object",
+                "description": (
+                    "Provenance of the M.3 repair applied to the sampled "
+                    "assignment, present only when the 'repair' input was "
+                    "true"
+                ),
+                "properties": {
+                    "method": {"type": "string"},
+                    "flips": {
+                        "type": "integer",
+                        "description": "Number of flips actually applied",
+                    },
+                    "pre_value": {
+                        "type": "number",
+                        "description": "Objective value of the raw sampled assignment",
+                    },
+                    "post_value": {
+                        "type": "number",
+                        "description": (
+                            "Objective value after repair — equal to "
+                            "pre_value when no improving repair was found"
+                        ),
+                    },
+                },
+                "required": ["method", "flips", "pre_value", "post_value"],
+            },
+            "connectivity_violations": {
+                "type": "integer",
+                "description": (
+                    "Connectivity violations of the raw sampled assignment "
+                    "before repair, present only when the 'repair' input "
+                    "was true"
+                ),
+            },
         },
         "required": ["assignment", "angles", "init_strategy", "optimized"],
     },
@@ -201,6 +248,10 @@ class QaoaSolver:
         if not isinstance(init_strategy, str):
             msg = f"QaoaSolver: init_strategy debe ser texto, no {init_strategy!r}"
             raise ValueError(msg)
+        repair = inputs.get("repair", False)
+        if not isinstance(repair, bool):
+            msg = f"QaoaSolver: repair debe ser booleano, no {repair!r}"
+            raise ValueError(msg)
         return solve_qaoa(
             inputs.get("matrix"),
             layers=layers,
@@ -209,6 +260,7 @@ class QaoaSolver:
             initial_angles=inputs.get("initial_angles"),
             optimize=optimize,
             init_strategy=init_strategy,
+            repair=repair,
         )
 
 

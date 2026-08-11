@@ -135,6 +135,37 @@ class TestExpectedValue:
         assert "expected_ratio" not in result
 
 
+class TestRepair:
+    """Reparación M.3 (G8, quantum/05 §1.5) enchufada como flag aditivo del
+    proposer — `repair=False` es el default y no cambia el comportamiento
+    existente (ver `TestSolve`/`TestCorpusGoldenPath` arriba, corren tal
+    cual). Detalle del algoritmo (feasibility-feedback, `repair.*`,
+    `connectivity_violations`) en `test_repair.py`, sin dependencia de
+    qiskit — acá solo se verifica el enchufe de punta a punta."""
+
+    def test_repair_flag_off_by_default_leaves_output_unchanged(self) -> None:
+        result = QaoaSolver().invoke({"matrix": _G6, "seed": 1})
+
+        assert "repair" not in result
+        assert "connectivity_violations" not in result
+
+    def test_repair_true_emits_the_frozen_fields(self) -> None:
+        result = QaoaSolver().invoke({"matrix": _G6, "seed": 1, "repair": True})
+
+        assert result["repair"]["method"] == "M.3"
+        assert isinstance(result["repair"]["flips"], int)
+        assert isinstance(result["repair"]["pre_value"], float)
+        assert isinstance(result["repair"]["post_value"], float)
+        assert isinstance(result["connectivity_violations"], int)
+        # el objetivo reportado corresponde a la asignación reparada
+        assert _energy(_G6, result["assignment"]) == result["energy"]
+        assert result["energy"] == result["repair"]["post_value"]
+
+    def test_non_boolean_repair_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="repair"):
+            QaoaSolver().invoke({"matrix": _G6, "seed": 1, "repair": "true"})
+
+
 class TestInputValidation:
     def test_missing_matrix_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="matrix"):
