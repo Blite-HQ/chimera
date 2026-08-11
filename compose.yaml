@@ -60,6 +60,15 @@ services:
       # no bind: son contenido direccionado por digest, y perderlos en un
       # rebuild rompería toda cita `ref{name, digest}` que los nombre.
       CHIMERA_FILES_DIR: /app/var/files
+      # F1.6 — dónde vive la EVIDENCIA de los runs (`RunResources.content`,
+      # lo que `digest_via()` persiste en cada `run.step.started` y llamada
+      # de modelo). Plano de confianza DISTINTO a `CHIMERA_FILES_DIR` de
+      # arriba (ahí sube el usuario, acá produce el runtime — files.py:73-84
+      # ya argumenta esa separación): volumen propio, no compartido. Sin
+      # esto la evidencia era in-memory y se evaporaba en cada
+      # `docker compose up --build`, que es justo lo que un almacén
+      # direccionado por digest no puede hacer.
+      CHIMERA_CONTENT_DIR: /app/var/content
       # [C8/M8 pieza 4] Custodia de llaves (escalera del freeze §7, P1-3).
       # AUSENTES por default ⇒ escalón 1 efímero, comportamiento intacto.
       # Con el perfil `custody` levantado, descomentar para que la llave del
@@ -86,6 +95,7 @@ services:
       UV_TOOL_BIN_DIR: /app/var/uv-cache/bin
     volumes:
       - filesdata:/app/var/files
+      - contentdata:/app/var/content
       - uvcache:/app/var/uv-cache
     secrets:
       - postgres_password
@@ -283,3 +293,9 @@ volumes:
   # sin volumen se perderían en cada rebuild, que es justo lo que un almacén
   # por digest no puede hacer.
   filesdata: {}
+  # F1.6 — evidencia de los runs (`RunResources.content`). Volumen PROPIO,
+  # no `filesdata`: son dos planos de confianza distintos (papers subidos
+  # por el usuario vs. evidencia que el runtime produce y el certificado
+  # cita) y perderla en cada rebuild es justo lo que este ítem existe para
+  # cerrar.
+  contentdata: {}

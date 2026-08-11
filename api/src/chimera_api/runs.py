@@ -57,6 +57,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from blite.certificate.assemble import ConclusionDeclaration
 from blite.certificate.keys import KeyProvider, LocalKeyProvider
 from blite.content import ContentStore
+from blite.content_fs import FilesystemContentStore
 from blite.events.rules import TERMINAL_RUN_EVENTS
 from blite.events.store import EventStore
 from blite.gateway.crossing import RunCrossing, build_run_pipeline
@@ -94,6 +95,8 @@ from chimera_api.projects import ensure_default_project
 # `SessionAuth.identity_from(request)` resuelve la Identity real y el
 # pipeline inyectado la estampa en los eventos del job (AX1).
 _DEFAULT_DOMAIN = "domain-default"
+
+_LOGGER = logging.getLogger(__name__)
 
 # [C8/M8 pieza 4] Custodia por env, con la escalera del freeze §7 (P1-3):
 #   sin variables            → escalón 1 efímero (despliegue local, dev)
@@ -488,6 +491,41 @@ def _build_dispatcher() -> Dispatcher:
     return ProfileDispatcher(service=ServiceStrategy(build_mcp_invoker(manifest)))
 
 
+_CONTENT_DIR_ENV = "CHIMERA_CONTENT_DIR"
+
+
+def _build_content_store() -> ContentStore:
+    """[F1.6] La evidencia de los runs (`RunResources.content`) — el store que
+    `digest_via()` usa para CADA `run.step.started`/`capability.job.*`/llamada
+    de modelo (freeze §12). Distinto plano de confianza que `files.py` (P10):
+    ahí es contenido que un USUARIO sube; acá es lo que el propio runtime
+    produce y el certificado termina citando — por eso una env var PROPIA, no
+    `CHIMERA_FILES_DIR` (`files.py:73-84` ya argumenta esa separación).
+
+    Con `CHIMERA_CONTENT_DIR` configurada (compose.yaml SIEMPRE la define
+    para el servicio `api`) la evidencia sobrevive un `docker compose up
+    --build` — ESE es el cambio de plano de confianza que este ítem entrega:
+    antes se evaporaba con cada reinicio del proceso. Sigue siendo
+    almacenamiento LOCAL en volumen, no verificable ni replicado.
+
+    Ausente ⇒ `InMemoryContentStore` (Fase 1, comportamiento intacto para
+    quien no la configura — tests incluidos, que construyen `RunResources`
+    sin tocar el filesystem). Pero jamás en silencio: un operador que la
+    olvidó fuera de compose se entera por el log, no cuando ya necesita la
+    evidencia de un run viejo y no está."""
+    content_dir = os.environ.get(_CONTENT_DIR_ENV)
+    if content_dir is None:
+        _LOGGER.warning(
+            "%s ausente: la evidencia de los runs es EFÍMERA (in-memory, "
+            "Fase 1) y se pierde al reiniciar el proceso. compose.yaml ya la "
+            "define para el servicio api; fuera de compose, configurala "
+            "explícitamente si necesitás que sobreviva un reinicio.",
+            _CONTENT_DIR_ENV,
+        )
+        return InMemoryContentStore()
+    return FilesystemContentStore(root=Path(content_dir))
+
+
 def build_run_resources(
     store: EventStore, *, registry: Registry | None = None
 ) -> RunResources:
@@ -498,7 +536,7 @@ def build_run_resources(
     `create_event_store`: DSN vía `CHIMERA_DATABASE_URL`, in-memory si no) y
     el bootstrap del dominio/proyecto neutro corre UNA vez por app, en el
     wiring — nunca al importar el módulo."""
-    content = InMemoryContentStore()
+    content = _build_content_store()
     project_repo = create_project_repository()
     ensure_default_project(project_repo)
     return RunResources(
@@ -514,8 +552,6 @@ def build_run_resources(
         model_backend=_build_model_backend(content),
     )
 
-
-_LOGGER = logging.getLogger(__name__)
 
 _LAST_RESORT_ERROR_KIND_UNKNOWN = "BackgroundTaskError"
 """`error_kind` cuando ni el tipo de la excepción es legible — nunca un
