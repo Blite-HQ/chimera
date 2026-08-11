@@ -1,0 +1,60 @@
+{
+  "baselines": {
+    "cpsat": {
+      "energy": 57070.0,
+      "r": 1.0
+    },
+    "greedy": {
+      "energy": 57070.0,
+      "r": 1.0
+    },
+    "gw": {
+      "energy": 57070.0,
+      "r": 1.0
+    }
+  },
+  "digest": "9ab82f41cf1511f012042c33df5ff66e26246aa654a95f927038169907b89f8c",
+  "generated_by": "scripts/gen_corpus_rvsp.py",
+  "instance": "ieee14-flujo",
+  "metodo": {
+    "angle_digests": {
+      "1": "1742032bda352e4dcaa8ec566e47216b07f3c5d735b11c350d1c11d734439594",
+      "2": "33855972ce30632caaac245ea85f44c8e67a7aa3ca79666d2f07ffbda174b652",
+      "3": "a961c8331e8436db5ae04a2039d6aa71e4ea7edce6cd97cfeb9f16c5ab56b780"
+    },
+    "angle_source": "nexus-import",
+    "backend": "aer_simulator",
+    "expectation": "statevector-exacto",
+    "seeds": [1, 2, 3, 4, 5]
+  },
+  "optimo": 57070,
+  "points": [
+    {
+      "p": 1,
+      "r_esperado_mean": 0.5182588145225978,
+      "r_muestral_max": 0.5233092224324295,
+      "r_muestral_mean": 0.5194840611721351,
+      "r_muestral_min": 0.5147275447093481,
+      "r_muestral_std": 0.0030240052423912605,
+      "success_rate": 0.0
+    },
+    {
+      "p": 2,
+      "r_esperado_mean": 0.5371180989431852,
+      "r_muestral_max": 0.5430601947170142,
+      "r_muestral_mean": 0.5377824108550902,
+      "r_muestral_min": 0.530489061541747,
+      "r_muestral_std": 0.0040862404815331784,
+      "success_rate": 0.0
+    },
+    {
+      "p": 3,
+      "r_esperado_mean": 0.5042999647386416,
+      "r_muestral_max": 0.5136655351295558,
+      "r_muestral_mean": 0.5080561152970037,
+      "r_muestral_min": 0.503931566702624,
+      "r_muestral_std": 0.003634844751898859,
+      "success_rate": 0.0
+    }
+  ]
+}

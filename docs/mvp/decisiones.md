@@ -2840,6 +2840,1405 @@ piden decisión propia: content store durable (plano de confianza), flip
 **Veredicto:** el paso 2 del plan está COMPLETO. Quedan por lanzar C-2 (Fable),
 V y O — paso 3, paralelizable.
 
+> **[merge · 2026-08-10] Colisión de numeración materializada.** Las sesiones
+> VISUAL y PLATAFORMA corrieron en paralelo y ambas numeraron desde **#153**.
+> Las dos secciones se conservan íntegras —el ledger es append-only— y la
+> **renumeración la resuelve la sesión de control**, que además tiene que
+> contar con la sesión C-2 cuando integre. Hasta entonces, un `#1XX` de esta
+> zona hay que leerlo junto al nombre de su sesión, no solo por su número.
+> Ver `docs/mejorado/08-handoff-plataforma.md` §3.1.
+
+## Sesión VISUAL/CIENCIA (worktree `mejorado/visual`, 2026-08-05)
+
+Dominio V de `docs/mejorado/04-consolidacion.md` §4. Mandato: **los
+honest-empty del Studio mueren DONDE exista productor real** — el énfasis es
+de la sesión, no una licencia para fabricar el productor.
+
+### #153 — V1/M18: el productor de partición y la convención de branch-ids C-8
+
+**Qué faltaba, exactamente:** el payload de mapa estaba fijado por contrato
+desde trust/07, la ruta de lectura lo esperaba (`reads::_project_topology`), el
+Zod espejo existía y el fixture de costura estaba generado — y NADIE lo
+emitía. El honest-empty no era falta de diseño: era un cable que nunca se
+conectó.
+
+Decisiones de esta sesión (analizadas contra la letra, no inventadas):
+
+1. **La convención canónica de branch-ids vive en el SDK**
+   (`blite_capability.branch_ids`), no en el engine ni en la capability. Es lo
+   único que ambos lados deben producir BYTE-IDÉNTICO, y ADR-008 declara
+   `blite_capability` como la única interfaz compartida. Una copia por lado
+   sería el drift que C-8 cierra.
+2. **`edge_id_property` exige estrategia 1:1 feature↔arista.** Con
+   `endpoint-name-match` (que AGREGA paralelas) se rechaza en frontera: un id
+   del portal por rama agregada sería una mentira sobre N features. La mitad
+   canónica queda para esos casos.
+3. **Los ids canónicos son DERIVADOS, no estampados.** El corpus ya sellado no
+   se re-etiqueta ni cambia de digest — quien lo consuma recomputa los mismos
+   ids con la misma función. Por eso la receta de `geojson_to_graph` NO sube de
+   versión al ganar el campo.
+4. **`build_partition` devuelve `None` sin checks por isla.** Un badge por isla
+   derivado del veredicto global sería el mock silencioso que la regla 1 del
+   plan prohíbe. Y una isla nunca reporta MÁS nivel que la attestation que la
+   ampara.
+5. **`ABSTENTION_CHECKS` pasa a ser DATO en `execution.py`.** Estaba enterrada
+   en el flujo de `verify()`; quien LEE la attestation después necesita la
+   misma regla para no leer una abstención como un fail.
+6. **`StructuralPartitionVerifier` (AL2, ancla `rule`) — decisión de alcance.**
+   La red real del ICE no trae impedancias, así que pandapower no puede correr
+   sobre ella y sin checks `island-{k}:*` no hay badges posibles. La salida
+   honesta no era inventar dato eléctrico: es verificar lo que el grafo SÍ
+   permite (conectividad por isla, corte no vacío) con el techo que le
+   corresponde. Entra **solo** donde no hay dato eléctrico registrado — donde
+   pandapower corre, sumarla inflaría las patas del punto 7 sin aportar un
+   método realmente nuevo.
+
+**M23a/N3 cerrado:** el orquestador hilvana el `step_id` que el loop siempre le
+pasó. La evidencia por paso deja de llegar `attestations: []`; el test que
+afirmaba ese defecto ahora afirma el arreglo.
+
+### #154 — V2/M19: el cierre métrico existe, y se DERIVA del log
+
+**El choque C-4 en una frase:** el evento estaba congelado con campos de
+confianza, el consumidor esperaba campos científicos por variante, y nadie lo
+emitía.
+
+- **Las métricas se derivan del stream, no se acumulan en memoria.** Por eso el
+  orquestador estampa `latency_ms` por attestation: un tercero que replaye el
+  log obtiene los mismos números; un acumulador del proceso emisor no ofrece
+  eso.
+- **`false_reject_proxy` se DEFINE en vez de fabricarse:** de los claims que
+  alguna pata rechazó, qué fracción otra pata independiente aceptó. La
+  medición fuerte (contra corpus de óptimos conocidos, trust/05 §1.3) es el
+  ítem O8 y se dice en el código, no se aproxima con un número inventado.
+- **`AblationMetric` importa el enum del emisor** en vez de repetir el
+  `Literal`: extensión coordinada de los 4 espejos (Pydantic, Zod, tipo TS,
+  chart), disciplina C-15.
+- **`AblationArm` no tiene campo de policy:** la herencia fail-closed de §13
+  regla 3 queda garantizada POR CONSTRUCCIÓN. Comparar brazos bajo exigencias
+  distintas no sería una ablación.
+- **La agregación de brazos es de LECTURA:** `GET /runs/{id}/ablation` suma los
+  sub-runs directos; cada brazo conserva su stream, su procedencia y su propia
+  respuesta.
+
+### #155 — V8/M23b: el cable de `deliverables` y las rutas de proyecto
+
+`assemble_bundle` aceptaba `deliverables=` desde siempre y nadie se lo pasaba
+(N4/#70b) — honest-empty ESTRUCTURAL. Decisión: el deliverable es el
+**artefacto de salida del run**, el único que el log identifica sin ambigüedad
+(`run.completed.output_digest`) y cuyos bytes son recuperables byte a byte del
+content store; o sea, el único que un tercero puede re-verificar contra el
+digest que el certificado cita. Un artefacto no recuperable NO se cita: un
+certificado no se cae porque falte uno, se cae si MIENTE sobre uno.
+
+### DEFECTO PROPIO cazado por este cambio (y cerrado)
+
+`certificate.py`/`reads.py` decidían «el run terminó» mirando `stream[-1]`. El
+freeze §2 [stress-final] admite familias de CIERRE post-terminales, así que el
+primer `run.metrics.recorded` produjo un **409 en el certificado** — y pasarle
+el stream completo a `assemble_bundle` habría metido un evento post-terminal
+DENTRO del `provenance_hash`. Corregido: terminado = TIENE terminal, y lo que
+se certifica es `provenance_slice(stream)`. Era un defecto latente desde antes
+de esta sesión; lo destapó el primer productor de la familia de cierre.
+
+### Tabla de interacciones — sesión VISUAL/CIENCIA
+
+| Interfaz                                                     | Dominio afectado | Estado del contrato                                                          |
+| ------------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------- |
+| `blite_capability.branch_ids` (SDK, módulo nuevo)            | engine ↔ caps    | NUEVO — convención C-8 versionada (`canonical-l-min-max@v1`)                 |
+| `blite.ingesta.geojson.to_graph` output + `edge_id_property` | caps → corpus    | ADITIVO — `branch_ids`/`branch_id_convention`; el corpus estampado no cambia |
+| `blite.verification.partition` (módulo nuevo)                | engine           | NUEVO — productor del payload §4                                             |
+| `blite.verification.structural_partition` (módulo nuevo)     | engine           | NUEVO — pata AL2 para instancias sin dato eléctrico                          |
+| `ClaimDeclaration.result_projection` + `step_id` top-level   | engine ↔ api     | ADITIVO — binding de confianza intocable (llaves reservadas)                 |
+| `verification.completed.latency_ms`                          | engine ↔ api     | ADITIVO — reservado; base de la derivación de métricas                       |
+| `blite.runtime.metrics` (módulo nuevo)                       | engine ↔ api ↔ D | NUEVO — payload v2 C-4; `variant` enum de 4 en 4 espejos                     |
+| `blite.runtime.ablation` (módulo nuevo)                      | engine           | NUEVO — brazos como sub-runs §13                                             |
+| `chimera_api.deliverables` (módulo nuevo)                    | api              | NUEVO — cable de `deliverables=`                                             |
+| `GET /runs/{id}/topology` (consumidor)                       | E ↔ D            | VERDE — el Zod espejo del fixture valida el wire vivo                        |
+| `GET /runs/{id}/ablation` (agrega sub-runs)                  | E ↔ D            | ADITIVO de lectura — cada brazo conserva su propia respuesta                 |
+| `GET /artifacts`, `GET /knowledge` (nivel proyecto)          | E ↔ D            | NUEVAS — allowlist de nginx ampliado en el MISMO cambio (lección de `/me`)   |
+| `topologySnapshotSchema` / `ablationVariantSchema` (Zod)     | D                | ESPEJO — `ablationVariantSchema` compartido por fixture y wire               |
+| `GridMap.partition` (seam → implementado)                    | D                | El seam declarado en D4 deja de ser seam                                     |
+| `apps/studio/src/fixtures/ice/instancia.json`                | D                | NUEVO — proyección del corpus estampado con anti-drift                       |
+
+### Hallazgo heredado (NO introducido acá)
+
+`pnpm run arch` está **rojo en `mejorado/base`**, reproducido con el árbol
+limpio: `no-circular App.tsx → router.tsx → App.tsx` y
+`F3: App.tsx → gatewayClient`. Ambas vienen de P7 (router real). No está en la
+lista de gates del bloque REGLAS, así que no bloquea — pero es un gate de
+arquitectura en rojo y merece dueño. **CERRADO** en esta sesión: la raíz
+dejó de ser también el módulo de pantallas (`screens.tsx`) y `fileDownloadUrl`
+pasa por `data/`; la regla F3 se extendió para cubrir el archivo nuevo.
+
+### #156 — V5: los ángulos de QAOA se reportan, se pueden dar, y se pueden escalar
+
+Tres capacidades aditivas sobre `solve_qaoa` — sin argumentos nuevos el
+comportamiento es idéntico.
+
+1. **`angles` siempre se reporta.** Sin ellos, `expected_energy` era un número
+   que nadie podía recomputar: el circuito que lo produjo quedaba sin
+   identificar.
+2. **`initial_angles` + `optimize=false`** — evaluar ⟨C⟩ en un calendario
+   ajeno SIN re-optimizar. Re-optimizar cambiaría los ángulos de la corrida
+   que se dice estar midiendo, que es exactamente lo que la haría
+   incomparable. El round-trip (optimizar → devolver ángulos → re-evaluar en
+   ellos → mismo ⟨C⟩) es exacto por construcción: ⟨H⟩ se recomputa siempre
+   sobre los ángulos finales en vez de leerse del `fun` de COBYLA.
+3. **`init_strategy="interp"`** — la escalera p=1…layers de Zhou et al. (2020)
+   §IV. Vive en `warm_start.py` porque es aritmética PURA y por tanto
+   verificable exactamente (extremos conservados, combinación convexa, +1 capa
+   por paso); enterrada dentro de `solve_qaoa` solo se podría comprobar de
+   refilón con un «la energía mejoró», que pasa aunque la fórmula esté mal.
+
+Decisión de implementación: los parámetros del ansatz se ligan por **NOMBRE**,
+no por posición. Confundir β con γ no produce un error — produce una energía
+plausible de un circuito distinto del que se reporta.
+
+### #157 — V3/M20: la curva r-vs-p se mide en los ángulos que corrió el hardware
+
+**Dónde viven los datos.** El barrido r vs p abarca p×semillas corridas y no
+cabe en el stream de UNA ejecución. Por eso `GET /runs/{run_id}/rvsp` es clave
+POR RUN pero datos POR INSTANCIA: el run aporta el único dato que es suyo —qué
+red se está resolviendo— y la curva sale de un corpus congelado nuevo,
+`knowledge/rvsp/<instancia>.json`, con la MISMA disciplina de identidad que el
+resto de `knowledge/` (digest embebido que cierra sobre el contenido).
+`results/exp_r_vs_p/` sigue siendo lo que su docstring dice: una instantánea
+ilustrativa del experimento, sin identidad.
+
+**Por qué ángulos de Nexus.** Con ángulos que optimizamos nosotros, el punto de
+la curva mide nuestro COBYLA tanto como mide QAOA. El importador ahora persiste
+`betas`/`gammas` (antes vivían SOLO en el espejo solo-lectura) y
+`gen_corpus_rvsp.py` evalúa ⟨C⟩ EN ellos vía `optimize=false` (#156). Los
+ángulos ya eran la FUENTE de `circuit_digest`, así que persistirlos no mueve
+ningún digest — hay un test que lo comprueba contra el índice committeado,
+porque si se moviera habría que parar y reportar, no re-estampar.
+
+**La ETIQUETA de la curva** (bloque `metodo` del record: backend, shots,
+semillas, origen de los ángulos, `circuit_digest` por capa) vive en el
+ARTEFACTO, no en el wire: la spec congeló el wire y dejó el método al dominio
+de ciencia. Sin esa etiqueta, un punto medido en hardware y uno medido en
+ángulos propios se ven idénticos y son afirmaciones distintas.
+
+**Resultado honesto:** la curva NO es monótona en p (cr6-uniforme: 0.7034 →
+0.8199 → 0.7601). Los ángulos de p=3 no fueron mejores que los de p=2. Se
+reporta tal cual — es un dato sobre la corrida vanilla, no un defecto a
+maquillar.
+
+**Tres 404 que no degradan:** run desconocido / run sin instancia declarada /
+instancia sin curva ingerida. Ninguno cae a `points: []` — un gráfico vacío se
+lee como «el experimento dio esto», que sería falso. El Studio distingue el 404
+(vacío honesto) del 500 (falla) vía el `status` que `fetchWireGet` propaga.
+
+### Tabla de interacciones — V5 y V3/M20
+
+| Interfaz                                                      | Dominio afectado | Estado del contrato                                                       |
+| ------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------- |
+| `blite_cap_quantum.warm_start` (módulo nuevo)                 | caps             | NUEVO — INTERP puro, sin qiskit                                           |
+| `solve_qaoa` + manifest `blite.quantum.qaoa`                  | caps ↔ runtime   | ADITIVO — `initial_angles`/`optimize`/`init_strategy`; salida `angles`    |
+| `scripts/import_nexus_runs.py` → `knowledge/nexus/index.json` | ciencia          | ADITIVO — `betas`/`gammas`; NINGÚN digest se mueve (test que lo prueba)   |
+| `knowledge/rvsp/<instancia>.json` (corpus nuevo)              | ciencia ↔ api    | NUEVO — regla de identidad §15.3; bloque `metodo` fuera del wire          |
+| `chimera_api.corpus_records` (módulo nuevo)                   | api              | EXTRAÍDO — una sola definición de identidad de corpus (tfim/tabular/rvsp) |
+| `chimera_api.rvsp` (módulo nuevo)                             | api ↔ D          | NUEVO — `RvspResponse`; `baselines` cerrado a 3 (C-15)                    |
+| `RunTicket.instance_id`                                       | api              | ADITIVO — qué instancia encargó el run; `None` ⇒ 404, jamás una adivinada |
+| `GET /runs/{run_id}/rvsp`                                     | E ↔ D            | IMPLEMENTA el contrato congelado; seed des-xfaileado                      |
+| `GatewayResponse.status` en las LECTURAS (`fetchWireGet`)     | D                | ADITIVO — sin él, un 404 del contrato es indistinguible de un 500         |
+| `rvspWireSchema` + `toRvsPExperiment` (Zod)                   | D                | ESPEJO — snake_case → camelCase, mismo patrón que `toAblationMetric`      |
+| `loadRvsP(runId?)` / `rvspQueryOptions`                       | D                | La rama live deja de devolver `null` fijo                                 |
+| fixture `get-runs-rvsp.json` (canónico + espejo Studio)       | E ↔ D            | NUEVO — generado desde `RvspResponse` sobre el corpus REAL, no a mano     |
+
+### #158 — V4/M6: el control negativo no es un extra, es la condición de publicación
+
+El bloque `mitigation.*` estaba congelado en el freeze §11 desde S-E y cero
+código lo emitía. Lo emite una capability propia (`blite.quantum.zne`) —
+propia y no Mitiq porque Mitiq es GPL-3.0 y este repo se distribuye MIT (nota
+09 §3); Mitiq entra como dependencia opcional del harness de benchmarks.
+
+**La decisión de diseño que manda todo lo demás:** `mitigate_expectation` corre
+SIEMPRE el control negativo de garbage-folding y devuelve
+`improvement_survives_control`. arXiv:2607.09360 demuestra que ZNE produce
+mejoras ARTEFACTUALES — cuando la amplificación supera la señal, la
+extrapolación colapsa a un reescalado de una medición ruidosa y «mejora» sin
+física detrás. Un mitigador que reporta solo su delta no se puede auditar.
+
+**Reproducimos el hallazgo en nuestro propio código.** Con extrapolación lineal
+sobre G6 al 5 % de ruido de 2 qubits: mejora legítima 0.1–0.3 %, control de
+basura 28–52 %. Dos órdenes de magnitud de «mejora» sin física. Con Richardson
+el control sale negativo (−0.08 a −1.19) y la mejora legítima (0.9–3.3 %) sí
+sobrevive. Fijado como test parametrizado sobre 3 semillas: asevera que el
+control FUNCIONA, no un número.
+
+`training_digest` viaja en `None` EXPLÍCITO — ZNE no entrena, y rellenar el
+campo fabricaría procedencia. El corrector aprendido (V9) sí lo llena: el
+mismo bloque distingue los dos métodos sin cambiar de forma.
+
+**Reproducibilidad medida, no prometida:** la rama legítima es bit-estable con
+la seed pinneada; la del control no siempre lo es entre corridas (circuitos
+mucho más profundos, Aer no garantiza el reparto de shots a esa profundidad).
+El VEREDICTO sí es estable sobre 5 semillas. Se dice así.
+
+### #159 — V2 cerrado: el costo de corte sale de la salida del brazo
+
+El productor (`scripts/run_ablation.py`) destapó un hueco del mecanismo:
+`cut_cost` había que declararlo ANTES de correr el brazo, pero es justo lo que
+el brazo computa. Declararlo por adelantado obligaba a correr la capability dos
+veces, y el `wall_ms` registrado sería el de la segunda corrida — midiendo un
+trabajo ya hecho. `AblationArm.cut_cost_from` lo lee de la salida (recuperada
+del content store por su digest). Las dos formas son EXCLUYENTES.
+
+**Las barras tienen que ser la misma CLASE de número.** La primera corrida
+comparaba el best-of-2048-shots del brazo cuántico contra un valor esperado
+mitigado — y hacía ver a la mitigación peor por una razón que no tiene nada
+que ver con mitigar. Corregido: cuántico reporta ⟨C⟩ (la lección del fix 4b),
+exacto su óptimo, ZNE su valor mitigado.
+
+**Regla de publicación del brazo ZNE:** si la mejora no sobrevivió al control,
+el brazo NO aporta costo — ni siquiera cuando el campo del veredicto falta
+(«no sé si es artefacto» no es «no lo es»). `mitigated` no se declara como
+brazo: su productor es V9 y una barra vacía CON nombre es peor que una ausente.
+
+Corrida real sobre `cr8-uniforme` (óptimo 7): quantum ⟨C⟩ 6.35 (r 0.907, 4.6 s)
+· classical 7.00 (r 1.000, 0.2 s) · zne mitigado 5.94 (r 0.848, 28.5 s).
+
+### Tabla de interacciones — V4/M6 y cierre de V2
+
+| Interfaz                                 | Dominio afectado | Estado del contrato                                                      |
+| ---------------------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| `blite_cap_quantum.zne` (módulo nuevo)   | caps             | NUEVO — folding, extrapoladores y el control negativo                    |
+| `blite.quantum.zne` (capability nueva)   | caps ↔ runtime   | NUEVA — emite el bloque `mitigation.*` del freeze §11                    |
+| `qaoa.prepare_circuit` / `sample_counts` | caps             | EXTRAÍDO — el mitigador usa EL MISMO circuito que el solver              |
+| `AblationArm.cut_cost_from`              | engine           | ADITIVO — excluyente con `cut_cost`; cierra el hueco que V2 dejó         |
+| `scripts/run_ablation.py`                | ciencia ↔ E ↔ D  | NUEVO — el llamante que a `blite.runtime.ablation` le faltaba            |
+| `AblationPanel` (test)                   | D                | El panel de 4 barras no tenía NINGÚN test; ahora fija la leyenda honesta |
+
+### Handoff de la sesión VISUAL/CIENCIA — qué queda, qué NO, y con qué causa
+
+**Gates al cierre** (worktree `mejorado/visual`, 14 commits sobre
+`mejorado/base` @cebbfe5):
+
+| Gate                            | Resultado                                        |
+| ------------------------------- | ------------------------------------------------ |
+| `pytest`                        | **1409 passed**, 9 skipped, 4 xfailed, 4 xpassed |
+| `lint-imports`                  | **14 contratos kept, 0 broken**                  |
+| `ruff check`                    | limpio                                           |
+| `pyright`                       | **0 errores**                                    |
+| `pnpm -C apps/studio test:run`  | **327 passed** / 34 files                        |
+| `pnpm -C apps/studio typecheck` | limpio                                           |
+| `pnpm -C apps/studio lint`      | limpio                                           |
+| `pnpm run arch` (depcruise)     | **0 violaciones** (146 módulos, 506 deps)        |
+
+Baseline al abrir: studio 318 en 33 files; `pnpm run arch` **rojo** (ver abajo).
+
+**Alcance cerrado**: V1/M18, V2/M19 (con su productor), V3/M20, V4/M6-ZNE, V5,
+V8/M23b, más el gate de arquitectura heredado. Decisiones #153-#159.
+
+#### Lo que NO se cerró, con causa
+
+1. **V6/M5 adapter qnexus vivo — BLOQUEADO-POR-DYLAN (tres causas).**
+   - `qnexus`/`pytket` NO están instalados, y agregarlos toca el venv
+     **compartido** con la sesión de plataforma. No es una decisión de una
+     sesión sola.
+   - Submitir a Nexus consume cuota HQC: es gasto real y necesita autorización
+     explícita, no inferida del alcance.
+   - Sin poder importar el SDK no hay forma de verificarlo contra su API real.
+     Escribir un adapter que _parece_ correcto contra una API que no se puede
+     correr es exactamente lo que la regla de validar-con-cliente-real prohíbe:
+     produciría código plausible que hay que rehacer al primer contacto.
+
+   **Lo que SÍ está listo para cuando se desbloquee**: el pipeline del gateway
+   con su etapa `egress` gobernada solo por authz (`gateway/stages.py`), y la
+   maquinaria de aprobación humana (`blite.gateway.approval`,
+   `authorize_approval_response`).
+
+2. **V7 QEC/Iceberg — bloqueado por transitividad.** El entregable es el
+   tradeoff **MEDIDO**; medirlo contra un simulador local no responde la
+   pregunta que el enunciado hace. Depende de V6.
+
+3. **V9 (#120) corrector AI-QEM — NO bloqueado, no alcanzó.** sklearn y
+   xgboost ya están instalados, el corpus existe, y desde V4 tiene un baseline
+   real que batir: `zne.apparent_improvement` y el mismo control negativo de
+   costo igual. El bloque `mitigation.*` ya tiene forma emitida — V9 solo llena
+   `training_digest` y cambia `method` a `ml-rf`/`ml-gbm`. **Al cerrarlo**:
+   declarar el brazo `mitigated` en `scripts/run_ablation.py` (hoy NO se
+   declara a propósito) y el panel queda con las 4 barras reales.
+
+4. **DoD CP6 vivo contra compose — NO alcanzó.** Receta concreta: levantar
+   compose, correr `scripts/run_ablation.py` con `CHIMERA_DATABASE_URL`
+   apuntando a su Postgres, y verificar en el Studio el mapa con badges + el
+   panel de ablación + la curva rvsp. Los tres productores existen y están
+   probados por separado; falta la corrida de punta a punta.
+
+#### Hallazgos heredados (NO introducidos en esta sesión)
+
+1. **`ruff format --check .` está ROJO en `HEAD`** — 20 archivos
+   (`capabilities/{ml,numeric,quantum}`, `challenges/reto{2,3}`, `scripts/`).
+   Verificado con `git archive HEAD` que es anterior a esta rama. Es un gate de
+   CI real (`.github/workflows/ci.yml:103`), así que **cualquier PR está rojo
+   hoy**. No se arregló acá porque 16 de los 20 archivos son de otros dominios
+   y un reformateo masivo dentro de un commit de features es ruido que esconde
+   el cambio real. Necesita dueño y un commit propio.
+
+   Efecto colateral a tener presente: `ruff format <dir>` reformatea TODO el
+   directorio, así que arrastra ese drift al staging de quien formatee.
+
+2. **La invariante ADR-029 no ve capabilities nuevas.**
+   `tests/invariants/test_capability_genericity.py` enumera
+   `entry_points(group="blite.capabilities")`, que lee metadata **instalada**:
+   una capability nueva no entra al gate hasta un reinstall del paquete.
+   Mitigación ya usada dos veces (`FidelityKernel`, `ZeroNoiseExtrapolation`):
+   un `TestGenericitySelfCheck` local en el test de la capability, que corre la
+   misma denylist contra el manifest en vivo. Vale la pena decidir si esa
+   mitigación se vuelve convención escrita o si el gate cambia de fuente.
+
+3. **`side_effects` del manifest no tiene NINGÚN enforcement.** Verificado por
+   grep: no se consulta en `runtime/loop.py` ni en `gateway/*.py`. La regla de
+   §13 («`pure` se reintenta libre; `reversible`/`irreversible-external` sin
+   idempotencia NO se reintenta y escala a humano») no está expresada como
+   código. Hoy no hay lógica de reintento en absoluto, así que el «no
+   reintentar» es cierto **de facto** — lo que falta es la ESCALACIÓN. Es
+   precisamente el mecanismo que V6 necesita, y por eso se reporta acá y no se
+   improvisó: construir un motor de reintentos para colgarle una escalación es
+   inventar arquitectura que §13 no pidió.
+
+4. **La suite del Studio es sensible a la carga de la máquina.** Correr pytest
+   y vitest en paralelo hace que `userEvent.type` de `NewRunView.test.tsx` se
+   pase del timeout de 5 s. Verificado que NO es regresión (verde en
+   aislamiento y en corridas limpias consecutivas). Se arregló el caso análogo
+   de `registry.test.ts` (dos `import()` dinámicos DENTRO del test, sin ningún
+   mock que los justificara); el de `NewRunView` es el `delay` por tecla de
+   user-event y toca 6+ archivos, así que queda reportado en vez de barrido.
+
+#### Frontera de contrato reportada (no se cruzó)
+
+Exponer la ablación desde `POST /runs` necesita una **tercera forma de body**
+(hoy claim-first y misión-first) ⇒ toca `docs/specs/endpoints-studio.md` ⇒
+ceremonia de contrato, que el plan reserva a la sesión de control. El mecanismo
+completo ya existe y está probado (`blite.runtime.ablation` +
+`scripts/run_ablation.py`); lo único que falta es el wire.
+
+## Sesión PLATAFORMA (dominio O) — worktree `mejorado/plataforma`, 2026-08-05
+
+> Numeración: las sesiones paralelas de esta ola (C-2, V, O) anexan en sus ramas;
+> si dos coinciden en un número, la sesión de control lo resuelve al mergear.
+
+### #153 — O2: el mecanismo de enforcement versionado y el destino del vendorizado
+
+**Discutido con Dylan (2026-08-05), como manda el enunciado de O2.**
+
+**Contexto que cambió la pregunta.** El hook local que registraba la decisión del
+2026-07-16 **no existe en esta máquina**: `.claude/settings.local.json` solo trae
+`permissions`, `~/.claude/settings.json` no declara hooks, y no hay
+`check-branding.sh` en ninguna parte. La regla estaba vigente en el papel y con
+CERO compuertas vivas — que es exactamente el argumento de O2/M26.
+
+**Decisión 1 — gitleaks con config privada opcional.** El enforcement versionado
+se monta sobre gitleaks (que O2 pedía de todos modos): la herramienta y su
+configuración base viajan con el repo, y una config privada NO versionada
+extiende la lista de patrones. La tensión con la decisión del 16-jul («un
+mecanismo de enforcement visible es en sí una señal») se resuelve porque lo
+versionado es genérico —escaneo de secretos, lo que cualquier repo serio tiene— y
+lo específico vive fuera de git. Descartados: script propio de denylist (dos
+mecanismos donde alcanza uno, y un script a medida sí levanta la pregunta «¿por
+qué existe esto?») y semgrep (hoy es advisory de CI, y la regla prohíbe CI para
+esto).
+
+**Decisión 2 — el árbol vendorizado sale del repo; el destilado se queda.**
+`knowledge/quantum/quantathon/` son 16 MB / 81 archivos trackeados (65 `.md`,
+15 `.png`, 1 `.yaml`): transcripciones de clases de YouTube (QWorld) y sesiones
+de 7 ponentes nominados, **sin licencia declarada**. Dylan precisó para qué
+existía: iba a refinarse e integrarse al agente como contexto. Eso separa dos
+cosas que estaban pegadas — el VALOR es el destilado (escritura nuestra, que cita
+las URLs públicas), el material crudo nunca necesitó estar versionado. Se mueve a
+`~/projects/blite/hackathons/2026/Quantathon/quantathon-material/`: sigue a mano
+por ruta absoluta para la sesión que lo destile, y deja de viajar en el repo.
+
+- **Bloqueador pre-flip registrado**: el flip publica la HISTORIA, no solo HEAD.
+  Sacarlo del árbol no lo saca del repo público — hace falta cirugía de historia
+  (`git filter-repo`) ANTES de publicar, y la corre Dylan (el clasificador de la
+  sesión bloquea filter-repo/force-push).
+- **Ítem nuevo al backlog**: destilar ese material a skills / afinado del harness
+  (razón de Dylan). No es alcance de O — se registra, no se ejecuta aquí.
+
+### #154 — O11: el gate de agnosticismo deja de ser mono-superficie
+
+**El problema (censo 07 §8.1/§8.5-4).** La doctrina de agnosticismo tenía UNA
+compuerta sobre UNA superficie: 4 campos del manifest. Ni `engine/`, ni `api/`,
+ni `apps/studio/` tenían gate — y las fugas censadas están, sin excepción, en las
+superficies sin compuerta. Cada fuga nueva era indetectable por CI. Es el ítem
+que hace irreversibles a los demás: sin él, la generalidad que ganan G/P/C/V se
+erosiona en silencio, un id de instancia hardcodeado a la vez.
+
+**Lo construido.** `tests/invariants/test_agnosticism_layers.py` +
+`agnosticism_scan.py` escanean el código de PRODUCCIÓN de `sdk` · `engine` ·
+`api` · `apps/studio/src` · `packages` contra el MISMO `scenario_denylist.txt`
+que vigila los manifests (una lista, no dos: dos listas driftean el primer día).
+Las excepciones son DECLARADAS en `agnosticism_exceptions.toml`, con clase y
+causa. Documentado como **ADR-029b** en `docs/invariants.md` con anclas
+`<!-- enforced: -->`.
+
+**Cuatro decisiones de diseño, cada una con su porqué:**
+
+1. **Trinquete de dos mitades.** Falla una fuga nueva sin declarar Y falla una
+   excepción que ya no matchea nada. Sin la segunda mitad la lista se vuelve un
+   cementerio que oculta que el gate ya podría ser más estricto.
+2. **Frontera de palabra con `_` y `-` incluidos**, no `\b` ni subcadena. Por
+   subcadena, `ice` matchea `service`/`slice`/`device` y el gate muere de ruido.
+   Con `\b`, `_ISLANDING_CORPUS_DIR` **NO** matchea `islanding` — y el nombre de
+   un identificador es justo donde el vocabulario de escenario se esconde mejor
+   (esa línea de `runs.py` se colaba entera con `\b`).
+3. **`lenses/` fuera del barrido, por doctrina.** P13 creó el registry de lentes
+   del Studio y su propio código lo declara: «la única parte del Studio que puede
+   nombrar capabilities de redes eléctricas, y por eso vive acá y no en el shell».
+   Es el `capabilities/` del lado D. Si una lente no pudiera nombrar su dominio,
+   no habría dónde ponerlo. También fuera: fixtures (datos etiquetados) y tests.
+4. **Declarar, no refactorizar.** Las 16 fugas vivas se DECLARAN, no se arreglan
+   en esta sesión: 11 de los 16 archivos son territorio de sesiones vivas (C-2 en
+   `engine/verification` y `api`, V en el Studio). El gate existe para hacer la
+   deuda visible y no-creciente; pagarla es de G3/P6/V1.
+
+**El mapa que deja (16 archivos, 53 apariciones, 3 clases):**
+
+| clase      | qué es                                          | ejemplos                                                                                             |
+| ---------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `doctrina` | la regla citándose a sí misma                   | `sdk/.../manifest.py` — el docstring de ADR-029 usa los términos prohibidos como contraejemplo       |
+| `contrato` | identificador YA estampado en evidencia emitida | `HARNESS_ID = "pandapower-islanding-v1"`, `verifier:pandapower-islanding` — renombrar RE-DIGESTA     |
+| `deuda`    | fuga real, con el ítem que la cierra            | `_ISLANDING_CORPUS_DIR` en el borde HTTP (→G3) · `DEFAULT_PROJECT` del router (→P6) · el spike (→V1) |
+
+**Términos nuevos en el denylist**: `pandapower`, `ieee14`/`ieee-14`,
+`ieee30`/`ieee-30` — librería de dominio e ids de instancia benchmark del reto 1.
+Una capa genérica que los nombra está cableada al escenario; `capabilities/` los
+puede nombrar libremente (ADR-008 pone el dominio ahí).
+
+**Verificado (no «debería»)**: con un canario `MICROGRID_MODE` inyectado en
+`engine/src/blite/runtime/dispatch.py`, el gate falla citando archivo, línea y
+término; revertido el canario, verde. `tests/invariants/`: **88 passed / 1
+skipped**. `pyright` **0 errores** (worktree con `pyrightconfig.json` local —
+`extraPaths` + `venvPath` al venv del principal; excluido en `.git/info/exclude`,
+lleva rutas absolutas de esta máquina). `ruff` limpio. `markdownlint` y
+`prettier --check` verdes sobre `docs/invariants.md`.
+
+### Tabla de interacciones — #153/#154
+
+| Interfaz tocada                          | Dominio afectado | Estado del contrato                                                  |
+| ---------------------------------------- | ---------------- | -------------------------------------------------------------------- |
+| `tests/invariants/scenario_denylist.txt` | TODOS (doctrina) | EXTENDIDO — 5 términos nuevos; una lista alimenta las DOS compuertas |
+| `docs/invariants.md` — ADR-029b          | TODOS (doctrina) | NUEVO — aditivo; ADR-029 intacto                                     |
+| `agnosticism_exceptions.toml`            | engine · api · D | NUEVO — mapa declarado de deuda; solo puede encoger                  |
+| Baseline del worktree                    | n/a              | 1205 passed / 13 skipped / 9 xfailed / 4 xpassed / cov 91.62 %       |
+
+### #155 — O8: el tercer plano existe, y su primera medición encontró algo
+
+**El hueco (censo 07 §7.1-1).** G1-G7 metieron los retos 2 y 3, C-1/C-2 profundizan
+la confianza, V pinta los productores — y **no había forma de medir si el sistema
+MEJORA**. El `false_reject_proxy` que trust/05 §1.3 define como KPI de primer
+nivel llevaba meses sin consumidor.
+
+**Lo construido.** `chimera_eval` (`tools/corpus-runner/`, miembro nuevo del
+workspace), con la forma de Inspect (UK AISI) —`Dataset → Task → Solver →
+Scorer`— y su vocabulario `C/I/P/N`, **portados sin la dependencia** (la decisión
+ya estaba tomada en trust/17 §2: adoptar el framework metería su ciclo de vida
+dentro del nuestro). Más `docs/tres-planos.md`, el marco transversal promovido
+desde trust/17 §1.6, y `scripts/run_eval_corpus.py`, que arma el dataset desde el
+corpus C3 y corre los verificadores REALES.
+
+**Tres decisiones de diseño que no son de Inspect:**
+
+1. **`config_digest`.** El `EvalSpec` de Inspect captura `revision` y `packages`
+   pero ningún digest de configuración: la reproducibilidad había que computarla
+   igual. Acá la identidad de una evaluación ES su digest.
+2. **Cero reloj en el log.** Dos corridas idénticas dan bytes idénticos
+   (verificado: mismo sha256 en dos corridas seguidas). Con timestamp, comparar
+   dos variantes de una ablación sería lectura a ojo en vez de un `diff`.
+3. **Un error de PROCESO no es un veredicto** — la misma doctrina que
+   `VerificationProcessError` en el engine. Si el solver explota, la muestra sale
+   de las tasas y se reporta aparte: contarla como `I` inventaría un error del
+   sistema, y como `N` inventaría una abstención que nadie tomó. Las dos mentiras
+   corrompen justo el KPI que el runner existe para medir.
+
+**`target` estructurado, no string.** Es la única fricción de forma que trust/17
+§1.2 anotaba («`Target` es estrictamente `str | list[str]`»): una partición de
+grafo o una serie numérica no son texto. El corpus de esta casa tiene óptimos y
+series; el tipo lo dice.
+
+**La frontera, hecha gate.** Contrato de import-linter nuevo — **«O8: evaluation
+is downstream — nothing imports the corpus runner»**: `blite`, `chimera_api`, el
+SDK y las 9 capabilities tienen prohibido importar `chimera_eval`. La flecha
+inversa es legítima y por eso NO se prohíbe (la tarea importa el plano de
+verificación para medirlo). Si un día se invirtiera, una métrica retrospectiva
+habría entrado al camino crítico de un run — que es exactamente la confusión
+eval≈verificación que el marco existe para evitar.
+
+**LA MEDICIÓN (corpus C3, 9 instancias × 2 polaridades, verificadores reales):**
+
+| KPI                   | valor     |
+| --------------------- | --------- |
+| `scored`              | 18        |
+| `process_errors`      | 0         |
+| `accuracy`            | 0.667     |
+| `over_refusal_rate`   | **0.333** |
+| `decisive_error_rate` | **0.0**   |
+
+Las dos polaridades importan: sin la muestra perturbada, un verificador que
+dijera `pass` a todo sacaría 100 %. La perturbación es MULTIPLICATIVA (×1.5) y no
+aditiva a propósito — un offset aditivo sobre valores cercanos a cero no mueve el
+error L∞-RELATIVO que estos verificadores usan, y la «mentira» se colaría como
+verdad.
+
+**El hallazgo — HANDOFF a G / C-2.** Cero errores decisivos (el sistema nunca se
+pronunció equivocado, en ninguna polaridad). Pero el 33 % de sobre-rechazo está
+**enteramente en `N = 12`**: `verifier:ed-dense` se abstiene con
+`budget_exhausted` porque 2¹² = 4096 supera su `_DEFAULT_MAX_DENSE_DIMENSION =
+1024`. La abstención es honesta y diseñada así (rehúso explícito antes que cambio
+silencioso de algoritmo, §Deliverable-1 punto 2). La consecuencia NO estaba
+medida: **en `N = 12` los claims del reto 3 quedan sostenidos por UNA pata** (el
+corpus congelado), no por las dos independientes que la receta 11 promete — la
+independencia se degrada justo en las instancias más grandes. No es bug de nadie;
+es una medición que antes no existía. Decidir es de G/C-2: subir el presupuesto,
+declarar `N=12` como single-leg con causa, o traer una segunda pata que escale.
+
+**Hallazgo de arnés (corrige la receta #83).** `uv sync --locked --all-packages
+--all-extras` DENTRO del worktree crea un `.venv` completo, con los editables
+apuntando al worktree. La receta anterior (venv del principal + `PYTHONPATH`) ya
+no hace falta y además ocultaba errores de tipo de módulos nuevos (#149). Los
+gates de esta sesión corren con `uv run` a secas.
+
+**Flake preexistente registrado (NO introducido acá).** En la PRIMERA corrida del
+baseline, `capabilities/ml/tests/test_integration_reto2.py::TestFullChainOnCorpusSlice::test_both_arms_produce_metrics_with_aligned_shapes`
+falló; en las tres corridas siguientes (misma config, con y sin cobertura) pasó.
+Aislado pasa siempre. Un test no determinista en un repo cuyo argumento es el
+determinismo merece dueño: queda REPORTADO, sin decisión, para G.
+
+### Tabla de interacciones — #155
+
+| Interfaz tocada                                       | Dominio afectado | Estado del contrato                                                   |
+| ----------------------------------------------------- | ---------------- | --------------------------------------------------------------------- |
+| `pyproject.toml` — workspace + testpaths + coverage   | build            | EXTENDIDO — miembro nuevo `tools/corpus-runner`; `uv.lock` regenerado |
+| contrato import-linter «O8: evaluation is downstream» | TODOS            | NUEVO — 15 contratos kept, 0 broken                                   |
+| `docs/tres-planos.md` + índice `docs/README.md`       | docs (autoridad) | NUEVO — marco transversal; cero cambios de contrato                   |
+| `chimera_eval` (paquete)                              | eval (nuevo)     | NUEVO — fuera de `blite.*`, sin deps de runtime                       |
+| `results/eval/*.json`                                 | evidencia        | NUEVO — log reproducible (mismo sha256 en dos corridas)               |
+
+### #156 — CI de `mejorado/base` estaba ROJA, y por qué nadie lo vio
+
+**Hallazgo al empezar O2.** El último push de la fase (#152, `cebbfe5`) dejó CI
+en rojo — tres jobs fallando — y ninguna sesión lo notó porque **los gates
+locales que el bloque REGLAS manda correr no incluyen los que fallan**:
+
+| job fallando             | causa REAL (reproducida local)                                                                                            | ¿lo cubre el gate local?                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Python → Format check    | `ruff format --check .` con **21 archivos** sin formatear (ml, numeric, quantum, `challenges/reto{2,3}`, `scripts/gen_*`) | **NO** — el bloque REGLAS dice `ruff check`, que es OTRA cosa |
+| Security → gitleaks      | falso positivo: `signing_key: ed25519.Ed25519PrivateKey` en `api/.../runs.py:396` — una ANOTACIÓN DE TIPO, sin valor      | **NO** — no había gitleaks local                              |
+| Web → dependency-cruiser | 2 violaciones reales del Studio (abajo)                                                                                   | **NO** — no está en el bloque REGLAS                          |
+
+`lint-staged` solo toca lo que UNO stagea: un archivo que otra sesión dejó sin
+formatear sobrevive hasta que CI lo dice. Y el `pre-commit` de husky no corre en
+un worktree sin `node_modules` — bypassearlo es exactamente cómo se acumularon
+los 21.
+
+**Corregido acá**: `ruff format` sobre el árbol (21 archivos, cambio puramente
+mecánico; las sesiones que los escribieron ya cerraron), el falso positivo de
+gitleaks (vía `.gitleaks.toml`, abajo), y CONTRIBUTING gana la sección «los dos
+gates que la gente olvida» con `ruff format --check .` y `depcruise`.
+
+**Hueco de CI cerrado de paso**: el filtro de rutas del job Python NO incluía
+`api/**` — un cambio SOLO en la capa HTTP se saltaba pytest, pyright y
+lint-imports enteros. Entran también `distributions/`, `tools/`, `challenges/`
+y `scripts/`.
+
+**REPORTADO, no arreglado — depcruise (decisión de arquitectura del Studio, no
+mía):** `src/App.tsx → src/router.tsx → src/App.tsx` (`no-circular`) y
+`src/App.tsx → src/gatewayClient.ts` (`F3: views-consume-only-the-data-layer`).
+Las dos llegaron con el router de P7 y las dos son estructurales: romper el
+ciclo mueve dónde vive el árbol de rutas, y F3 dice que una vista no habla con
+el cliente HTTP. Es alcance de P-ui/V; hasta que se resuelva, **CI seguirá roja
+en el job Web**.
+
+### #157 — O2: enforcement versionado de patrones, y el árbol de terceros fuera
+
+**Ejecuta la decisión #153.**
+
+**Enforcement.** `.gitleaks.toml` versionado (extiende el set upstream) +
+`scripts/pre-commit-secrets.sh` colgado del `pre-commit` de husky, que escanea
+lo STAGED. Lo específico vive en `.gitleaks.local.toml`, gitignoreado: si
+existe, el hook lo usa EN LUGAR del compartido. Lo que viaja en el repo es
+genérico —escaneo de secretos, lo que cualquier repo serio tiene— y no dice
+nada de qué patrones hay del otro lado.
+
+Comportamiento sin gitleaks instalado, decidido a propósito:
+
+- **sin** config local → avisa y deja pasar (CI escanea la historia y bloquea;
+  una herramienta de dev faltante no debe frenar a alguien en su primer día);
+- **con** config local → **falla**. Configuraste patrones extra: saltárselos en
+  silencio sería lo peor de los dos mundos, enforcement que crees tener y no
+  tienes.
+
+**Verificado en vivo** con el binario pinneado de CI (v8.30.1, sha256
+verificado): (1) sin gitleaks y sin config local → exit 0 con aviso; (2) sin
+gitleaks y con config local → exit 1; (3) con gitleaks y un token de Stripe
+staged → **exit 1, commit bloqueado**. Y la allowlist es ANGOSTA, probada por
+separado: `signing_key: str = "sk_live_…"` (anotación CON valor) **sí** se
+detecta; solo se perdona la declaración sin valor.
+
+**Desvendorizado.** `knowledge/quantum/quantathon/` (81 archivos, 16 MB:
+transcripciones de YouTube de QWorld + 7 ponentes nominados, sin licencia
+declarada) salió del árbol a
+`~/projects/blite/hackathons/2026/Quantathon/quantathon-material/`. Quedan dos
+archivos: `catalog.yaml` (índice de fuentes PÚBLICAS — URLs y ponente, se
+referencia, no se reproduce) y un `README.md` con la causa.
+
+- **Consecuencia buena e inesperada**: las exclusiones de `.markdownlintignore`
+  y `.prettierignore` para ese árbol se BORRAN — el gate de docs vuelve a cubrir
+  el repo COMPLETO, sin un agujero de 671 errores «que no son nuestros».
+- **Ítem nuevo al backlog** (razón de Dylan): destilar ese material a skills /
+  afinado del harness. El valor nunca fue el material, era el destilado — y el
+  destilado es escritura nuestra que cita las URLs públicas.
+- **BLOQUEADOR PRE-FLIP**: publicar el repo publica la HISTORIA. Sacarlo de HEAD
+  no lo saca del repo público: falta `git filter-repo` sobre esa ruta antes del
+  flip, y lo corre Dylan (el clasificador de la sesión bloquea filter-repo).
+
+### Tabla de interacciones — #156/#157
+
+| Interfaz tocada                              | Dominio afectado | Estado del contrato                                                          |
+| -------------------------------------------- | ---------------- | ---------------------------------------------------------------------------- |
+| `.gitleaks.toml` + `pre-commit-secrets.sh`   | repo/CI          | NUEVO — genérico versionado; lo específico fuera de git                      |
+| `.husky/pre-commit`                          | repo             | EXTENDIDO — `lint-staged` + escaneo de lo staged                             |
+| `.github/workflows/ci.yml` — filtro `python` | CI               | CORREGIDO — `api/**` faltaba; +distributions/tools/challenges/scripts        |
+| 21 archivos `ruff format`                    | G (cerrada)      | MECÁNICO — cero cambio semántico; desbloquea el job Python                   |
+| `.markdownlintignore` / `.prettierignore`    | docs             | ENDURECIDO — muere la exclusión del vendorizado; gate cubre todo             |
+| `knowledge/quantum/quantathon/`              | knowledge        | REDUCIDO a índice + causa; el crudo vive fuera del repo                      |
+| `apps/studio` depcruise ×2                   | D (P-ui/V)       | **ROTO — reportado, sin decisión**: CI Web seguirá roja hasta que se arregle |
+
+### #158 — EL REPO YA ES PÚBLICO: el bloqueador pre-flip de #157 no es pre-flip
+
+**Verificado en vivo hoy (2026-08-05), no inferido:**
+
+```
+gh repo view Blite-HQ/chimera → {"isPrivate": false, "visibility": "PUBLIC"}
+gh api repos/Blite-HQ/chimera/contents/knowledge/quantum/quantathon
+  → CLAUDE.md · catalog.yaml · corpus-spec.md · knowledge · slides_png
+```
+
+El árbol vendorizado de terceros **está publicado ahora mismo** en GitHub. La
+decisión #157 lo sacó del árbol, y eso sirve para HEAD — pero la historia
+también es pública, así que la cirugía (`git filter-repo` sobre
+`knowledge/quantum/quantathon/` + force-push) deja de ser «antes de publicar» y
+pasa a ser **remediación de una exposición viva**. La corre Dylan (el
+clasificador de la sesión bloquea filter-repo/force-push), y conviene además
+pedirle a GitHub Support que purgue los objetos sueltos: un force-push deja los
+blobs accesibles por SHA.
+
+Esto NO cambia el diseño de #157 — el enforcement versionado sigue siendo
+genérico y el patrón sigue fuera de git, que es justo lo que hay que hacer con
+un repo público. Cambia la urgencia y el orden.
+
+### #159 — hallazgos 9 y 10 del handoff S3, cerrados con evidencia
+
+**Hallazgo 9a — el ignore de CVE con fecha vencida.** RE-EVALUADO hoy:
+`pip-audit -f json` reporta `PYSEC-2026-2447` (diskcache 5.6.3, alias
+CVE-2025-69872) con **`fix_versions: []`** — upstream sigue sin release
+arreglada, así que el ignore SIGUE justificado. El comentario de `ci.yml` deja
+de tener una fecha muerta: dice cómo re-evaluarlo y que se quita en cuanto
+aparezca un fix.
+
+**Y lo que la re-evaluación destapó — dos CVEs con arreglo disponible,
+tapados por la CI roja:**
+
+| paquete               | vuln           | fix disponible | estado                            |
+| --------------------- | -------------- | -------------- | --------------------------------- |
+| `aiohttp` 3.14.2      | CVE-2026-69244 | **3.14.3**     | PR de dependabot ABIERTO, CI roja |
+| `cryptography` 49.0.0 | CVE-2026-69247 | **50.0.0**     | PR de dependabot ABIERTO, CI roja |
+| `diskcache` 5.6.3     | CVE-2025-69872 | ninguna        | ignore justificado                |
+
+El job Security corre gitleaks ANTES que pip-audit, así que el falso positivo
+de #156 abortaba el job y `pip-audit` **nunca llegaba a correr**: dos parches de
+seguridad esperando detrás de un fallo que no tenía nada que ver. Con #156/#157
+el job vuelve a llegar a ese paso. **NO se bumpean acá**: los PRs de dependabot
+son el vehículo correcto y duplicarlos en `uv.lock` solo crearía conflicto.
+
+**Hallazgo 9b — URL rota de `ISSUE_TEMPLATE/config.yml`.** RESUELTA POR LOS
+HECHOS: `https://github.com/Blite-HQ/Chimera/blob/main/SECURITY.md` responde
+**200** (comprobado con curl; el nombre real del repo es `Blite-HQ/chimera` y
+GitHub no distingue mayúsculas). Estaba «rota» solo mientras el repo era
+privado. Sin cambio.
+
+**Hallazgo 10 — pin frágil `68af0c1`.** VERIFICADO alcanzable: el commit existe
+local y en origin (`gh api .../commits/68af0c1` →
+`68af0c19cf56f95474ffb6e5b14aecf62d5f803f`), lo contiene la rama
+`ejercicio/sf-ratificacion-simulada` (local y remota) y
+`protocolo-auditoria-ratificaciones.md` se lee ahí. **No podar esa rama.** La
+fragilidad se retira de verdad en O9, que necesita ese mismo protocolo como
+fuente y lo trae al árbol — a partir de ahí el pin deja de ser la única vía.
+
+### #160 — O12: los datos estampados dejan de depender de que alguien se acuerde
+
+`verify_corpus_digests.py` existía y **nadie lo corría en CI**; `knowledge/nexus/`
+—19 corridas externas de Nexus con cadena de digests in-toto— no tenía guard del
+todo, solo un README que declara «NADA se re-digesta ni se regenera».
+
+**`scripts/verify_nexus_digests.py`** (nuevo) verifica, por fila de `index.json`:
+`sha256(canonicalize(normalized_counts))` = `normalized_digest` · el statement
+entero = `statement_digest` · **el eslabón in-toto**: `subject[0].digest.sha256`
+= `normalized_digest`, que es lo que hace que la attestation certifique ESTOS
+counts y no otros · coherencia de los digests dentro de `event` · **cero
+huérfanos** en `normalized/`/`statements/` · y que cada `job_id` de
+`consensus.json` exista en el índice.
+
+Recanonicaliza en vez de comparar bytes (el digest manda, no el formato) y usa
+el MISMO `canonicalize` del anexo congelado que usó el importador — un guard con
+su propia serialización estaría verificando otra cosa.
+
+**Verificado que MUERDE, no solo que pasa**: sobre los datos reales, 19/19 y
+cadena íntegra; con `counts["000000"] += 1` en una corrida, **exit 1** citando
+digest esperado y recomputado; con un archivo extra en `normalized/`, exit 1 por
+huérfano; restaurado, verde otra vez.
+
+**CI**: job nuevo `Data guards` con filtro de rutas propio (`knowledge/*/corpus/**`,
+`knowledge/nexus/**`, los dos scripts) — un corpus editado no arrastra la suite
+de Python entera, y el `ci-gate` agregador ya lo exige.
+
+### Tabla de interacciones — #158/#159/#160
+
+| Interfaz tocada                         | Dominio afectado | Estado del contrato                                                         |
+| --------------------------------------- | ---------------- | --------------------------------------------------------------------------- |
+| `scripts/verify_nexus_digests.py`       | datos/confianza  | NUEVO — solo lee y recomputa; cero re-digest                                |
+| `.github/workflows/ci.yml` — job `data` | CI               | NUEVO — + filtro propio + entra al `ci-gate`                                |
+| `ci.yml` — ignore de CVE                | seguridad        | RE-EVALUADO con evidencia; sigue justificado (sin fix upstream)             |
+| `knowledge/nexus/`, corpus              | datos            | **NO TOCADOS** — el guard los lee, jamás los escribe                        |
+| exposición pública del vendorizado      | repo             | **ABIERTO — requiere a Dylan**: filter-repo + force-push + purga de objetos |
+
+### #161 — el hallazgo que casi arruina #157: git no corre hooks en un worktree
+
+**Encontrado probando mi propio entregable.** Tras cablear el escaneo de
+secretos al `pre-commit`, hice el commit de #157 esperando ver correr
+`lint-staged`. No corrió nada.
+
+```
+git config core.hooksPath  →  .husky/_
+ls .husky/_                →  No such file or directory
+```
+
+`core.hooksPath` está configurado, pero `.husky/_` lo GENERA el script
+`prepare` de npm y **no está versionado**. Un worktree recién creado hereda la
+config y no el directorio: git no encuentra los hooks y **no corre ninguno, sin
+error y sin aviso**. Los commits simplemente dejan de revisarse.
+
+Es la causa raíz de #156: 21 archivos sin formatear entraron a `mejorado/base`
+porque `lint-staged` —que los habría formateado— jamás corrió en las sesiones de
+worktree. Y habría dejado el enforcement de #157 en decorativo: un hook
+versionado que en la práctica no se ejecuta es peor que no tenerlo, porque uno
+cree estar cubierto.
+
+**Arreglo**: `npx husky` una vez por worktree. Documentado en CONTRIBUTING (con
+la comprobación de que el directorio EXISTA, no solo la config) y en el bloque
+de reglas de `05-plan-paralelo.md` §0, junto con la corrección de la receta de
+gates (`uv sync` en worktree SÍ funciona hoy) y los dos gates que faltan en el
+bloque REGLAS (`ruff format --check`, `depcruise`).
+
+**Verificado en vivo, no asumido**: con `.husky/_` generado, `git commit` con un
+token de Stripe staged termina en `husky - pre-commit script failed (code 1)` —
+el commit NO se crea.
+
+### #162 — O3: el proyector OTel, y el pin de semconv
+
+**Ejecuta S-F (#128) / C-11.** `projectors/otel/` (paquete `chimera_otel`,
+miembro nuevo del workspace) deriva trazas OTLP del stream. Es un PROCESO
+aparte: no gobierna, no escribe, no importa el engine.
+
+**Lo que se decidió acá (S-F lo dejaba a O3):**
+
+| decisión                    | valor      | por qué                                                                                         |
+| --------------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| pin de semconv GenAI        | **1.38.0** | las semconv GenAI siguen incubando; el pin es una decisión fechada y cada span la porta         |
+| `chimera.projector_version` | **1**      | cambiar el mapeo = bump acá Y en el prefijo de dominio (`.../v2`), como el anexo                |
+| collector del perfil        | `debug`    | el DoD es «un run real llega a un collector»: stdout lo hace observable sin montar Jaeger/Tempo |
+
+**Tres fronteras hechas hechos, no promesas:**
+
+1. **Solo-SELECT de verdad.** El proyector se conecta con el rol
+   `chimera_otel`, creado por un init script con `SELECT` sobre `events` y nada
+   más. **Probado en vivo**: `INSERT` → `ERROR: permission denied for table
+events`; `SELECT count(*)` → 13. El append-only no depende de que el código
+   se porte bien.
+2. **Imagen propia.** El proyector NO usa la imagen del api: instala
+   `--package chimera-otel` y ni siquiera lleva `blite` dentro. Más dos
+   contratos de import-linter, uno por dirección (17 contratos kept, 0 broken).
+3. **Cursor fuera del event store** — volumen propio. Se puede perder: reproyectar
+   es idempotente.
+
+**Determinismo, el punto del ítem.** El SDK de OTel genera ids ALEATORIOS. Se
+usa su punto de extensión (`IdGenerator`) para devolver los del plan —
+deliberadamente NO se escribe el `_context` privado del span, que habría
+funcionado hoy y se habría roto en la próxima versión del SDK, en silencio y
+justo en la propiedad que sostiene el diseño.
+
+**DoD CUMPLIDO EN VIVO** (`docker compose --profile otel up -d --build`), no en
+tests:
+
+- run REAL creado por HTTP (`run-1d7edb53aecc4f2d96b61d0272cb2b96`, 12 eventos);
+- el collector recibió **5 spans**: `run` · `step` ×2 · `capability` ·
+  `verification` — las cinco clases de la tabla §3 que este run produce;
+- `trace_id` en el collector = **`bd03fae4d4e1fa97dc7c441ba71ba859`**, idéntico
+  al recompute independiente de `sha256("blite/otel-trace/v1\n" ‖ run_id)[:16]`;
+- cada span porta `chimera.semconv_version=1.38.0` y
+  `chimera.projector_version=1`;
+- **re-proyección**: borrado el cursor y reiniciado el servicio, el collector
+  vuelve a recibir la MISMA traza — la promesa de §4 verificada contra un
+  collector real, no contra un mock.
+
+**El stream `system:registry` quedó fuera**, como manda §3: no es el rastro de
+un run.
+
+**Fixture de costura** `tests/fixtures/contract/observabilidad/trace-example.json`
+con su generador (`scripts/gen-contract-fixtures-observabilidad.py`) y su test
+anti-drift; el golden cubre las CINCO clases de span. Espejo Studio no aplica
+(el consumidor es un collector).
+
+**Seeds S-F en verde**: los 3 xfail de `test_seed_observabilidad_proyector.py`
+se retiraron — quedan como regresión permanente de su contrato, recomputando la
+derivación de ids de forma INDEPENDIENTE.
+
+**Langfuse** queda documentado como perfil OPCIONAL aguas abajo del collector,
+con el bloque de exporter listo para descomentar y las credenciales por env var
+(EG-3). El proyector no sabe que existe: exporta OTLP y no le importa quién
+escucha — ese es el punto de que la costura sea un collector.
+
+### Tabla de interacciones — #162
+
+| Interfaz tocada                    | Dominio afectado | Estado del contrato                                        |
+| ---------------------------------- | ---------------- | ---------------------------------------------------------- |
+| `projectors/otel` (paquete)        | observabilidad   | NUEVO — fuera de `blite.*`; 2 contratos de imports         |
+| rol `chimera_otel` + init script   | infra            | NUEVO — SELECT sobre `events` y nada más                   |
+| perfil `otel` del compose          | infra            | NUEVO — fuera del camino por defecto                       |
+| `events` (tabla)                   | A (runtime)      | **NO TOCADA** — solo lectura                               |
+| fixture `contract/observabilidad/` | costura          | NUEVO — golden + anti-drift; sin espejo Studio (declarado) |
+| seeds S-F                          | costura          | xfail RETIRADO — 3 tests de regresión permanente           |
+
+### Handoff parcial de la sesión PLATAFORMA (dominio O) — estado al 2026-08-05
+
+**Rama `mejorado/plataforma`, 6 commits sobre `mejorado/base` @cebbfe5, sin push.**
+
+| ítem                      | estado                                                                    |
+| ------------------------- | ------------------------------------------------------------------------- |
+| O11 gate multi-capa       | **CERRADO** (#154) — trinquete + 16 fugas declaradas, probado con canario |
+| O8 corpus runner          | **CERRADO** (#155) — KPI vivo sobre corpus C3; halló el hueco de N=12     |
+| O2 enforcement + vendor   | **CERRADO** (#157) — gitleaks en pre-commit probado; árbol fuera          |
+| O12 guards de datos       | **CERRADO** (#160) — guard nuevo de nexus + job de CI; probado que muerde |
+| hallazgos 9/10            | **CERRADOS** (#159) — con evidencia; 9b resuelto por los hechos           |
+| O3 proyector OTel         | **CERRADO** (#162) — DoD VIVO contra collector real                       |
+| O4 Croissant              | **PENDIENTE**                                                             |
+| O5 MCP gobernado          | **PENDIENTE** — el más grande de los que quedan                           |
+| O9 protocolo convergencia | **PENDIENTE**                                                             |
+| O10 1-pager SEPs          | **PENDIENTE**                                                             |
+| O7 deck.gl                | **NO evaluado** — condicional por umbral, no es compromiso                |
+
+**Gates al cierre parcial** (worktree, `uv run` directo — la receta #83 quedó
+caduca, ver #161):
+
+| gate                  | resultado                                                  |
+| --------------------- | ---------------------------------------------------------- |
+| `pytest`              | **1283 passed** / 9 skipped / 6 xfailed / 4 xpassed        |
+| cobertura             | **90.27 %** (mínimo 30 %)                                  |
+| `lint-imports`        | **17 contratos kept, 0 broken** (3 nuevos: O8 ×1, C-11 ×2) |
+| `ruff check`          | limpio                                                     |
+| `ruff format --check` | limpio (**gate que faltaba en el bloque REGLAS** — #156)   |
+| `pyright`             | **0 errores**                                              |
+| `markdownlint`        | 0 · `prettier --check` 0, ya sobre el repo COMPLETO        |
+
+Baseline al abrir: 1205 passed / cov 91.62 %. Los 6 xfailed que quedan son 3
+menos que el baseline: los seeds S-F del proyector entraron en verde y su xfail
+se retiró (jamás borrados).
+
+**Dos cosas BLOQUEADAS EN DYLAN, ninguna es deuda de esta sesión:**
+
+1. **Exposición viva del vendorizado (#158)** — el repo YA es público y el
+   material de terceros está publicado. Hace falta `git filter-repo` +
+   force-push (el clasificador de la sesión los bloquea) y, idealmente, pedirle
+   a GitHub Support la purga de objetos sueltos.
+2. **Push de esta rama** — como manda el bloque REGLAS.
+
+**Una cosa REPORTADA a otra sesión (#156):** las 2 violaciones de
+dependency-cruiser del Studio (`App.tsx ↔ router.tsx` circular y `App.tsx →
+gatewayClient.ts` contra F3). Son de P-ui/V y son estructurales. **Hasta que se
+arreglen, el job Web de CI sigue rojo** aunque todo lo demás esté verde.
+
+**El stack quedó ARRIBA** (`docker compose --profile otel`) para el DoD de O5.
+Bajarlo: `docker compose --profile otel down`.
+
+### #163 — dependabot desbloqueado: 15 vulnerabilidades cerradas, y por qué estaban ahí
+
+**Encargo de Dylan (2026-08-06): «podés arreglar los errores del dependabot».**
+
+**El diagnóstico, no el síntoma.** Los updates de npm fallaban TODOS con el
+mismo error, en el log del updater:
+
+```
+corepack pnpm update brace-expansion@5.0.9 --lockfile-only --no-save -r
+[ERR_PNPM_MISSING_TIME] The metadata of @radix-ui/react-id is missing the "time" field
+This error happened while installing the dependencies of radix-ui@1.6.0
+```
+
+`minimumReleaseAge` (cuarentena de 14 días) vivía en `pnpm-workspace.yaml` y
+terminaba haciendo **lo contrario de lo que promete: bloquear las
+actualizaciones de SEGURIDAD**. El proxy sandboxeado del updater no devuelve el
+campo `time` de todos los paquetes; con `resolutionMode: highest` los de primer
+nivel solo sacan un WARN («skipping the minimumReleaseAge check»), pero al
+re-validar el árbol TRANSITIVO revienta y aborta el update entero
+(pnpm/pnpm#9963, dependabot/dependabot-core#13165).
+
+La sesión anterior ya lo había topado y respondió agregando paquetes a
+`minimumReleaseAgeExclude` — cinco entradas. **No se gana así**: el paquete que
+revienta cambia en cada corrida y es transitivo. Seguían fallando cinco
+actualizaciones de seguridad.
+
+**Decisión: la cuarentena se muda entera a Dependabot.** `dependabot.yml` ya
+declara EXACTAMENTE la misma política (`cooldown` 14/90/14/7) y además la
+implementa bien — las actualizaciones de seguridad la saltan a propósito, que es
+justo lo que `minimumReleaseAge` no sabía hacer. Lo único que se cede es la
+cuarentena de un `pnpm add` MANUAL: un acto raro, deliberado, y todavía cubierto
+por `pnpm audit --audit-level=high` en CI. Vuelve el día que el bug upstream se
+resuelva; el porqué queda escrito en el archivo.
+
+**Y el resultado, medido:**
+
+| ecosistema | antes                            | después                                  |
+| ---------- | -------------------------------- | ---------------------------------------- |
+| npm        | **13 vulnerabilidades** (8 high) | **0** — «No known vulnerabilities found» |
+| Python     | 3 (2 con fix disponible)         | **1** — solo diskcache, sin fix upstream |
+
+npm: `overrides` para las cinco transitivas (`brace-expansion`, `fast-uri`,
+`js-yaml`, `postcss`, `undici`) — ninguna es dependencia directa nuestra, así
+que no hay `pnpm update` que las mueva; el override es el único camino.
+Python: `aiohttp` 3.14.2→3.14.3 (CVE-2026-69244) y `cryptography` 49→50
+(CVE-2026-69247), los dos que #159 había encontrado esperando detrás de la CI
+roja.
+
+**Nota de proceso (mía).** Los tres archivos de dependencias aterrizaron primero
+en el checkout PRINCIPAL en vez de en el worktree, por confusión de directorio
+de trabajo. Se detectó, se movió el cambio al worktree, se restauró
+`mejorado/base` (`git status` limpio) y se reinstaló su `node_modules` — sus
+tests del Studio vuelven a dar 299/32. Queda escrito porque el modo de falla es
+real y silencioso: en un repo con cuatro worktrees vivos, un comando sin `cd`
+explícito edita el árbol equivocado.
+
+### #164 — el repo queda LISTO para el flip: todo lo configurable, configurado
+
+**Contexto de Dylan (2026-08-06):** el repo pasó a privado para hacer estas
+limpiezas y volverá a ser público; quiere dejarlo listo para cuando eso sea
+definitivo, con lo que se pueda hacer hoy y **sin parches ni trucos**. Referencia
+de estilo: `qnexus-mcp`.
+
+**Configurado hoy (verificado contra la API, no supuesto):**
+
+- **Topics**: 10, de vacío (`verifiable-computing`, `agentic-ai`, `provenance`,
+  `in-toto`, `supply-chain-security`, `event-sourcing`, `quantum-computing`,
+  `combinatorial-optimization`, `reproducible-research`, `mcp`).
+- **`NOTICE`** (nuevo): el material de terceros que SÍ viaja en el árbol —
+  benchmarks IEEE vía pandapower (BSD-3), red del ICE, evidencia de Nexus (con
+  el descargo nominativo de marca, como qnexus-mcp), y el árbol que ya NO está.
+- **`CITATION.cff`** (nuevo): GitHub renderiza «Cite this repository» — una
+  plataforma de investigación tiene que ser citable.
+- **`.github/rulesets/main.json`** (nuevo): la protección de `main` como DATO
+  versionado, con `scripts/apply-repo-rulesets.sh` que la aplica e **idempotente**
+  (actualiza si ya existe). Hoy la API responde 403 «Upgrade to GitHub Pro or
+  make this repository public»; el script lo dice con esas palabras en vez de
+  escupir el error crudo.
+- **`docs/pre-flip-checklist.md`** (nuevo): qué está listo, qué no se puede y
+  **con qué causa verificada**, y los cinco comandos del día del flip en orden.
+
+**Lo que NO se puede hoy, con la causa comprobada** (no inferida): rulesets →
+403 (Pro o público) · reporte privado de vulnerabilidades → **404** en repo
+privado · secret scanning + push protection → **422** (GHAS) · code scanning y
+Scorecard → mismo caso. Cada uno con su comando exacto en el checklist.
+
+**Lo que ya estaba bien y se deja constancia**: merge squash-only sin merge
+commits ni rebase (historia lineal por construcción — justo lo que Dylan pidió),
+borrado de rama al mergear, alertas de Dependabot activas, arreglos de seguridad
+automáticos activos.
+
+**Licencia del corpus ICE — investigada (parte de O4).** Contra el feed DCAT del
+portal `datos-ice-se.opendata.arcgis.com` (2026-08-06): publisher **ICE**,
+`accessLevel: "public"` en todo el catálogo incluidos `Subestaciones` y
+`LineasDeTransmision`, y **ningún identificador de licencia estándar** (no
+CC-BY, no ODbL, no dominio público; un dataset hermano dice «Uso Público» en
+texto libre). Queda estampado en `NOTICE` §2 con la pregunta abierta explícita:
+«datos abiertos, acceso público» **no es** una concesión de redistribución de
+obras derivadas. Antes del flip: conseguir los términos, o sacar del árbol
+publicado las instancias `ice-*`/`cr*-*` y quedarse con las IEEE, que no tienen
+esa ambigüedad.
+
+**Historia**: por decisión de Dylan, la corrección integral se hace DESPUÉS de
+Mejorado, en una sola pasada. Queda anotada en el checklist §4, no ejecutada.
+
+### Tabla de interacciones — #163/#164
+
+| Interfaz tocada                       | Dominio afectado | Estado del contrato                                                     |
+| ------------------------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `pnpm-workspace.yaml`                 | build/seguridad  | CAMBIO DE POSTURA — cuarentena delegada a Dependabot, con causa         |
+| `pnpm-lock.yaml` · `uv.lock`          | build            | 15 vulnerabilidades cerradas; suite y Studio verdes tras el bump        |
+| `NOTICE` · `CITATION.cff`             | legal/OSS        | NUEVOS                                                                  |
+| `.github/rulesets/` + script          | repo             | NUEVO — dato versionado, inerte hasta el flip por límite real de GitHub |
+| `docs/pre-flip-checklist.md` + índice | docs             | NUEVO                                                                   |
+| `SECURITY.md`                         | seguridad        | ANOTADO — la ruta de reporte cambia al flujo privado en el flip         |
+| topics del repo                       | repo             | 10, desde vacío                                                         |
+
+### #165 — el override de `undici` rompía el Studio entero: se corrige por la vía correcta
+
+**Cazado verificando, no en review.** El override `undici: '>=7.29.0'` de #163
+dejaba los **32 archivos de test del Studio sin arrancar**:
+
+```
+Failed to start threads worker for test files …
+Caused by: Error: Cannot find module 'undici/lib/handler/wrap-handler.js'
+  … jsdom@29.1.1/lib/jsdom/browser/resources/jsdom-dispatcher.js
+```
+
+`jsdom@29.1.1` declara `undici: ^7.25.0` — o sea que 7.29.0 está DENTRO de su
+rango — pero requiere `lib/handler/wrap-handler.js` por ruta interna, y undici
+lo eliminó en un release **menor**. El rango semver decía «compatible» y no lo
+era.
+
+**Corregido subiendo `jsdom` a ^30.0.1**, que pide `undici ^8` — fuera del rango
+afectado por la alerta (7.0.0–7.28.x). El override de `undici` se BORRA: ya no
+hace falta, y mantener uno que no se necesita es deuda que alguien va a tener
+que descifrar después. `pnpm audit`: **sin vulnerabilidades conocidas**.
+
+La lección, escrita porque se repite: **un override de seguridad es un cambio de
+comportamiento, no un número**. Forzar una versión «dentro del rango» de un
+consumidor no garantiza nada si ese consumidor usa rutas internas. Se verifica
+corriendo la suite, no leyendo el semver.
+
+**Flake preexistente encontrado de paso (para P-ui/V, no lo toco).**
+`apps/studio/src/lenses/registry.test.ts` → «los jobs del fixture llevan
+capability_id» falla intermitente con **timeout de 5000 ms** (1 de 3 corridas,
+con la máquina cargada). No es corrección: el test hace `await import()`
+dinámico y bajo carga la transformación del módulo pasa los 5 s. Lo arregla su
+dueño subiendo el timeout o quitando el import dinámico.
+
+### Handoff de PLATAFORMA — actualización tras el encargo del 2026-08-06
+
+El handoff parcial de más arriba sigue vigente en su tabla de ítems (O4, O5, O9
+y O10 siguen PENDIENTES; O7 sin evaluar). Lo que cambió después:
+
+- **#163/#165 — dependencias**: 15 vulnerabilidades cerradas (npm 13→0,
+  Python 3→1). Dependabot vuelve a poder actualizar npm.
+- **#164 — flip**: todo lo configurable en un repo privado quedó configurado, y
+  lo que no se puede tiene su causa verificada y su comando listo en
+  `docs/pre-flip-checklist.md`.
+- **Historia**: por decisión de Dylan NO se ejecuta cirugía ahora; la corrección
+  integral va después de Mejorado, en una pasada única.
+- **depcruise del Studio**: lo toma otro agente (Dylan, 2026-08-06). Sigue
+  siendo lo único que mantiene rojo el job Web.
+- **#166 — O5 CERRADO** (DoD vivo en compose). El handoff de más arriba lo
+  listaba PENDIENTE: quedan **O4, O9 y O10**, más O7 sin evaluar.
+
+**Gates al cierre de este tramo**: pytest **1283 passed** / cov 90.27 % ·
+lint-imports 17/0 · ruff check y `format --check` limpios · pyright 0 ·
+Studio **299 passed / 32 files** · eslint 0 · `pnpm audit` sin vulnerabilidades ·
+`pip-audit` solo diskcache (sin fix upstream) · guards de datos verdes.
+
+### #166 — O5/M13: un tool MCP ajeno, invocado como capability GOBERNADA
+
+**Ejecuta C-12.** La resolución decía la parte difícil: los manifests de terceros
+NO son `CapabilityManifest` de primera clase. Si cada tool ajeno se registrara
+como capability propia, su vocabulario entraría a un manifest nuestro y ADR-029
+se caería el primer día.
+
+**Lo construido, y qué hueco tapa cada pieza:**
+
+| pieza                                     | qué es                                                 | hueco que cierra                                      |
+| ----------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| `blite.runtime.distribution`              | el `DistributionManifest`, MATERIALIZADO               | el freeze §1 lo daba por existente desde el principio |
+| `distributions/chimera/distribution.yaml` | la allowlist real (servers + tools + egress + pins)    | C-12: el vocabulario del tercero como DATO con digest |
+| `blite.protocols.mcp`                     | el round-trip (egreso, por eso vive en `protocols`)    | M13 no tenía adapter                                  |
+| `ServiceStrategy` (`runtime.dispatch`)    | la estrategia de red del perfil `service`              | la tabla de despacho tenía UNA sola entrada real      |
+| `blite_cap_mcp`                           | UNA capability genérica para cualquier tool ajeno      | C-12, literal                                         |
+| `chimera_api.mcp_wiring`                  | la attestation de importación (`builder.id = mcp://…`) | O5 lo pedía explícito                                 |
+
+**Y dos piezas que estaban construidas sin caller** (censo 07 §8.1-2) ahora lo
+tienen: `validate_interaction_profile` se llama al CARGAR el manifest —
+fail-closed en deploy, no en la primera invocación— y los `version_pins` que
+`registry.py` esperaba («trabajo pendiente del DistributionManifest») tienen de
+dónde salir.
+
+**Cuatro decisiones con su porqué:**
+
+1. **`side_effects: irreversible-external`.** Es el piso honesto: no sabemos qué
+   hace el tool de un extraño, y asumir reversibilidad inventaría una garantía
+   que no tenemos. La regla de reintentos del freeze §13 LEE ese campo — un
+   default optimista haría que el runtime reintente algo irreversible.
+2. **`invoke()` de la capability SIEMPRE levanta.** No es una limitación: es
+   `execution_profile: service`. Si el despacho llegara ahí, un fallback
+   silencioso a in-process ejecutaría un tool ajeno saltándose allowlist, pin y
+   attestation. Y sin invocador inyectado, `ProfileDispatcher` NO registra
+   estrategia `service` — misma doctrina anti-fallback que `remote-job` sin cola.
+3. **Que el servidor esté permitido NO permite todos sus tools.** Un servidor MCP
+   puede añadir tools entre versiones; heredar permiso por pertenecer al servidor
+   sería aceptar superficie que nadie revisó. Lista vacía = ninguno, jamás «todos».
+4. **El `package_pin` es obligatorio, sin default.** `uvx paquete` sin versión
+   trae lo que haya hoy en PyPI, y una capability gobernada no puede depender de
+   eso. Es además lo que la attestation cita como `builder`.
+
+**CEREMONIA REPORTADA, no ejecutada.** C-12 decía «reusa evidencia-externa» para
+la attestation. **No se puede sin mentir**: `ExternalImportStatement` valida
+llaves OBLIGATORIAS `circuit_digest` y `shots_requested` — es un import de job
+CUÁNTICO con nombre genérico (`ExternalImport/v1`). Una llamada a un tool MCP no
+tiene circuito ni shots, y rellenarlas sería fabricar campos para pasar un
+validador. Generalizar ese modelo toca contrato congelado ⇒ ceremonia, y una
+sesión de dominio no la ejecuta sola. Mientras tanto se emite un predicado
+propio y ADITIVO (`https://blite.dev/McpToolImport/v1`), misma forma in-toto
+Statement v1; el día de la ceremonia se fusionan. **Es también un hallazgo de
+agnosticismo en un CONTRATO, no en código.**
+
+**Qué certifica la attestation y qué no:** que este despliegue invocó ESTE tool,
+en ESTE servidor, con ESTE pin, bajo ESTA configuración (digest del manifest), y
+que el resultado tiene ESTE digest. **No** dice que el resultado sea correcto —
+un tool ajeno no es un ancla (misma ortogonalidad que la evidencia de Nexus). Los
+argumentos viajan por DIGEST: los pone el proponente y una attestation no es
+lugar para contenido.
+
+**DoD VIVO** — round-trip real contra `qnexus-mcp` 0.2.0 (10 tools publicados):
+
+```
+perfil: service → ServiceStrategy
+is_error: False
+content: [{"type":"text","text":"{\"logged_in\":false,\"hint\":\"run: qnx login\"}"}]
+builder: mcp://qnexus-mcp/nexus_auth_status
+pin: qnexus-mcp==0.2.0 | reportado: qnexus-mcp 0.2.0
+manifest digest: b4e42a7e4e4f8072…
+```
+
+Y las dos negativas, también en vivo: `nexus_submit_job` (tool fuera de la
+allowlist) y `servidor-pirata` (servidor no declarado) → `McpInvocationRefused`
+antes de tocar la red. La respuesta «logged_in: false» es la correcta y honesta:
+el contenedor no tiene sesión de Nexus, y el punto del DoD es la ruta gobernada,
+no el contenido de la respuesta.
+
+**DoD VIVO EN COMPOSE** (`docker compose exec api`, imagen reconstruida con la
+distribución que declara el servidor):
+
+```
+perfil service -> ServiceStrategy
+is_error: False
+content: [{"type":"text","text":"{\"logged_in\":false,\"hint\":\"run: qnx login\"}"}]
+builder: mcp://qnexus-mcp/nexus_auth_status
+pin: qnexus-mcp==0.2.0 | reportado: qnexus-mcp 0.2.0
+manifest digest: b4e42a7e4e4f
+qnexus-mcp/nexus_submit_job -> McpInvocationRefusedError
+servidor-pirata/x          -> McpInvocationRefusedError
+```
+
+**Hallazgo de despliegue, corregido:** el usuario del contenedor se crea con
+`--no-create-home` (a propósito), así que `uvx` moría con «failed to create
+directory /home/chimera/.cache/uv». Se le da caché propia por volumen
+(`UV_CACHE_DIR=/app/var/uv-cache`) y el Dockerfile crea `var/` ANTES de que
+docker monte los volúmenes — sin eso, un volumen sobre un directorio inexistente
+queda de root y el proceso no puede escribir. **Nota para producción**: con
+caché fría, la primera invocación baja el paquete de PyPI. Pre-hornear el
+servidor en la imagen quita esa dependencia de red en runtime y es lo correcto
+para un despliegue real; queda anotado, no hecho.
+
+**Segundo hallazgo, del propio arreglo:** dar `HOME` efímero al proceso ajeno
+rompía la caché de `uv` — cada invocación volvía a bajar ~90 MB de la red
+(medido). Aislar el ESTADO del tercero no es lo mismo que tirar el trabajo ya
+hecho: el `HOME` sigue siendo efímero (su config no persiste) pero
+`UV_CACHE_DIR` apunta a la caché del proceso padre. Verificado: la segunda
+invocación instala desde caché en 2 s.
+
+**Efecto colateral del extra `mcp`, limpiado:** trajo tipos mejores de httpx y
+dejó **20 `# pyright: ignore[reportUnknownMemberType]` sin nada que silenciar**
+en tests de otras sesiones. `reportUnnecessaryTypeIgnoreComment = "error"` es
+deliberado en este repo (un ignore que no silencia nada ES un error), así que se
+removieron. Uno llevaba prosa pegada al comentario y quedó como comentario
+propio, no borrado.
+
+### #167 — O4/M10: el corpus deja de ser dato interno y pasa a dataset publicable
+
+**El problema real de C-13, en una frase:** un mismo documento JSON admite más
+de un digest legítimo, y publicar «el digest» sin decir cuál no verifica nada.
+
+Son tres, y las tres son correctas a la vez sobre el MISMO archivo:
+
+| digest             | sobre qué                              | quién lo usa                    |
+| ------------------ | -------------------------------------- | ------------------------------- |
+| `file_sha256`      | los BYTES distribuidos                 | quien descarga (`sha256sum`)    |
+| `embedded_digest`  | el JSON compacto SIN la llave `digest` | la identidad interna del corpus |
+| `canonical_digest` | `C(documento)` del anexo, entero       | el kernel de confianza          |
+
+Los bytes cambian con un final de línea y el interno no; el interno ignora su
+propia llave y el canónico no. Hay un test que lo demuestra guardando el mismo
+documento con otra indentación: cambia uno, los otros dos no.
+
+**Dónde va cada uno.** Croissant reserva `sha256` por archivo para los bytes
+distribuidos — literal. Meter ahí el digest interno haría que `sha256sum`
+fallara para todo el que descargue, y una verificación que falla siempre enseña
+a ignorar la verificación. Así que `sha256` son los bytes, y los tres viajan
+etiquetados —y con su explicación en inglés, DENTRO del export— en un
+`RecordSet` inline. Un tercero no debería tener que leer nuestro repo para
+saber cuál es cuál.
+
+**Ninguno se recalcula para que cuadre con otro.** El interno se comprueba al
+leer; si no coincide, `load_corpus` explota. La regla del freeze §15.3 es que
+el digest manda: un archivo que dejó de coincidir es un incidente, no una
+oportunidad de re-sellar. El modo de falla que el test prohíbe es el cómodo.
+
+**Un `FileObject` por instancia, sin archivo comprimido.** Lo idiomático en
+Croissant (un `.zip` + un `FileSet`) exigiría publicar el `sha256` de un
+archivo que no existe. Un digest inventado en el campo que el spec reserva para
+verificar es peor que un export menos elegante.
+
+**Validado con el cliente real, no con un modelo nuestro del formato.**
+`mlcroissant` —la implementación de referencia de MLCommons— sobre los datasets
+que el manifest declara de verdad: **cero errores y cero avisos**, más un
+round-trip que lee de vuelta las instancias y compara los tres digests contra
+el catálogo. Los avisos se exigen igual que los errores: son propiedades
+recomendadas (cita, fecha) y un dataset publicado sin decir cómo citarlo es
+menos usable, que es justo lo que este export existe para arreglar.
+
+**Agnosticismo por construcción, otra vez.** El código no sabe qué datos hay:
+un despliegue los DECLARA en `distribution.yaml` (`DatasetSpec`) y el catálogo
+sale de ahí. Cambiar de dominio es editar configuración. Misma forma que C-12
+usó para los servidores MCP, y por el mismo motivo: ADR-029 se sostiene sin
+vigilancia. `license` no tiene default a propósito — un default («desconocida»)
+sería una respuesta inventada a una pregunta legal.
+
+**Lo que NO se declara, y por qué.** El corpus de islanding se queda fuera del
+catálogo: procedencia mixta, datos de ejemplo de UN reto, portal de origen sin
+identificador de licencia (`NOTICE` §2). **Decisión de Dylan (2026-08-08):**
+esos datos eran el ejemplo del reto 1 y no tienen que sobrevivir a Mejorado
+salvo como datos de prueba. Un dataset que no se puede licenciar con claridad
+no se publica.
+
+**Hallazgo que eso destapó, y que hay que mirar antes del flip:**
+`knowledge/nexus/` —la evidencia real de H2-1LE, la más fuerte que tiene el
+proyecto— **se ancla a las instancias `cr6-*`/`cr8-*`**, que son derivadas del
+ICE. Borrarlas la huérfana. Por eso `NOTICE` §2 y el checklist pre-flip ahora
+recomiendan sacar el **geojson crudo** (la copia verbatim del portal) y
+conservar las instancias derivadas, con el mismo razonamiento que ya usa §1
+para pandapower. Queda escrito con sus dos comprobaciones obligatorias, no
+ejecutado: toca archivos de otras sesiones.
+
+**Un test ajeno cazó un hueco que introduje:** `test_studio_nginx_config.py`
+deriva el allowlist del proxy de las rutas reales del API, así que
+`/datasets` sin su prefijo en nginx se puso rojo acá y no en el navegador
+—donde el síntoma habría sido «HTML donde esperaba JSON», que no menciona a
+nginx por ningún lado.
+
+**Deuda que este ítem hace visible (no la resuelve):** `runs.py` y
+`instance_verifiers.py` siguen cableando tres directorios de corpus por ruta
+literal. El `datasets:` del manifest es la forma de quitarles eso, pero rehacer
+la resolución de verificadores es G3 («dispatch por clase de problema»), de
+otro dominio. Se reporta, no se toca.
+
+### #168 — O9: el protocolo de convergencia deja de vivir en un commit huérfano
+
+**El problema no era la falta de método, era dónde vivía.** El procedimiento
+completo estaba pinneado a `git show 68af0c1:docs/research/protocolo-auditoria-ratificaciones.md`
+— un commit de una rama de ejercicio que no está en el árbol. Si alguien poda
+esa rama, el método desaparece y el acta de S-F queda citando un fantasma
+(hallazgo 10 del handoff S3). Un procedimiento que la organización usa no puede
+depender de que nadie limpie ramas. Portado a `docs/protocolo-convergencia.md`
+como MÉTODO —sin las cifras de aquella corrida, que son acta y no se tocan—.
+**La rama ya se puede podar.**
+
+**Qué se mecanizó, y qué no.** Clasificar NO: decidir si dos hallazgos son el
+mismo defecto es leer y juzgar, y una herramienta que lo adivinara produciría
+una matriz que se ve rigurosa sin serlo. Lo que sí se mecaniza es **impedir que
+una clasificación no ganada llegue a veredicto**, porque ahí está el sesgo y
+tiene dirección conocida: quien arma la matriz quiere que converja.
+
+No es teoría. En la única corrida real del protocolo, la pasada de refutación
+**reclasificó 3 ejes que estaban en A** — dos fallaban el test del paraguas y
+uno era ósmosis del auditor, no un avistamiento independiente. Y **A es lo que
+sostiene el veredicto**. Así que:
+
+- un eje en A exige **evidencia primaria de AMBAS fuentes** (sin eso no se
+  distingue convergencia de que el auditor ya supiera qué buscar);
+- una convergencia parcial exige el **test del paraguas** registrado y pasado;
+- los dos criterios del veredicto que no se computan desde la matriz
+  —«ninguna decisión congelada invalidada», «la sustancia sobrevivió ambas
+  pasadas»— hay que **declararlos con evidencia** o no hay veredicto.
+
+**Sale 2, no 1, cuando la matriz está mal formada.** «No se pudo leer» no es
+«divergen». Confundirlas dejaría que un gate encadenado tratara un error de
+sintaxis como una conclusión sobre el trabajo.
+
+**Contrato de imports en las dos direcciones.** El producto no importa el
+auditor (sería meter una herramienta de proceso en el camino crítico de un run)
+y el auditor no importa el producto (ataría un método general —dos revisiones
+de cualquier cosa— a ESTE dominio).
+
+### #169 — O10: el 1-pager white-box sale de la KB al árbol que un externo lee
+
+`trust/16` §1.5 era el único argumento del corpus del tipo «esto una API cerrada
+no lo puede copiar», y estaba enterrado en una nota de investigación. Extraído a
+`docs/white-box-sep.md`. La nota sigue siendo la fuente (evidencia, citas,
+licencias) y no se toca; el 1-pager es la versión entregable.
+
+**Lo que se cuidó al extraerlo,** porque es material de pitch y el riesgo es
+exagerar:
+
+1. **Encabezado que dice que NO está implementado.** Es una posición, no una
+   funcionalidad, y no hay compromiso de fecha.
+2. **La madurez va en el cuerpo, no en una nota al pie:** paper de WORKSHOP
+   (no track principal), código de investigación MIT con 91% notebooks y sin
+   releases, y nadie lo productizó en dos años. Decirlo así —en vez de «tenemos
+   SEPs»— es lo que hace que el argumento aguante una pregunta técnica.
+3. **El caveat del proxy analyzer**, que acota el claim a un objeto epistémico
+   preciso: la incertidumbre del GENERADOR sobre su propio significado, no
+   fundamentación en la fuente.
+4. **El encuadre no negociable, con su consecuencia dicha:** un score de SEP es
+   `GuardrailSignal`, jamás acuña `Attestation` — `AnchorKind` no tiene
+   `"model"` y eso es deliberado. Confundirlas no exagera una función:
+   **desarma la credibilidad de toda la arquitectura de confianza** frente a
+   quien sepa preguntar, que es justo el público de este argumento.
+
+### Handoff de PLATAFORMA — cierre del alcance (2026-08-10)
+
+**El backlog O queda cerrado salvo O7.** Los tres ítems que el handoff anterior
+listaba pendientes están hechos: **#167 (O4)**, **#168 (O9)**, **#169 (O10)**.
+
+| ítem         | estado                                                                                                                                                                      |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| O1–O5        | **CERRADOS**                                                                                                                                                                |
+| O8, O11, O12 | **CERRADOS**                                                                                                                                                                |
+| O9, O10      | **CERRADOS** (#168, #169)                                                                                                                                                   |
+| **O7**       | **BLOQUEADO, no omitido** — el umbral de deck.gl exige medir FPS sobre un overlay de mapa que solo existe tras V1/M18, en la sesión V. No es compromiso (letra del encargo) |
+
+**Lo que este tramo destapó y NO es mío de arreglar:**
+
+1. **La evidencia de Nexus se ancla a instancias derivadas del ICE**
+   (`cr6-*`/`cr8-*`). La salida al problema de licencia no puede ser borrarlas:
+   huérfana la evidencia más fuerte del proyecto. `NOTICE` §2 y
+   `docs/pre-flip-checklist.md` recomiendan sacar el **geojson crudo** y
+   conservar las derivadas, con las dos comprobaciones obligatorias escritas.
+   **Toca archivos de otras sesiones: reportado, no ejecutado.**
+2. **`runs.py` e `instance_verifiers.py` cablean tres directorios de corpus por
+   ruta literal.** El `datasets:` del manifest es la forma de quitárselo, pero
+   rehacer la resolución de verificadores es **G3** («dispatch por clase de
+   problema»), de otro dominio.
+3. **Generalizar `ExternalImportStatement`** (toca contrato congelado ⇒
+   ceremonia) sigue reportado para la sesión de control, sin ejecutar.
+4. **La rama `ejercicio/sf-ratificacion-simulada` ya se puede podar**: su método
+   está en `docs/protocolo-convergencia.md` (#168). El hallazgo 10 del handoff
+   S3 queda cerrado.
+
+**Lo que sigue rojo, y por qué no es mío:** el job **Web** — las 2 violaciones
+de depcruise del Studio (App.tsx ↔ router.tsx circular; App.tsx → gatewayClient)
+las toma otro agente por decisión de Dylan (2026-08-06).
+
+**Gates al cierre** (worktree `mejorado/plataforma`, 2026-08-10):
+
+- pytest **1392 passed** / 13 skipped / 6 xfailed / 4 xpassed · cobertura **90.23 %**
+- `lint-imports` **18 contratos, 0 rotos** (el nuevo: aislamiento de `chimera_convergence`)
+- `ruff check` y `ruff format --check` limpios · `pyright` **0 errores**
+- Studio **299 passed / 32 files** — con el flake dependiente de carga ya
+  reportado (`lenses/registry.test.ts`, import dinámico): falló una corrida,
+  verde en la repetición
+- `docs:lint` y `format:check` limpios
+- `verify_corpus_digests` **24/24 internos, 24/24 contra tabla pinneada**
+- gitleaks **sin hallazgos** en árbol e historia (era lo que tenía roja la
+  compuerta Security — ver el arreglo de la allowlist)
+
 ## Sesión CONFIANZA-2 Mejorado — C3→C15 (rama `mejorado/confianza-2`, 2026-08-05/06)
 
 > Alcance del prompt generador (`docs/mejorado/05-plan-paralelo.md` §4):
@@ -2848,7 +4247,7 @@ V y O — paso 3, paralelizable.
 > flip OSS si llega») está repartido entre O5 y P12, y el prompt de esta
 > sesión no lo lista. Se deja al backlog sin tocar.
 
-### #153 — C3/M3: las reglas del dominio entran como DATO SMT-LIB con digest
+### #170 — C3/M3: las reglas del dominio entran como DATO SMT-LIB con digest
 
 `RuleVerifier` + puerto `RuleBackend` + `RuleSet` (artefacto SMT-LIB 2
 versionado). El `rule_digest` son los BYTES EXACTOS del archivo (Regla 1 del
@@ -2883,7 +4282,7 @@ que ortools y pandapower). Que la distribución ya lo instalara vía
 `blite-cap-smt[z3]` era una dependencia implícita que se rompía al instalar
 el engine solo.
 
-### #154 — C3: registro de confianza (`system:trust-registry`)
+### #171 — C3: registro de confianza (`system:trust-registry`)
 
 `●VerifierRegistered`/`●AnchorRegistered` y la proyección que produce los
 `anchor_descriptors`/`verifier_descriptors` del Bundle. Antes se escribían a
@@ -2894,9 +4293,9 @@ que no es sha256 no se registra, y la proyección lee SOLO su stream de sistema
 
 Ciclo de vida (`Superseded/Deprecated/Revoked`) NO implementado: exige decidir
 qué pasa con los certificados que citan un ancla retirada, y esa pregunta la
-responde la StatusList (#157).
+responde la StatusList (#174).
 
-### #155 — C4/M4: una constancia por isla, y las islas no inflan patas
+### #172 — C4/M4: una constancia por isla, y las islas no inflan patas
 
 `verify_all()` con default `= (verify(),)` (C-6/#106) + `ExecutionVerifier`
 emitiendo una constancia POR ISLA (`step_id = island-{k}`, convención S-D §8)
@@ -2921,7 +4320,7 @@ Efecto observable: el golden path emite 3 `verification.completed` (1 formal +
 2 islas) en vez de 2, con las MISMAS 2 patas. Los dos tests que contaban
 eventos pasan a afirmar la propiedad real (grupos distintos).
 
-### #156 — C5/M28: hash-chain en el writer y el sub-run con integridad
+### #173 — C5/M28: hash-chain en el writer y el sub-run con integridad
 
 Tres piezas que solo juntas cierran la letra del anexo §4:
 
@@ -2949,7 +4348,7 @@ id/seq/occurred_at antes de hashear). La concurrencia optimista no se debilita
 VERIFICADO VIVO contra Postgres 17 real: cadena correcta y
 `ConcurrentAppendError` intacto.
 
-### #157 — C6/C7: DSSE por constancia y revocación comprobable (supersedes §7)
+### #174 — C6/C7: DSSE por constancia y revocación comprobable (supersedes §7)
 
 **C6 (T6 SUPERSEDIDO):** un sobre DSSE por constancia con predicate forma
 **SLSA VSA** — se adopta la FORMA del estándar, no su stack, para que un
@@ -2977,7 +4376,7 @@ revocaría certificados ajenos); mínimo de 16 KB por PRIVACIDAD, no capacidad;
 `gzip(mtime=0)` o el artefacto cambia en cada emisión; índice fuera de rango
 = error, jamás «no revocado».
 
-### #158 — C8/M8 pieza 4: la llave sale del proceso (y tres hallazgos vivos)
+### #175 — C8/M8 pieza 4: la llave sale del proceso (y tres hallazgos vivos)
 
 El puerto `KeyProvider` existía desde S-G y nadie lo usaba. Ahora `assemble`,
 los sobres de constancia y la StatusList firman POR EL PUERTO, con `purpose`
@@ -3004,7 +4403,7 @@ También salió del choque con la realidad el bug del script de init: `bao
 status` sale con código 2 cuando el vault está sellado —estado normal— y con
 `pipefail` la rama de unseal nunca corría.
 
-### #159 — C9/M8 pieza 5 (#105): prueba de inclusión engrapada
+### #176 — C9/M8 pieza 5 (#105): prueba de inclusión engrapada
 
 Rekor RE-ENTRA con causa: el descarte era correcto para la emisión _keyless_
 con Fulcio (exige CA en línea al firmar); un log privado del que se extrae una
@@ -3022,7 +4421,7 @@ ejercitarlo contra un servidor real produce código que falla en el primer
 contacto — acaba de pasar en C8, y ahí sí había servidor para descubrirlo.
 Perfil `transparency` del compose listo; comando en el handoff.
 
-### #160 — C10/M29: la relajación con responsable (§10 → código)
+### #177 — C10/M29: la relajación con responsable (§10 → código)
 
 `OverridePayload` + `apply_override` que REGISTRA antes de aplicar (INV-4) —
 por eso la función no recibe ni ejecuta la acción relajada: mezclarlas
@@ -3039,7 +4438,7 @@ Un intento RECHAZADO no escribe: mezclar intentos con hechos haría que «hay un
 override registrado» dejara de significar «hubo un override». AX2 con test
 propio, sin camino de permiso más fácil que los demás.
 
-### #161 — C15: el punto 7 evalúa la Policy completa (CEREMONIA)
+### #178 — C15: el punto 7 evalúa la Policy completa (CEREMONIA)
 
 Ceremonia obligatoria porque cambia el veredicto de bundles estampados. La
 evidencia de que no rompe nada vivo: la suite completa verde (1357), incluidos
@@ -3063,7 +4462,7 @@ refutación tiene AL0 por construcción). Los `side_effects` se derivan del
 `claim.emitted`, así que su conclusión se venía evaluando contra una regla que
 no le correspondía. Ahora lo emite con sus portadores, como cualquier run real.
 
-### #162 — C12/C13/C14: tres puertos hacia lo que no es el reto 1
+### #179 — C12/C13/C14: tres puertos hacia lo que no es el reto 1
 
 **C14 `ExecutionHarness`** (prepare/run/collect/dispose + guarda
 PASS_TO_PASS): `dispose` corre SIEMPRE y la garantía vive en el helper, no en
@@ -3149,7 +4548,7 @@ declaran lo que no comprobaron en vez de callarlo.
 
 - **Custodia real**: certificado firmado con una llave que vive en OpenBao
   2.6.1 (perfil `custody`) → 12/12 offline. Tres defectos encontrados y
-  corregidos ahí (ver #158).
+  corregidos ahí (ver #175).
 - **Hash-chain en Postgres 17 real**: cadena correcta desde la génesis y
   `ConcurrentAppendError` intacto.
 
@@ -3192,14 +4591,14 @@ coordina el turno con la otra sesión. El perfil `custody` publica 8200 y el
    contra `http://127.0.0.1:3003` con un round-trip real antes de mergear.
 2. **Promoción del `provenance_hash` al head de la cadena.** El anexo la
    describe «sin cambiar forma», pero cambiaría el digest de todo certificado
-   ya emitido: ceremonia aparte, con el sustrato ya puesto (#156).
+   ya emitido: ceremonia aparte, con el sustrato ya puesto (#173).
 3. **Arm de prueba de reglas en `FormalExactPredicate`** (`formal_exact` desde
    el `RuleBackend`). Hoy el adapter EXPLOTA si un backend devuelve prueba, en
-   vez de inflar o esconder. Se abre cuando exista el backend cvc5 (#153).
+   vez de inflar o esconder. Se abre cuando exista el backend cvc5 (#170).
 4. **`●CertificateReissued`** sigue siendo Fase 2 declarada: re-emitir exige
-   decidir qué pasa con el certificado anterior (#157).
+   decidir qué pasa con el certificado anterior (#174).
 5. **Ciclo de vida del trust-registry** (`Superseded/Deprecated/Revoked` de
-   anclas y verificadores) — misma razón: qué pasa con lo ya emitido (#154).
+   anclas y verificadores) — misma razón: qué pasa con lo ya emitido (#171).
 6. **Los tres puertos nuevos no tienen consumidor todavía**
    (`ExecutionHarness`, registro de detectores, análisis de políticas). Son
    contratos con test, no features vivas: engancharlos es de G (un harness de
@@ -3226,3 +4625,55 @@ coordina el turno con la otra sesión. El perfil `custody` publica 8200 y el
   `irreversible-external` es alcanzable. Si algún claim del sistema empieza a
   declararse irreversible, exigirá 2 patas y ancla `solver`+`execution` de
   verdad.
+
+### #180 — Integración de CONFIANZA-2 con `mejorado/base` (V + O ya mergeadas)
+
+`mejorado/base` avanzó 37 commits mientras esta sesión corría (V y O mergearon).
+La integración destapó cinco cosas que ninguna sesión podía ver sola — se
+registran porque son el tipo de hallazgo que se pierde si solo vive en el
+mensaje de merge.
+
+1. **Colisión de numeración del ledger.** V, O y C-2 arrancaron a numerar desde
+   #153 en paralelo. V+O ocuparon #153-#169; las de esta sesión se corrieron a
+   **#170-#179** (con sus referencias internas). **Regla para la próxima ola:**
+   quien abre worktree reserva su rango ANTES de escribir, o el ledger deja de
+   ser una secuencia y pasa a ser tres.
+
+2. **La granularidad por isla tenía que ser ADITIVA, no sustitutiva.** C4 hacía
+   que `verify_all()` devolviera SOLO las constancias por isla; el productor de
+   `partition` de V1/M18 (`build_partition`) deriva las islas agrupando los
+   checks de UNA attestation, así que con la constancia de `island-1` producía
+   una partición de una sola isla y la ruta de lectura la mostraba como el
+   resultado completo. **Corregido:** `verify_all()` devuelve la GLOBAL primero
+   y las de isla después. Quien pregunta «¿cómo le fue al resultado?» no tiene
+   que re-agregar lo que el verificador ya sabe.
+
+3. **`latency_ms` no se puede repetir por constancia.** `derive_run_metrics`
+   (V2/M19) SUMA el campo por evento; estampar la latencia de la llamada en las
+   N constancias que produce la multiplicaría por N. Se estampa en la primera y
+   se OMITE en las demás — omitir dice «este evento no trae la medida», un 0.0
+   diría «esto no costó tiempo», que es falso.
+
+4. **El gate de agnosticismo multi-capa (O11) cazó tres docstrings míos**
+   (`harness.py`, `rule_set.py`, `rule_z3.py` nombraban el simulador o el
+   dominio del reto 1 al explicar por qué existe el puerto). Se REFORMULARON,
+   no se declararon como excepción: el propio archivo de excepciones dice que
+   añadir una entrada no es el camino barato. El trinquete funciona.
+
+5. **`StructuralPartitionVerifier` (nuevo, de V) no declaraba `verify_all`.** Es
+   exactamente el caso de compat de #172: a runtime funciona por
+   `verify_all_of`, pero un Protocol `runtime_checkable` exige el atributo.
+   Se le agregó el método explícito, como a los otros ocho adapters.
+
+### Anotaciones sueltas de CONFIANZA-2 (deuda observada, sin ítem propio)
+
+Cosas que se vieron trabajando y NO se tocaron, para que no se pierdan:
+
+| Observación                                                                                                                                                        | Por qué importa                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `capabilities/smt` sigue siendo un stub que levanta `NotImplementedError`, y el comentario de la distribución dice «Z3 es el backend de reglas de C3/M3»           | El backend de C3 vive en el ENGINE, no en esa capability. O se implementa la capability, o el comentario de `distributions/chimera/pyproject.toml` se corrige — hoy promete algo que ese paquete no hace |
+| `PropertyRuleVerifier` (reto 2, reglas como código) y `RuleVerifier` (C3, reglas como dato SMT-LIB) coexisten con la MISMA clase `property_rule`                   | Es deliberado y está documentado en ambos módulos, pero un tercero que agregue un tercer «rule verifier» necesita saber cuál extender                                                                    |
+| `EphemeralSessionKeys` (api/auth.py) y `LocalKeyProvider` (engine) son el MISMO escalón 1 del mismo puerto, escritos dos veces                                     | Unificarlos es trivial ahora que el puerto está cableado; se dejó fuera para no mezclar C8 con la sesión de identidad                                                                                    |
+| Aristas de paquete nuevas: `blite.events.chain` → `blite.certificate.canonical` (la única puerta de canonicalización) y `blite.certificate` → `blite.events.store` | Ningún contrato de import-linter las vigila hoy. Si alguien agrega uno de capas entre esos paquetes, romperá — conviene decidirlo a propósito                                                            |
+| `scripts/example-bundle.json` se construye a MANO, no con `assemble_bundle`                                                                                        | Por eso pudo vivir sin `claim.emitted` (lo que C15 destapó). Generarlo con el emisor real lo mantendría honesto por construcción                                                                         |
+| El `checklist` pasó de 8 a 12 puntos y `PointResult` ganó `notes`                                                                                                  | Cualquier consumidor que muestre el checklist (Studio incluido) debería mostrar las notas, o volverá a decir «verificado» callando lo que no comprobó                                                    |

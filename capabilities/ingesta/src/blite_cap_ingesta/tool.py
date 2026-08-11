@@ -181,6 +181,19 @@ _GEOJSON_TO_GRAPH_MANIFEST = CapabilityManifest(
                     "count of aggregated parallel edges"
                 ),
             },
+            "edge_id_property": {
+                "type": ["string", "null"],
+                "default": None,
+                "description": (
+                    "Edge property carrying the source system's stable "
+                    "identifier, adopted as the derived edge identifier so "
+                    "the caller's own identity survives the derivation. "
+                    "Requires a strategy mapping one feature to one edge; "
+                    "rejected with an aggregating strategy. When "
+                    "omitted/null, edge identifiers are the deterministic "
+                    "canonical form L{min}-{max}[-k] over node indices"
+                ),
+            },
             "run_id": {
                 "type": "string",
                 "description": "Run identifier this derivation executes under",
@@ -236,8 +249,31 @@ _GEOJSON_TO_GRAPH_MANIFEST = CapabilityManifest(
                         "type": "object",
                         "description": "Node metadata keyed by node index (string)",
                     },
+                    "branch_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "Stable identifier per edge, aligned one-to-one "
+                            "with 'aristas' and in the same order"
+                        ),
+                    },
+                    "branch_id_convention": {
+                        "type": "string",
+                        "description": (
+                            "Versioned convention that produced 'branch_ids' "
+                            "— travels with the derived instance so a change "
+                            "of convention yields a new instance, never a "
+                            "relabelling of stamped data"
+                        ),
+                    },
                 },
-                "required": ["n_nodos", "aristas", "nodos"],
+                "required": [
+                    "n_nodos",
+                    "aristas",
+                    "nodos",
+                    "branch_ids",
+                    "branch_id_convention",
+                ],
             },
             "provenance": {
                 "type": "object",

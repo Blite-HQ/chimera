@@ -3,7 +3,13 @@
 Contrato: docs/specs/endpoints-studio.md §"GET /runs/{run_id}/rvsp". Clave
 POR RUN; 404 honesto para run desconocido Y para run sin datos rvsp (el
 productor — ángulos de Nexus ingeridos con digest — es V3/M20; la ruta jamás
-inventa puntos). Implementación = ítem V3/M20 (Fase 1).
+inventa puntos).
+
+**[V3/M20 · 2026-08-07] VERDE**: la ruta existe (`chimera_api.reads`), la
+curva sale del corpus congelado `knowledge/rvsp/<instancia>.json`
+(`scripts/gen_corpus_rvsp.py`) y los ángulos vienen ingeridos de Nexus con
+su `circuit_digest`. El xfail se retira; la cobertura completa de la ruta
+vive en `tests/unit/api/test_rvsp.py`.
 """
 
 from __future__ import annotations
@@ -12,16 +18,7 @@ from typing import Any
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 V3/M20: GET /runs/{run_id}/rvsp no existe todavía — "
-            "docs/specs/endpoints-studio.md (C-9/#125)"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 
 def _client(store: Any) -> Any:

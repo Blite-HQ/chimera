@@ -403,6 +403,8 @@ class RunImportResult:
     circuit_digest: str
     transpiled_circuit_digest: str
     noise_config_digest: str
+    betas: tuple[float, ...]
+    gammas: tuple[float, ...]
     best_cut: int
     source_provenance: ExternalSourceProvenance
     normalized_counts: NormalizedCounts
@@ -479,6 +481,11 @@ def _process_run(
         circuit_digest=circuit_digest,
         transpiled_circuit_digest=transpiled_digest,
         noise_config_digest=noise_digest,
+        # Copia FIEL de los ángulos que la corrida usó — no se re-derivan ni
+        # se redondean: ya son la fuente de `circuit_digest`, y un ángulo
+        # ingerido distinto del que se corrió rompería esa correspondencia.
+        betas=tuple(float(a) for a in run["betas"]),
+        gammas=tuple(float(a) for a in run["gammas"]),
         best_cut=int(run["stats"]["best_cut"]),
         source_provenance=source_provenance,
         normalized_counts=normalized,
@@ -618,6 +625,13 @@ def run_import(mirror_dir: Path, corpus_dir: Path, out_dir: Path) -> ImportSumma
                     "circuit_digest": r.circuit_digest,
                     "transpiled_circuit_digest": r.transpiled_circuit_digest,
                     "noise_config_digest": r.noise_config_digest,
+                    # V3/M20 — los ángulos que Quantinuum corrió, legibles sin
+                    # salir del repo. Ya eran la FUENTE de `circuit_digest`, así
+                    # que persistirlos no agrega procedencia nueva ni mueve
+                    # ningún digest; los saca del espejo solo-lectura para que
+                    # ⟨C⟩ se pueda evaluar en ELLOS y no en ángulos propios.
+                    "betas": list(r.betas),
+                    "gammas": list(r.gammas),
                     "event": r.event,
                 }
                 for r in results

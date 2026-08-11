@@ -67,8 +67,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import json
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -94,8 +92,12 @@ from blite.verification.ground_truth import (
     GroundTruthVerifier,
     build_ground_truth_record,
 )
+from blite.verification.orchestrator import ResultProjection
+from blite.verification.partition import build_partition
 from blite.verification.property_rule import PropertyRuleClaim, PropertyRuleVerifier
+from blite.verification.structural_partition import StructuralPartitionVerifier
 from blite.verification.verifier import Determinism, Verifier
+from chimera_api.corpus_records import load_corpus_record
 
 # api/src/chimera_api/instance_verifiers.py -> parents[3] es la raíz del
 # repo (mismo cómputo que `_REPO_ROOT` en chimera_api.runs, misma
@@ -103,12 +105,6 @@ from blite.verification.verifier import Determinism, Verifier
 _REPO_ROOT = Path(__file__).parents[3]
 _TFIM_CORPUS_DIR = _REPO_ROOT / "knowledge" / "tfim" / "corpus"
 _TABULAR_CORPUS_DIR = _REPO_ROOT / "knowledge" / "tabular" / "corpus"
-
-# Mismo patrón de slug que `chimera_api.runs._load_corpus_matrix` — un
-# `instance_id` que viaja en el body HTTP jamás se interpola en una ruta de
-# archivo sin pasar por este guard primero (validación en frontera, ataque
-# de traversal incluido).
-_CORPUS_SLUG_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 _SOLVER_VERIFIER_ID = "verifier:cpsat-differential"
 _SOLVER_INDEPENDENCE_GROUP = "leg-formal"
@@ -118,6 +114,18 @@ _SOLVER_ANCHOR_KIND = "solver"
 _EXECUTION_VERIFIER_ID = "verifier:pandapower-islanding"
 _EXECUTION_INDEPENDENCE_GROUP = "leg-execution"
 _EXECUTION_ANCHOR_KIND = "execution"
+
+# V1/M18 — pata ESTRUCTURAL: la única constancia por sub-entidad disponible
+# cuando la instancia no tiene dato eléctrico registrado (p. ej. una red
+# derivada de un portal GIS: trae geometría y nombres, jamás impedancias).
+# Techo AL2 por clase — nunca finge la fuerza de una ejecución.
+_STRUCTURAL_VERIFIER_ID = "verifier:structural-partition"
+_STRUCTURAL_INDEPENDENCE_GROUP = "leg-structural"
+_STRUCTURAL_ANCHOR_KIND = "rule"
+_STRUCTURAL_ANCHOR_PROVENANCE = "structural-partition-v1"
+_STRUCTURAL_ANCHOR_DIGEST = hashlib.sha256(
+    f"anchor:{_STRUCTURAL_ANCHOR_PROVENANCE}".encode()
+).hexdigest()
 
 SOLVER_ANCHOR_DIGEST = hashlib.sha256(
     f"anchor:{_SOLVER_ANCHOR_PROVENANCE}".encode()
@@ -175,11 +183,14 @@ class VerifierResolution:
 @dataclass(frozen=True)
 class ClaimTypeEntry:
     """Lo que el registro declara para UN `claim_type`: cómo construir el
-    claim de dominio desde el payload normalizado del request, y cómo
-    resolver un `instance_id` en verifiers + descriptores de ancla."""
+    claim de dominio desde el payload normalizado del request, cómo resolver
+    un `instance_id` en verifiers + descriptores de ancla, y —opcional— cómo
+    traducir las attestations resultantes a la superficie que su dominio
+    consume (`build_projection`, V1/M18)."""
 
     build_claim: Callable[[dict[str, Any]], Any]
     resolve: Callable[[str], VerifierResolution]
+    build_projection: Callable[[Any], ResultProjection | None] | None = None
 
 
 _SINTETICA_4BUS_PROVENANCE = "pandapower-sintetica-v1"
@@ -242,11 +253,36 @@ def _execution_descriptor(data: InstanceElectricalData) -> dict[str, Any]:
     }
 
 
+def _structural_verifier() -> Verifier:
+    return StructuralPartitionVerifier(
+        verifier_id=_STRUCTURAL_VERIFIER_ID,
+        independence_group=_STRUCTURAL_INDEPENDENCE_GROUP,
+        anchor_digest=_STRUCTURAL_ANCHOR_DIGEST,
+    )
+
+
+def _structural_descriptor() -> dict[str, Any]:
+    return {
+        "anchor_digest": _STRUCTURAL_ANCHOR_DIGEST,
+        "kind": _STRUCTURAL_ANCHOR_KIND,
+        "provenance": _STRUCTURAL_ANCHOR_PROVENANCE,
+    }
+
+
 def _resolve_solution(instance_id: str) -> VerifierResolution:
     """Reto 1 (compat total, decisión #7/#8): CP-SAT ampara SIEMPRE; la
     pata eléctrica (pandapower) se añade solo si `instance_id` trae dato
     registrado en `ELECTRICAL_DATA` — sin él, la segunda pata simplemente no
-    existe, nunca se inventa."""
+    existe, nunca se inventa.
+
+    [V1/M18] Cuando ese dato NO existe entra la pata ESTRUCTURAL en su lugar
+    (AL2, ancla `rule`): verifica lo que el grafo permite verificar —
+    conectividad por isla y coherencia del corte— para que una instancia sin
+    modelo eléctrico igual tenga constancia POR ISLA, que es lo que el mapa
+    necesita para pintar badges. Es EXCLUYENTE con la eléctrica a propósito:
+    donde pandapower corre, sus checks por isla son estrictamente más fuertes,
+    y sumar una tercera pata inflaría el conteo de patas independientes del
+    punto 7 sin agregar un método realmente nuevo."""
     verifiers: list[Verifier] = [_solver_verifier()]
     descriptors: list[dict[str, Any]] = [_solver_descriptor()]
 
@@ -254,6 +290,9 @@ def _resolve_solution(instance_id: str) -> VerifierResolution:
     if electrical_data is not None:
         verifiers.append(_execution_verifier(electrical_data))
         descriptors.append(_execution_descriptor(electrical_data))
+    else:
+        verifiers.append(_structural_verifier())
+        descriptors.append(_structural_descriptor())
 
     return VerifierResolution(tuple(verifiers), tuple(descriptors))
 
@@ -272,49 +311,17 @@ def _model_validating_builder(
     return _build
 
 
-def _corpus_record_digest(record_without_digest: dict[str, Any]) -> str:
-    """La regla de digest del CORPUS (`scripts/verify_corpus_digests.py`,
-    regla 15.3 generalizada) — JSON canónico PLANO (`json.dumps` con
-    `sort_keys`), deliberadamente NO `blite.certificate.canonical` (ese es
-    el algoritmo JCS de otro anexo, para otro propósito: digests de
-    contenido de certificado, no identidad de corpus)."""
-    return hashlib.sha256(
-        json.dumps(
-            record_without_digest,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=True,
-        ).encode()
-    ).hexdigest()
-
-
 def _load_json_corpus_record(directory: Path, slug: str) -> dict[str, Any] | None:
     """Carga+valida CUALQUIER corpus `<slug>.json` bajo `directory` con la
-    MISMA disciplina de identidad (§15.3 generalizada, spec §Contrato-4):
-    slug fuera de forma, archivo ausente, o digest que no coincide con su
-    propio contenido ⇒ `None`, fail-closed — jamás deja pasar un dato no
-    verificado a un verificador, y jamás toca el filesystem con un slug
-    fuera de forma (path traversal). Compartido entre C3 (`tfim-corpus/`) y
-    C2 (`tabular-corpus/`) — la regla de identidad de corpus es UNA sola."""
-    if not _CORPUS_SLUG_PATTERN.fullmatch(slug):
-        return None
-    path = directory / f"{slug}.json"
-    if not path.is_file():
-        return None
-    try:
-        record: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-        embedded = record["digest"]
-        record_without_digest = {k: v for k, v in record.items() if k != "digest"}
-        if not isinstance(embedded, str):
-            return None
-        if _corpus_record_digest(record_without_digest) != embedded:
-            return None
-    except (OSError, KeyError, TypeError, ValueError):
-        # Corpus malformado (JSON roto, campo ausente, tipo inesperado) es
-        # la MISMA señal fail-closed que un digest que no coincide — jamás
-        # un 500 por un dato de conocimiento corrupto.
-        return None
-    return record
+    MISMA disciplina de identidad (§15.3 generalizada, spec §Contrato-4).
+
+    La regla vive en `chimera_api.corpus_records` desde que V3/M20 la
+    necesitó también para `knowledge/rvsp/`: dos definiciones de "este
+    corpus es el que dice ser" son una de más, y la que se relajara primero
+    sería por donde entraría un dato tamperado. Compartido hoy entre C3
+    (`tfim/`), C2 (`tabular/`) y la curva r-vs-p.
+    """
+    return load_corpus_record(directory, slug)
 
 
 def _load_tfim_corpus_record(slug: str) -> dict[str, Any] | None:
@@ -697,10 +704,45 @@ def _resolve_statistical(instance_id: str) -> VerifierResolution:
     return VerifierResolution(verifiers, descriptors)
 
 
+def _solution_projection(claim: Any) -> ResultProjection | None:
+    """V1/M18 — el productor de `partition` para `solution` (C-8).
+
+    Vive acá y no en el orquestador porque ESTE módulo es el que sabe de qué
+    clase de problema habla cada `claim_type`; el engine sigue sin saber de
+    particiones. Devuelve `None` cuando el claim no declara instancia: sin
+    `topology_ref` la superficie no tendría a qué topología referirse, y una
+    partición huérfana es peor que ninguna.
+
+    `branch_ids=None` a propósito: el claim transporta las aristas, no los ids
+    del portal, así que el corte se nombra con la convención CANÓNICA — que es
+    derivable de esas mismas aristas por cualquier tercero.
+    """
+    if not isinstance(claim, OptimalityClaim):
+        return None
+    instance_id = str(claim.scope.get("instancia", ""))
+    if not instance_id:
+        return None
+
+    def _project(attestation: Attestation) -> dict[str, Any] | None:
+        partition = build_partition(
+            attestation=attestation,
+            assignment=claim.assignment,
+            edges=claim.instance.edges,
+            topology_ref=instance_id,
+        )
+        # La llave es la que la ruta de lectura ya esperaba
+        # (`reads::_PARTITION_PAYLOAD_KEY`): el payload viaja ANIDADO, no
+        # derramado sobre el evento.
+        return None if partition is None else {"partition": partition}
+
+    return _project
+
+
 CLAIM_TYPE_VERIFIERS: dict[str, ClaimTypeEntry] = {
     "solution": ClaimTypeEntry(
         build_claim=_model_validating_builder(OptimalityClaim),
         resolve=_resolve_solution,
+        build_projection=_solution_projection,
     ),
     "simulation_result": ClaimTypeEntry(
         build_claim=_model_validating_builder(SimulationSeriesClaim),
@@ -725,3 +767,19 @@ def resolve_verifiers(*, claim_type: str, instance_id: str) -> VerifierResolutio
     if entry is None:
         return VerifierResolution((), ())
     return entry.resolve(instance_id)
+
+
+def resolve_result_projection(
+    *, claim_type: str, claim: Any
+) -> ResultProjection | None:
+    """La proyección de superficie que ampara este claim, o `None` si su clase
+    no declara ninguna (V1/M18).
+
+    Hermana de `resolve_verifiers` y con la misma disciplina: un `claim_type`
+    sin entrada no rescata nada — la superficie queda honest-empty en vez de
+    recibir un payload fabricado.
+    """
+    entry = CLAIM_TYPE_VERIFIERS.get(claim_type)
+    if entry is None or entry.build_projection is None:
+        return None
+    return entry.build_projection(claim)

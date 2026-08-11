@@ -60,6 +60,13 @@ Ninguna de las dos librerías se integra como dependencia (§2). Lo que se porta
 > (AlignScore como fallback, §1.4) entraron al backlog por #116 — dominio C, ítem
 > «registro de guardrail-adapters + pick HHEM»; los SEPs white-box (§1.5) quedaron
 > como **KB curada + ítem O tardío** (#116, `docs/mejorado/04-consolidacion.md`).
+>
+> **[O · 2026-08-09 · #169] §1.5 extraído a material:** el 1-pager vive ahora en
+> `docs/white-box-sep.md`, fuera de la KB y en el árbol que un externo lee. Esta
+> sección sigue siendo la fuente —evidencia, citas y licencias completas— y no
+> se toca; el 1-pager es la versión que se puede entregar, con el encuadre
+> «detección ≠ verificación» y la madurez real (paper de workshop, sin paquete
+> instalable, nadie lo productizó) en el cuerpo y no en una nota al pie.
 
 ### 1.4 Tabla comparativa de detectores — decisión lista para Fase 2
 

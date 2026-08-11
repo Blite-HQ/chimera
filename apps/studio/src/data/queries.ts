@@ -17,8 +17,12 @@ import {
   getFiles,
   getKnowledge,
   getMe,
+  getProjectArtifacts,
+  getProjectKnowledge,
   getRuns,
-  getStepEvidence
+  getRvsp,
+  getStepEvidence,
+  getTopology
 } from '../gatewayClient';
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
 import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
@@ -39,9 +43,12 @@ import {
   projectedEventSchema,
   runSummaryWireSchema,
   rvspSchema,
+  rvspWireSchema,
   stepDetailSchema,
   stepDetailWireSchema,
   toAblationMetric,
+  topologySnapshotSchema,
+  toRvsPExperiment,
   toKnowledgeClaim,
   toProjectArtifact,
   toRunSummary,
@@ -49,7 +56,7 @@ import {
   wireEnvelopeSchema
 } from './schemas';
 
-import type { Me, ProjectFile } from './schemas';
+import type { Me, ProjectFile, TopologySnapshot } from './schemas';
 import type {
   AblationMetric,
   DsseEnvelope,
@@ -124,10 +131,9 @@ export function runSummariesQueryOptions() {
  */
 export async function loadArtifacts(runId?: string): Promise<readonly ProjectArtifact[]> {
   if (isLiveMode()) {
-    if (runId === undefined) {
-      return [];
-    }
-    const res = await getArtifacts(runId);
+    // V8/M23b: sin `runId` la pregunta es de PROYECTO y ahora tiene ruta —
+    // antes esto devolvía `[]` para siempre por no tener a quién preguntarle.
+    const res = runId === undefined ? await getProjectArtifacts() : await getArtifacts(runId);
     if (!res.success || res.data === null) {
       throw new Error(res.error ?? 'No se pudieron obtener los artifacts');
     }
@@ -147,10 +153,7 @@ export function artifactsQueryOptions(runId?: string) {
 /** Rama demo/live (D3) — mismo patrón que loadArtifacts (runId opcional). */
 export async function loadKnowledge(runId?: string): Promise<readonly KnowledgeClaim[]> {
   if (isLiveMode()) {
-    if (runId === undefined) {
-      return [];
-    }
-    const res = await getKnowledge(runId);
+    const res = runId === undefined ? await getProjectKnowledge() : await getKnowledge(runId);
     if (!res.success || res.data === null) {
       throw new Error(res.error ?? 'No se pudo obtener el knowledge');
     }
@@ -327,23 +330,69 @@ export function ablationQueryOptions(runId: string) {
 }
 
 /**
- * D5 (dataviz "r vs p") — rama demo/live: sin `GET /rvsp` todavía (ver
- * loadRunSummaries). A diferencia de los recursos en lista (`[]` vacío),
- * este es un experimento único por instancia, así que "nada todavía" en
- * vivo es `null`, no un array — el consumidor (App.tsx) lo trata igual que
- * las demás ramas vacías: EmptyState, jamás el fixture inventado.
+ * V1/M18 — partición del run (`GET /runs/{id}/topology`, S-D §4). En vivo
+ * llama al egress real y valida el wire con el MISMO Zod espejo del fixture
+ * de costura (`topologySnapshotSchema`): un payload sin `verification` POR
+ * isla no parsea, que es exactamente la regla §9 aplicada en la frontera.
+ *
+ * En réplica devuelve `null` — no un fixture: la partición es de un RUN, y
+ * fabricar una para el modo demo pintaría islas que nadie verificó. La lente
+ * distingue `null` (no hay run que consultar) de `islands: []` (el run corrió
+ * y no produjo partición) y dice cosas distintas.
  */
-export async function loadRvsP(): Promise<RvsPExperiment | null> {
-  if (isLiveMode()) {
+export async function loadTopology(runId: string): Promise<TopologySnapshot | null> {
+  if (!isLiveMode()) {
     return null;
   }
-  return rvspSchema.parse(RVSP_EXPERIMENT);
+  const res = await getTopology(runId);
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudo obtener la topología del run');
+  }
+  return topologySnapshotSchema.parse(res.data);
+}
+
+export function topologyQueryOptions(runId: string) {
+  return queryOptions({
+    queryKey: ['runs', runId, 'topology'] as const,
+    queryFn: () => loadTopology(runId)
+  });
+}
+
+/**
+ * D5 (dataviz "r vs p") — rama demo/live. [V3/M20] En vivo ya hay a quién
+ * preguntarle: `GET /runs/{id}/rvsp` sirve la curva CONGELADA de la
+ * instancia que el run cita (`knowledge/rvsp/`, ⟨C⟩ evaluado en los ángulos
+ * que Quantinuum corrió).
+ *
+ * El 404 se trata como `null`, no como error, porque acá 404 es una
+ * respuesta del contrato: "este run no declara instancia" o "esta instancia
+ * no tiene barrido ingerido". La vista pinta un vacío honesto; un error
+ * rojo diría que algo se rompió cuando lo que pasa es que no hay ciencia
+ * todavía. Un 500 o una caída de red SÍ explotan — esos sí son fallas.
+ *
+ * En réplica sirve el experimento real copiado a fixture (`ieee6-flujo`).
+ */
+export async function loadRvsP(runId?: string): Promise<RvsPExperiment | null> {
+  if (!isLiveMode()) {
+    return rvspSchema.parse(RVSP_EXPERIMENT);
+  }
+  if (runId === undefined) {
+    return null;
+  }
+  const res = await getRvsp(runId);
+  if (res.status === 404) {
+    return null;
+  }
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudo obtener la curva r-vs-p del run');
+  }
+  return toRvsPExperiment(rvspWireSchema.parse(res.data));
 }
 
 export function rvspQueryOptions(runId: string) {
   return queryOptions({
     queryKey: ['runs', runId, 'rvsp'] as const,
-    queryFn: loadRvsP
+    queryFn: () => loadRvsP(runId)
   });
 }
 
@@ -383,3 +432,13 @@ export async function loadFiles(): Promise<readonly ProjectFile[]> {
 export function filesQueryOptions() {
   return queryOptions({ queryKey: ['files'] as const, queryFn: loadFiles });
 }
+
+/**
+ * La URL de descarga de un archivo, re-expuesta por la capa de datos.
+ *
+ * No es egress (no hace fetch: arma una URL), pero la regla F3 es del GRAFO de
+ * módulos, no de la semántica: una pantalla que importa `gatewayClient` abre
+ * la puerta a que mañana importe algo que sí sale a la red. Pasa por acá y el
+ * gate vuelve a ser cierto sin excepciones declaradas.
+ */
+export { fileDownloadUrl } from '../gatewayClient';

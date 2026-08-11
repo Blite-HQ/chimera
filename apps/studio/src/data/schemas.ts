@@ -19,6 +19,7 @@ import type {
   ProjectArtifact,
   ProjectedEvent,
   RunSummary,
+  RvsPExperiment,
   StepDetail
 } from '../views/types';
 
@@ -302,9 +303,16 @@ export const stepDetailSchema = z.object({
   attestations: z.array(attestationSchema)
 });
 
-/** nota 07 §1.3 — fila de ablación. */
+/**
+ * nota 07 §1.3 — fila de ablación.
+ * [V2/M19 · C-4] El enum de variantes vive UNA vez y lo comparten el schema de
+ * fixture y el del wire: dos listas paralelas es exactamente el drift que la
+ * extensión coordinada evita.
+ */
+export const ablationVariantSchema = z.enum(['quantum', 'classical', 'mitigated', 'zne']);
+
 export const ablationMetricSchema = z.object({
-  variant: z.enum(['quantum', 'classical']),
+  variant: ablationVariantSchema,
   cutCost: z.number().nonnegative(),
   wallMs: z.number().nonnegative(),
   verificationLatencyMs: z.number().nonnegative()
@@ -477,7 +485,7 @@ export function toKnowledgeClaim(wire: z.infer<typeof knowledgeClaimWireSchema>)
  * shape que `ablationMetricSchema` (fixtures), salvo casing snake_case.
  */
 export const ablationWireSchema = z.object({
-  variant: z.enum(['quantum', 'classical']),
+  variant: ablationVariantSchema,
   cut_cost: z.number().nonnegative(),
   wall_ms: z.number().nonnegative(),
   verification_latency_ms: z.number().nonnegative()
@@ -489,6 +497,53 @@ export function toAblationMetric(wire: z.infer<typeof ablationWireSchema>): Abla
     cutCost: wire.cut_cost,
     wallMs: wire.wall_ms,
     verificationLatencyMs: wire.verification_latency_ms
+  };
+}
+
+/**
+ * `GET /runs/{id}/rvsp` — endpoints-studio.md §"GET /runs/{run_id}/rvsp"
+ * (V3/M20 · C-9): mismo shape que `rvspSchema` (fixtures) salvo el casing.
+ *
+ * `baselines` queda CERRADO a las tres claves del contrato (C-15): cuando
+ * llegue `sa` entra coordinada —schema, tipo, fixture y chart en el mismo
+ * checkpoint—, jamás por un catchall que dejaría pasar una serie que el
+ * gráfico no sabe pintar y que se perdería en silencio.
+ */
+export const rvspWireSchema = z.object({
+  instance: z.string().min(1),
+  optimo: z.number().positive(),
+  baselines: z.object({
+    cpsat: rvspBaselineSchema,
+    greedy: rvspBaselineSchema,
+    gw: rvspBaselineSchema
+  }),
+  points: z.array(
+    z.object({
+      p: z.number().int().positive(),
+      r_esperado_mean: z.number().min(0).max(1),
+      r_muestral_mean: z.number().min(0).max(1),
+      r_muestral_std: z.number().nonnegative(),
+      r_muestral_min: z.number().min(0).max(1),
+      r_muestral_max: z.number().min(0).max(1),
+      success_rate: z.number().min(0).max(1)
+    })
+  )
+});
+
+export function toRvsPExperiment(wire: z.infer<typeof rvspWireSchema>): RvsPExperiment {
+  return {
+    instance: wire.instance,
+    optimo: wire.optimo,
+    baselines: wire.baselines,
+    points: wire.points.map(punto => ({
+      p: punto.p,
+      rEsperadoMean: punto.r_esperado_mean,
+      rMuestralMean: punto.r_muestral_mean,
+      rMuestralStd: punto.r_muestral_std,
+      rMuestralMin: punto.r_muestral_min,
+      rMuestralMax: punto.r_muestral_max,
+      successRate: punto.success_rate
+    }))
   };
 }
 

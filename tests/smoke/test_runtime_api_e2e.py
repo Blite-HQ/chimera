@@ -75,14 +75,14 @@ def _make_client() -> TestClient:
 def _get(client: TestClient, url: str) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+        client.get(url),
     )
 
 
 def _post(client: TestClient, url: str, *, json_body: dict[str, Any]) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.post(url, json=json_body),  # pyright: ignore[reportUnknownMemberType]
+        client.post(url, json=json_body),
     )
 
 
@@ -97,6 +97,17 @@ def _parse_frames(body: str) -> list[dict[str, str]]:
             frame[key] = value
         frames.append(frame)
     return frames
+
+
+_CLOSING_EVENT_TYPES = frozenset({"run.metrics.recorded"})
+
+
+def _hasta_el_terminal(frames: list[dict[str, str]]) -> list[dict[str, str]]:
+    """[V2/M19] El cierre métrico se emite DESPUÉS del terminal (freeze §2
+    [stress-final]: familia de cierre, fuera del hash). Preguntar cómo cerró
+    el run es preguntar por el corte del provenance_hash, no por el último
+    frame del stream."""
+    return [f for f in frames if f["event"] not in _CLOSING_EVENT_TYPES]
 
 
 def _predicate_of(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -141,14 +152,15 @@ class TestGoldenPathE2E:
         # terminaron durante el POST, así que el snapshot `?live=0` observa
         # el stream completo hasta el evento terminal.
         events_response = _get(client, f"/runs/{run_id}/events?live=0")
-        frames = _parse_frames(events_response.text)
+        frames = _hasta_el_terminal(_parse_frames(events_response.text))
         types = [f["event"] for f in frames]
         assert frames[-1]["event"] == "run.completed"
         assert types.count("claim.emitted") == 1
-        # [C4/M4 · C-6/#106] El verificador por ejecución emite una constancia
-        # POR ISLA: 3 eventos (1 formal + 2 islas) para las MISMAS 2 patas. Lo
-        # que el certificado exige se comprueba abajo, sobre las attestations.
-        assert types.count("verification.completed") == 3
+        # [C4/M4 · C-6/#106] El verificador por ejecución emite su constancia
+        # global MÁS una por isla: 4 eventos (1 formal + 1 global + 2 islas)
+        # para las MISMAS 2 patas. Lo que el certificado exige se comprueba
+        # abajo, sobre las attestations.
+        assert types.count("verification.completed") == 4
 
         # Act — GET certificate.
         cert_response = _get(client, f"/runs/{run_id}/certificate")
@@ -197,7 +209,7 @@ class TestRefutacionE2E:
 
         # Act — SSE terminal.
         events_response = _get(client, f"/runs/{run_id}/events?live=0")
-        frames = _parse_frames(events_response.text)
+        frames = _hasta_el_terminal(_parse_frames(events_response.text))
         assert frames[-1]["event"] == "run.completed"
 
         # Act — GET certificate.

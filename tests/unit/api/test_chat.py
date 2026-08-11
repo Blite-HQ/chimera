@@ -55,14 +55,14 @@ def _store_abierto(run_id: str = _RUN) -> EventStore:
 def _get(client: TestClient, url: str) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+        client.get(url),
     )
 
 
 def _post(client: TestClient, url: str, body: dict[str, Any]) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.post(url, json=body),  # pyright: ignore[reportUnknownMemberType]
+        client.post(url, json=body),
     )
 
 

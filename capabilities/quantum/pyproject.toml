@@ -22,6 +22,7 @@ dependencies = [
 "blite.quantum.qaoa" = "blite_cap_quantum:QaoaSolver"
 "blite.quantum.trotter_evolve" = "blite_cap_quantum:TrotterEvolve"
 "blite.quantum.fidelity_kernel" = "blite_cap_quantum:FidelityKernel"
+"blite.quantum.zne" = "blite_cap_quantum:ZeroNoiseExtrapolation"
 
 [build-system]
 requires = ["hatchling"]

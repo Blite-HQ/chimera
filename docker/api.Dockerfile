@@ -30,7 +30,12 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENV PATH="/app/.venv/bin:${PATH}"
 
-RUN groupadd --system chimera && useradd --system --gid chimera --no-create-home chimera \
+# `var/` existe y es del usuario ANTES de que docker monte los volúmenes: es
+# donde viven los archivos de proyecto y la caché de `uvx` de los servidores
+# MCP externos (O5/M13). Sin esto, un volumen montado sobre un directorio
+# inexistente queda propiedad de root y el proceso no puede escribir.
+RUN mkdir -p /app/var/files /app/var/uv-cache \
+    && groupadd --system chimera && useradd --system --gid chimera --no-create-home chimera \
     && chown -R chimera:chimera /app
 USER chimera
 

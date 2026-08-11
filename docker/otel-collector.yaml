@@ -1,0 +1,47 @@
+# Collector del perfil `otel` — recibe OTLP y lo IMPRIME.
+#
+# `debug` en vez de un backend real a propósito: el DoD de O3 es «un run real
+# llega a un collector», y un exportador que escribe en stdout hace esa
+# verificación observable con `docker compose logs`, sin montar Jaeger/Tempo ni
+# pedirle a nadie una cuenta. Cambiar `debug` por el exporter que se quiera
+# (otlp/tempo, otlphttp/langfuse…) es una línea.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+
+exporters:
+  debug:
+    verbosity: detailed
+
+  # ── Langfuse: perfil OPCIONAL aguas abajo (C-11 / decisión #106) ───────────
+  # Langfuse es un CONSUMIDOR OTLP más — herramienta interna de debugging del
+  # proposer —, jamás un «backend» del sistema. Esa degradación está registrada:
+  # nunca hubo decisión que lo nombrara backend, y M9 lo decía por inercia.
+  #
+  # Para engancharlo, descomentar esto y agregarlo a `exporters` del pipeline.
+  # Las credenciales van por variable de entorno del collector, nunca literales
+  # acá (misma regla EG-3 que el resto del compose):
+  #
+  #   OTLP_AUTH="Basic $(printf '%s:%s' "$LANGFUSE_PUBLIC_KEY" "$LANGFUSE_SECRET_KEY" | base64 -w0)"
+  #
+  # otlphttp/langfuse:
+  #   endpoint: ${env:LANGFUSE_HOST}/api/public/otel
+  #   headers:
+  #     Authorization: ${env:OTLP_AUTH}
+  #
+  # Nada del proyector cambia: exporta OTLP y no sabe quién escucha. Ese es el
+  # punto de que la costura sea un collector y no una integración.
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

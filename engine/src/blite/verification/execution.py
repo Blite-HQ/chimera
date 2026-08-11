@@ -59,6 +59,15 @@ from blite.verification.verifier import Determinism
 
 HARNESS_ID = "pandapower-islanding-v1"
 
+POWERFLOW_CONVERGED_CHECK = "powerflow_converged"
+
+ABSTENTION_CHECKS = frozenset({POWERFLOW_CONVERGED_CHECK})
+"""Checks cuyo fallo es ABSTENCIÓN, no veredicto en contra (spec §1.3): la
+no-convergencia es cota del método. Declarado como DATO y no enterrado en el
+flujo de `verify()` porque quien LEE la attestation después — el productor de
+`partition` (C-8: verdict por isla desde los checks `island-{k}:*`) — necesita
+la misma regla para no leer una abstención como un fail."""
+
 
 class ExecutionLimits(BaseModel):
     """Límites eléctricos como DATO (nota 12). Los defaults son la banda
@@ -172,22 +181,43 @@ class ExecutionVerifier:
         fuente de evidencia. La granularidad fina existe para EXPLICAR dónde
         falló, no para multiplicar el respaldo de una conclusión.
 
+        La constancia GLOBAL va PRIMERO y las de isla después: la granularidad
+        es evidencia ADITIVA, no un reemplazo. Un consumidor que pregunta «¿cómo
+        le fue al resultado?» —el productor de `partition` de V1/M18 es
+        exactamente ese— no debería tener que re-agregar lo que el verificador
+        ya sabe. Todas comparten claim, ancla y grupo, así que el conteo de
+        patas del punto 7 sigue dando UNA.
+
         Ninguna evidencia se pierde ni se duplica: los checks de las dos
         rutas salen de la MISMA evaluación, particionados por isla."""
-        outcomes, _ = self._evaluate(claim)
-        return tuple(
-            self._attestation(
-                claim,
-                ctx,
-                step_id=outcome.island_id,
-                checks=outcome.checks,
-                verdict=derive_execution_verdict(
-                    all_passed=not outcome.hard_fail,
-                    any_inconclusive=outcome.inconclusive,
-                ),
-                runtime_ms=outcome.runtime_ms,
-            )
-            for outcome in outcomes
+        outcomes, runtime_ms = self._evaluate(claim)
+        global_ = self._attestation(
+            claim,
+            ctx,
+            step_id=None,
+            checks=tuple(check for outcome in outcomes for check in outcome.checks),
+            verdict=derive_execution_verdict(
+                all_passed=not any(o.hard_fail for o in outcomes),
+                any_inconclusive=any(o.inconclusive for o in outcomes),
+            ),
+            runtime_ms=runtime_ms,
+        )
+        return (
+            global_,
+            *(
+                self._attestation(
+                    claim,
+                    ctx,
+                    step_id=outcome.island_id,
+                    checks=outcome.checks,
+                    verdict=derive_execution_verdict(
+                        all_passed=not outcome.hard_fail,
+                        any_inconclusive=outcome.inconclusive,
+                    ),
+                    runtime_ms=outcome.runtime_ms,
+                )
+                for outcome in outcomes
+            ),
         )
 
     def _evaluate(self, claim: Any) -> tuple[tuple[_IslandOutcome, ...], float]:
@@ -252,7 +282,9 @@ class ExecutionVerifier:
 
         converged, metrics = self._run_island_powerflow(island)
         checks.append(
-            ExecutionCheck(name=f"{island_id}:powerflow_converged", passed=converged)
+            ExecutionCheck(
+                name=f"{island_id}:{POWERFLOW_CONVERGED_CHECK}", passed=converged
+            )
         )
         if not converged:
             # Abstención honesta (spec §1.3): cota del método, no verdict

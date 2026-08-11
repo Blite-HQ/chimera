@@ -1,0 +1,187 @@
+{
+  "_comentario": "Golden de la proyección evento→span (S-F §3/§4). Generado por scripts/gen-contract-fixtures-observabilidad.py — no editar a mano.",
+  "run_id": "run-fixture-0001",
+  "spans": {
+    "job-1": {
+      "name": "capability",
+      "parent_anchor": "step-1",
+      "span_id": "86fcf3c7e7347d42",
+      "status": "ok"
+    },
+    "pr-1": {
+      "name": "gen_ai",
+      "parent_anchor": "run",
+      "span_id": "f18441eb870e4a79",
+      "status": "ok"
+    },
+    "run": {
+      "name": "run",
+      "parent_anchor": null,
+      "span_id": "f6465dad03bf18ec",
+      "status": "ok"
+    },
+    "step-1": {
+      "name": "step",
+      "parent_anchor": "run",
+      "span_id": "783e70cb0f0eb6de",
+      "status": "ok"
+    },
+    "verification:cl-1": {
+      "name": "verification",
+      "parent_anchor": "run",
+      "span_id": "54d6a2b924e1bf43",
+      "status": "ok"
+    }
+  },
+  "stream": [
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 1,
+      "occurred_at": "2026-08-05T12:00:00+00:00",
+      "payload": {
+        "domain_id": "chimera",
+        "max_steps": 8,
+        "policy_digest": "pd-0"
+      },
+      "seq": 1,
+      "stream_id": "run-fixture-0001",
+      "type": "run.created"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 2,
+      "occurred_at": "2026-08-05T12:00:01+00:00",
+      "payload": {},
+      "seq": 2,
+      "stream_id": "run-fixture-0001",
+      "type": "run.started"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 3,
+      "occurred_at": "2026-08-05T12:00:02+00:00",
+      "payload": {
+        "input_digest": "in-1",
+        "kind": "invoke",
+        "status": "running",
+        "step_id": "step-1"
+      },
+      "seq": 3,
+      "stream_id": "run-fixture-0001",
+      "type": "run.step.started"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 4,
+      "occurred_at": "2026-08-05T12:00:03+00:00",
+      "payload": {
+        "capability_id": "blite.graphs.maxcut",
+        "job_id": "job-1",
+        "step_id": "step-1"
+      },
+      "seq": 4,
+      "stream_id": "run-fixture-0001",
+      "type": "capability.job.submitted"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 5,
+      "occurred_at": "2026-08-05T12:00:04+00:00",
+      "payload": {
+        "backend_id": "replay",
+        "local": true,
+        "prompt_digest": "pr-1"
+      },
+      "seq": 5,
+      "stream_id": "run-fixture-0001",
+      "type": "model.call.requested"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 6,
+      "occurred_at": "2026-08-05T12:00:05+00:00",
+      "payload": {
+        "backend_id": "replay",
+        "prompt_digest": "pr-1",
+        "response_digest": "rs-1"
+      },
+      "seq": 6,
+      "stream_id": "run-fixture-0001",
+      "type": "model.call.completed"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 7,
+      "occurred_at": "2026-08-05T12:00:06+00:00",
+      "payload": {
+        "job_id": "job-1",
+        "output_digest": "out-1",
+        "step_id": "step-1"
+      },
+      "seq": 7,
+      "stream_id": "run-fixture-0001",
+      "type": "capability.job.completed"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 8,
+      "occurred_at": "2026-08-05T12:00:07+00:00",
+      "payload": {
+        "input_digest": "in-1",
+        "kind": "invoke",
+        "output_digest": "out-1",
+        "status": "ok",
+        "step_id": "step-1"
+      },
+      "seq": 8,
+      "stream_id": "run-fixture-0001",
+      "type": "run.step.completed"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 9,
+      "occurred_at": "2026-08-05T12:00:08+00:00",
+      "payload": {
+        "claim_digest": "cl-1",
+        "verdict": "pass",
+        "verifier_id": "verifier:cpsat-differential"
+      },
+      "seq": 9,
+      "stream_id": "run-fixture-0001",
+      "type": "verification.completed"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 10,
+      "occurred_at": "2026-08-05T12:00:09+00:00",
+      "payload": {
+        "attestations_total": 1,
+        "inconclusive_count": 0
+      },
+      "seq": 10,
+      "stream_id": "run-fixture-0001",
+      "type": "run.metrics.recorded"
+    },
+    {
+      "actor_id": "user:externo",
+      "domain_id": "chimera",
+      "global_seq": 11,
+      "occurred_at": "2026-08-05T12:00:10+00:00",
+      "payload": {},
+      "seq": 11,
+      "stream_id": "run-fixture-0001",
+      "type": "run.completed"
+    }
+  ],
+  "trace_id": "6fdca39346bd95302871040a53a90e2f"
+}

@@ -7,6 +7,11 @@ responsibly — do not open a public issue.
 ## Reporting a Vulnerability
 
 - Email: <dylanchavesa@gmail.com> (repo maintainer) with subject `[SECURITY] Chimera — <short summary>`.
+  (This is the route **while the repository is private**: GitHub's private
+  vulnerability reporting is not available on a private repo — verified
+  2026-08-06, `PUT /private-vulnerability-reporting` returns 404. It gets
+  enabled the day the repo goes public and becomes the preferred route;
+  step 3 of `docs/pre-flip-checklist.md` §5.)
 - Include: affected component/path, reproduction steps, and impact.
 - We will acknowledge within 72 hours and follow up with a remediation plan.
 - Please allow us to fix and release before any public disclosure.

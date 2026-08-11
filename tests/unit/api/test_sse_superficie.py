@@ -143,7 +143,7 @@ def _get(client: TestClient, url: str) -> httpx.Response:
     # httpx2 (no instalado); el runtime real es httpx.
     return cast(
         httpx.Response,
-        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+        client.get(url),
     )
 
 

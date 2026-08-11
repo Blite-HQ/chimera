@@ -32,7 +32,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def _post_file(client: TestClient, data: bytes, **headers: str) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.post(  # pyright: ignore[reportUnknownMemberType]
+        client.post(
             "/files",
             content=data,
             headers={"Content-Type": "application/pdf", **headers},
@@ -43,7 +43,7 @@ def _post_file(client: TestClient, data: bytes, **headers: str) -> httpx.Respons
 def _get(client: TestClient, url: str) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+        client.get(url),
     )
 
 

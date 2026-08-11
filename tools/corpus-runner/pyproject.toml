@@ -1,0 +1,20 @@
+[project]
+name = "chimera-eval"
+version = "0.1.0"
+description = "Corpus runner (third plane: offline evaluation). Reads the verification plane, never produces or decides."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+# Sin dependencias de runtime a propósito: el núcleo del runner no importa el
+# engine ni el api (trust/17 §4.1 — fuera del engine, lado lectura). Las tareas
+# concretas que sí tocan el plano de verificación importan lo suyo de forma
+# perezosa, y esa atadura vive en `chimera_eval.tasks`, no acá.
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chimera_eval"]

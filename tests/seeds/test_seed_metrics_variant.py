@@ -3,30 +3,20 @@
 Contrato: docs/specs/superficie-visual.md §9 + freeze §3 marca (b). Los campos
 de confianza congelados se mantienen; entran `variant?` (enum de 4) y los
 científicos opcionales `cut_cost?`/`wall_ms?`. Dos brazos de ablación =
-sub-runs (§13). Implementación = ítem V2/M19 (Fase 1).
+sub-runs (§13).
 
-Directiva pyright per-file: el módulo objetivo no existe por diseño hasta
-Fase 1; la directiva se retira junto con el xfail.
+**[V2/M19 · 2026-08-05] VERDE**: `blite.runtime.metrics` existe y el enum de
+`AblationMetric` se extendió coordinado. El xfail y la directiva pyright
+per-file se retiran juntos, como la spec mandaba.
 """
 
-# pyright: reportMissingImports=false, reportUnknownVariableType=false
-# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
 # pyright: reportArgumentType=false
 
 from __future__ import annotations
 
 import pytest
 
-pytestmark = [
-    pytest.mark.seed,
-    pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Fase 1 V2/M19: blite.runtime.metrics no existe todavía — "
-            "docs/specs/superficie-visual.md §9 (C-4/#125)"
-        ),
-    ),
-]
+pytestmark = [pytest.mark.seed]
 
 
 def test_payload_confianza_sin_variant_sigue_valido() -> None:
@@ -44,8 +34,9 @@ def test_payload_confianza_sin_variant_sigue_valido() -> None:
 
 def test_variant_enum_de_cuatro_y_cientificos_opcionales() -> None:
     """El enum cubre M6 (mitigated/zne); cut_cost/wall_ms viajan opcionales."""
-    from blite.runtime.metrics import RunMetricsRecordedPayload
     from pydantic import ValidationError
+
+    from blite.runtime.metrics import RunMetricsRecordedPayload
 
     for variant in ("quantum", "classical", "mitigated", "zne"):
         payload = RunMetricsRecordedPayload(

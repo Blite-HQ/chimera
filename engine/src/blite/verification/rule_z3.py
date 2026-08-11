@@ -30,7 +30,7 @@ Python↔SMT.
 from __future__ import annotations
 
 # z3-solver no publica stubs completos bajo pyright strict — mismo criterio
-# que pandapower en `execution.py` y numpy en `property_rule.py`: se silencian
+# que los otros adapters del plano ante librerías de terceros: se silencian
 # SOLO los reportes de tipos desconocidos de terceros; las firmas propias de
 # este módulo siguen bajo strict.
 # pyright: reportMissingTypeStubs=false, reportUnknownMemberType=false

@@ -2,11 +2,12 @@
 `ExecutionHarness` — el puerto que abre la clase `execution` a dominios que
 no son el eléctrico. Ítem C14 (trust/12 §1.4 + trust/04 §1.1).
 
-**El problema que resuelve.** Hoy la clase `execution` tiene UN adapter y ese
-adapter es pandapower: «correr de verdad y observar» significa, en el código,
-«correr un flujo de potencia». Un dominio que verifica ejecutando otra cosa
-—una suite de tests sobre un parche, un simulador de otro campo, un binario
-del cliente— no tiene por dónde entrar sin escribir un verificador entero. El
+**El problema que resuelve.** Hoy la clase `execution` tiene UN adapter, atado
+al simulador de UN dominio: «correr de verdad y observar» significa, en el
+código, correr ese simulador y ningún otro. Un dominio que verifica ejecutando
+otra cosa —una suite de tests sobre un parche, un simulador de otro campo, un
+binario del cliente— no tiene por dónde entrar sin escribir un verificador
+entero. El
 puerto separa las dos mitades: QUÉ significa ejecutar (el harness, específico
 del dominio) de QUÉ significa verificar por ejecución (el adapter, genérico).
 

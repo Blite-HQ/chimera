@@ -28,7 +28,14 @@ from pathlib import Path
 
 from chimera_api.reads import DiscardedStream, DiscardedStreams
 from chimera_api.runs import MissionRequest
+from chimera_api.rvsp import RvspResponse, load_rvsp_record
 from pydantic import BaseModel
+
+RVSP_FIXTURE_INSTANCE = "cr8-uniforme"
+"""Instancia del fixture de la curva: corrida REAL en Quantinuum (p=1/2/3,
+ángulos ingeridos con su `circuit_digest`) y con óptimo congelado en el
+corpus. El fixture no es una maqueta — es la respuesta que el endpoint da
+para esa instancia."""
 
 REPO = Path(__file__).resolve().parent.parent
 CANONICAL_DIR = REPO / "tests" / "fixtures" / "contract" / "endpoints"
@@ -72,7 +79,27 @@ def _cases() -> dict[str, BaseModel]:
                 ),
             )
         ),
+        # [V3/M20 · C-9] La curva r-vs-p tal cual sale del endpoint para una
+        # instancia con ciencia ingerida. Se lee del corpus congelado en vez
+        # de escribirse a mano: un fixture con números inventados fijaría la
+        # forma pero mentiría sobre el contenido, y este es justo el wire
+        # donde un número inventado se vería como un resultado.
+        "get-runs-rvsp": _rvsp_case(),
     }
+
+
+def _rvsp_case() -> RvspResponse:
+    """La respuesta REAL de `GET /runs/{run_id}/rvsp` para la instancia del
+    fixture. Fail-loud si el corpus no está: un fixture de costura sin su
+    origen es una maqueta, y este generador no las produce."""
+    curva = load_rvsp_record(RVSP_FIXTURE_INSTANCE)
+    if curva is None:
+        msg = (
+            f"knowledge/rvsp/{RVSP_FIXTURE_INSTANCE}.json no está o su digest "
+            "no cierra — corré antes `python scripts/gen_corpus_rvsp.py`"
+        )
+        raise RuntimeError(msg)
+    return curva
 
 
 def serialize(case: str, payload: BaseModel) -> str:

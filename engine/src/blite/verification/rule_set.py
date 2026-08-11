@@ -12,9 +12,9 @@ adapter es agnóstico al dominio. Consecuencias de forma, todas deliberadas:
   parte de lo distribuido. Re-parsearlo para canonicalizar reintroduciría la
   fragilidad que el anexo existe para matar.
 - **El `rule_set_id` viaja DENTRO del artefacto** (`; rule-set-id: <id>`),
-  misma convención que el digest embebido de los JSON del corpus
-  (`knowledge/islanding/01-corpus-benchmarks.md` §1.6): un cargador que
-  recibiera el id por parámetro dejaría que id y bytes deriven en silencio.
+  misma convención que el digest embebido de los JSON del corpus (nota de
+  corpus §1.6, en `knowledge/`): un cargador que recibiera el id por
+  parámetro dejaría que id y bytes deriven en silencio.
 - **Cada regla lleva `:named`** — sin nombre, el unsat core no puede
   señalarla (trust/11 §1.4) y la explicabilidad dejaría de ser exigible sin
   que nada fallara. Un `(assert …)` sin nombre NO carga.

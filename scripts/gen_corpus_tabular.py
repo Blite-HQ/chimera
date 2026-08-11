@@ -60,7 +60,7 @@ CAVEATS = [
         "Cualquier claim de un clasificador entrenado sobre este corpus es una "
         "afirmacion sobre ESTE CSV sellado (identificado por su digest), jamas "
         "una prediccion sobre un fenomeno del mundo real — de ahi "
-        "procedencia=\"synthetic_generated\" y el techo AL3/GROUND_TRUTH "
+        'procedencia="synthetic_generated" y el techo AL3/GROUND_TRUTH '
         "(docs/mejorado/03-research.md R1)."
     ),
     (
@@ -205,7 +205,8 @@ def construir_corpus() -> tuple[bytes, dict[str, Any]]:
         "celdas_faltantes": {
             "total": total_faltantes,
             "por_columna": {
-                NOMBRES_FEATURES[col]: n for col, n in sorted(faltantes_por_columna.items())
+                NOMBRES_FEATURES[col]: n
+                for col, n in sorted(faltantes_por_columna.items())
             },
         },
         "columna_etiqueta": COLUMNA_ETIQUETA,

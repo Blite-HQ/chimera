@@ -1,0 +1,18 @@
+[project]
+name = "chimera-convergence"
+version = "0.1.0"
+description = "Convergence matrix auditor: classify two independent tracks into quadrants and refuse an unearned verdict."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+# Sin dependencias de runtime: es un instrumento de PROCESO. Lee una matriz
+# declarada y aplica reglas — no toca el engine, el api ni la red.
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chimera_convergence"]

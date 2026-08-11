@@ -56,14 +56,14 @@ def _get(client: TestClient, url: str) -> httpx.Response:
     ruido en vez de resolverlo una vez."""
     return cast(
         httpx.Response,
-        client.get(url),  # pyright: ignore[reportUnknownMemberType]
+        client.get(url),
     )
 
 
 def _post(client: TestClient, url: str, **kwargs: Any) -> httpx.Response:
     return cast(
         httpx.Response,
-        client.post(url, **kwargs),  # pyright: ignore[reportUnknownMemberType]
+        client.post(url, **kwargs),
     )
 
 
@@ -125,9 +125,8 @@ def test_run_sin_cookie_usa_el_operador_default_jamas_user_api() -> None:
 
 def test_cookie_invalida_es_401_fail_closed_jamas_fallback() -> None:
     client = _make_client()
-    client.cookies.set(  # pyright: ignore[reportUnknownMemberType] — mismo patrón httpx/httpx2 que _post
-        SESSION_COOKIE, "token.manipulado.xyz"
-    )
+    # mismo patrón httpx/httpx2 que _post
+    client.cookies.set(SESSION_COOKIE, "token.manipulado.xyz")
     response = _post(client, "/runs", json=_claim_run_body())
     assert response.status_code == 401
 
@@ -197,7 +196,7 @@ def test_me_con_cookie_rota_falla_cerrado() -> None:
     escritura rechazan con 401 — dos versiones de quién sos."""
     client = _make_client()
     if True:
-        cookies = cast(httpx.Cookies, client.cookies)  # pyright: ignore[reportUnknownMemberType]
+        cookies = cast(httpx.Cookies, client.cookies)
         cookies.set(SESSION_COOKIE, "no-es-un-jwt")
 
         assert _get(client, "/me").status_code == 401

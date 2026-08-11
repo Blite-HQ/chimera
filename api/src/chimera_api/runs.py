@@ -63,7 +63,8 @@ from blite.gateway.crossing import RunCrossing, build_run_pipeline
 from blite.identity.identity import Identity
 from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
 from blite.runtime.content_store import InMemoryContentStore
-from blite.runtime.dispatch import Dispatcher, ProfileDispatcher
+from blite.runtime.dispatch import Dispatcher, ProfileDispatcher, ServiceStrategy
+from blite.runtime.distribution import load_distribution_manifest
 from blite.runtime.loop import (
     GatewayCrossing,
     ProposedStep,
@@ -72,12 +73,17 @@ from blite.runtime.loop import (
     TurnContext,
     execute_run,
 )
+from blite.runtime.metrics import record_run_metrics
 from blite.runtime.plan import PlanItem
 from blite.runtime.registry import Registry, load_registry
 from blite.serving.model_port import ModelPort
 from blite.verification.orchestrator import ClaimDeclaration, make_verification_delegate
 from chimera_api.auth import SessionAuth
-from chimera_api.instance_verifiers import CLAIM_TYPE_VERIFIERS, resolve_verifiers
+from chimera_api.instance_verifiers import (
+    CLAIM_TYPE_VERIFIERS,
+    resolve_result_projection,
+    resolve_verifiers,
+)
 from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import load_session
 
@@ -149,11 +155,11 @@ grabar, no un default reconfigurable por accidente."""
 # api/src/chimera_api/runs.py -> parents[3] es la raíz del repo (mismo
 # cómputo que REPO en test_assemble.py, tres niveles menos porque este
 # archivo vive un nivel más adentro).
-_REPO_ROOT = Path(__file__).parents[3]
+REPO_ROOT = Path(__file__).parents[3]
 _DEFAULT_POLICY_PATH = (
-    _REPO_ROOT / "distributions" / "chimera" / "policies" / "verification-default.yaml"
+    REPO_ROOT / "distributions" / "chimera" / "policies" / "verification-default.yaml"
 )
-_ISLANDING_CORPUS_DIR = _REPO_ROOT / "knowledge" / "islanding" / "corpus"
+_ISLANDING_CORPUS_DIR = REPO_ROOT / "knowledge" / "islanding" / "corpus"
 
 
 class InstanceRequest(BaseModel):
@@ -304,6 +310,13 @@ class RunTicket:
 
     conclusions: tuple[ConclusionDeclaration, ...]
     anchor_descriptors: tuple[dict[str, Any], ...]
+    instance_id: str | None = None
+    """[V3/M20] Qué instancia del corpus encargó este run — la clave que
+    `GET /runs/{run_id}/rvsp` necesita para saber QUÉ curva servir. Vive acá
+    y no en el log porque es lo que el ARRANQUE declaró: el modo misión ni
+    siquiera pone la instancia en los inputs cuando el corpus resuelve
+    (`_resolve_mission_inputs` devuelve solo la matriz). `None` = el run no
+    la declaró, y la ruta responde 404 en vez de adivinar una red ajena."""
 
 
 @dataclass(frozen=True)
@@ -443,6 +456,31 @@ class RunResources:
         return self._registry
 
 
+DISTRIBUTION_MANIFEST_PATH = (
+    REPO_ROOT / "distributions" / "chimera" / "distribution.yaml"
+)
+
+
+def _build_dispatcher() -> Dispatcher:
+    """Arma el despacho con lo que ESTE despliegue declara (O5/M13).
+
+    Sin `distribution.yaml`, o con él pero sin servidores MCP declarados, NO se
+    registra estrategia `service`: una capability de ese perfil queda sin
+    despachar (`NotImplementedError` explícito) en vez de caer a in-process,
+    donde se saltaría la allowlist, el pin y la attestation.
+
+    El import del invocador es perezoso porque arrastra el SDK de MCP (extra
+    `chimera-engine[mcp]`): un despliegue sin interop no debe pagarlo.
+    """
+    manifest = load_distribution_manifest(DISTRIBUTION_MANIFEST_PATH)
+    if not manifest.mcp_servers:
+        return ProfileDispatcher()
+
+    from chimera_api.mcp_wiring import build_mcp_invoker
+
+    return ProfileDispatcher(service=ServiceStrategy(build_mcp_invoker(manifest)))
+
+
 def build_run_resources(
     store: EventStore, *, registry: Registry | None = None
 ) -> RunResources:
@@ -451,7 +489,7 @@ def build_run_resources(
     content = InMemoryContentStore()
     return RunResources(
         store=store,
-        dispatcher=ProfileDispatcher(),
+        dispatcher=_build_dispatcher(),
         content=content,
         policy_bytes=_DEFAULT_POLICY_PATH.read_bytes(),
         key_provider=_build_key_provider(),
@@ -496,6 +534,21 @@ def run_in_background(
     except Exception as exc:  # noqa: BLE001 — último recurso: una tarea de fondo jamás tumba el worker, y el run jamás queda sin terminal
         _LOGGER.exception("run %s: excepción escapada de la tarea de fondo", run_id)
         _fail_run_last_resort(store, run_id, exc)
+    _record_metrics_best_effort(store, run_id)
+
+
+def _record_metrics_best_effort(store: EventStore, run_id: str) -> None:
+    """V2/M19 — el cierre métrico (`run.metrics.recorded`, freeze §3 [S-F]:
+    «se emite al cerrar el run»). Va DESPUÉS del terminal y fuera del hash,
+    así que emitirlo no toca la procedencia de un certificado ya emitido.
+
+    Best-effort a propósito: el run YA cerró con su terminal, y una métrica
+    que no se pudo escribir no puede invalidar un run que sí corrió. Se
+    registra el fallo — nunca se traga en silencio."""
+    try:
+        record_run_metrics(store, run_id=run_id, domain_id=_DEFAULT_DOMAIN)
+    except Exception:  # noqa: BLE001 — el cierre métrico jamás falla un run ya terminado; se reporta
+        _LOGGER.exception("run %s: no se pudo emitir el cierre métrico", run_id)
 
 
 def _fail_run_last_resort(store: EventStore, run_id: str, exc: Exception) -> None:
@@ -702,6 +755,10 @@ def _start_claim_run(
         scope=body.claim.scope,
         claim_type=claim_type,
         is_conclusion=True,
+        # V1/M18: la superficie de partición se emite EMBEBIDA en
+        # `verification.completed` cuando la clase de claim la declara —
+        # el orquestador no sabe de dominios, el registro sí.
+        result_projection=resolve_result_projection(claim_type=claim_type, claim=claim),
     )
     delegate = make_verification_delegate(
         verifiers=resolution.verifiers, declarations=(declaration,)
@@ -716,6 +773,7 @@ def _start_claim_run(
                 claim_type=body.claim.claim_type,
             ),
         ),
+        instance_id=instance_id or None,
         anchor_descriptors=resolution.anchor_descriptors,
     )
 
@@ -768,7 +826,9 @@ def _start_mission_run(
     # Ticket VACÍO: el modo misión no declara conclusiones — los claims los
     # emiten los sub-runs/steps. `GET /runs/{id}/certificate` no responde
     # 404 por desconocido; sin conclusiones no se fabrica certificado.
-    resources.run_tickets[run_id] = RunTicket(conclusions=(), anchor_descriptors=())
+    resources.run_tickets[run_id] = RunTicket(
+        conclusions=(), anchor_descriptors=(), instance_id=body.instance_id
+    )
 
     capability_id = (
         body.capability_id

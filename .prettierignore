@@ -2,10 +2,6 @@
 pnpm-lock.yaml
 uv.lock
 
-# Vendored third-party course material (decisión #113) — excluido del gate de
-# docs; se refina como insumo, no se formatea. Licencia N11 pendiente (O2/M26).
-knowledge/quantum/quantathon/
-
 # Datos estampados con digest — reformatearlos rompería su identidad (línea
 # roja: jamás re-digestar). El productor es el dueño de los bytes, no prettier.
 knowledge/islanding/raw/

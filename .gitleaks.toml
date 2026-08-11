@@ -1,0 +1,80 @@
+# Secret scanning — used by CI (`Security` job, full history) and by the
+# pre-commit hook (`scripts/pre-commit-secrets.sh`, staged changes only).
+#
+# The two halves are deliberate: the hook gives fast feedback on what you are
+# about to commit, CI is the gate that nothing bypasses.
+#
+# ── Local extension ───────────────────────────────────────────────────────────
+# If a `.gitleaks.local.toml` exists at the repo root (git-ignored), the hook
+# uses it INSTEAD of this file. That is the place for patterns that are specific
+# to you or to your organisation and have no business being versioned — client
+# names, internal hostnames, private identifiers. Start it with:
+#
+#     [extend]
+#     path = ".gitleaks.toml"     # keep everything below
+#     # ...then add your own [[rules]]
+#
+# Nothing here changes if you never create that file.
+
+title = "Chimera secret scanning"
+
+[extend]
+# The upstream rule set (~170 providers). We add allowlists, not exceptions to
+# the detection itself.
+useDefault = true
+
+[[allowlists]]
+description = """
+A type annotation is not a secret. `generic-api-key` fires on lines like
+`signing_key: ed25519.Ed25519PrivateKey` — a Python field DECLARATION with no
+value at all. Scoped to annotation-shaped lines (`name: Type`, no `=`), so a
+real assignment on the same field name still trips the scanner.
+"""
+regexTarget = "line"
+regexes = [
+  '''^\s*[A-Za-z_][A-Za-z0-9_]*(key|token|secret|password)[A-Za-z0-9_]*\s*:\s*[A-Za-z_][A-Za-z0-9_.\[\], |"']*\s*$''',
+]
+
+[[allowlists]]
+description = """
+La misma anotación, pero donde NO ocupa la línea entera: un parámetro de
+función (`def firmar(key: ed25519.Ed25519PrivateKey)`), un campo dentro de una
+firma multilínea, o código inline en un markdown. La regla de arriba ancla a
+línea completa y por eso se los pierde.
+
+Acá el criterio es el TIPO capturado, no la posición: `modulo.NombreDeTipo` —
+un identificador punteado cuyo segmento final arranca en mayúscula. Una
+credencial real no tiene esa forma; `sk_live_…`, un JWT o un blob base64 no
+pasan. Es lo que hace seguro aceptar la línea sin mirar dónde está.
+"""
+regexTarget = "match"
+regexes = [
+  '''(?i)^[a-z0-9_]*(key|token|secret|password)[a-z0-9_]*\s*:\s*[A-Za-z_][A-Za-z0-9_]*(\.[A-Z][A-Za-z0-9_]*)+[\s`'",)\]|]*$''',
+]
+
+[[allowlists]]
+description = """
+Placeholder values in the example environment file and in the secret-generation
+script: they exist to be replaced, and a scanner that flags them trains people
+to ignore it.
+"""
+paths = [
+  '''^\.env\.example$''',
+  '''^secrets/.*\.example$''',
+]
+
+[[allowlists]]
+description = """
+El test de ESTA config. Su trabajo es contener fixtures con forma de secreto
+real, así que el escáner lo marca — correctamente — y no hay forma de evitarlo
+sin ofuscar los fixtures, que es peor: un test de un escáner de secretos tiene
+que poder leerse.
+
+La excepción no debilita nada: el test COPIA esos mismos fixtures a un archivo
+temporal, fuera de esta ruta, y afirma que ahí sí se detectan. La detección se
+sigue demostrando en cada corrida; lo único que se silencia es el archivo donde
+los fixtures viven.
+"""
+paths = [
+  '''^tests/integration/test_gitleaks_config\.py$''',
+]

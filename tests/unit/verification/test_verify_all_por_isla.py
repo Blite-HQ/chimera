@@ -100,15 +100,21 @@ def test_el_helper_prefiere_verify_all_cuando_el_adapter_lo_implementa() -> None
 # ── ExecutionVerifier: una constancia por isla ──────────────────────────
 
 
-def test_verify_all_emite_una_constancia_por_isla_con_step_id_estable() -> None:
+def test_verify_all_emite_la_global_y_ademas_una_por_isla() -> None:
     """`step_id = island_id` (`island-{k}`) — S-D §8. Estable: el mismo
-    resultado produce el mismo id en cada corrida, o el mapa no podría
-    atar un badge a su isla entre refrescos."""
+    resultado produce el mismo id en cada corrida, o el mapa no podría atar
+    un badge a su isla entre refrescos.
+
+    La GLOBAL va primero: la granularidad es evidencia ADITIVA, no un
+    reemplazo. Quien pregunta «¿cómo le fue al resultado?» —el productor de
+    `partition` de V1/M18— no tiene que re-agregar lo que el verificador ya
+    sabe. (Se descubrió integrando: con solo las de isla, la partición salía
+    con UNA isla y el consumidor la leía como el resultado completo.)"""
     # Act
     attestations = make_verifier().verify_all(claim_for((0, 0, 1, 1)), CTX)
 
     # Assert
-    assert [att.step_id for att in attestations] == ["island-0", "island-1"]
+    assert [att.step_id for att in attestations] == [None, "island-0", "island-1"]
 
 
 def test_cada_constancia_lleva_solo_los_checks_de_su_isla() -> None:
@@ -118,14 +124,23 @@ def test_cada_constancia_lleva_solo_los_checks_de_su_isla() -> None:
     # Act
     attestations = make_verifier().verify_all(claim_for((0, 0, 1, 1)), CTX)
 
-    # Assert
-    for att in attestations:
+    # Assert — las de isla llevan SOLO lo suyo; la global (step_id None) las
+    # ampara todas, que es justo su razón de ser.
+    por_isla = [att for att in attestations if att.step_id is not None]
+    assert len(por_isla) == 2
+    for att in por_isla:
         predicate = att.predicate
         assert isinstance(predicate, ExecutionPredicate)
         assert predicate.checks
         assert all(
             check.name.startswith(f"{att.step_id}:") for check in predicate.checks
         )
+    global_ = next(att for att in attestations if att.step_id is None)
+    assert isinstance(global_.predicate, ExecutionPredicate)
+    assert {c.name.split(":")[0] for c in global_.predicate.checks} == {
+        "island-0",
+        "island-1",
+    }
 
 
 def test_todas_las_islas_de_una_corrida_comparten_independence_group() -> None:
@@ -149,6 +164,7 @@ def test_una_isla_rota_falla_sin_arrastrar_a_la_isla_sana() -> None:
     # Act
     por_isla = _islas(verifier.verify_all(claim_for((0, 0, 1, 1)), CTX))
     global_ = verifier.verify(claim_for((0, 0, 1, 1)), CTX)
+    assert por_isla[None].verdict == "fail"  # la global de `verify_all` coincide
 
     # Assert
     assert global_.verdict == "fail"
@@ -162,6 +178,7 @@ def test_la_constancia_por_isla_respeta_el_techo_de_su_clase() -> None:
     que el camino global — la granularidad no cambia la fuerza)."""
     attestations = make_verifier().verify_all(claim_for((0, 0, 1, 1)), CTX)
 
+    assert len(attestations) == 3  # global + 2 islas
     for att in attestations:
         assert att.verifier_class == "execution"
         assert att.level == "AL3"

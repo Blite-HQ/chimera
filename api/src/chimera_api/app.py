@@ -28,14 +28,21 @@ from fastapi.responses import StreamingResponse
 
 from blite.events import create_event_store
 from blite.events.store import EventStore
+from blite.runtime.distribution import load_distribution_manifest
 from blite.runtime.registry import Registry
 from chimera_api.auth import create_auth_router
+from chimera_api.catalog import create_catalog_router
 from chimera_api.certificate import create_certificate_router
 from chimera_api.chat import create_chat_router
 from chimera_api.files import create_files_router
 from chimera_api.projection import sse_frame
 from chimera_api.reads import create_reads_router
-from chimera_api.runs import build_run_resources, create_runs_router
+from chimera_api.runs import (
+    DISTRIBUTION_MANIFEST_PATH,
+    REPO_ROOT,
+    build_run_resources,
+    create_runs_router,
+)
 
 DEFAULT_POLL_INTERVAL_S = 0.5
 
@@ -103,6 +110,16 @@ def create_app(
     app.include_router(create_reads_router(resources))
     # P10/M24 — archivos del proyecto (insumos con procedencia, freeze §7).
     app.include_router(create_files_router(resources.session_auth))
+    # O4/M10 — catálogo de datasets: lo que ESTE despliegue declara publicar.
+    # Sin `datasets:` en el manifest el router se monta igual y responde una
+    # lista vacía: «este despliegue no publica datos» es una respuesta, no un
+    # error, y una ruta que aparece y desaparece según la config es peor de
+    # operar que una que siempre está.
+    app.include_router(
+        create_catalog_router(
+            load_distribution_manifest(DISTRIBUTION_MANIFEST_PATH), REPO_ROOT
+        )
+    )
 
     @app.get("/health")
     def health() -> dict[str, str]:

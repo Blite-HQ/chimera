@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: Chimera
+message: >-
+  If you use this software or its verification artifacts in your research,
+  please cite it as below.
+type: software
+abstract: >-
+  An open platform for trustworthy agentic scientific research: an agent
+  proposes, deterministic non-model anchors verify each claim, and every run
+  emits a certificate a third party can check offline, without trusting the
+  platform that produced it.
+authors:
+  - name: The Chimera contributors
+repository-code: 'https://github.com/Blite-HQ/chimera'
+license: MIT
+keywords:
+  - verifiable-computing
+  - agentic-systems
+  - provenance
+  - in-toto
+  - quantum-computing
+  - combinatorial-optimization
+  - event-sourcing

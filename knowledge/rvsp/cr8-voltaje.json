@@ -1,0 +1,60 @@
+{
+  "baselines": {
+    "cpsat": {
+      "energy": 1150.0,
+      "r": 1.0
+    },
+    "greedy": {
+      "energy": 1150.0,
+      "r": 1.0
+    },
+    "gw": {
+      "energy": 1150.0,
+      "r": 1.0
+    }
+  },
+  "digest": "186c448c4d6c353296ed0d5283720d54bb264efe3d006412850ef4927de23589",
+  "generated_by": "scripts/gen_corpus_rvsp.py",
+  "instance": "cr8-voltaje",
+  "metodo": {
+    "angle_digests": {
+      "1": "21c20a3dda4c70fcd821a2ed9679c785eeb9ab849c1a1164cf63bd3a9001386b",
+      "2": "e196204e4421466743d98f54367921bf8f9450e3b8c16cce10150463ef4fa80d",
+      "3": "6bb5d3c157d59de55b1f01527e15b64c6d893b55bae7b1017f304d0495be54fa"
+    },
+    "angle_source": "nexus-import",
+    "backend": "aer_simulator",
+    "expectation": "statevector-exacto",
+    "seeds": [1, 2, 3, 4, 5]
+  },
+  "optimo": 1150,
+  "points": [
+    {
+      "p": 1,
+      "r_esperado_mean": 0.5105263436599646,
+      "r_muestral_max": 0.52521484375,
+      "r_muestral_mean": 0.5073515625,
+      "r_muestral_min": 0.497890625,
+      "r_muestral_std": 0.009324249024615724,
+      "success_rate": 1.0
+    },
+    {
+      "p": 2,
+      "r_esperado_mean": 0.3880089730221224,
+      "r_muestral_max": 0.38513671875,
+      "r_muestral_mean": 0.3789296875,
+      "r_muestral_min": 0.37037109375,
+      "r_muestral_std": 0.0050449698900396096,
+      "success_rate": 1.0
+    },
+    {
+      "p": 3,
+      "r_esperado_mean": 0.5019908721097185,
+      "r_muestral_max": 0.50513671875,
+      "r_muestral_mean": 0.497390625,
+      "r_muestral_min": 0.4913671875,
+      "r_muestral_std": 0.005456649559396534,
+      "success_rate": 1.0
+    }
+  ]
+}
