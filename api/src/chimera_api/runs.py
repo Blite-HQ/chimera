@@ -61,6 +61,7 @@ from blite.events.rules import TERMINAL_RUN_EVENTS
 from blite.events.store import EventStore
 from blite.gateway.crossing import RunCrossing, build_run_pipeline
 from blite.identity.identity import Identity
+from blite.organization import ProjectRepository, create_project_repository
 from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
 from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.dispatch import Dispatcher, ProfileDispatcher, ServiceStrategy
@@ -86,6 +87,7 @@ from chimera_api.instance_verifiers import (
 )
 from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import load_session
+from chimera_api.projects import ensure_default_project
 
 # El actor viene de la sesión JWT en cookie (C2/M2, freeze §9 P1-9) — el
 # placeholder `_API_ACTOR = "user:api"` MURIÓ con el cruce del gateway:
@@ -291,8 +293,9 @@ class MissionRequest(BaseModel):
     es un run NUEVO con su propio stream y su propio certificado."""
     project_id: str | None = None
     """Referencia OPACA a la fila relacional `project` (M15, FUERA del event
-    store). El evento no valida FK: la valida el API al crear el run cuando
-    P6 exista — hoy viaja tal cual, sin inventar una tabla que no está."""
+    store). El evento no valida FK: la valida el API al crear el run
+    (F1.1, `_validate_project_reference`) — desconocido ⇒ 422 antes de
+    agendar nada."""
 
 
 class CreateRunResponse(BaseModel):
@@ -444,6 +447,10 @@ class RunResources:
     certificado deja de vivir en la memoria del proceso. El api no distingue."""
     run_tickets: dict[str, RunTicket]
     session_auth: SessionAuth
+    project_repo: ProjectRepository
+    """[F1.1] El puerto `projects` (`blite.organization`) — `POST /runs`
+    modo misión lo consulta para validar `project_id` ANTES de agendar
+    nada (§Contrato-4: el evento no valida FK, el API sí)."""
     _registry: Registry | None = None
     model_backend: ModelBackendConfig | None = None
 
@@ -485,8 +492,15 @@ def build_run_resources(
     store: EventStore, *, registry: Registry | None = None
 ) -> RunResources:
     """Construye la infra de vida-de-app de `/runs` sobre el `store` del
-    caller — el mismo que sirve el SSE (un solo EventStore por app)."""
+    caller — el mismo que sirve el SSE (un solo EventStore por app).
+
+    [F1.1] El puerto `projects` se construye acá (mismo criterio que
+    `create_event_store`: DSN vía `CHIMERA_DATABASE_URL`, in-memory si no) y
+    el bootstrap del dominio/proyecto neutro corre UNA vez por app, en el
+    wiring — nunca al importar el módulo."""
     content = InMemoryContentStore()
+    project_repo = create_project_repository()
+    ensure_default_project(project_repo)
     return RunResources(
         store=store,
         dispatcher=_build_dispatcher(),
@@ -495,6 +509,7 @@ def build_run_resources(
         key_provider=_build_key_provider(),
         run_tickets={},
         session_auth=SessionAuth(_DEFAULT_DOMAIN),
+        project_repo=project_repo,
         _registry=registry,
         model_backend=_build_model_backend(content),
     )
@@ -806,6 +821,24 @@ def _start_claim_run(
     return CreateRunResponse(run_id=run_id)
 
 
+def _validate_project_reference(
+    resources: RunResources, project_id: str | None
+) -> None:
+    """[F1.1] `project_id` es la referencia OPACA que `MissionRequest`
+    declara (`docs/esquema-datos-v2.md` §2) — el EVENTO no valida esa FK
+    (`run.created` la lleva tal cual), la valida el API ACÁ, ANTES de
+    agendar nada: ni `run_tickets`, ni `background_tasks`, ni un solo
+    evento en el stream por un `project_id` que no existe. Ausente ⇒ nada
+    que validar — el modo misión sigue funcionando sin proyecto."""
+    if project_id is None:
+        return
+    if resources.project_repo.get(project_id) is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"project_id desconocido: {project_id}",
+        )
+
+
 def _start_mission_run(
     resources: RunResources,
     body: MissionRequest,
@@ -821,6 +854,7 @@ def _start_mission_run(
     el verifier pasa (§Contrato-3) — hoy no hay verifier del lado misión,
     así que el run termina `run.failed {error_kind: "exhausted"}`; el gate
     real llega con los claims de sub-runs/steps (frontera P4)."""
+    _validate_project_reference(resources, body.project_id)
     run_id = f"run-{uuid4().hex}"
 
     # Ticket VACÍO: el modo misión no declara conclusiones — los claims los

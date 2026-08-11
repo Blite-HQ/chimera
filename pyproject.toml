@@ -378,6 +378,28 @@ source_modules = [
 forbidden_modules = ["blite.events.writer", "blite.events.postgres"]
 
 [[tool.importlinter.contracts]]
+name = "organization: only blite.organization writes projects via postgres"
+type = "forbidden"
+# F1.1 (docs/mejorado/09-cierre.md §2·F1, ceremonia #176): análogo a INV-5
+# arriba, mismo motivo — `blite.organization.postgres` es el adapter DURABLE
+# de `ProjectRepository`; el resto del engine recibe el repositorio vía
+# `blite.organization.create_project_repository()`, jamás importando el
+# adapter directo (docstring `blite/organization/postgres.py:1-13`).
+source_modules = [
+    "blite.gateway",
+    "blite.runtime",
+    "blite.serving",
+    "blite.verification",
+    "blite.guardrails",
+    "blite.authz",
+    "blite.protocols",
+    "blite.certificate",
+    "blite.identity",
+    "blite.events",
+]
+forbidden_modules = ["blite.organization.postgres"]
+
+[[tool.importlinter.contracts]]
 name = "INV-6: egress protocols sit above authz in the dependency hierarchy"
 type = "layers"
 layers = [

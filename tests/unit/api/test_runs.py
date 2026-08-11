@@ -449,6 +449,47 @@ class TestModoMision:
         assert response.status_code == 422
         assert store.read_all() == ()
 
+    def test_project_id_desconocido_da_422_y_no_agenda_nada(self) -> None:
+        # Arrange — F1.1: el API valida la FK opaca ANTES de agendar nada
+        # (el evento NO la valida, `docs/esquema-datos-v2.md` §2/ceremonia
+        # #176) — ni ticket, ni background task, ni un evento en el stream.
+        store = create_event_store()
+        client = _make_client(store)
+
+        # Act
+        response = _post(
+            client,
+            "/runs",
+            json_body={
+                "mission": "una misión con proyecto inventado",
+                "project_id": "proyecto-inexistente",
+            },
+        )
+
+        # Assert
+        assert response.status_code == 422
+        assert "proyecto-inexistente" in response.json()["detail"]
+        assert store.read_all() == ()
+
+    def test_project_id_conocido_arranca_202(self) -> None:
+        # Arrange — cada `create_app()` siembra el proyecto neutro "default"
+        # (F1.1 ítem 2, dominio `domain-default`) — existe sin crear nada.
+        client = _make_client()
+
+        # Act
+        response = _post(
+            client,
+            "/runs",
+            json_body={
+                "mission": "una misión con proyecto real",
+                "project_id": "default",
+            },
+        )
+
+        # Assert
+        assert response.status_code == 202
+        assert _RUN_ID_PATTERN.match(response.json()["run_id"])
+
 
 _MODEL_CTX = {"domain_id": "domain-default"}
 _MODEL_BACKEND_ID = "anthropic/claude-sonnet-test"
