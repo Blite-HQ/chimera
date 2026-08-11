@@ -30,7 +30,7 @@ blite-capability = { workspace = true }
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.21",
+    "ruff>=0.16.0",
     "pyright>=1.1.400",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",

@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "chimera-engine",
-    "fastapi>=0.139.2",
+    "fastapi>=0.140.7",
     # P3 (chat-conversacion.md §Contrato-7): la respuesta de un approval se
     # valida contra el `json_schema` que el request declaró (forma
     # elicitation MCP = JSON Schema). Implementación de referencia, MIT —
