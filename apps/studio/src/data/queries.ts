@@ -296,10 +296,19 @@ function isClientErrorMessage(error: unknown): boolean {
   return status >= 400 && status < 500;
 }
 
-export function certificateQueryOptions(runId: string) {
+/**
+ * P-cierre B — `enabled` opcional (default `true`, retrocompatible con los
+ * call sites/tests previos a esta frontera). El consumidor real
+ * (`screens.tsx`) lo pasa en `false` mientras el run no está `completado`:
+ * un run `en_curso`/`fallido`/`cancelado` no tiene certificado que pedir, y
+ * pedirlo igual solo producía un 409 ruidoso (honesto pero evitable — ver
+ * `docs/mvp/decisiones.md:2797-2800`).
+ */
+export function certificateQueryOptions(runId: string, enabled = true) {
   return queryOptions({
     queryKey: ['runs', runId, 'certificate'] as const,
     queryFn: () => loadCertificate(runId),
+    enabled,
     // 4xx se muestra una vez (honesto, no transitorio); todo lo demás
     // (red, 5xx) conserva el default previo de 3 reintentos.
     retry: (failureCount, error) => !isClientErrorMessage(error) && failureCount < 3

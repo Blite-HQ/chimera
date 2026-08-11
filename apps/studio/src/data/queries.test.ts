@@ -135,6 +135,24 @@ describe('certificateQueryOptions', () => {
     expect(retry(2, new Error('Network error: fetch failed'))).toBe(true);
     expect(retry(3, new Error('Network error: fetch failed'))).toBe(false);
   });
+
+  /**
+   * P-cierre B — `enabled` por defecto en `true` (retrocompatible con los
+   * call sites previos a esta frontera, incluidos los tests de arriba).
+   * `screens.tsx` es el único llamador que pasa `false` explícito, mientras
+   * el run no está `completado` (`docs/mvp/decisiones.md:2797-2800`).
+   */
+  it('está habilitada por defecto — retrocompatible con los call sites previos', () => {
+    expect(certificateQueryOptions('run-42').enabled).toBe(true);
+  });
+
+  it('se puede deshabilitar explícitamente (run sin completar: nada que pedir)', () => {
+    expect(certificateQueryOptions('run-42', false).enabled).toBe(false);
+  });
+
+  it('habilitada explícita se comporta igual que el default', () => {
+    expect(certificateQueryOptions('run-42', true).enabled).toBe(true);
+  });
 });
 
 describe('loadCertificate (rama demo/live)', () => {

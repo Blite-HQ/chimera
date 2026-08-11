@@ -109,6 +109,15 @@ export function RunDetailScreen({
   // real (Nivel-1 task 1) — llamada incondicional, el hook decide adentro.
   useRunEventStream(runId);
   const summariesQuery = useQuery(runSummariesQueryOptions());
+  // Calculado ANTES del guard de carga (más abajo) a propósito: lo necesita
+  // el useQuery del certificado, que no puede quedar debajo de un return
+  // condicional (reglas de hooks) — computarlo temprano no reordena ningún
+  // hook, solo esta lectura simple de `summariesQuery.data`.
+  const summary = summariesQuery.data?.find(run => run.runId === runId);
+  // P-cierre B — el certificado solo existe para un run `completado`; pedirlo
+  // antes (o para `fallido`/`cancelado`, que nunca lo tendrán) era un 409
+  // honesto pero ruidoso en cada carga (`docs/mvp/decisiones.md:2797-2800`).
+  const runCompletado = summary?.status === 'completado';
   // P3-D — las tres acciones de conversación del run. Solo se CONECTAN en
   // modo live: en réplica no hay servidor que reciba el POST, y un botón que
   // no puede cumplir lo que promete es peor que su ausencia (regla 1 del plan
@@ -125,7 +134,7 @@ export function RunDetailScreen({
     new Set(runEvents.map(event => event.stepId).filter((id): id is string => id !== undefined))
   );
   const stepsQuery = useQuery(stepEvidenceQueryOptions(runId, stepIds));
-  const certificateQuery = useQuery(certificateQueryOptions(runId));
+  const certificateQuery = useQuery(certificateQueryOptions(runId, runCompletado));
   const { revealedEvents, playback } = usePlaybackReveal(runEvents);
   const [selectedGlobalSeq, setSelectedGlobalSeq] = useState<number | undefined>(undefined);
   const [timelineViewMode, setTimelineViewMode] = useState<'tree' | 'timeline'>('tree');
@@ -133,7 +142,6 @@ export function RunDetailScreen({
   const [provenanceViewMode, setProvenanceViewMode] = useState<'compact' | 'raw'>('compact');
   const [provenanceCursor, setProvenanceCursor] = useState(0);
 
-  const summary = summariesQuery.data?.find(run => run.runId === runId);
   if (summariesQuery.isPending || !summary) {
     return <LoadingState label="Cargando el run" />;
   }
@@ -203,7 +211,25 @@ export function RunDetailScreen({
     </div>
   );
 
-  const verificacion = certificateQuery.isPending ? (
+  // P-cierre B — honest-empty (mismo patrón que `procedencia`, abajo): un run
+  // que no está `completado` no tiene certificado que cargar ni que fallar
+  // pidiendo, así que la pestaña lo dice en vez de mostrar un ErrorState (el
+  // 409 sería honesto pero ruidoso) o quedarse en "Cargando" para siempre
+  // (`certificateQuery.isPending` es `true` mientras `enabled: false`).
+  const verificacion = !runCompletado ? (
+    <EmptyState
+      title={
+        summary.status === 'fallido' || summary.status === 'cancelado'
+          ? 'Este run no tiene certificado.'
+          : 'El certificado todavía no existe.'
+      }
+      hint={
+        summary.status === 'fallido' || summary.status === 'cancelado'
+          ? 'Terminó sin completarse — no hay claim que emitir.'
+          : 'Se emite cuando el run se completa.'
+      }
+    />
+  ) : certificateQuery.isPending ? (
     <LoadingState label="Cargando el certificado del run" />
   ) : certificateQuery.isError ? (
     <ErrorState
