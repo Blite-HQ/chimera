@@ -28,6 +28,20 @@ export interface LensContext {
   readonly claimTypes: readonly string[];
   /** `capability_id` de los `capability.job.*` del stream. */
   readonly capabilityIds: readonly string[];
+  /**
+   * O7/#173.2 (directiva de Dylan 2026-08-11) — `media_type` de los archivos
+   * que el PROYECTO ofrece (`GET /files`, el content store genérico por
+   * digest). Una lente de render geoespacial (u otro artifact disparado por
+   * TIPO de dato) se reconoce por ESTA dimensión, no por una lista de
+   * capabilities de un dominio concreto: el shell no sabe qué dominio
+   * produjo el archivo, solo de qué TIPO es.
+   *
+   * Opcional (aditivo): `LensContext` no está congelado
+   * (`docs/contract-freeze.md`/`docs/specs/superficie-visual.md` no lo
+   * mencionan), pero se declara opcional para no romper construcciones
+   * existentes de este contexto que todavía no lo declaran.
+   */
+  readonly offeredMediaTypes?: readonly string[];
 }
 
 /**

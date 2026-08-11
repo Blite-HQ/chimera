@@ -17,13 +17,14 @@ vi.mock('./spike/GridSpike', () => ({
 }));
 
 /**
- * D4 task 6 — GridMap dibuja el grid real del ICE con d3-geo; su propio
- * archivo de test (views/GridMap.test.tsx) ya cubre la proyección. Acá solo
- * importa que RedSlot cablee el toggle "Diagrama"/"Mapa" correctamente, así
- * que se mockea con un doble mínimo (mismo criterio que GridSpike arriba).
+ * D4 task 6 — GeoMap (O7/#173.2, genérico) dibuja datos geoespaciales con
+ * d3-geo; su propio archivo de test (views/GeoMap.test.tsx) ya cubre la
+ * proyección. Acá solo importa que RedSlot cablee el toggle "Diagrama"/"Mapa"
+ * correctamente, así que se mockea con un doble mínimo (mismo criterio que
+ * GridSpike arriba).
  */
-vi.mock('./views/GridMap', () => ({
-  default: () => <div data-testid="grid-map-stub" />
+vi.mock('./views/GeoMap', () => ({
+  default: () => <div data-testid="geo-map-stub" />
 }));
 
 describe('App — banner de Replay (D1, honestidad de modo)', () => {

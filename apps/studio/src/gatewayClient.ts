@@ -315,6 +315,18 @@ export function fileDownloadUrl(digest: string): string {
 }
 
 /**
+ * O7/#173.2 — mismo `GET /files/{digest}` que `fileDownloadUrl` arma para un
+ * `<a href>`, pero para consumir el contenido PROGRAMÁTICAMENTE (INV-1: el
+ * fetch vive acá, no en un componente). Un artifact genérico (por ejemplo el
+ * render geoespacial, `data/geoJsonSchemas.ts`) que necesita leer bytes de
+ * un archivo del proyecto pasa por acá — ninguna ruta nueva, el endpoint ya
+ * existía (`chimera_api.files`).
+ */
+export async function getFileContent(digest: string): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/files/${encodeURIComponent(digest)}`);
+}
+
+/**
  * D3 — `GET {VITE_API_URL}/runs` (endpoints-studio.md tabla, fila 1):
  * `RunSummary[]` wire snake_case. Único lugar del Studio que hace este GET
  * (INV-1); la validación Zod + el mapeo a `RunSummary` viven en

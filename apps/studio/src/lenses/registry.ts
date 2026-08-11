@@ -1,4 +1,5 @@
 import type { DomainLens, LensContext } from './types';
+import type { ProjectFile } from '../data/schemas';
 import type { CertificateConclusion, ProjectedEvent } from '../views/types';
 
 /**
@@ -24,7 +25,9 @@ function textoDe(
 export function deriveLensContext(
   runId: string,
   events: readonly ProjectedEvent[],
-  conclusions: readonly CertificateConclusion[] = []
+  conclusions: readonly CertificateConclusion[] = [],
+  /** O7/#173.2 — archivos del proyecto (`GET /files`); ver `LensContext.offeredMediaTypes`. */
+  files: readonly ProjectFile[] = []
 ): LensContext {
   const claimTypes = new Set<string>();
   const capabilityIds = new Set<string>();
@@ -39,7 +42,12 @@ export function deriveLensContext(
     if (conclusion.claimType !== undefined) claimTypes.add(conclusion.claimType);
   }
 
-  return { runId, claimTypes: [...claimTypes], capabilityIds: [...capabilityIds] };
+  return {
+    runId,
+    claimTypes: [...claimTypes],
+    capabilityIds: [...capabilityIds],
+    offeredMediaTypes: files.map(file => file.media_type)
+  };
 }
 
 /**

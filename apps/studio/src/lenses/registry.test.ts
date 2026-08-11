@@ -73,6 +73,38 @@ describe('deriveLensContext — lo que el run ofrece', () => {
     expect(context.claimTypes).toEqual([]);
     expect(context.capabilityIds).toEqual([]);
   });
+
+  it('O7/#173.2 — junta los media_type de los archivos del proyecto en offeredMediaTypes', () => {
+    const context = deriveLensContext(
+      'run-1',
+      [],
+      [],
+      [
+        {
+          digest: 'a'.repeat(64),
+          filename: 'red.geojson',
+          media_type: 'application/geo+json',
+          size_bytes: 10,
+          created_at: '2026-08-11T00:00:00.000Z'
+        },
+        {
+          digest: 'b'.repeat(64),
+          filename: 'notas.pdf',
+          media_type: 'application/pdf',
+          size_bytes: 20,
+          created_at: '2026-08-11T00:00:00.000Z'
+        }
+      ]
+    );
+
+    expect(context.offeredMediaTypes).toEqual(['application/geo+json', 'application/pdf']);
+  });
+
+  it('sin archivos, offeredMediaTypes es una lista vacía — no undefined ni inventado', () => {
+    const context = deriveLensContext('run-1', [evento(1, 'run.started')]);
+
+    expect(context.offeredMediaTypes).toEqual([]);
+  });
 });
 
 describe('resolveLenses — el shell no decide qué lente aplica', () => {

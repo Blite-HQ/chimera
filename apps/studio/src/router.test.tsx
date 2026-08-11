@@ -24,7 +24,7 @@ import {
 } from './router';
 
 vi.mock('./spike/GridSpike', () => ({ default: () => <div data-testid="cy-container" /> }));
-vi.mock('./views/GridMap', () => ({ default: () => <div data-testid="grid-map-stub" /> }));
+vi.mock('./views/GeoMap', () => ({ default: () => <div data-testid="geo-map-stub" /> }));
 
 function renderEn(ruta: string) {
   const router = createRouter({

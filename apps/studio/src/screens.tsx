@@ -126,6 +126,10 @@ export function RunDetailScreen({
   );
   const stepsQuery = useQuery(stepEvidenceQueryOptions(runId, stepIds));
   const certificateQuery = useQuery(certificateQueryOptions(runId));
+  // O7/#173.2 — los archivos del proyecto alimentan `LensContext.offeredMediaTypes`
+  // (una lente de render geoespacial se reconoce por el TIPO de dato ofrecido,
+  // no solo por capabilities de un dominio concreto).
+  const filesQuery = useQuery(filesQueryOptions());
   const { revealedEvents, playback } = usePlaybackReveal(runEvents);
   const [selectedGlobalSeq, setSelectedGlobalSeq] = useState<number | undefined>(undefined);
   const [timelineViewMode, setTimelineViewMode] = useState<'tree' | 'timeline'>('tree');
@@ -226,7 +230,8 @@ export function RunDetailScreen({
   const lensContext = deriveLensContext(
     runId,
     runEvents,
-    certificateQuery.data?.envelope.payload.predicate.conclusions ?? []
+    certificateQuery.data?.envelope.payload.predicate.conclusions ?? [],
+    filesQuery.data ?? []
   );
   const lenses = resolveLenses(DOMAIN_LENSES, lensContext).map(lens => ({
     id: lens.id,

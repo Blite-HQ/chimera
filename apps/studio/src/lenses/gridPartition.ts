@@ -11,6 +11,14 @@
  *   estas subestaciones sería inventar una partición;
  * - un bus sin nombre en el mapa ⇒ se omite y el conteo lo declara (los 2 de
  *   70 que ningún circuito resuelve nunca entraron a la instancia derivada).
+ *
+ * O7/#173.2 — el tipo `GridPartitionOverlay` vivía en `views/GridMap.tsx`,
+ * que ahora es `views/GeoMap.tsx` (GENÉRICO, cero vocabulario de dominio).
+ * Este módulo es la pieza de la lente "Red" que SÍ sabe de subestaciones e
+ * islas (legítimo — es un dominio registrado, `product-model.md`
+ * §"Superficies de plataforma vs dominio"), así que el tipo se queda acá,
+ * no en el componente genérico. `gridLens.tsx` adapta esta forma a la
+ * `GeoOverlay` genérica de `GeoMap` antes de pasarla al render.
  */
 
 import {
@@ -19,8 +27,36 @@ import {
   normalizeNodeName
 } from '../data/iceInstance';
 
+import type { AssuranceLevel } from '@chimera/assurance-ui';
 import type { TopologySnapshot } from '../data/schemas';
-import type { GridPartitionOverlay } from '../views/GridMap';
+
+export interface IslandVerificationView {
+  readonly verdict: 'pass' | 'fail' | 'inconclusive';
+  readonly level: AssuranceLevel;
+  readonly verifierClass: string;
+  readonly method: string;
+  readonly summary: string;
+}
+
+/**
+ * Una isla lista para pintarse: qué subestaciones la componen (por nombre YA
+ * reconciliado) y con qué constancia — freeze §9: `verification` POR isla,
+ * sin excepción.
+ */
+export interface GridIslandOverlay {
+  readonly id: string;
+  readonly label: string;
+  readonly substationNames: readonly string[];
+  readonly verification: IslandVerificationView;
+}
+
+export interface GridPartitionOverlay {
+  readonly islands: readonly GridIslandOverlay[];
+  /** Subestaciones del mapa que la partición cubre. */
+  readonly matchedSubstations: number;
+  /** Digest de la instancia derivada que se reconcilió (procedencia). */
+  readonly instanceDigest: string;
+}
 
 /**
  * Traduce el snapshot del run a overlay del mapa, o `null` cuando no hay

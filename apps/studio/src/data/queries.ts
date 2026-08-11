@@ -14,6 +14,7 @@ import {
   getAblation,
   getArtifacts,
   getCertificate,
+  getFileContent,
   getFiles,
   getKnowledge,
   getMe,
@@ -25,6 +26,7 @@ import {
   getTopology
 } from '../gatewayClient';
 import { ABLATION_METRICS } from '../fixtures/ablationMetrics';
+import { geoFeatureCollectionSchema } from './geoJsonSchemas';
 import { EXAMPLE_CERTIFICATE, EXAMPLE_CERTIFICATE_WIRE } from '../fixtures/certificate';
 import { RUN_EVENTS } from '../fixtures/runEvents';
 import { RVSP_EXPERIMENT } from '../fixtures/rvsp';
@@ -56,6 +58,7 @@ import {
   wireEnvelopeSchema
 } from './schemas';
 
+import type { GenericGeoDataset } from './geoJsonSchemas';
 import type { Me, ProjectFile, TopologySnapshot } from './schemas';
 import type {
   AblationMetric,
@@ -431,6 +434,40 @@ export async function loadFiles(): Promise<readonly ProjectFile[]> {
 
 export function filesQueryOptions() {
   return queryOptions({ queryKey: ['files'] as const, queryFn: loadFiles });
+}
+
+/**
+ * O7/#173.2 — el archivo geoespacial de un proyecto es un archivo MÁS del
+ * content store genérico (`GET /files/{digest}`), no un dataset bundleado
+ * en el código del Studio. `loadFiles`/`filesQueryOptions` (arriba) ya listan
+ * los archivos; este loader trae los BYTES de uno concreto, los valida como
+ * `FeatureCollection` en la frontera (`geoJsonSchemas.ts` — geojson
+ * malformado explota acá, nunca un render a medias) y los envuelve en la
+ * forma que `DataFormatRouter`/`GeoMap` consumen. `filename` es solo
+ * atribución legible; el digest sigue siendo la identidad del contenido.
+ */
+export async function loadGeospatialDataset(
+  digest: string,
+  filename?: string | null
+): Promise<GenericGeoDataset> {
+  const res = await getFileContent(digest);
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudo obtener el archivo geoespacial');
+  }
+  const collection = geoFeatureCollectionSchema.parse(res.data);
+  return {
+    format: 'geojson',
+    collection,
+    ...(filename !== undefined &&
+      filename !== null && { attribution: `Archivo del proyecto: ${filename}` })
+  };
+}
+
+export function geospatialDatasetQueryOptions(digest: string, filename?: string | null) {
+  return queryOptions({
+    queryKey: ['files', digest, 'geospatial'] as const,
+    queryFn: () => loadGeospatialDataset(digest, filename)
+  });
 }
 
 /**
