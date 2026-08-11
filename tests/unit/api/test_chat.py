@@ -24,6 +24,12 @@ from tests.conftest import authenticated
 _RUN = "run-conversacion"
 _DOMINIO = "domain-conversacion"
 
+_APPROVAL_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {"approved": {"type": "boolean"}},
+    "required": ["approved"],
+}
+
 
 def _client(store: EventStore) -> TestClient:
     """F1.2 — sesión autenticada compartida (`tests/conftest.py::authenticated`);
@@ -58,6 +64,47 @@ def _store_abierto(run_id: str = _RUN) -> EventStore:
         payload={},
         expected_seq=1,
     )
+    return store
+
+
+def _store_con_approval_pendiente(*, terminal: bool = False) -> EventStore:
+    """Un run abierto (`_store_abierto`) con un `approval.requested` real ya
+    journalizado — `step_id: None` porque así lo emite el harness agéntico
+    (loop.py:861), jamás un `"step-1"` inventado a mano.
+
+    `terminal=True` agrega el `run.failed` que el gate síncrono de F1.3
+    produce EN EL MISMO turno que pide la aprobación (`mission.py:132-141`:
+    el gate no puede bloquear, así que niega y el run cierra ahí mismo) — es
+    la secuencia real en la que ese `approval.requested` existe HOY. Contra
+    ESE stream, responder da 409 a propósito (freeze §2: post-terminal solo
+    admite familias de cierre, y una aprobación es gobierno, no cierre) — un
+    par request→response que de verdad cierre en vivo exige la cola durable
+    de P11 (`chimera_api.chat.post_approval_response`, docstring de la
+    ruta)."""
+    store = _store_abierto()
+    store.append(
+        stream_id=_RUN,
+        type="approval.requested",
+        actor_id="service:runtime",
+        domain_id=_DOMINIO,
+        payload={
+            "run_id": _RUN,
+            "approval_id": "approval-1",
+            "json_schema": _APPROVAL_JSON_SCHEMA,
+            "prompt": "¿autorizás invocar esta capability?",
+            "step_id": None,
+        },
+        expected_seq=2,
+    )
+    if terminal:
+        store.append(
+            stream_id=_RUN,
+            type="run.failed",
+            actor_id="service:runtime",
+            domain_id=_DOMINIO,
+            payload={"error_kind": "approval_required"},
+            expected_seq=3,
+        )
     return store
 
 
@@ -304,3 +351,149 @@ class TestSkipHonestoCubreElResumen:
         assert _RUN in listados
         assert descartados == ["run-envenenado"]
         assert not set(listados) & set(descartados)
+
+
+class TestPostApprovals:
+    """`POST /runs/{id}/approvals/{approval_id}` (§Contrato-7) — sin
+    cobertura previa a F1.3. Cubre las compuertas fail-closed de
+    `post_approval_response`, incluido el 409 post-terminal
+    (`_require_open_stream`, MISMA guardia que `messages`/`cancel` — freeze
+    §2: los eventos post-terminales quedan fuera del `provenance_hash` salvo
+    familias de cierre, y una aprobación es gobierno, no cierre; ver el
+    docstring de la ruta para el porqué completo)."""
+
+    def test_run_desconocido_es_404(self) -> None:
+        client = _client(create_event_store())
+        respuesta = _post(
+            client,
+            "/runs/run-fantasma/approvals/approval-1",
+            {"response": {"approved": True}},
+        )
+        assert respuesta.status_code == 404
+
+    def test_approval_desconocido_en_un_run_conocido_es_404(self) -> None:
+        client = _client(_store_con_approval_pendiente())
+        respuesta = _post(
+            client,
+            f"/runs/{_RUN}/approvals/approval-fantasma",
+            {"response": {"approved": True}},
+        )
+        assert respuesta.status_code == 404
+
+    def test_responder_dos_veces_es_409_el_par_es_1_a_1(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("CHIMERA_OPERATOR_PERMISSIONS", "override:apply:run")
+        client = _client(_store_con_approval_pendiente())
+        url = f"/runs/{_RUN}/approvals/approval-1"
+        assert _post(client, url, {"response": {"approved": True}}).status_code == 202
+        assert _post(client, url, {"response": {"approved": True}}).status_code == 409
+
+    def test_respuesta_fuera_del_json_schema_declarado_es_422(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("CHIMERA_OPERATOR_PERMISSIONS", "override:apply:run")
+        client = _client(_store_con_approval_pendiente())
+        respuesta = _post(
+            client,
+            f"/runs/{_RUN}/approvals/approval-1",
+            {"response": "no es un objeto con approved"},
+        )
+        assert respuesta.status_code == 422
+
+    def test_sin_override_apply_run_es_403(self) -> None:
+        """El default del operador NO trae `override:apply:run`
+        (`chimera_api.auth._DEFAULT_OPERATOR_PERMISSIONS`) — fail-closed sin
+        que este test toque ninguna env var."""
+        client = _client(_store_con_approval_pendiente())
+        respuesta = _post(
+            client,
+            f"/runs/{_RUN}/approvals/approval-1",
+            {"response": {"approved": True}},
+        )
+        assert respuesta.status_code == 403
+
+    def test_con_override_apply_run_202_y_el_evento_queda_en_el_stream(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("CHIMERA_OPERATOR_PERMISSIONS", "override:apply:run")
+        store = _store_con_approval_pendiente()
+        client = _client(store)
+
+        respuesta = _post(
+            client,
+            f"/runs/{_RUN}/approvals/approval-1",
+            {"response": {"approved": True}},
+        )
+
+        assert respuesta.status_code == 202
+        respondido = next(
+            e for e in store.read_stream(_RUN) if e.type == "approval.responded"
+        )
+        assert respondido.payload["approval_id"] == "approval-1"
+        assert respondido.payload["response"] == {"approved": True}
+        assert respondido.payload["authorized_by"] == "user:local-operator"
+        assert respondido.actor_id == "user:local-operator"
+        assert respondido.domain_id == _DOMINIO
+
+    def test_responder_un_approval_de_un_run_ya_terminal_es_409_fail_closed_a_proposito(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """F1.3 (revisión de control): el 409 post-terminal aplica ACÁ
+        también, y no es un descuido — es freeze §2 hecho código.
+
+        El corte del `provenance_hash` va de `run.created` al terminal,
+        INCLUSIVE; post-terminal solo entran familias de CIERRE
+        (`run.metrics.recorded`, `●CaseClosed`, `●CertificateIssued`).
+        Responder una aprobación es GOBIERNO, no cierre: dejarla entrar acá
+        journalizaría una decisión que el certificado no puede demostrar —
+        y como el run ya falló, tampoco cambiaría nada: un 202 mentiría que
+        hubo gobierno cuando no lo hubo.
+
+        Con el gate síncrono de hoy (`mission.py:132-141`: no puede bloquear
+        esperando a un humano), el ÚNICO `approval.requested` real nace de
+        un turno que YA negó y cerró el run en el mismo turno — así que ESTE
+        es el caso que la ruta va a ver en la práctica, y 409 es la
+        respuesta correcta, no un hueco. Un par request→response que cierre
+        de verdad EN VIVO exige la cola durable de P11 — ver
+        `TestApprovalMechanismoSinCierreEnVivo` en
+        `test_mission_approval_gate.py` para el mecanismo (el
+        `approval.requested` real) sin la política de cierre que P11 todavía
+        no existe para dar."""
+        monkeypatch.setenv("CHIMERA_OPERATOR_PERMISSIONS", "override:apply:run")
+        store = _store_con_approval_pendiente(terminal=True)
+        client = _client(store)
+
+        respuesta = _post(
+            client,
+            f"/runs/{_RUN}/approvals/approval-1",
+            {"response": {"approved": True}},
+        )
+
+        assert respuesta.status_code == 409
+        tipos = [e.type for e in store.read_stream(_RUN)]
+        assert "approval.responded" not in tipos
+        assert tipos[-1] == "run.failed"
+
+    def test_mensajes_y_approvals_son_simetricos_409_post_terminal(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regresión de simetría: `messages`, `cancel` y la respuesta de
+        approvals comparten el MISMO guardián (`_require_open_stream`) — un
+        stream terminal rechaza appends de gobierno/conversación por igual,
+        sin una ruta especial que lo exceptúe."""
+        monkeypatch.setenv("CHIMERA_OPERATOR_PERMISSIONS", "override:apply:run")
+        store = _store_con_approval_pendiente(terminal=True)
+        client = _client(store)
+
+        assert (
+            _post(client, f"/runs/{_RUN}/messages", {"text": "hola"}).status_code == 409
+        )
+        assert (
+            _post(
+                client,
+                f"/runs/{_RUN}/approvals/approval-1",
+                {"response": {"approved": True}},
+            ).status_code
+            == 409
+        )

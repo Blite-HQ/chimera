@@ -76,6 +76,7 @@ from blite.runtime.loop import (
     execute_run,
 )
 from blite.runtime.metrics import record_run_metrics
+from blite.runtime.mission import ApprovalDecision, ApprovalGate, ApprovalRequest
 from blite.runtime.plan import PlanItem
 from blite.runtime.registry import Registry, load_registry
 from blite.serving.model_port import ModelPort
@@ -770,6 +771,90 @@ def _resolve_proposer(
     )
 
 
+_APPROVAL_SIDE_EFFECTS_ENV = "CHIMERA_APPROVAL_REQUIRED_SIDE_EFFECTS"
+"""F1.3 — política de DESPLIEGUE, jamás hardcode (`ApprovalGate` es un puerto
+inyectable, `mission.py:130`): lista de `side_effects` (`CapabilityManifest`,
+separados por coma) que exigen aprobación humana antes de invocarse. AUSENTE
+o vacía ⇒ ningún `capability_id` la requiere — `_build_approval_gate`
+devuelve `None` y `execute_run` queda EXACTAMENTE como antes de esta sesión
+(doctrina `mission.py:130`: «el default del despliegue es SIN gate — cero
+aprobaciones fingidas»)."""
+
+_APPROVAL_REQUIRED_CAUSE = "approval_required"
+"""`error_kind`/`cause` cuando el gate corta por falta de aprobación — DISTINTO
+del `cause` genérico `"approval_denied"` de `ApprovalDecision` (ese es el
+default de un rechazo EXPLÍCITO; este es honesto sobre que nadie decidió
+nada todavía)."""
+
+_APPROVAL_DECISION_FIELD = "approved"
+_APPROVAL_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {_APPROVAL_DECISION_FIELD: {"type": "boolean"}},
+    "required": [_APPROVAL_DECISION_FIELD],
+}
+"""Booleano-en-objeto — el caso que `booleanDecisionField` (Studio,
+`RunThread.tsx`) YA sabe renderizar como botones Aprobar/Rechazar, sin que
+esta ruta tenga que inventar vocabulario nuevo del lado del Studio."""
+
+
+def _approval_required_side_effects() -> frozenset[str]:
+    """Lee `CHIMERA_APPROVAL_REQUIRED_SIDE_EFFECTS` POR LLAMADA (mismo
+    criterio que `_operator_identity` en `chimera_api.auth`: configuración
+    viva del despliegue, jamás cache de import)."""
+    raw = os.environ.get(_APPROVAL_SIDE_EFFECTS_ENV, "")
+    return frozenset(part.strip() for part in raw.split(",") if part.strip())
+
+
+def _build_approval_gate(resources: RunResources) -> ApprovalGate | None:
+    """Construye el `ApprovalGate` del camino de misión (harness-agentico.md
+    §Contrato-6) — MECANISMO, no política: el runtime (`loop.py`) no decide
+    qué necesita aprobación (INV-2), y este wiring tampoco decide sobre qué
+    postura tomar frente a un side_effect nuevo — solo traduce la lista que
+    el DESPLIEGUE declaró (`_APPROVAL_SIDE_EFFECTS_ENV`) contra el manifest
+    real de la capability propuesta.
+
+    Sin la env var configurada ⇒ `None`: `execute_run` ni se entera de que
+    este puerto existe (mismo comportamiento que antes de F1.3).
+
+    El gate NO puede bloquear esperando una respuesta humana — con
+    `BackgroundTasks` (decisión #11) un gate bloqueante clava un hilo
+    (`mission.py:132-141`); decide con lo que tiene: `required=True` +
+    `granted=False`, fail-closed, mismo patrón que `_GateQueAprueba(granted=
+    False)` en `test_agentic_loop.py`. El turno corta ahí (`run.failed
+    {error_kind: "approval_required"}`) con el `approval.requested` REAL ya
+    journalizado — la cola durable (P11) es el hogar de un gate que sí
+    espere y deje el turno vivo."""
+    required_side_effects = _approval_required_side_effects()
+    if not required_side_effects:
+        return None
+
+    def _gate(request: ApprovalRequest) -> ApprovalDecision:
+        try:
+            manifest = resources.registry().get(request.capability_id).manifest
+        except KeyError:
+            # Capability desconocida: problema del paso resolve→invoke que
+            # sigue (fail-loud ahí), no de esta compuerta — jamás se inventa
+            # una aprobación para algo que ni siquiera se sabe invocar.
+            return ApprovalDecision()
+        if manifest.side_effects not in required_side_effects:
+            return ApprovalDecision()
+        return ApprovalDecision(
+            required=True,
+            granted=False,
+            approval_id=f"approval-{uuid4().hex}",
+            prompt=(
+                f"La capability {request.capability_id!r} declara "
+                f"side_effects={manifest.side_effects!r} — requiere "
+                "aprobación humana antes de invocarse "
+                f"({_APPROVAL_SIDE_EFFECTS_ENV})."
+            ),
+            json_schema=_APPROVAL_JSON_SCHEMA,
+            cause=_APPROVAL_REQUIRED_CAUSE,
+        )
+
+    return _gate
+
+
 def _start_claim_run(
     resources: RunResources,
     body: CreateRunRequest,
@@ -889,7 +974,13 @@ def _start_mission_run(
     Sin gate de verificación (`post_invoke` ausente A PROPÓSITO): `done` ⟺
     el verifier pasa (§Contrato-3) — hoy no hay verifier del lado misión,
     así que el run termina `run.failed {error_kind: "exhausted"}`; el gate
-    real llega con los claims de sub-runs/steps (frontera P4)."""
+    real llega con los claims de sub-runs/steps (frontera P4).
+
+    F1.3 — `approval_gate` SÍ se cablea acá (`_build_approval_gate`): es el
+    único camino agéntico (`proposer is not None`), así que es el único que
+    `execute_run` puede alcanzar (`loop.py:837`). El claim-first
+    (`_start_claim_run`) es turno único sin loop agéntico — fuera de
+    alcance, no tiene la costura."""
     _validate_project_reference(resources, body.project_id)
     run_id = f"run-{uuid4().hex}"
 
@@ -951,6 +1042,7 @@ def _start_mission_run(
             crossing=_make_crossing(resources, identity),
             thread_id=body.thread_id,
             project_id=body.project_id,
+            approval_gate=_build_approval_gate(resources),
         ),
     )
 

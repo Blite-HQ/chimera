@@ -45,6 +45,15 @@ services:
     environment:
       # *_FILE únicamente — el valor real nunca vive en este YAML (EG-3).
       CHIMERA_DB_PASSWORD_FILE: /run/secrets/postgres_password
+      # F1.3 — permisos del operador local (`chimera_api.auth`). Setear esta
+      # var REEMPLAZA el default entero (`_DEFAULT_OPERATOR_PERMISSIONS`), así
+      # que acá van los tres de siempre MÁS `override:apply:run`: sin él,
+      # `POST /runs/{id}/approvals/{id}` da 403 fail-closed (el default de
+      # código NO lo trae — decisión deliberada, `chimera_api.chat`
+      # `_APPROVAL_SCOPE`). Este despliegue local declara explícito que quiere
+      # responder aprobaciones desde el Studio; nadie las aprueba por
+      # accidente.
+      CHIMERA_OPERATOR_PERMISSIONS: 'capability:invoke,capability:ingest:external-source,capability:ingest:derive,override:apply:run'
       # Flip del agente real (P4, decisión #92 · el camino dorado de
       # docs/archivo/planeado/01-demo-dia-d.md: "el agente es real... en
       # escena corre por defecto en replay — reproducción determinista de
