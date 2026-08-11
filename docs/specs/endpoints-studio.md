@@ -207,6 +207,40 @@ byte-idéntico a `apps/studio/src/fixtures/contract/endpoints/post-runs-mission.
 del Studio fija que `toCreateRunBody` produce exactamente ese body). Misma convención que
 `contract/harness/` (README de specs, "Fixtures de costura — un solo origen").
 
+## GET/POST /projects — sistema organizacional (F1.1, ceremonia #176, 2026-08-11)
+
+**Hueco que cierra:** la tabla `projects` (`docs/esquema-datos-v2.md` §2, ceremonia #176)
+existía sin ninguna ruta que la sirviera — `MissionRequest.project_id` viajaba como
+referencia opaca sin que nada la validara ni la listara. F1.1 (ítem 1 de
+`docs/mejorado/09-cierre.md` §2·F1) cierra las dos puntas: las rutas y la validación de FK
+en `POST /runs` (ver nota debajo).
+
+### Contrato
+
+| Ruta             | Devuelve                                | Wire (snake_case)                                       |
+| ---------------- | --------------------------------------- | ------------------------------------------------------- |
+| `GET /projects`  | `Project[]` del dominio de la identidad | `{id, domain_id, name, created_at}[]`                   |
+| `POST /projects` | `Project` creado (201)                  | body `{id, name}` → `{id, domain_id, name, created_at}` |
+
+- `domain_id` sale de la IDENTIDAD de quien pregunta (`session_auth.identity_from`), jamás
+  del body — mismo patrón que `/files` (SO2, partición por dominio).
+- `id` del body es un slug (`^[a-z0-9][a-z0-9-]{0,62}$`); fuera de esa forma ⇒ `422`
+  (validación pydantic, sin lógica a mano). `id` ya tomado ⇒ `409`.
+- `created_at` es ISO-8601 UTC.
+- Todo despliegue arranca con el dominio `domain-default` y el proyecto neutro `default`
+  ("Proyecto por defecto") ya sembrados — bootstrap idempotente del wiring
+  (`chimera_api.projects.ensure_default_project`), NUNCA en import time. La semilla es
+  NEUTRA a propósito (decisión #173.1): no nombra ningún caso de uso/reto.
+
+### Nota aditiva sobre `POST /runs` — validación de FK (F1.1 ítem 4)
+
+`MissionRequest.project_id` sigue siendo la referencia OPACA que el evento `run.created`
+lleva tal cual (el event store no valida FK, freeze del log de eventos). Lo que cambia:
+el API SÍ la valida ahora, contra este mismo puerto, ANTES de agendar nada — `project_id`
+desconocido ⇒ `422` (`"project_id desconocido: {id}"`), sin tocar el store ni las
+`BackgroundTasks`. `project_id` ausente sigue sin exigir nada (el modo misión sin proyecto
+sigue funcionando igual que antes).
+
 ## GET /runs/discarded — skip honesto de la ruta de LECTURA (#104/#124, Fase 0 Mejorado 2026-07-31)
 
 **Hueco que cierra:** la píldora #96 probó que UN stream envenenado (un `run.created` sin
