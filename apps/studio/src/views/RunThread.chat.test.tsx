@@ -117,6 +117,24 @@ describe('deriveRunThread — proyección ordenada del stream', () => {
     expect(approval?.response).toBeUndefined();
   });
 
+  it('un approval.requested con step_id NULO (la forma real del emisor) SÍ produce card — no descarte silencioso', () => {
+    // F1.3, bug real: el ÚNICO emisor (`loop.py` §Contrato-6) journaliza
+    // `step_id: null` LITERAL — la aprobación corre ANTES de abrir el
+    // `RunStep` del turno. `approvalRequestedSchema.step_id` era
+    // `.optional()` a secas, y Zod v4 rechaza `null` para `.optional()`
+    // (solo tolera la clave ausente) — `safeParse` fallaba y `RunThread`
+    // descartaba el evento en silencio (`if (!parsed.success) continue`):
+    // con un approval REAL la card jamás se renderizaba.
+    const conStepIdNulo: ProjectedEvent = {
+      ...APPROVAL_REQUESTED,
+      payload: { ...APPROVAL_REQUESTED.payload, step_id: null }
+    };
+
+    const thread = deriveRunThread([PLAN_CREATED, conStepIdNulo]);
+
+    expect(thread.entries.some(e => e.kind === 'approval')).toBe(true);
+  });
+
   it('ignora un payload de mensaje fuera de contrato sin tumbar la vista', () => {
     const roto: ProjectedEvent = {
       ...mensaje(2, 'x', 'msg-1'),
@@ -154,6 +172,23 @@ describe('RunThread — turnos sucesivos y card de approval', () => {
     expect(within(card).getByText(/escribe al mundo/i)).toBeInTheDocument();
     expect(within(card).getByRole('button', { name: /aprobar/i })).toBeInTheDocument();
     expect(within(card).getByRole('button', { name: /rechazar/i })).toBeInTheDocument();
+  });
+
+  it('un step_id NULO (el wire real) no dibuja un badge vacío', () => {
+    const sinStepId: ProjectedEvent = {
+      ...APPROVAL_REQUESTED,
+      payload: { ...APPROVAL_REQUESTED.payload, step_id: null }
+    };
+    render(
+      <RunThread summary={SUMMARY} events={[PLAN_CREATED, sinStepId]} onRespondApproval={vi.fn()} />
+    );
+
+    const card = screen.getByRole('region', { name: /aprobación/i });
+    // La card sigue mostrando la solicitud (prompt/botones) — solo el
+    // badge mono del step_id, que no puede existir para este approval, se
+    // omite en vez de renderizar un `<p>` vacío.
+    expect(within(card).getByText(/escribe al mundo/i)).toBeInTheDocument();
+    expect(within(card).queryByText('step-1')).not.toBeInTheDocument();
   });
 
   it('aprobar manda la respuesta que el json_schema declaró, no un booleano inventado', async () => {

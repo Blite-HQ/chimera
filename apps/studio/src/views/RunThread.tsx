@@ -275,7 +275,11 @@ function ApprovalCard({
         {response === undefined ? 'Aprobación pendiente' : 'Aprobación resuelta'}
       </p>
       <p className="text-sm">{request.prompt}</p>
-      {request.step_id !== undefined && (
+      {/* F1.3: el emisor real journaliza `step_id: null` (la aprobación
+          corre ANTES de abrir el `RunStep` del turno) — `typeof === 'string'`
+          descarta tanto `undefined` (fixtures/replays viejos) como `null`
+          (el wire real) sin renderizar un badge vacío. */}
+      {typeof request.step_id === 'string' && (
         <p className="mt-1 font-mono text-xs text-muted-foreground">{request.step_id}</p>
       )}
 
