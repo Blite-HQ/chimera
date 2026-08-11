@@ -59,7 +59,9 @@ class _ExternalCapability:
     def __init__(
         self, *, side_effects: Literal["reversible-external", "irreversible-external"]
     ) -> None:
-        self._side_effects = side_effects
+        self._side_effects: Literal["reversible-external", "irreversible-external"] = (
+            side_effects
+        )
         self.invocations = 0
 
     @property

@@ -434,11 +434,11 @@ class TestDatasetCorpusDirResolution:
         )
 
         # Act
-        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")
+        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")  # pyright: ignore[reportPrivateUsage] — la resolución interna ES lo que este test ejercita
 
         # Assert
         assert (
-            resolved == instance_verifiers._REPO_ROOT / "knowledge" / "tfim" / "corpus"
+            resolved == instance_verifiers._REPO_ROOT / "knowledge" / "tfim" / "corpus"  # pyright: ignore[reportPrivateUsage] — la resolución interna ES lo que este test ejercita
         )
 
     def test_dataset_no_declarado_da_none(self) -> None:
@@ -446,7 +446,7 @@ class TestDatasetCorpusDirResolution:
         manifest = DistributionManifest(datasets={})
 
         # Act
-        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")
+        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")  # pyright: ignore[reportPrivateUsage] — la resolución interna ES lo que este test ejercita
 
         # Assert — ningún literal rescata un dataset que el despliegue no
         # declaró; `None` es la señal para que el caller falle cerrado.
@@ -461,13 +461,13 @@ class TestCorpusDirDesdeElManifestReal:
     hardcodeado en este archivo."""
 
     def test_tfim_resuelve_al_mismo_directorio_que_antes(self) -> None:
-        assert instance_verifiers._TFIM_CORPUS_DIR == (
-            instance_verifiers._REPO_ROOT / "knowledge" / "tfim" / "corpus"
+        assert instance_verifiers._TFIM_CORPUS_DIR == (  # pyright: ignore[reportPrivateUsage] — la resolución interna ES lo que este test ejercita
+            instance_verifiers._REPO_ROOT / "knowledge" / "tfim" / "corpus"  # pyright: ignore[reportPrivateUsage] — la resolución interna ES lo que este test ejercita
         )
 
     def test_tabular_resuelve_al_mismo_directorio_que_antes(self) -> None:
-        assert instance_verifiers._TABULAR_CORPUS_DIR == (
-            instance_verifiers._REPO_ROOT / "knowledge" / "tabular" / "corpus"
+        assert instance_verifiers._TABULAR_CORPUS_DIR == (  # pyright: ignore[reportPrivateUsage] — la resolución interna ES lo que este test ejercita
+            instance_verifiers._REPO_ROOT / "knowledge" / "tabular" / "corpus"  # pyright: ignore[reportPrivateUsage] — la resolución interna ES lo que este test ejercita
         )
 
 
@@ -512,7 +512,7 @@ class TestCorpusDeclaradoSoloEnElManifest:
         manifest = DistributionManifest(
             datasets={"tfim-corpus": _build_dataset_spec("otro-directorio-de-corpus")}
         )
-        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")
+        resolved = instance_verifiers._dataset_corpus_dir(manifest, "tfim-corpus")  # pyright: ignore[reportPrivateUsage] — la resolución interna ES lo que este test ejercita
         assert resolved == corpus_dir
         monkeypatch.setattr(instance_verifiers, "_TFIM_CORPUS_DIR", resolved)
 
