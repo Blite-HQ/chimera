@@ -111,6 +111,43 @@ class TestInputValidation:
         assert result["energy"] == 2
 
 
+class TestSimulatedAnnealingBackend:
+    """G5: baseline heurístico de Simulated Annealing (dwave.samplers,
+    SimulatedAnnealingSampler) — mismo rol PROPOSER que CP-SAT pero SIN
+    garantía de optimalidad. Convención §1.2 sin cambios: Q simétrica, se
+    MAXIMIZA xᵀQx. Reusa G6 (triángulo, óptimo hand-checked = 5) para
+    verificar el adapter de signo: dimod MINIMIZA, así que un adapter con
+    el signo invertido convergería a 0 (el MÍNIMO real de G6, ver
+    knowledge/quantum/02 §1.2), no a 5."""
+
+    def test_sa_reaches_hand_checked_optimum_not_the_minimum(self) -> None:
+        # Act
+        result = QuboSolver().invoke({"matrix": _G6, "backend": "sa"})
+
+        # Assert — 5 es el MAX de xᵀQx en G6; 0 (asignación [0,0,0]/[1,1,1])
+        # es el MIN — si el adapter de signo estuviera invertido, SA
+        # convergería ahí en vez de acá
+        assert result["energy"] == 5
+        assert _energy(_G6, result["assignment"]) == 5
+
+    def test_sa_is_deterministic_across_runs(self) -> None:
+        # Determinismo reproducible (mismo principio CP-SAT, trust/10 §1.4):
+        # seed fija + num_reads fijo
+        first = QuboSolver().invoke({"matrix": _G6, "backend": "sa"})
+        second = QuboSolver().invoke({"matrix": _G6, "backend": "sa"})
+
+        assert first["assignment"] == second["assignment"]
+        assert first["energy"] == second["energy"]
+
+    def test_sa_never_claims_proven_optimal(self) -> None:
+        # Honestidad (trust/10): SA es heurístico, jamás prueba optimalidad
+        # — el vocabulario 'OPTIMAL'/'FEASIBLE' queda reservado a CP-SAT
+        result = QuboSolver().invoke({"matrix": _G6, "backend": "sa"})
+
+        assert result["status"] not in ("OPTIMAL", "FEASIBLE")
+        assert result["status"] == "HEURISTIC"
+
+
 class TestManifestSinDriftDeBackend:
     """Hallazgo 12 del handoff S3: el manifest anunciaba un backend que
     `invoke` rechazaba. El planner ELIGE sobre el manifest, así que un enum
@@ -133,3 +170,35 @@ class TestManifestSinDriftDeBackend:
     def test_backend_fuera_del_enum_falla_fuerte(self) -> None:
         with pytest.raises(ValueError, match="no implementado"):
             QuboSolver().invoke({"matrix": _G6, "backend": "gurobi"})
+
+
+class TestGenericitySelfCheck:
+    """ADR-029: el gate del repo (tests/invariants/test_capability_genericity.py)
+    lee entry points INSTALADOS — en este worktree resuelve por PYTHONPATH,
+    así que en la práctica sí ve este manifest, pero esta aserción local
+    (plantilla: capabilities/quantum/tests/test_zne.py:432) es la que queda
+    ejercitada sin depender de ese detalle de entorno."""
+
+    def test_manifest_has_no_scenario_vocabulary(self) -> None:
+        import dataclasses
+        from pathlib import Path
+
+        denylist_path = (
+            Path(__file__).resolve().parents[3]
+            / "tests"
+            / "invariants"
+            / "scenario_denylist.txt"
+        )
+        denylist = [
+            line.strip().lower()
+            for line in denylist_path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
+
+        manifest = QuboSolver().manifest
+        text = json.dumps(dataclasses.asdict(manifest), default=str).lower()
+
+        violations = [term for term in denylist if term in text]
+        assert not violations, (
+            f"manifest contiene vocabulario de escenario: {violations}"
+        )

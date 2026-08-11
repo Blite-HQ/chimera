@@ -3,7 +3,8 @@ QuboSolver — Solve a QUBO (Quadratic Unconstrained Binary Optimization) matrix
 
 Registered as entry point: blite.capabilities["blite.solvers.qubo"]
 Heavy dependencies are loaded lazily (install via extras):
-  uv add blite-cap-solvers[ortools]
+  uv add blite-cap-solvers[ortools]  # backend='auto'/'ortools' — exact (CP-SAT)
+  uv add blite-cap-solvers[dwave]    # backend='sa' — heuristic (Simulated Annealing, G5)
 """
 
 from __future__ import annotations
@@ -18,7 +19,9 @@ from blite_capability.manifest import CapabilityManifest
 # un manifest que promete lo que la implementacion niega es una mentira de
 # contrato, y el planner elige sobre el manifest. El extra `gurobi` del
 # pyproject queda como bundle de dependencia declarado, sin prometer despacho.
-_BACKENDS_SOPORTADOS = ("auto", "ortools")
+# "sa" (G5): baseline heurístico de Simulated Annealing — despachado de
+# verdad (a diferencia de "gurobi"), extra `dwave` declarado en pyproject.
+_BACKENDS_SOPORTADOS = ("auto", "ortools", "sa")
 
 _MANIFEST = CapabilityManifest(
     id="blite.solvers.qubo",
@@ -34,6 +37,11 @@ _MANIFEST = CapabilityManifest(
                 "type": "string",
                 "enum": list(_BACKENDS_SOPORTADOS),
                 "default": "auto",
+                "description": (
+                    "'auto'/'ortools': exact solve (CP-SAT), proves optimality. "
+                    "'sa': Simulated Annealing, heuristic — no optimality "
+                    "guarantee, seed pinned for determinism."
+                ),
             },
         },
         "required": ["matrix"],
@@ -75,17 +83,22 @@ class QuboSolver:
         try:
             return self._invoke_impl(inputs)
         except ImportError as exc:
+            # El extra que falta depende del backend pedido: 'sa' vive en
+            # dwave-samplers ('dwave'), el resto en ortools ('ortools').
+            extra = "dwave" if inputs.get("backend") == "sa" else "ortools"
             raise ImportError(
                 f"QuboSolver: optional dependency missing. "
-                f"Install blite-cap-solvers[ortools]: {exc}"
+                f"Install blite-cap-solvers[{extra}]: {exc}"
             ) from exc
 
     def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
-        from blite_cap_solvers.qubo import solve_qubo
+        from blite_cap_solvers.qubo import solve_qubo, solve_qubo_sa
 
         backend = inputs.get("backend", "auto")
         if backend not in _BACKENDS_SOPORTADOS:
             soportados = " u ".join(repr(b) for b in _BACKENDS_SOPORTADOS)
             msg = f"QuboSolver: backend {backend!r} no implementado — use {soportados}"
             raise ValueError(msg)
+        if backend == "sa":
+            return solve_qubo_sa(inputs.get("matrix"))
         return solve_qubo(inputs.get("matrix"))

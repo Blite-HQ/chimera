@@ -478,6 +478,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+dwave = [
+    { name = "dwave-samplers" },
+]
 gurobi = [
     { name = "gurobipy" },
 ]
@@ -488,10 +491,11 @@ ortools = [
 [package.metadata]
 requires-dist = [
     { name = "blite-capability", editable = "sdk" },
+    { name = "dwave-samplers", marker = "extra == 'dwave'", specifier = ">=1.8" },
     { name = "gurobipy", marker = "extra == 'gurobi'", specifier = ">=11.0" },
     { name = "ortools", marker = "extra == 'ortools'", specifier = ">=9.0" },
 ]
-provides-extras = ["ortools", "gurobi"]
+provides-extras = ["ortools", "gurobi", "dwave"]
 
 [[package]]
 name = "blite-capability"

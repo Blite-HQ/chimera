@@ -9,6 +9,12 @@ Determinismo reproducible (trust/10 §1.4): workers=1, seed fija, presupuesto
 en tiempo DETERMINISTA. El Verifier diferencial del engine
 (blite/verification/exact_solver.py) es un adapter distinto — esto propone,
 aquello refuta; no comparten código por diseño (doble ancla).
+
+G5 — baseline heurístico (Simulated Annealing, `dwave.samplers`): mismo rol
+PROPOSER, misma convención Q simétrica/MAXIMIZA xᵀQx, seed fija para el
+mismo determinismo reproducible — pero SIN prueba de optimalidad. Honestidad
+(trust/10): su `status` se reporta 'HEURISTIC', nunca 'OPTIMAL'/'FEASIBLE'
+(vocabulario reservado al solver que sí lo prueba, `solve_qubo`).
 """
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ from typing import Any, cast
 
 _RANDOM_SEED = 1
 _MAX_DETERMINISTIC_TIME = 60.0
+_SA_NUM_READS = 50
 
 
 def _validate_matrix(raw: Any) -> list[list[int]]:
@@ -106,3 +113,56 @@ def solve_qubo(raw_matrix: Any) -> dict[str, Any]:
         msg = f"CP-SAT inconsistente: objetivo {energy} != recompute {recomputed}"
         raise RuntimeError(msg)
     return {"assignment": assignment, "energy": energy, "status": status}
+
+
+def _qubo_dict_from_matrix(matrix: list[list[int]]) -> dict[tuple[int, int], int]:
+    """Adapter de signo dimod-vs-convención (§1.2): dimod MINIMIZA, acá se
+    MAXIMIZA xᵀQx — así que Q_dimod = -Q. La diagonal se incluye SIEMPRE,
+    incluso en cero: dimod solo registra una variable en el sample si
+    aparece como key del dict, así que omitir una diagonal cero la dejaría
+    fuera de la asignación devuelta. El off-diagonal usa el factor 2
+    (Q_dimod[i][j] = -2*matrix[i][j] para i<j) porque `matrix` es simétrica
+    y xᵀQx cuenta Q[i][j] + Q[j][i] — dimod espera esa suma ya colapsada en
+    el triángulo superior. Verificado contra un óptimo conocido (triángulo
+    G6) en tests/test_qubo_solver.py::TestSimulatedAnnealingBackend."""
+    n = len(matrix)
+    q: dict[tuple[int, int], int] = {}
+    for i in range(n):
+        q[(i, i)] = -matrix[i][i]
+        for j in range(i + 1, n):
+            if matrix[i][j] != 0:
+                q[(i, j)] = -2 * matrix[i][j]
+    return q
+
+
+def solve_qubo_sa(raw_matrix: Any) -> dict[str, Any]:
+    """Maximiza xᵀQx heurísticamente con Simulated Annealing (G5, baseline
+    clásico — `dwave.samplers.SimulatedAnnealingSampler`, no `neal`: ese
+    paquete no está instalado en este entorno, `dwave.samplers` sí).
+
+    Determinismo reproducible (mismo principio que `solve_qubo`, trust/10
+    §1.4): seed fija + num_reads fijo, sin presupuesto de tiempo (SA no lo
+    necesita — corre un número fijo de reads, no busca hasta un límite).
+
+    SIN garantía de optimalidad — a diferencia de CP-SAT, SA no prueba que
+    su mejor `assignment` sea el máximo real. El `status` se reporta
+    'HEURISTIC', nunca 'OPTIMAL'/'FEASIBLE' (honestidad, trust/10)."""
+    from dwave.samplers import SimulatedAnnealingSampler
+
+    matrix = _validate_matrix(raw_matrix)
+    n = len(matrix)
+    qubo_dict = _qubo_dict_from_matrix(matrix)
+
+    # cast(Any, ...) — mismo patrón que blite_cap_graphs.maxcut para cvxpy:
+    # dwave-samplers tiene py.typed pero `sample_qubo(self, Q, **parameters)`
+    # deja **parameters sin anotar, lo que bajo pyright strict propaga
+    # "Unknown" a SampleSet/SampleView completos. No es un hueco nuestro:
+    # es la superficie pública de la librería.
+    sampler = cast(Any, SimulatedAnnealingSampler)()
+    sampleset = sampler.sample_qubo(
+        qubo_dict, seed=_RANDOM_SEED, num_reads=_SA_NUM_READS
+    )
+    best_sample = sampleset.first.sample
+    assignment = [int(best_sample[i]) for i in range(n)]
+    energy = _energy(matrix, assignment)
+    return {"assignment": assignment, "energy": energy, "status": "HEURISTIC"}

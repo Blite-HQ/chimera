@@ -13,6 +13,11 @@ dependencies = [
 [project.optional-dependencies]
     ortools = ['ortools>=9.0']
     gurobi = ['gurobipy>=11.0']
+    # G5: backend='sa' (Simulated Annealing). Hoy nos llega de rebote por el
+    # extra `dwave` de blite-cap-quantum (dwave-ocean-sdk); esto declara la
+    # dependencia directa que este paquete de verdad usa (dwave.samplers,
+    # no neal — ver blite_cap_solvers/qubo.py).
+    dwave = ['dwave-samplers>=1.8']
 
 [project.entry-points."blite.capabilities"]
 "blite.solvers.qubo" = "blite_cap_solvers:QuboSolver"
