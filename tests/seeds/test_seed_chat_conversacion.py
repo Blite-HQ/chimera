@@ -66,8 +66,9 @@ def _store_con_run_abierto() -> Any:
 def _client(store: Any) -> Any:
     from chimera_api.app import create_app
     from fastapi.testclient import TestClient
+    from tests.conftest import authenticated
 
-    return TestClient(create_app(store))
+    return authenticated(TestClient(create_app(store)))
 
 
 def test_mission_message_payload_forma() -> None:

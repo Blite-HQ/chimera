@@ -21,12 +21,15 @@ from fastapi.testclient import TestClient
 
 from blite.events import create_event_store
 from blite.runtime.registry import EntryPointRegistry
+from tests.conftest import authenticated
 
 
 @pytest.fixture()
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("CHIMERA_FILES_DIR", str(tmp_path))
-    return TestClient(create_app(create_event_store(), registry=EntryPointRegistry({})))
+    return authenticated(
+        TestClient(create_app(create_event_store(), registry=EntryPointRegistry({})))
+    )
 
 
 def _post_file(client: TestClient, data: bytes, **headers: str) -> httpx.Response:

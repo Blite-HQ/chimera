@@ -22,6 +22,7 @@ from blite.events import create_event_store
 from blite.events.store import EventStore
 from blite.runtime.registry import EntryPointRegistry
 from blite_capability.manifest import CapabilityManifest
+from tests.conftest import authenticated
 
 _STATEMENT_4BUS = "la partición propuesta es óptima y electricamente factible"
 _SCOPE_4BUS: dict[str, Any] = {"instancia": "sintetica-4bus"}
@@ -53,7 +54,7 @@ def _make_registry() -> EntryPointRegistry:
 
 def _make_client(store: EventStore | None = None) -> TestClient:
     event_store = store if store is not None else create_event_store()
-    return TestClient(create_app(event_store, registry=_make_registry()))
+    return authenticated(TestClient(create_app(event_store, registry=_make_registry())))
 
 
 # Mismo patrón de pyright-ignore puntual que `test_runs.py`/`test_certificate.py`.

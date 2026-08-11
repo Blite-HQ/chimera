@@ -1,12 +1,12 @@
 """Sesión JWT en cookie (freeze §9 P1-9) + actor real en el cruce — C2/M2.
 
-`POST /auth/session` emite el JWT del operador del despliegue (doctrina §7:
-la identidad del actor es dato del despliegue) y lo deja en cookie HttpOnly.
-`POST /runs` deriva su Identity de esa cookie: cookie inválida ⇒ 401
-fail-closed (jamás fallback); sin cookie ⇒ la identidad default del operador
-local (decisión registrada — el flip a 401-obligatorio espera el bootstrap
-del Studio, frontera P-ui). `_API_ACTOR` murió: el actor de `run.created` y
-de los `capability.job.*` es el del cruce (AX1).
+F1.2 — flip a 401-obligatorio APLICADO: `POST /auth/session` emite el JWT
+del operador del despliegue (doctrina §7: la identidad del actor es dato
+del despliegue) y lo deja en cookie HttpOnly. `POST /runs` deriva su
+Identity de esa cookie: cookie AUSENTE o INVÁLIDA ⇒ 401 fail-closed — mismo
+trato para las dos, jamás un fallback que fabrique una Identity. `_API_ACTOR`
+murió: el actor de `run.created` y de los `capability.job.*` es el del
+cruce (AX1).
 """
 
 from __future__ import annotations
@@ -113,14 +113,15 @@ def test_run_con_cookie_estampa_el_actor_del_jwt_en_los_eventos() -> None:
     assert not any(e.actor_id == "user:api" for e in events)
 
 
-def test_run_sin_cookie_usa_el_operador_default_jamas_user_api() -> None:
+def test_run_sin_cookie_es_401_fail_closed_jamas_fallback() -> None:
+    """F1.2 — flip a 401-obligatorio: `POST /runs` sin cookie de sesión ya
+    NO degrada al operador default. El fallback murió; sin sesión, el
+    mismo fail-closed que una cookie inválida — y nada se journaliza."""
     store = create_event_store()
     client = _make_client(store)
     response = _post(client, "/runs", json=_claim_run_body())
-    assert response.status_code == 202
-    run_id = response.json()["run_id"]
-    created = next(e for e in store.read_stream(run_id) if e.type == "run.created")
-    assert created.actor_id == _OPERATOR
+    assert response.status_code == 401
+    assert store.read_all() == ()
 
 
 def test_cookie_invalida_es_401_fail_closed_jamas_fallback() -> None:
@@ -131,11 +132,31 @@ def test_cookie_invalida_es_401_fail_closed_jamas_fallback() -> None:
     assert response.status_code == 401
 
 
-def test_operador_configurable_por_despliegue(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Doctrina §7: quién actúa es dato del despliegue — env, no hardcode."""
+def test_operador_configurable_no_evita_401_sin_cookie(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Doctrina §7: quién actúa es dato del despliegue — env, no hardcode.
+    Pero configurar el operador NO abre una puerta trasera al
+    401-obligatorio (F1.2): sin cookie, fail-closed pase lo que diga el
+    env."""
     monkeypatch.setenv("CHIMERA_OPERATOR_ID", "user:dylan")
     store = create_event_store()
     client = _make_client(store)
+    response = _post(client, "/runs", json=_claim_run_body())
+    assert response.status_code == 401
+    assert store.read_all() == ()
+
+
+def test_operador_configurable_por_despliegue_con_sesion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """La contraparte viva del test de arriba: CON sesión, el operador SÍ
+    gobierna la Identity emitida — la configurabilidad (doctrina §7) sigue
+    siendo real, solo que ahora pasa siempre por `POST /auth/session`."""
+    monkeypatch.setenv("CHIMERA_OPERATOR_ID", "user:dylan")
+    store = create_event_store()
+    client = _make_client(store)
+    assert _post(client, "/auth/session").status_code == 200
     response = _post(client, "/runs", json=_claim_run_body())
     assert response.status_code == 202
     run_id = response.json()["run_id"]
@@ -159,22 +180,16 @@ def test_cookie_secure_por_env_para_despliegues_tls(
     assert "Secure" in secured
 
 
-def test_me_devuelve_la_identidad_del_operador_sin_cookie() -> None:
+def test_me_sin_cookie_es_401_fail_closed() -> None:
     """`GET /me` — quién está operando (P6/M15, bloque de usuario del Studio).
 
-    Sin cookie la identidad es la del operador local, la MISMA que estampan
-    los eventos: el Studio no puede mostrar un usuario distinto del que va a
-    quedar journalizado en `actor_id`, o el bloque mentiría sobre quién
-    firma."""
+    F1.2 — flip a 401-obligatorio: sin cookie ya no hay "identidad del
+    operador local" que mostrar — 401, mismo trato que las rutas de
+    escritura. El Studio pide sesión ANTES de pintar el bloque de usuario."""
     client = _make_client()
-    if True:
-        response = _get(client, "/me")
+    response = _get(client, "/me")
 
-        assert response.status_code == 200
-        body = response.json()
-        assert body["id"] == _OPERATOR
-        assert body["kind"] in {"human", "agent", "service"}
-        assert isinstance(body["permissions"], list)
+    assert response.status_code == 401
 
 
 def test_me_refleja_la_identidad_de_la_cookie() -> None:

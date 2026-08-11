@@ -18,11 +18,14 @@ from fastapi.testclient import TestClient
 
 from blite.events import create_event_store
 from blite.runtime.registry import EntryPointRegistry
+from tests.conftest import authenticated
 
 
 @pytest.fixture()
 def client() -> TestClient:
-    return TestClient(create_app(create_event_store(), registry=EntryPointRegistry({})))
+    return authenticated(
+        TestClient(create_app(create_event_store(), registry=EntryPointRegistry({})))
+    )
 
 
 def _get(client: TestClient, url: str) -> httpx.Response:

@@ -19,9 +19,18 @@ from fastapi.testclient import TestClient
 
 from blite.events import create_event_store
 from blite.events.store import EventStore
+from tests.conftest import authenticated
 
 _RUN = "run-conversacion"
 _DOMINIO = "domain-conversacion"
+
+
+def _client(store: EventStore) -> TestClient:
+    """F1.2 — sesión autenticada compartida (`tests/conftest.py::authenticated`);
+    único punto de construcción de cliente de este archivo, así que cada uno
+    de los ~10 call sites que antes hacía `TestClient(create_app(store))`
+    directo queda cubierto sin repetir la línea."""
+    return authenticated(TestClient(create_app(store)))
 
 
 def _store_abierto(run_id: str = _RUN) -> EventStore:
@@ -70,20 +79,20 @@ class TestPostMessages:
     def test_run_desconocido_es_404_no_409(self) -> None:
         """«No existe» y «ya terminó» son respuestas DISTINTAS: un 409 sobre
         un run inexistente mentiría diciendo que alguna vez existió."""
-        client = TestClient(create_app(create_event_store()))
+        client = _client(create_event_store())
         assert (
             _post(client, "/runs/run-fantasma/messages", {"text": "hola"}).status_code
             == 404
         )
 
     def test_texto_vacio_es_422(self) -> None:
-        client = TestClient(create_app(_store_abierto()))
+        client = _client(_store_abierto())
         assert _post(client, f"/runs/{_RUN}/messages", {"text": ""}).status_code == 422
 
     def test_author_lo_estampa_la_identidad_jamas_el_body(self) -> None:
         """§Contrato-2: `author` NO viaja en el body — un cliente no puede
         decir que el mensaje lo escribió otro. Mandarlo es 422 (extra=forbid)."""
-        client = TestClient(create_app(_store_abierto()))
+        client = _client(_store_abierto())
         respuesta = _post(
             client,
             f"/runs/{_RUN}/messages",
@@ -95,7 +104,7 @@ class TestPostMessages:
         """El `domain_id` sale del `run.created` del propio run: un evento
         del stream jamás cambia de dominio a mitad de camino."""
         store = _store_abierto()
-        client = TestClient(create_app(store))
+        client = _client(store)
         _post(client, f"/runs/{_RUN}/messages", {"text": "seguí"})
         mensaje = next(
             e for e in store.read_stream(_RUN) if e.type == "mission.message"
@@ -107,7 +116,7 @@ class TestPostMessages:
 
     def test_mensajes_sucesivos_conservan_el_orden_del_stream(self) -> None:
         store = _store_abierto()
-        client = TestClient(create_app(store))
+        client = _client(store)
         for texto in ("uno", "dos", "tres"):
             assert (
                 _post(client, f"/runs/{_RUN}/messages", {"text": texto}).status_code
@@ -123,19 +132,19 @@ class TestPostMessages:
 
 class TestPostCancel:
     def test_run_desconocido_es_404(self) -> None:
-        client = TestClient(create_app(create_event_store()))
+        client = _client(create_event_store())
         assert _post(client, "/runs/run-fantasma/cancel", {}).status_code == 404
 
     def test_segundo_cancel_es_409(self) -> None:
         """`run.cancelled` es terminal: cancelar dos veces es conflicto, no
         idempotencia silenciosa."""
-        client = TestClient(create_app(_store_abierto()))
+        client = _client(_store_abierto())
         assert _post(client, f"/runs/{_RUN}/cancel", {}).status_code == 202
         assert _post(client, f"/runs/{_RUN}/cancel", {}).status_code == 409
 
     def test_reason_propia_viaja_al_payload(self) -> None:
         store = _store_abierto()
-        client = TestClient(create_app(store))
+        client = _client(store)
         _post(client, f"/runs/{_RUN}/cancel", {"reason": "me equivoqué de instancia"})
         cancelado = next(
             e for e in store.read_stream(_RUN) if e.type == "run.cancelled"
@@ -233,7 +242,6 @@ class TestSkipHonestoCubreElResumen:
         exista hoy un stream capaz de romper el ensamblado — el que había
         (la tupla de `plan.created`) quedó arreglado en la raíz."""
         import chimera_api.reads as reads
-        from chimera_api.app import create_app
 
         original = reads._run_summary  # pyright: ignore[reportPrivateUsage] — el doble tiene que envolver la MISMA función que la ruta usa
 
@@ -262,7 +270,7 @@ class TestSkipHonestoCubreElResumen:
             },
             expected_seq=0,
         )
-        client = TestClient(create_app(store))
+        client = _client(store)
 
         listado = _get(client, "/runs")
         assert listado.status_code == 200
@@ -277,8 +285,6 @@ class TestSkipHonestoCubreElResumen:
     def test_las_dos_rutas_salen_del_mismo_computo(self) -> None:
         """Si divergieran, `/runs/discarded` dejaría de explicar lo que
         `/runs` omitió — y el reporte pasaría a ser decorativo."""
-        from chimera_api.app import create_app
-
         store = _store_abierto()
         store.append(
             stream_id="run-envenenado",
@@ -288,7 +294,7 @@ class TestSkipHonestoCubreElResumen:
             payload={"run_id": "run-envenenado"},
             expected_seq=0,
         )
-        client = TestClient(create_app(store))
+        client = _client(store)
 
         filas: list[dict[str, Any]] = _get(client, "/runs").json()
         reporte: dict[str, Any] = _get(client, "/runs/discarded").json()
