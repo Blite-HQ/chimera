@@ -4239,6 +4239,95 @@ las toma otro agente por decisión de Dylan (2026-08-06).
 - gitleaks **sin hallazgos** en árbol e historia (era lo que tenía roja la
   compuerta Security — ver el arreglo de la allowlist)
 
+## Sesión de CONTROL — cierre de Mejorado (2026-08-10)
+
+### #170 — la colisión de numeración se resuelve por SUFIJO, no por renumeración
+
+Las sesiones paralelas V y O anexaron al ledger en sus ramas y ambas arrancaron
+en #153: V usó #153–#159 (bloque «sesión VISUAL/CIENCIA») y O usó #153–#169
+(bloque «sesión PLATAFORMA»). Los commits de ambas —ya pusheados y PÚBLICOS—
+citan sus números; renumerar cualquiera de los dos lados desincronizaría la
+historia publicada del ledger. **Decisión:** los números duplicados se citan con
+sufijo de dominio (`#153-V`…`#159-V` / `#153-O`…`#169-O`) y la secuencia
+continua retoma aquí, en #170. La regla para futuras olas paralelas: la sesión
+de control ASIGNA el rango a cada sesión en el prompt (p. ej. «usá #2xx»), para
+que la colisión no vuelva a existir.
+
+### #171 — validación de los merges V+O, y el veredicto terminado ≠ completado
+
+V y O se auto-mergearon a `mejorado/base` sin pasar por control (11d2044 y
+470e72c). Gates re-corridos EN VIVO sobre `HEAD @470e72c` en el repo principal:
+
+| gate               | resultado                                              |
+| ------------------ | ------------------------------------------------------ |
+| `uv run pytest`    | **1593 passed / 12 skipped / 1 xfailed / 4 xpassed**   |
+| cobertura          | **90.87%**                                             |
+| `lint-imports`     | 18 contratos kept, 0 broken                            |
+| `ruff check` + fmt | limpios (los 20 archivos rojos del handoff V: FIJADOS) |
+| `pyright`          | 0                                                      |
+| studio `test:run`  | **327 passed / 34 files** · eslint 0                   |
+| `pnpm run arch`    | **0 violaciones** (el bloqueador del job Web: MUERTO)  |
+| docs gate          | limpio                                                 |
+
+Los merges quedan CONVALIDADOS. Pero la fase NO está completa: **C-2 no tiene
+rastro en el repo** (ni rama local/remota ni entradas) — Dylan indica que pudo
+haber corrido en su laptop sin push; **queda EN ESPERA de su verificación**. Si
+existe: la sube, control la valida y mergea como checkpoint normal. Si no: su
+destino se decide junto con la sesión estratégica (ver #173).
+
+### #172 — `main` PÚBLICA sincronizada: el repo deja de mostrar el árbol viejo
+
+Hallazgo: el repo es público con `main` como default y `main` estaba ~113
+commits atrás — la cara pública era el árbol de la hackathon, con 14 alertas
+dependabot que #163/#165 ya habían cerrado en `mejorado/base`. Con autorización
+de Dylan (hoy): push fast-forward `0810d0a..470e72c` a `main`. Sin reescritura
+de historia; reversible retrocediendo la ref. Efecto: QUICKSTART, retos 2/3,
+Studio y los fixes de seguridad son ahora lo que un externo ve.
+
+### #173 — los reencuadres de Dylan (2026-08-10): qué entra al cierre y qué va a visión
+
+Dylan, disconforme con el estado del proyecto (features a medias, docs en caos,
+agentes con contexto viejo), fija dirección. Registrado como decisiones:
+
+1. **ICE = caso de uso / datos de prueba, jamás activo del producto.** Se
+   ratifica la opción (b) del handoff de plataforma §1.1: sale el geojson crudo,
+   se conserva lo derivado (que ancla la evidencia de Nexus), con las dos
+   comprobaciones previas (índices de nexus + fixture propio para
+   `test_geojson_to_graph.py`). Su único uso legítimo: CI, e2e, validación.
+2. **El mapa es un ARTIFACT genérico de render geoespacial** disparado por el
+   TIPO de dato (geojson/csv/json) o la salida del agente — al estilo de los
+   artifacts de chat de Claude/ChatGPT. Ratifica el reencuadre del 2026-08-08:
+   O7 se rediseña en el registry de lentes, no como vista del shell. El sistema
+   COMPLETO de artifacts (editores, plano cartesiano, documentos, imágenes) es
+   backlog de la fase VISIÓN.
+3. **El saneamiento documental FINAL entra al cierre** (era el «refactoring
+   documental final» diferido en #108–#118): la estructura y actualización de
+   docs «se hace cada vez más insostenible» (Dylan).
+4. **Auth/authz, sistema organizacional y chat se COMPLETAN** — «clave y
+   necesario»: flip 401-obligatorio, tabla `projects` (ceremonia sobre
+   `docs/esquema-datos-v2.md` con el DDL ya propuesto), formalización mínima de
+   projects/workspaces (nunca se documentó), approval card contra un
+   `approval.requested` real, cert 409 silenciado, P10 vivo.
+5. **Nuevas capacidades de valor** (editor tipo Overleaf, suite completa de
+   datos, research/deep-search, pipeline de publicación de papers, benchmark vs
+   co-scientist y afines) → **backlog de la fase VISIÓN**; la sesión
+   estratégica (Marco/valor/público meta) las ordena. No entran al cierre.
+6. **V6/V7 REENCUADRADOS:** Nexus era requisito de la hackathon. El camino
+   generalista ya existe — el patrón capability/MCP gobernada (#166-O); un
+   backend cuántico concreto es un plugin de distribución, no core. V6-como-
+   estaba se cierra por reencuadre; V7 (tradeoff QEC medido) pasa a visión.
+
+### #174 — plan de cierre y el arreglo de raíz del contexto viejo
+
+El plan de cierre vive en `docs/mejorado/09-cierre.md`: inventario completo
+terminado→completado, tres frentes de implementación (CIERRE-PRODUCTO,
+CIERRE-PLATAFORMA/CIENCIA, SANEAMIENTO-FINAL) + acciones de control, con rangos
+de numeración asignados (#180+/#200+/#220+). Y se crea **`CLAUDE.md` en la raíz
+del repo** — el arreglo de raíz al problema que Dylan señala («los agentes se
+quedan con contexto viejo y sacan conclusiones absurdas»): estado actual del
+proyecto como PRODUCTO, autoridades, reglas duras y gotchas, cargado por
+cualquier agente al abrir el repo.
+
 ## Sesión CONFIANZA-2 Mejorado — C3→C15 (rama `mejorado/confianza-2`, 2026-08-05/06)
 
 > Alcance del prompt generador (`docs/mejorado/05-plan-paralelo.md` §4):
@@ -4247,7 +4336,7 @@ las toma otro agente por decisión de Dylan (2026-08-06).
 > flip OSS si llega») está repartido entre O5 y P12, y el prompt de esta
 > sesión no lo lista. Se deja al backlog sin tocar.
 
-### #170 — C3/M3: las reglas del dominio entran como DATO SMT-LIB con digest
+### #153-C — C3/M3: las reglas del dominio entran como DATO SMT-LIB con digest
 
 `RuleVerifier` + puerto `RuleBackend` + `RuleSet` (artefacto SMT-LIB 2
 versionado). El `rule_digest` son los BYTES EXACTOS del archivo (Regla 1 del
@@ -4282,7 +4371,7 @@ que ortools y pandapower). Que la distribución ya lo instalara vía
 `blite-cap-smt[z3]` era una dependencia implícita que se rompía al instalar
 el engine solo.
 
-### #171 — C3: registro de confianza (`system:trust-registry`)
+### #154-C — C3: registro de confianza (`system:trust-registry`)
 
 `●VerifierRegistered`/`●AnchorRegistered` y la proyección que produce los
 `anchor_descriptors`/`verifier_descriptors` del Bundle. Antes se escribían a
@@ -4293,9 +4382,9 @@ que no es sha256 no se registra, y la proyección lee SOLO su stream de sistema
 
 Ciclo de vida (`Superseded/Deprecated/Revoked`) NO implementado: exige decidir
 qué pasa con los certificados que citan un ancla retirada, y esa pregunta la
-responde la StatusList (#174).
+responde la StatusList (#157-C).
 
-### #172 — C4/M4: una constancia por isla, y las islas no inflan patas
+### #155-C — C4/M4: una constancia por isla, y las islas no inflan patas
 
 `verify_all()` con default `= (verify(),)` (C-6/#106) + `ExecutionVerifier`
 emitiendo una constancia POR ISLA (`step_id = island-{k}`, convención S-D §8)
@@ -4320,7 +4409,7 @@ Efecto observable: el golden path emite 3 `verification.completed` (1 formal +
 2 islas) en vez de 2, con las MISMAS 2 patas. Los dos tests que contaban
 eventos pasan a afirmar la propiedad real (grupos distintos).
 
-### #173 — C5/M28: hash-chain en el writer y el sub-run con integridad
+### #156-C — C5/M28: hash-chain en el writer y el sub-run con integridad
 
 Tres piezas que solo juntas cierran la letra del anexo §4:
 
@@ -4348,7 +4437,7 @@ id/seq/occurred_at antes de hashear). La concurrencia optimista no se debilita
 VERIFICADO VIVO contra Postgres 17 real: cadena correcta y
 `ConcurrentAppendError` intacto.
 
-### #174 — C6/C7: DSSE por constancia y revocación comprobable (supersedes §7)
+### #157-C — C6/C7: DSSE por constancia y revocación comprobable (supersedes §7)
 
 **C6 (T6 SUPERSEDIDO):** un sobre DSSE por constancia con predicate forma
 **SLSA VSA** — se adopta la FORMA del estándar, no su stack, para que un
@@ -4376,7 +4465,7 @@ revocaría certificados ajenos); mínimo de 16 KB por PRIVACIDAD, no capacidad;
 `gzip(mtime=0)` o el artefacto cambia en cada emisión; índice fuera de rango
 = error, jamás «no revocado».
 
-### #175 — C8/M8 pieza 4: la llave sale del proceso (y tres hallazgos vivos)
+### #158-C — C8/M8 pieza 4: la llave sale del proceso (y tres hallazgos vivos)
 
 El puerto `KeyProvider` existía desde S-G y nadie lo usaba. Ahora `assemble`,
 los sobres de constancia y la StatusList firman POR EL PUERTO, con `purpose`
@@ -4403,7 +4492,7 @@ También salió del choque con la realidad el bug del script de init: `bao
 status` sale con código 2 cuando el vault está sellado —estado normal— y con
 `pipefail` la rama de unseal nunca corría.
 
-### #176 — C9/M8 pieza 5 (#105): prueba de inclusión engrapada
+### #159-C — C9/M8 pieza 5 (#105): prueba de inclusión engrapada
 
 Rekor RE-ENTRA con causa: el descarte era correcto para la emisión _keyless_
 con Fulcio (exige CA en línea al firmar); un log privado del que se extrae una
@@ -4421,7 +4510,7 @@ ejercitarlo contra un servidor real produce código que falla en el primer
 contacto — acaba de pasar en C8, y ahí sí había servidor para descubrirlo.
 Perfil `transparency` del compose listo; comando en el handoff.
 
-### #177 — C10/M29: la relajación con responsable (§10 → código)
+### #160-C — C10/M29: la relajación con responsable (§10 → código)
 
 `OverridePayload` + `apply_override` que REGISTRA antes de aplicar (INV-4) —
 por eso la función no recibe ni ejecuta la acción relajada: mezclarlas
@@ -4438,7 +4527,7 @@ Un intento RECHAZADO no escribe: mezclar intentos con hechos haría que «hay un
 override registrado» dejara de significar «hubo un override». AX2 con test
 propio, sin camino de permiso más fácil que los demás.
 
-### #178 — C15: el punto 7 evalúa la Policy completa (CEREMONIA)
+### #161-C — C15: el punto 7 evalúa la Policy completa (CEREMONIA)
 
 Ceremonia obligatoria porque cambia el veredicto de bundles estampados. La
 evidencia de que no rompe nada vivo: la suite completa verde (1357), incluidos
@@ -4462,7 +4551,7 @@ refutación tiene AL0 por construcción). Los `side_effects` se derivan del
 `claim.emitted`, así que su conclusión se venía evaluando contra una regla que
 no le correspondía. Ahora lo emite con sus portadores, como cualquier run real.
 
-### #179 — C12/C13/C14: tres puertos hacia lo que no es el reto 1
+### #162-C — C12/C13/C14: tres puertos hacia lo que no es el reto 1
 
 **C14 `ExecutionHarness`** (prepare/run/collect/dispose + guarda
 PASS_TO_PASS): `dispose` corre SIEMPRE y la garantía vive en el helper, no en
@@ -4548,7 +4637,7 @@ declaran lo que no comprobaron en vez de callarlo.
 
 - **Custodia real**: certificado firmado con una llave que vive en OpenBao
   2.6.1 (perfil `custody`) → 12/12 offline. Tres defectos encontrados y
-  corregidos ahí (ver #175).
+  corregidos ahí (ver #158-C).
 - **Hash-chain en Postgres 17 real**: cadena correcta desde la génesis y
   `ConcurrentAppendError` intacto.
 
@@ -4591,14 +4680,14 @@ coordina el turno con la otra sesión. El perfil `custody` publica 8200 y el
    contra `http://127.0.0.1:3003` con un round-trip real antes de mergear.
 2. **Promoción del `provenance_hash` al head de la cadena.** El anexo la
    describe «sin cambiar forma», pero cambiaría el digest de todo certificado
-   ya emitido: ceremonia aparte, con el sustrato ya puesto (#173).
+   ya emitido: ceremonia aparte, con el sustrato ya puesto (#156-C).
 3. **Arm de prueba de reglas en `FormalExactPredicate`** (`formal_exact` desde
    el `RuleBackend`). Hoy el adapter EXPLOTA si un backend devuelve prueba, en
-   vez de inflar o esconder. Se abre cuando exista el backend cvc5 (#170).
+   vez de inflar o esconder. Se abre cuando exista el backend cvc5 (#153-C).
 4. **`●CertificateReissued`** sigue siendo Fase 2 declarada: re-emitir exige
-   decidir qué pasa con el certificado anterior (#174).
+   decidir qué pasa con el certificado anterior (#157-C).
 5. **Ciclo de vida del trust-registry** (`Superseded/Deprecated/Revoked` de
-   anclas y verificadores) — misma razón: qué pasa con lo ya emitido (#171).
+   anclas y verificadores) — misma razón: qué pasa con lo ya emitido (#154-C).
 6. **Los tres puertos nuevos no tienen consumidor todavía**
    (`ExecutionHarness`, registro de detectores, análisis de políticas). Son
    contratos con test, no features vivas: engancharlos es de G (un harness de
@@ -4626,7 +4715,7 @@ coordina el turno con la otra sesión. El perfil `custody` publica 8200 y el
   declararse irreversible, exigirá 2 patas y ancla `solver`+`execution` de
   verdad.
 
-### #180 — Integración de CONFIANZA-2 con `mejorado/base` (V + O ya mergeadas)
+### #175 — Integración de CONFIANZA-2 con `mejorado/base` (V + O ya mergeadas)
 
 `mejorado/base` avanzó 37 commits mientras esta sesión corría (V y O mergearon).
 La integración destapó cinco cosas que ninguna sesión podía ver sola — se
@@ -4635,7 +4724,7 @@ mensaje de merge.
 
 1. **Colisión de numeración del ledger.** V, O y C-2 arrancaron a numerar desde
    #153 en paralelo. V+O ocuparon #153-#169; las de esta sesión se corrieron a
-   **#170-#179** (con sus referencias internas). **Regla para la próxima ola:**
+   **#153-C-#162-C** (con sus referencias internas). **Regla para la próxima ola:**
    quien abre worktree reserva su rango ANTES de escribir, o el ledger deja de
    ser una secuencia y pasa a ser tres.
 
@@ -4661,7 +4750,7 @@ mensaje de merge.
    añadir una entrada no es el camino barato. El trinquete funciona.
 
 5. **`StructuralPartitionVerifier` (nuevo, de V) no declaraba `verify_all`.** Es
-   exactamente el caso de compat de #172: a runtime funciona por
+   exactamente el caso de compat de #155-C: a runtime funciona por
    `verify_all_of`, pero un Protocol `runtime_checkable` exige el atributo.
    Se le agregó el método explícito, como a los otros ocho adapters.
 
