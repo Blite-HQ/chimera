@@ -4805,3 +4805,408 @@ cierre métrico se DERIVA del log (V2/M19); los brazos NO los elige el caller
 (regla #158-V; `mitigated` cuando V9 exista); fail-loud intacto. El wire HTTP lo
 implementa F2. Con #176+#177 **F1 y F2 quedan desbloqueados**; prompts de
 lanzamiento en `09-cierre.md` §5.
+
+## Sesión CIERRE-PLATAFORMA/CIENCIA — frente F2 (worktree `mejorado/cierre-plataforma`, 2026-08-11)
+
+> Alcance: `docs/mejorado/09-cierre.md` §2·F2 completo. Rango asignado por
+> control: **#200–#219** (regla #170). Modo #121: Opus orquesta → Sonnet
+> implementa → Opus valida. Baseline del worktree al abrir, medido en vivo:
+> **1733 passed / 20 skipped / 4 xpassed / 90.83 %**. (Los 20 skipped contra 12
+> del principal son el gotcha conocido de `entry_points` leyendo metadata
+> INSTALADA desde un worktree, no una regresión.)
+
+### #200 — el precheck del ICE encontró TRES copias verbatim, no una
+
+Las dos comprobaciones obligatorias del handoff de plataforma §1.1 dieron verde:
+`knowledge/nexus/{index,consensus}.json` **no** referencian el geojson (0
+ocurrencias, solo instancias derivadas), y
+`capabilities/ingesta/tests/test_geojson_to_graph.py` **no lee el crudo** — ya
+leía un fixture propio, así que el precheck estaba satisfecho antes de empezar.
+
+Pero el segundo destapó lo que ninguna de las dos buscaba: ese fixture es
+**byte-idéntico** al crudo (sha256 `a4eedb07…` / `3cc36cb2…`), y existía una
+TERCERA copia en `apps/studio/src/fixtures/ice/` (70 subestaciones + 102 líneas,
+mismos campos del portal) **bundleada dentro del código de la app** por
+`data/iceGrid.ts`. `NOTICE` §2 solo nombraba la primera.
+
+**Consecuencia:** la opción (b) tal como estaba escrita —«sacar
+`knowledge/islanding/raw/`»— era **cosmética**: dejaba 2 de 3 copias verbatim
+publicadas, una de ellas dentro del producto.
+
+### #201 — el reencuadre de Dylan: el problema es ACOPLAMIENTO, no solo licencia
+
+Consultado con esa evidencia, Dylan fija la regla (dice haberla repetido en ~4
+sesiones sin que quedara documentada):
+
+> Los datos del ICE eran el reto 1 de la hackathon. La hackathon terminó y la
+> plataforma debe migrar a algo genérico y agnóstico, capaz de resolver
+> cualquier problema o investigación científica. **Esa data es ex-lógica de
+> negocio y acoplamiento: no puede estar en el código de la aplicación.** Sí
+> puede vivir en una DB, en un knowledge base que sirva para testear, guiar o
+> ejemplificar, o como entrada que un usuario aporta. Que no esté en el código
+> NO significa que la plataforma no pueda entenderla: si un usuario quiere
+> resolver el reto 1 con Chimera, la plataforma debe manejar esos datos.
+
+Esto **no reemplaza** la razón de licencia de #173.1: la suma. Destinos:
+
+| copia                                               | destino  | causa                                      |
+| --------------------------------------------------- | -------- | ------------------------------------------ |
+| `knowledge/islanding/raw/ice-*.geojson`             | SALE     | licencia (#173.1, ya ratificado)           |
+| `apps/studio/src/fixtures/ice/*.geojson`            | SALE     | acoplamiento — data quemada en el producto |
+| `capabilities/ingesta/tests/fixtures/ice-*.geojson` | SE QUEDA | material de prueba, uso que Dylan autoriza |
+
+**Residual DECLARADA, no cerrada:** los bytes verbatim del portal siguen
+publicados en el fixture de ingesta. `NOTICE` §2 y `docs/pre-flip-checklist.md`
+§4.2 lo dicen con todas las letras: la pregunta de licencia aplica a ese fixture
+**exactamente igual** que aplicaba al crudo. Queda prohibido declarar §2 cerrado
+por este trabajo. `NOTICE` §2 tampoco nombraba ese fixture; la atribución se
+corrige acá.
+
+`scripts/gen_corpus_ice.py` deja de morir con `FileNotFoundError`: resuelve el
+directorio por `--raw-dir` > `$CHIMERA_ICE_RAW_DIR` > default y falla con
+`IceSnapshotsMissingError` explicando de dónde bajar los snapshots. La receta y
+los digests quedan completos: `knowledge/islanding/corpus/` **byte-idéntico**
+(`verify_corpus_digests` 24/24 internos y 24/24 pinneados).
+
+### #202 — G5/G6/G8: triage con evidencia, ninguno bloqueado
+
+| ítem                        | veredicto           | evidencia                                                                                                                                                                                                                         |
+| --------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **G5** SA en `solvers.qubo` | HACIBLE             | `_BACKENDS_SOPORTADOS = ("auto","ortools")` sin `"sa"`. `import neal` → `ModuleNotFoundError`; `dwave.samplers` v1.8.0 **sí** resuelve. El test anti-drift ya itera el enum entero ⇒ agregar `"sa"` lo ejercita solo.             |
+| **G6** doble ancla TFIM     | HACIBLE, stretch    | cero código BdG/Bogoliubov en el árbol; corpus C3 sí existe (9 archivos). 150-250 líneas con verificador nuevo. Cubre ⟨ZᵢZᵢ₊₁⟩ pero **NO** ⟨Zᵢ⟩ (operador de cuerda ⇒ Pfaffianos) — #137 ya advierte no prometer AL4 por esa vía. |
+| **G8** reparación REGRID    | HACIBLE, más barato | cero código REGRID en el árbol. freeze §11 **ya registra aditivamente** `repair.*` y `connectivity_violations` ⇒ **sin ceremonia**. «Pesos desde flujo» **ya está en producción** (`ieee{6,9,14,30}-flujo.json`) ⇒ no cuenta.     |
+
+El DFS **se porta, no se importa**: ADR-008 (`forbidden_modules = ["blite"]`)
+prohíbe que una capability importe engine. Reimplementarlo es la norma del repo.
+
+### #203 — G5: la dependencia estaba de rebote (decisión de Dylan)
+
+`capabilities/solvers/pyproject.toml` declaraba solo `ortools`/`gurobi`;
+`dwave-samplers` le llegaba **transitivamente** por el extra `dwave` de
+`blite-cap-quantum`. Habría funcionado hoy y se habría roto en silencio el día
+que alguien tocara los extras de quantum. **Dylan decide declarar el extra y
+lockear.** `uv.lock` solo suma la declaración, sin resolver paquetes nuevos
+(`uv lock --check`: 237 paquetes, sin re-resolución). **La sesión F1 debe
+re-sincronizar** (`uv sync --locked --all-packages --all-extras`) tras el merge.
+
+### #204 — G6 queda registrado con causa de PRIORIDAD, no de bloqueo
+
+Decisión de Dylan: no se implementa en este frente. La causa es honesta y no se
+maquilla como bloqueo — G6 es stretch por letra del backlog, cierra una sola de
+las dos series del corpus C3, y el DoD de este frente es CP6 vivo. Alcance y
+costo quedan medidos para que control decida cuándo entra.
+
+### #205 — el wire de la 3.ª forma de body, y por qué la regla de brazos subió a engine
+
+Ceremonia #177 ya tenía el contrato congelado; esto es solo la puerta HTTP.
+`{ablation:{instance_id, layers?, seed?}}` discriminado por presencia de campo,
+`extra="forbid"` en los tres lados de la unión, sin campo para elegir brazos,
+sub-runs bajo `parent_run_id`, e instancia desconocida ⇒ 202 + `run.failed`
+dentro del stream con cero sub-runs generados.
+
+`scripts/` no es paquete instalable ⇒ el API no podía importar `build_arms`, y
+replicarla habría duplicado ciencia. La regla sube a `blite.runtime.ablation` y
+el script queda de cliente delgado, con un **test de identidad**
+(`prod.build_arms is blite.runtime.ablation.build_arms`) que impide que la regla
+se bifurque en dos copias que deriven.
+
+### #206 — el mapa deja de saber de subestaciones (O7 reencuadrado, #173.2)
+
+Sale la geodata bundleada y con ella los schemas Zod que clavaban `Subestacio`,
+`Provincia`, `Canton`, `Distrito`, `Voltaje ∈ {230,138}`, `Circuito` y
+`normalizeProvincia`. En su lugar, `geoJsonSchemas.ts` valida un
+`FeatureCollection` con propiedades **arbitrarias** y `GeoMap` recibe por
+configuración qué propiedad usar como etiqueta o peso — **el mismo patrón que
+`blite.ingesta.geojson.to_graph` ya usaba del lado servidor** (los nombres de
+propiedad viajan como params, jamás dentro del componente).
+
+El dato en vivo sale de `GET /files` + `GET /files/{digest}`, el content store
+por digest que ya existía: **cero endpoint nuevo**. `LensContext` gana
+`offeredMediaTypes` (aditivo; verificado que no está congelado ni en
+`contract-freeze.md` ni en `superficie-visual.md`) y la lente se reconoce por
+**TIPO de dato**.
+
+En modo réplica el toggle «Mapa» queda **honest-empty**: no se fabricó un
+dataset sintético de reemplazo, que habría sido el mock silencioso que la regla
+dura prohíbe.
+
+**FPS (umbral O7): NO medido contra un compositor real.** Lo que se midió es
+costo de render/DOM en jsdom — 9.06 ms/render con 200 features (≈110 FPS
+equivalentes) y 49.83 ms con 1000 (≈20 FPS). Se reporta así de explícito en vez
+de publicar un número de navegador que nadie tomó. El umbral de deck.gl sigue
+sin cerrar.
+
+### #207 — CP6 VIVO, y los dos huecos que solo correrlo podía destapar
+
+Contra compose real, run modo ablación sobre `cr8-uniforme`: panel (quantum
+6.352 / 1114 ms vs classical 7.0 / 127 ms), curva r-vs-p (p=1 → 0.634,
+p=2 → 0.858, p=3 → 0.644; baselines CP-SAT/GW/Greedy en 1.000 con barras
+mín–máx sobre 5 semillas) y mapa, los tres en el Studio.
+
+Correrlo de verdad destapó dos huecos que ningún test unitario iba a encontrar:
+
+1. **La lente de ablación nunca aplicaba al único run que tiene la ablación.**
+   En modo ablación los brazos son SUB-RUNS: las capabilities corren en SUS
+   streams y el del raíz solo trae `run.created`, así que `appliesTo` mirando
+   `capabilityIds` daba falso. El panel existía y ninguna tab lo mostraba. Se
+   resuelve con la misma doctrina: `LensContext` gana `offeredAblationVariants`
+   y la lente se reconoce por lo que el run **OFRECE**.
+2. **El mapa exigía una partición verificada para dibujar la geografía.** Pintar
+   el dato geoespacial que el proyecto ofrece ES el artifact genérico; la
+   partición por isla es superposición **opcional** encima. Atarlos dejaba la
+   tab visible y vacía con el archivo ya cargado. **Intacta la regla de #88:**
+   sin veredicto no se COLOREA isla alguna — distinto de no dibujar el mapa.
+
+Verificado subiendo un geojson con nombres de propiedad inventados
+(`nombre_estacion`/`capacidad`, cero campos del ICE): el mapa lo pinta y declara
+«3 features · 2 puntos · 1 líneas. Sin agrupación verificada asociada — se
+muestran sin colorear».
+
+**Observación honesta sobre el brazo `zne`, corregida tras más corridas:** en
+las primeras dos ablaciones el brazo `zne` corrió y completó pero **no apareció**
+en `GET /runs/{id}/ablation`, porque no emitió `cut_cost` — su mejora no
+sobrevivió al control negativo (#158-V). En corridas posteriores **sí** apareció
+(`cut_cost` 5.939). O sea: la presencia de la fila es **por corrida**, no una
+propiedad fija del brazo, y depende de si esa mitigación concreta sobrevivió a
+su control. Es comportamiento documentado e intencional («una fila sin los 4
+campos se OMITE… un run que solo reportó confianza no aparece como un punto
+científico fabricado»), **no un bug**.
+
+Queda la brecha de legibilidad, que es real: cuando un brazo corre y su fila se
+omite, el panel muestra una barra menos y **nada le dice al usuario** que ese
+brazo corrió y fue rechazado honestamente. Representar «corrió, sin ciencia que
+mostrar» es decisión de contrato, no algo que arreglar de tapadita.
+
+**Anotación:** el run RAÍZ de una ablación nunca termina (queda `en_curso` con 1
+evento) — espeja a `scripts/run_ablation.py`, que tampoco cierra su raíz. La
+spec solo exige que el cierre métrico se DERIVE; no se inventó un
+`run.completed` para el raíz. Para el Studio es un run eternamente en curso.
+
+### #208 — G3 residual, y la frontera que NO se cruzó
+
+`_TFIM_CORPUS_DIR` y `_TABULAR_CORPUS_DIR` dejan de ser rutas literales: se
+resuelven contra las entradas `tfim-corpus`/`tabular-corpus` que
+`distribution.yaml` ya declaraba. Un corpus declarado SOLO en el manifest, sin
+nombrarse en el `.py`, se resuelve — hay test con manifest sintético.
+Fail-closed intacto.
+
+**`_ISLANDING_CORPUS_DIR` se queda**, y no por comodidad: #167 lo excluye de
+`datasets:` a propósito (no se puede licenciar con claridad, `NOTICE` §2);
+`DatasetSpec` exige `license` sin default (`distribution.py:92`); y
+`GET /datasets` itera `manifest.datasets` **sin filtro**, así que cualquier
+entrada nueva se publica sola. Moverlo hoy obligaría a **fabricar una licencia**
+o a **publicar en silencio** lo que #167 decidió no publicar. Necesita ceremonia
+(p. ej. un `DatasetSpec.unpublished` excluido del catálogo). No se dejó
+andamiaje especulativo: un híbrido manifest-con-fallback-clavado nunca se
+ejercitaría mientras #167 siga en pie — sería código muerto, no un arreglo.
+
+### #209 — `side_effects` deja de ser prosa: escalación sin motor de reintentos
+
+La regla de §13 existía solo en el documento; `side_effects` no se consultaba ni
+en `runtime/loop.py` ni en `gateway/*.py`. Como no hay lógica de reintento, el
+«no reintentar» ya era cierto **de facto** — lo ausente era la ESCALACIÓN.
+
+Un paso que falla con `reversible-external`/`irreversible-external` ahora escala
+a humano en vez de morir como un `run.failed` indistinguible. Se reusa
+`approval.requested` con la forma exacta de `ApprovalRequestedPayload`: **cero
+eventos nuevos, cero ceremonia y cero motor de reintentos** — §13 no lo pidió y
+construir uno para colgarle una escalación sería inventar arquitectura.
+
+Cableada en los **DOS** caminos de fallo: el dispatch directo y el camino CON
+cruce, donde una falla real llega como `CrossingRejected(stage="mediation")`.
+Sin el segundo la escalación se habría perdido en el 100 % de las corridas
+reales, porque el modo con crossing es el de producción.
+
+**Límite declarado:** `CapabilityManifest` NO declara hoy ningún campo de
+idempotencia (el mecanismo fino sigue como diseño de S-G), así que «sin
+idempotencia garantizada» es el estado de TODO efecto externo. No se inventó un
+flag inexistente. Los `Rejection` de identity/authorization/guardrails/egress
+NO escalan: nada externo se intentó.
+
+`ADR-029` documenta además el punto ciego del gate de agnosticismo
+(`entry_points()` lee metadata INSTALADA, no fuente) y vuelve **mandatoria** la
+convención `TestGenericitySelfCheck`, diciendo explícitamente que la compensa
+localmente pero **no la cierra**.
+
+### #210 — G8: la reparación M.3, y por qué su etapa 2 es inerte acá
+
+Puerto de Algorithm 3 como parámetro opt-in `repair=False` de `solve_qaoa`, con
+los campos exactos que freeze §11 ya registró. Reparación jamás silenciosa
+(Invariant 2): si ningún flip ayuda, `pre_value == post_value` en vez de una
+mejora fabricada.
+
+**Hallazgo científico:** para un QUBO de Max-Cut **puro** la etapa 2 es
+inalcanzable justo después de que converge la etapa 1 — la condición de salida
+de la etapa 1 (ningún flip con ganancia positiva) niega por definición la
+condición de entrada de la etapa 2, que el pseudocódigo del paper exige que
+TAMBIÉN baje Q (`if Δ_{j*}(z) < 0 … else return z`). En REGRID la etapa 2 sí
+dispara porque su objetivo lleva términos de penalización que la etapa 1 no
+optimiza sola; esta formulación no los tiene. Verificado sobre ~80k pruebas
+aleatorias. Por eso el test de la restricción ejercita `restricted_repair_step`
+directo — es la única forma honesta de probarla.
+
+**M.4 fuera de alcance con causa:** relaja pesos λ de términos de restricción
+que solo existen en la codificación one-hot+slacks de REGRID, formulación que
+este repo DESCARTÓ. No hay análogo que relajar.
+
+### #211 — G5: el adapter de signo era la trampa
+
+Backend `sa` opt-in vía `dwave.samplers` (`neal` no está instalado). El default
+del manifest no cambia: `auto`/`ortools` siguen yendo a CP-SAT exacto.
+
+dimod **MINIMIZA** y acá se **MAXIMIZA** `xᵀQx`. Verificado contra un óptimo
+hand-checked: sobre el triángulo G6 el máximo es 5 y el **mínimo 0**, así que un
+signo invertido habría convergido a 0 en silencio y parecido plausible. El test
+lo fija en ambos sentidos. SA reporta `status = "HEURISTIC"`, jamás
+`OPTIMAL`/`FEASIBLE` — vocabulario reservado a CP-SAT.
+
+### #212 — V9 AI-QEM: el número honesto, y un hallazgo de determinismo en Qiskit
+
+El corrector aprendido entra **extendiendo la capability existente**
+(`blite.quantum.zne` gana un `method` ∈ {`zne-digital`, `ml-rf`, `ml-gbm`}), NO
+como entry point nuevo: el gate y el registry leen metadata INSTALADA, y una
+capability nueva no resolvería en el API de compose sin reinstalar. Predice el
+**residual sobre la extrapolación de Richardson**, no el ⟨C⟩ absoluto — la
+versión absoluta sobreajustaba (mejora media −4.1, sobrevivía a su control solo
+el 33 % de las veces), y eso queda documentado en el módulo como causa del
+diseño.
+
+**Números reales (holdout n=24, disjunto del entrenamiento):**
+
+| medición                                       | valor      |
+| ---------------------------------------------- | ---------- |
+| mejora aparente media, corrector ML            | **−0.048** |
+| su control negativo de costo igual             | **−4.60**  |
+| ZNE-Richardson (baseline de V4, mismas curvas) | **−0.080** |
+| filas del holdout donde sobrevive a su control | **79 %**   |
+
+El corrector **bate el baseline de V4** (−0.048 > −0.080) y sobrevive a su
+control negativo por margen amplio. Pero **ninguno de los dos bate «sin
+mitigación» en promedio** sobre este corpus chico. Se reporta como se encontró,
+sin inflar. El corpus es deliberadamente pequeño (4 train / 3 holdout,
+instancias sintéticas de 3 qubits): prueba de que el mecanismo AI-QEM funciona
+de punta a punta con separación honesta, **no** una afirmación de generalización.
+
+**Hallazgo colateral que vale por sí solo:** el `transpile(...,
+optimization_level=2)` por defecto de Qiskit usa SABRE estocástico y **no es
+bit-reproducible entre llamadas idénticas ni con `seed_transpiler` pinneada**
+(verificado: 2 circuitos compilados distintos en 8 llamadas iguales).
+`optimization_level=0` sí lo es (1/8). Sin esto el `training_digest` no podía
+ser real ni estable. El brazo `zne` existente conserva su comportamiento previo.
+
+El brazo `mitigated` se declara en `build_arms` **solo si hay productor**
+(sonda `find_spec("sklearn")`, compatible con ADR-008); si no, no se declara —
+misma regla de siempre: mejor barra ausente que barra vacía con nombre. Los tres
+brazos previos quedan byte-idénticos, con test que lo prueba.
+
+**Verificado VIVO contra compose** (el panel de 4 barras que V dejó anotado como
+pendiente, ahora existe). Run `run-4f78762b…` sobre `cr8-uniforme`:
+
+| brazo       | `cut_cost`              | `wall_ms` |
+| ----------- | ----------------------- | --------- |
+| `quantum`   | 6.352                   | 982       |
+| `classical` | **7.0** (óptimo exacto) | 18        |
+| `zne`       | 5.939                   | 2079      |
+| `mitigated` | **6.474**               | 2463      |
+
+En ESTA instancia el corrector aprendido supera al QAOA crudo (6.474 > 6.352) y
+a ZNE (5.939). Es un dato de una instancia, no una afirmación de generalización
+— la medición honesta sobre holdout está arriba y dice otra cosa más matizada.
+
+### #213 — dos correcciones al entorno que los agentes leen
+
+1. **`CLAUDE.md` miente sobre los hooks.** Dice «Git NO corre hooks en
+   worktrees»; corrieron en todos los commits de esta sesión (lint-staged con
+   `ruff format`, `markdownlint --fix`, `prettier --write`, con stash/restore).
+   Verificado que no dañó el trabajo sin commitear de los agentes en paralelo,
+   pero la afirmación es falsa y hay que corregirla (→ F3).
+2. **El comando de pyright que circula en los briefs está incompleto.** Sin
+   `PYTHONPATH` al worktree, pyright resuelve contra el editable del repo
+   PRINCIPAL y reporta decenas de errores **fantasma** (68 en una medición
+   full-repo, que bajan a 7 con `PYTHONPATH`). Es el punto ciego que la nota de
+   referencia ya describía; el comando debe llevarlo siempre.
+
+### Tabla de interacciones — sesión CIERRE-PLATAFORMA/CIENCIA (F2)
+
+Toda interfaz tocada, con quién la consume y qué tipo de cambio es.
+
+| interfaz                         | cambio                                                                                            | tipo                  | consumidores                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------------- |
+| `POST /runs`                     | 3.ª forma de body `{ablation:{instance_id, layers?, seed?}}` — implementa la ceremonia #177       | ADITIVO               | Studio, cualquier cliente HTTP                |
+| `blite.runtime.ablation`         | `build_arms` + `DEFAULT_LAYERS`/`DEFAULT_SEED` + los 3 lectores de energía suben desde `scripts/` | NUEVA API             | `chimera_api.runs`, `scripts/run_ablation.py` |
+| manifest `blite.quantum.zne`     | input `method` ∈ {`zne-digital`(default), `ml-rf`, `ml-gbm`}                                      | ADITIVO               | ablación (brazos `zne` y `mitigated`)         |
+| manifest `blite.quantum.qaoa`    | input `repair: bool = False`; outputs `repair.*` + `connectivity_violations` (freeze §11)         | ADITIVO               | proponente del reto 1                         |
+| manifest `blite.solvers.qubo`    | backend `"sa"` (default sin cambio: `auto`/`ortools` → CP-SAT)                                    | ADITIVO               | ablación brazo `classical`, misión            |
+| `capabilities/solvers` extras    | nuevo extra `dwave` (`dwave-samplers>=1.8`)                                                       | ADITIVO               | instalación / CI                              |
+| `LensContext` (Studio)           | `offeredMediaTypes?` y `offeredAblationVariants?`                                                 | ADITIVO               | registry de lentes                            |
+| `GeoMap` / `GenericGeoDataset`   | reemplazan `GridMap` / `GeoJsonGridDataset`; propiedades arbitrarias + config de etiqueta/peso    | **RUPTURA (interna)** | `DataFormatRouter`, `gridLens`                |
+| `approval.requested`             | sitio de emisión nuevo (escalación de `side_effects`); forma del payload SIN cambios              | ADITIVO               | `gateway.approval`, Studio                    |
+| `scripts/gen_corpus_ice.py`      | CLI `--raw-dir` + `$CHIMERA_ICE_RAW_DIR`; `IceSnapshotsMissingError`                              | ADITIVO               | quien re-derive el corpus                     |
+| `chimera_api.instance_verifiers` | corpus TFIM/tabular por `datasets:` del manifest en vez de rutas literales                        | INTERNO               | verificadores de claim                        |
+
+La única ruptura es interna al Studio (ningún contrato HTTP ni evento cambia de
+forma); los archivos que la sufrían se borraron en el mismo commit.
+
+### Handoff de F2 → sesión de control
+
+**Estado de las compuertas al cierre** (worktree `mejorado/cierre-plataforma`):
+ver el bloque de gates de cierre más abajo. **Nada pusheado**, por regla.
+
+#### 1 · Acciones que control DEBE ejecutar
+
+1. **Avisar a F1 que re-sincronice el venv** tras el merge:
+   `uv sync --locked --all-packages --all-extras`. `uv.lock` ganó la
+   declaración del extra `dwave` de `blite-cap-solvers` (#203). No resuelve
+   paquetes nuevos, pero el lock cambió.
+2. **Corregir `CLAUDE.md`**: el gotcha «Git NO corre hooks en worktrees» es
+   FALSO (#213.1). Los hooks corrieron en todos los commits de esta sesión.
+3. **Corregir el comando de pyright** que circula en los briefs: sin
+   `PYTHONPATH` al worktree da decenas de errores fantasma (#213.2).
+
+#### 2 · Fronteras detectadas y NO cruzadas (piden ceremonia o decisión)
+
+1. **`_ISLANDING_CORPUS_DIR` no puede moverse a `datasets:` hoy** (#208).
+   `DatasetSpec` exige `license` sin default y `GET /datasets` publica todo lo
+   que esté en `manifest.datasets`. Moverlo obligaría a fabricar una licencia o
+   a publicar lo que #167 decidió no publicar. Opción concreta para la
+   ceremonia: `DatasetSpec.unpublished: bool = False`, excluido del catálogo.
+2. **`RvspBaselines` sigue cerrado a `cpsat/greedy/gw`** (#211). Sumar `sa` es
+   la extensión coordinada C-15 y toca records sellados con digest en
+   `knowledge/rvsp/*.json`. No se tocó.
+3. **`capabilities/quantum` no declara `scikit-learn`/`xgboost`** (#212): le
+   llegan de rebote por los extras de `blite-cap-ml`. Es **el mismo caso que
+   G5** y Dylan ya fijó el criterio para ese (declarar + lockear), pero no lo
+   apliqué por mi cuenta a un paquete distinto. Hoy degrada con elegancia: sin
+   sklearn el brazo `mitigated` simplemente no se declara.
+4. **La fusión `ExternalImportStatement` + `McpToolImport`** (C-12) sigue
+   pendiente de ceremonia — heredada, no tocada.
+
+#### 3 · Deuda y observaciones honestas (no son bloqueos)
+
+1. **El umbral O7 de FPS sigue sin cerrar** (#206): lo medido es costo de
+   render/DOM en jsdom, no FPS de un compositor real. El número de deck.gl que
+   el umbral pide no existe todavía.
+2. **El brazo `zne` corre y no aparece en el panel** (#207): no emite
+   `cut_cost` porque su mejora no sobrevive al control negativo (#158-V). Es
+   correcto y documentado, pero el usuario ve 2 barras sin saber que un tercer
+   brazo corrió y fue rechazado. Representar «corrió, sin ciencia que mostrar»
+   es decisión de contrato, no un bug que arreglar de tapadita.
+3. **El run RAÍZ de una ablación nunca termina** (#207): queda `en_curso` con 1
+   evento, espejando a `scripts/run_ablation.py`. No se inventó un
+   `run.completed` para el raíz porque la spec solo exige que el cierre métrico
+   se DERIVE. Para el Studio es un run eternamente en curso.
+4. **No hay UI para configurar `labelProperty`/`weightProperty`** de un geojson
+   arbitrario (#206): el componente y el contrato ya lo soportan; falta la
+   pantalla.
+5. **`apps/studio/src/fixtures/ice/instancia.json` se conservó** (instancia
+   DERIVADA con digest pinneado, no geodata del portal). Defendible, pero sigue
+   siendo data de dominio bundleada para modo réplica: la regla de Dylan
+   (#201) la alcanza. Pregunta para F3, junto con el patrón `fixtures/` entero.
+6. **Residual de licencia del ICE ABIERTA** (#201): el fixture de ingesta
+   conserva los bytes verbatim del portal. `NOTICE` §2 lo declara. **No se
+   puede dar §2 por cerrado.**
+7. **G6 sin implementar por prioridad, no por bloqueo** (#204), con alcance ya
+   medido: 150-250 líneas + verificador, cubre ⟨ZᵢZᵢ₊₁⟩ pero no ⟨Zᵢ⟩.
+8. **M.4 de REGRID no aplica a esta formulación** (#210) y la etapa 2 de M.3 es
+   inerte para un Max-Cut puro. El código es fiel al paper; el hallazgo es del
+   algoritmo, no de la implementación.
