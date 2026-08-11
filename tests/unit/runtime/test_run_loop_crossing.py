@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from blite.events import create_event_store
+from blite.gateway.approval import ApprovalRequestedPayload
 from blite.gateway.crossing import RunCrossing, build_run_pipeline
 from blite.identity.identity import Identity
 from blite.runtime.content_store import InMemoryContentStore
@@ -39,6 +40,29 @@ class _EchoCapability:
         return {"doubled": inputs["x"] * 2}
 
 
+class _ExplodingExternalCapability:
+    """Doble con `side_effects="irreversible-external"` que SIEMPRE falla al
+    invocar — TAREA A (freeze §13): ejerce la escalación cuando la
+    invocación real ocurre DENTRO de `MediationStage`, no en el dispatch
+    directo de `loop.py` (los dos caminos de fallo de invocación)."""
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return CapabilityManifest(
+            id="cap.external",
+            description="generic test capability with external side effects",
+            input_schema={"type": "object"},
+            output_schema={"type": "object"},
+            side_effects="irreversible-external",
+            required_permission="capability:invoke",
+            interaction="request_response",
+        )
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        msg = "simulated external side-effect failure"
+        raise RuntimeError(msg)
+
+
 def _identity(permissions: frozenset[str]) -> Identity:
     return Identity(
         id="user:jwt-real",
@@ -48,10 +72,17 @@ def _identity(permissions: frozenset[str]) -> Identity:
     )
 
 
-def _run_with_crossing(permissions: frozenset[str]) -> tuple[Any, Any]:
+def _run_with_crossing(
+    permissions: frozenset[str],
+    *,
+    capability: Any = None,
+    capability_id: str = "cap.echo",
+) -> tuple[Any, Any]:
     store = create_event_store()
     content = InMemoryContentStore()
-    registry = EntryPointRegistry({"cap.echo": _EchoCapability()})
+    registry = EntryPointRegistry(
+        {capability_id: capability if capability is not None else _EchoCapability()}
+    )
     dispatcher = ProfileDispatcher()
     pipeline = build_run_pipeline(
         registry=registry, dispatcher=dispatcher, store=store, content=content
@@ -66,7 +97,7 @@ def _run_with_crossing(permissions: frozenset[str]) -> tuple[Any, Any]:
         domain_id="domain-a",
         max_steps=8,
         policy_digest="pol-digest-1",
-        capability_id="cap.echo",
+        capability_id=capability_id,
         inputs={"x": 21},
         crossing=RunCrossing(pipeline, _identity(permissions)),
     )
@@ -127,3 +158,31 @@ def test_rejection_mapea_a_step_failed_y_run_failed() -> None:
     assert row.status == "failed"
     # La capability jamás se despachó: cero capability.job.* en el rastro.
     assert not [e for e in events if e.type.startswith("capability.job.")]
+    # Rejection de authorization: la capability NUNCA se intentó — nada
+    # externo pasó, así que la escalación de §13 no aplica (TAREA A).
+    assert "approval.requested" not in [e.type for e in events]
+
+
+def test_mediation_failure_of_an_external_capability_escalates_to_a_human() -> None:
+    """TAREA A (freeze §13): con cruce inyectado, una invocación que
+    REALMENTE se intentó y falló llega como `CrossingRejected(stage=
+    "mediation")` (`MediationStage`, `blite/gateway/stages.py`) — no como
+    una excepción cruda. La escalación tiene que reconocer ESE `stage`,
+    no solo el camino de dispatch directo sin cruce."""
+    row, store = _run_with_crossing(
+        frozenset({"capability:invoke"}),
+        capability=_ExplodingExternalCapability(),
+        capability_id="cap.external",
+    )
+    events = store.read_stream("run-1")
+    types = [e.type for e in events]
+
+    assert row.status == "failed"
+    failed = events[-1]
+    assert failed.payload["error_kind"] == GATEWAY_REJECTION_ERROR_KIND
+    assert failed.payload["stage"] == "mediation"
+
+    assert "approval.requested" in types
+    escalation = next(e for e in events if e.type == "approval.requested")
+    payload = ApprovalRequestedPayload.model_validate(escalation.payload)
+    assert payload.run_id == "run-1"

@@ -10,11 +10,12 @@ Dispatcher (ADR-008); digests recuperables byte a byte vía ContentStore.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 
 from blite.events import create_event_store
+from blite.gateway.approval import ApprovalRequestedPayload
 from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.dispatch import ProfileDispatcher
 from blite.runtime.loop import MAX_STEPS_EXCEEDED, execute_run
@@ -50,8 +51,40 @@ class _EchoCapability:
         return {"doubled": inputs["x"] * 2}
 
 
+class _ExternalCapability:
+    """Doble genérico con `side_effects` externo (TAREA A, freeze §13 —
+    escalación de reintentos): dispara siempre, para ejercer el camino de
+    fallo de invocación con un `side_effects` distinto de `pure`."""
+
+    def __init__(
+        self, *, side_effects: Literal["reversible-external", "irreversible-external"]
+    ) -> None:
+        self._side_effects = side_effects
+        self.invocations = 0
+
+    @property
+    def manifest(self) -> CapabilityManifest:
+        return CapabilityManifest(
+            id="cap.external",
+            description="generic test capability with external side effects",
+            input_schema={"type": "object"},
+            output_schema={"type": "object"},
+            side_effects=self._side_effects,
+            required_permission="capability:invoke",
+            interaction="request_response",
+        )
+
+    def invoke(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        self.invocations += 1
+        msg = "simulated external side-effect failure"
+        raise RuntimeError(msg)
+
+
 def _run(
-    capability: _EchoCapability, *, max_steps: int = 8, capability_id: str = "cap.echo"
+    capability: _EchoCapability | _ExternalCapability,
+    *,
+    max_steps: int = 8,
+    capability_id: str = "cap.echo",
 ) -> tuple[Any, Any, Any]:
     store = create_event_store()
     content = InMemoryContentStore()
@@ -171,6 +204,52 @@ def test_capability_failure_is_recorded_with_submitted_before_the_job_failed() -
         "run.step.failed",
         "run.failed",
     ]
+    # freeze §13: `pure` se reintenta libre — NUNCA escala a humano. Sin esto
+    # un fallo `pure` sería indistinguible de uno externo en el rastro.
+    assert "approval.requested" not in types
+
+
+def test_irreversible_external_failure_escalates_to_a_human() -> None:
+    """freeze §13 (Reintentos e idempotencia): `irreversible-external` sin
+    idempotencia garantizada — el manifest hoy no declara ningún campo de
+    idempotencia, así que "sin garantía" es el estado de TODO side_effects
+    externo — NO tiene reintento automático en Fase 1: escala a humano. La
+    escalación reusa el par elicitation `approval.requested`/`approval.
+    responded` YA existente (A6), jamás un evento nuevo — un `run.failed`
+    externo deja de ser indistinguible de cualquier otro."""
+    row, store, _ = _run(_ExternalCapability(side_effects="irreversible-external"))
+
+    assert row.status == "failed"
+    assert row.error_kind == "RuntimeError"
+    events = store.read_stream("run-1")
+    types = [e.type for e in events]
+    # La escalación queda ENTRE el step fallido y el terminal — append-only,
+    # nunca reemplazada ni perdida.
+    assert types[-3:] == ["run.step.failed", "approval.requested", "run.failed"]
+
+    escalation = next(e for e in events if e.type == "approval.requested")
+    # Anti-drift (mismo patrón que test_agentic_loop.py): el dict emitido
+    # valida contra la forma congelada del wire, no solo "algo se emitió".
+    payload = ApprovalRequestedPayload.model_validate(escalation.payload)
+    assert payload.run_id == "run-1"
+    assert payload.step_id == "step-2"  # el step de invoke, no el de resolve
+
+
+def test_reversible_external_failure_escalates_to_a_human() -> None:
+    """Mismo contrato que el caso irreversible — freeze §13 no distingue
+    `reversible-external` de `irreversible-external` para la regla de
+    reintento: ambos carecen de idempotencia garantizada hoy."""
+    row, store, _ = _run(_ExternalCapability(side_effects="reversible-external"))
+
+    assert row.status == "failed"
+    events = store.read_stream("run-1")
+    types = [e.type for e in events]
+    assert "approval.requested" in types
+
+    escalation = next(e for e in events if e.type == "approval.requested")
+    payload = ApprovalRequestedPayload.model_validate(escalation.payload)
+    assert payload.run_id == "run-1"
+    assert payload.step_id == "step-2"
 
 
 def test_run_id_in_the_system_namespace_is_rejected_before_any_append() -> None:

@@ -91,6 +91,76 @@ GATEWAY_REJECTION_ERROR_KIND = "GatewayRejection"
 `stage`/`reason` como claves ADITIVAS del payload (freeze §3 no cierra el
 dict; la proyección solo lee `error_kind`)."""
 
+_MEDIATION_STAGE_NAME = "mediation"
+"""Literal DUPLICADO a propósito de `MediationStage.name` (`blite.gateway.
+stages`) — el contrato `layers` prohíbe importar el gateway desde el runtime
+(mismo caso que `CrossingRejected`, docstring de arriba). Un `CrossingRejected`
+con este `stage` es la ÚNICA forma en la que, con cruce inyectado, una
+invocación de capability REALMENTE intentó ejecutar y falló (las demás
+etapas — identity/authorization/guardrails/egress — cortan ANTES de que la
+capability corra: nada externo se intentó, así que la escalación de §13 no
+aplica ahí)."""
+
+_ESCALATION_SIDE_EFFECTS: frozenset[str] = frozenset(
+    {"reversible-external", "irreversible-external"}
+)
+"""freeze §13 «Reintentos e idempotencia»: `pure` se reintenta libre — jamás
+escala. `reversible-external`/`irreversible-external` **sin idempotencia
+garantizada** escalan a humano en vez de reintentar."""
+
+
+def _requires_human_escalation(side_effects: str) -> bool:
+    """¿Este `side_effects` escala a humano cuando su invocación falla?
+
+    freeze §13: la regla depende de "sin idempotencia garantizada". Hoy
+    `CapabilityManifest` (sdk/src/blite_capability/manifest.py) no declara
+    NINGÚN campo de idempotencia — el "mecanismo fino de idempotencia (keys
+    por step_id, verificación activa)" sigue "declarado como diseño de S-G
+    con dueño Steven", no construido. Sin ese campo, "sin garantía" es HOY
+    el estado de TODO `side_effects` externo, sin excepción — no hay nada
+    que este helper pueda consultar para decir lo contrario. Cuando ese
+    campo exista, este `if` es exactamente donde se lee."""
+    return side_effects in _ESCALATION_SIDE_EFFECTS
+
+
+def _escalation_requested_payload(
+    *,
+    run_id: str,
+    step_id: str,
+    capability_id: str,
+    side_effects: str,
+    error_kind: str,
+) -> dict[str, Any]:
+    """La forma EXACTA de `ApprovalRequestedPayload` (`blite.gateway.
+    approval` — no importable acá, contrato `layers`; un test anti-drift en
+    `tests/unit/runtime/test_run_loop.py` valida este dict contra aquel
+    modelo, mismo patrón que el `approval.requested` de A6 más abajo).
+
+    Reusa el par elicitation `approval.requested`/`approval.responded` YA
+    existente como canal de escalación — freeze §13 pide "escala a humano
+    (`human_expert` + override registrado antes, INV-4)", no un evento
+    nuevo: el humano que responda este request vía `authorize_approval_
+    response()` (`blite.gateway.approval`) es exactamente ese `human_expert`
+    (AL3). Que la respuesta autorice un reintento/override es la mitad
+    `approval.responded`+`OverridePayload` — frontera declarada (S-G,
+    mismo dueño que el mecanismo fino de idempotencia), no se implementa
+    acá: este helper solo hace que el fallo sea VISIBLE y auditable en vez
+    de un `run.failed` indistinguible."""
+    return {
+        "run_id": run_id,
+        "approval_id": f"escalation:{step_id}",
+        "json_schema": {"type": "boolean"},
+        "prompt": (
+            f"El step {step_id!r} de la capability {capability_id!r} "
+            f"(side_effects={side_effects!r}) falló: {error_kind}. Sin "
+            "idempotencia garantizada no hay reintento automático (freeze "
+            "§13) — requiere revisión de human_expert antes de cualquier "
+            "reintento u override (INV-4)."
+        ),
+        "step_id": step_id,
+    }
+
+
 _DEFAULT_MAX_TURNS = 30
 
 _RUNTIME_ACTOR = "service:runtime"
@@ -414,6 +484,23 @@ def _run_resolve_and_invoke(
             recorder.step_event(
                 "failed", invoke_step.model_copy(update={"status": "failed"})
             )
+            # Escalación (TAREA A, freeze §13): SOLO `stage == "mediation"` es
+            # una invocación de capability que REALMENTE se intentó y falló —
+            # las demás etapas cortan antes de que nada externo se intente
+            # (ver el docstring de `_MEDIATION_STAGE_NAME`).
+            if result.stage == _MEDIATION_STAGE_NAME and _requires_human_escalation(
+                capability.manifest.side_effects
+            ):
+                recorder.append(
+                    "approval.requested",
+                    _escalation_requested_payload(
+                        run_id=invoke_step.run_id,
+                        step_id=invoke_step.step_id,
+                        capability_id=capability_id,
+                        side_effects=capability.manifest.side_effects,
+                        error_kind=result.reason,
+                    ),
+                )
             return _TurnOutcome(
                 output_digest=None,
                 error_kind=GATEWAY_REJECTION_ERROR_KIND,
@@ -461,6 +548,21 @@ def _run_resolve_and_invoke(
         recorder.step_event(
             "failed", invoke_step.model_copy(update={"status": "failed"})
         )
+        # Escalación (TAREA A, freeze §13): la capability SE INVOCÓ (el
+        # `capability.job.submitted` de arriba ya lo probó) y su ejecución
+        # explotó — el mismo caso que `stage == "mediation"` del camino con
+        # cruce, sin cruce.
+        if _requires_human_escalation(capability.manifest.side_effects):
+            recorder.append(
+                "approval.requested",
+                _escalation_requested_payload(
+                    run_id=invoke_step.run_id,
+                    step_id=invoke_step.step_id,
+                    capability_id=capability_id,
+                    side_effects=capability.manifest.side_effects,
+                    error_kind=error_kind,
+                ),
+            )
         return _TurnOutcome(
             output_digest=None, error_kind=error_kind, step_id=invoke_step.step_id
         )
