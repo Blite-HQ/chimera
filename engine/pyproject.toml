@@ -9,7 +9,7 @@ license = { text = "MIT" }
 dependencies = [
     "blite-capability",
     "pydantic>=2.9",
-    "cryptography>=43",
+    "cryptography>=50.0.0",
     "pyyaml>=6.0",
     "fastapi>=0.139.2",
     "uvicorn[standard]>=0.51.0",
