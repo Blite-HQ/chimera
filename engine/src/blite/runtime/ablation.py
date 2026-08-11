@@ -142,15 +142,40 @@ def mitigated_energy_of(salida: Mapping[str, Any]) -> float | None:
     return None if valor is None else float(valor)
 
 
+_MITIGATED_METHOD = "ml-rf"
+"""El método que este brazo pide al productor (`blite.quantum.zne` con
+`method="ml-rf"` — V9, `blite_cap_quantum.corrector.PRIMARY_METHOD`). Debe
+coincidir con esa constante a mano: `blite` no puede importar `blite_cap_*`
+(ADR-008 — contrato `import-linter` "engine never imports capability
+packages"), así que esta réplica es la única forma de que `build_arms`
+declare el `method` correcto sin abrir ese import. Un test cruza ambos
+módulos para que no driften en silencio."""
+
+
+def _mitigated_producer_available() -> bool:
+    """Sonda liviana y SIN importar el paquete de capability (ADR-008): el
+    corrector aprendido necesita scikit-learn, que hoy es dependencia
+    OPCIONAL de `blite_cap_quantum` (no declarada en su pyproject — en este
+    workspace llega transitivamente al instalar `blite-cap-ml[sklearn]`).
+    `find_spec` confirma sin ejecutar el módulo — ni el de sklearn ni el de
+    la capability."""
+    import importlib.util
+
+    return importlib.util.find_spec("sklearn") is not None
+
+
 def build_arms(matrix: list[list[int]], *, layers: int, seed: int) -> list[AblationArm]:
-    """Los brazos con productor REAL. `mitigated` es V9 y no se declara —
-    un brazo declarado sin productor sería una barra vacía CON nombre, peor
-    que una barra ausente.
+    """Los brazos con productor REAL. `mitigated` (V9, corrector aprendido)
+    se declara SOLO si su dependencia óptima está instalada en tiempo de
+    ejecución (`_mitigated_producer_available`) — un brazo declarado sin
+    productor sería una barra vacía CON nombre, peor que una barra ausente,
+    la misma regla que ya aplicaba cuando `mitigated` no tenía productor en
+    absoluto.
 
     El caller NO elige brazos: este es el ÚNICO productor del set de
     variantes — ni el script ni el API (`chimera_api.runs`) exponen forma de
     pasar otra cosa."""
-    return [
+    arms = [
         AblationArm(
             variant="quantum",
             capability_id="blite.quantum.qaoa",
@@ -170,6 +195,21 @@ def build_arms(matrix: list[list[int]], *, layers: int, seed: int) -> list[Ablat
             cut_cost_from=mitigated_energy_of,
         ),
     ]
+    if _mitigated_producer_available():
+        arms.append(
+            AblationArm(
+                variant="mitigated",
+                capability_id="blite.quantum.zne",
+                inputs={
+                    "matrix": matrix,
+                    "layers": layers,
+                    "seed": seed,
+                    "method": _MITIGATED_METHOD,
+                },
+                cut_cost_from=mitigated_energy_of,
+            )
+        )
+    return arms
 
 
 def _arm_output(

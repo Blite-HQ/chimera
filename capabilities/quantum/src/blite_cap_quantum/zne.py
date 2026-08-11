@@ -303,7 +303,7 @@ def mitigation_block(
     }
 
 
-def _curve(
+def measured_curve(
     circuit: Any,
     matrix: list[list[float]],
     *,
@@ -312,14 +312,31 @@ def _curve(
     seed: int,
     shots: int,
     noise_model: Any,
+    optimization_level: int | None = None,
 ) -> list[float]:
-    """⟨C⟩ medido a cada factor de escala, con el plegado que se le pase."""
+    """⟨C⟩ medido a cada factor de escala, con el plegado que se le pase.
+
+    Pública (V9) a propósito: `blite_cap_quantum.corrector` mide la MISMA
+    curva (legítima y garbage) que este módulo usa para Richardson/lineal —
+    el corrector aprendido parte de la misma medición, nunca de una
+    reimplementación paralela que podría driftear de esta.
+
+    `optimization_level` (V9, aditivo — pasa tal cual a
+    `qaoa.sample_counts`; `None` no cambia el comportamiento de
+    `mitigate_expectation`, que no lo pasa).
+    """
     from blite_cap_quantum.qaoa import sample_counts, sampled_mean_cut
 
     energias: list[float] = []
     for escala in scales:
         plegado = fold(circuit, escala)
-        counts = sample_counts(plegado, seed=seed, shots=shots, noise_model=noise_model)
+        counts = sample_counts(
+            plegado,
+            seed=seed,
+            shots=shots,
+            noise_model=noise_model,
+            optimization_level=optimization_level,
+        )
         energias.append(sampled_mean_cut(counts, matrix))
     return energias
 
@@ -382,7 +399,7 @@ def mitigate_expectation(  # noqa: PLR0913 — el experimento ES la suma de esto
     def _basura(circuito: Any, escala: int) -> Any:
         return fold_garbage(circuito, escala, seed=seed)
 
-    medidas = _curve(
+    medidas = measured_curve(
         preparation.circuit,
         preparation.matrix,
         scales=scales,
@@ -391,7 +408,7 @@ def mitigate_expectation(  # noqa: PLR0913 — el experimento ES la suma de esto
         shots=shots,
         noise_model=noise_model,
     )
-    control = _curve(
+    control = measured_curve(
         preparation.circuit,
         preparation.matrix,
         scales=scales,

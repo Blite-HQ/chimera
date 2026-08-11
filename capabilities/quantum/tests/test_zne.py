@@ -429,6 +429,80 @@ class TestSuperficieDeLaCapability:
             ZeroNoiseExtrapolation().invoke({"matrix": _G6, "scale_factors": []})
 
 
+class TestMethodMlRf:
+    """V9 — extiende la MISMA capability (`blite.quantum.zne`) con un
+    `method` alterno en vez de un entry point nuevo (censo de la tarea: el
+    gate de agnosticismo lee entry points INSTALADOS y no vería una
+    capability nueva sin reinstalar)."""
+
+    def test_zne_digital_sigue_siendo_el_default_sin_cambio_de_comportamiento(
+        self,
+    ) -> None:
+        """No-regresión explícita: el brazo `zne` existente no pasa
+        `method`, así que tiene que seguir cayendo en la rama ZNE de
+        siempre."""
+        from blite_cap_quantum import ZeroNoiseExtrapolation
+
+        resultado = ZeroNoiseExtrapolation().invoke(
+            {"matrix": _G6, "layers": 1, "seed": 1, "shots": 256}
+        )
+
+        assert resultado["mitigation"]["method"] == "zne-digital"
+        assert resultado["mitigation"]["training_digest"] is None
+
+    def test_method_ml_rf_produce_un_training_digest_real(self) -> None:
+        pytest.importorskip("sklearn")
+        from blite_cap_quantum import ZeroNoiseExtrapolation
+
+        resultado = ZeroNoiseExtrapolation().invoke(
+            {"matrix": _G6, "method": "ml-rf", "layers": 1, "seed": 1, "shots": 256}
+        )
+
+        assert resultado["mitigation"]["method"] == "ml-rf"
+        assert resultado["mitigation"]["training_digest"] is not None
+        assert len(resultado["mitigation"]["training_digest"]) == 64
+        assert isinstance(resultado["improvement_survives_control"], bool)
+
+    def test_method_desconocido_explota(self) -> None:
+        from blite_cap_quantum import ZeroNoiseExtrapolation
+
+        with pytest.raises(ValueError, match="method"):
+            ZeroNoiseExtrapolation().invoke({"matrix": _G6, "method": "bogus"})
+
+    def test_parametros_de_zne_con_method_ml_explotan(self) -> None:
+        """`scale_factors`/`extrapolator`/`initial_angles` son de la
+        extrapolación clásica — pasarlos junto con un `method` de ML no se
+        ignora en silencio."""
+        pytest.importorskip("sklearn")
+        from blite_cap_quantum import ZeroNoiseExtrapolation
+
+        with pytest.raises(ValueError, match="scale_factors"):
+            ZeroNoiseExtrapolation().invoke(
+                {"matrix": _G6, "method": "ml-rf", "scale_factors": [1, 3, 5]}
+            )
+
+    def test_method_ml_rf_es_determinista_entre_invocaciones(self) -> None:
+        pytest.importorskip("sklearn")
+        from blite_cap_quantum import ZeroNoiseExtrapolation
+
+        tool = ZeroNoiseExtrapolation()
+        inputs = {
+            "matrix": _G6,
+            "method": "ml-rf",
+            "layers": 1,
+            "seed": 1,
+            "shots": 256,
+        }
+
+        r1 = tool.invoke(inputs)
+        r2 = tool.invoke(inputs)
+
+        assert r1["mitigated_energy"] == r2["mitigated_energy"]
+        assert (
+            r1["mitigation"]["training_digest"] == r2["mitigation"]["training_digest"]
+        )
+
+
 class TestGenericitySelfCheck:
     """ADR-029: el gate del repo lee entry points INSTALADOS y no verá esta
     capability hasta un reinstall — esta aserción local es la que cubre en

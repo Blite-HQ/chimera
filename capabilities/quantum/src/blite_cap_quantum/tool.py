@@ -494,15 +494,28 @@ class FidelityKernel:
 _ZNE_MANIFEST = CapabilityManifest(
     id="blite.quantum.zne",
     description=(
-        "Estimate a noise-free expectation value by digital zero-noise "
-        "extrapolation: run the circuit at amplified noise levels via unitary "
-        "folding and extrapolate to zero, together with an equal-cost "
-        "negative control that says whether the improvement is real."
+        "Estimate a noise-free expectation value either by digital "
+        "zero-noise extrapolation (unitary folding + polynomial "
+        "extrapolation) or by a learned corrector (ensemble regression "
+        "trained on a separate, disjoint corpus), together with an "
+        "equal-cost negative control that says whether the improvement is "
+        "real."
     ),
     input_schema={
         "type": "object",
         "properties": {
             "matrix": {"type": "array", "description": "QUBO coefficient matrix"},
+            "method": {
+                "type": "string",
+                "enum": ["zne-digital", "ml-rf", "ml-gbm"],
+                "default": "zne-digital",
+                "description": (
+                    "zne-digital: unitary folding + extrapolation, trains "
+                    "nothing. ml-rf/ml-gbm: a corrector regression model "
+                    "fit on a held-out synthetic corpus, evaluated on "
+                    "instances it never trained on."
+                ),
+            },
             "layers": {"type": "integer", "default": 1},
             "seed": {"type": "integer", "default": 1},
             "initial_angles": {
@@ -666,6 +679,57 @@ class ZeroNoiseExtrapolation:
             ) from exc
 
     def _invoke_impl(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        from blite_cap_quantum.zne import MITIGATION_METHOD
+
+        method = inputs.get("method", MITIGATION_METHOD)
+        if not isinstance(method, str):
+            msg = f"ZeroNoiseExtrapolation: method debe ser texto, no {method!r}"
+            raise ValueError(msg)
+        if method == MITIGATION_METHOD:
+            return self._invoke_zne_digital(inputs)
+        return self._invoke_learned_corrector(inputs, method=method)
+
+    def _invoke_learned_corrector(
+        self, inputs: dict[str, Any], *, method: str
+    ) -> dict[str, Any]:
+        """`method` en {`ml-rf`, `ml-gbm`} (V9) — corrector APRENDIDO, nunca
+        ZNE. `initial_angles`/`scale_factors`/`extrapolator` son parámetros
+        de la extrapolación clásica y no aplican acá: un llamante que los
+        manda junto con un `method` de ML los está pasando por error, no
+        pidiendo algo que este productor pueda cumplir en silencio."""
+        from blite_cap_quantum.corrector import ML_METHODS, correct_expectation
+
+        if method not in ML_METHODS:
+            msg = (
+                f"ZeroNoiseExtrapolation: method debe ser uno de "
+                f"{('zne-digital', *ML_METHODS)}, no {method!r}"
+            )
+            raise ValueError(msg)
+        ajenos = sorted(
+            set(inputs) & {"initial_angles", "scale_factors", "extrapolator"}
+        )
+        if ajenos:
+            msg = (
+                f"ZeroNoiseExtrapolation: {ajenos} son parámetros de "
+                f"zne-digital y no aplican con method={method!r}"
+            )
+            raise ValueError(msg)
+        optimize = inputs.get("optimize", True)
+        if not isinstance(optimize, bool):
+            msg = f"ZeroNoiseExtrapolation: optimize debe ser booleano, no {optimize!r}"
+            raise ValueError(msg)
+        return correct_expectation(
+            inputs.get("matrix"),
+            method=method,
+            layers=int(inputs.get("layers", 1)),
+            seed=int(inputs.get("seed", 1)),
+            optimize=optimize,
+            one_qubit_noise=float(inputs.get("one_qubit_noise", 0.002)),
+            two_qubit_noise=float(inputs.get("two_qubit_noise", 0.02)),
+            shots=int(inputs.get("shots", 2048)),
+        )
+
+    def _invoke_zne_digital(self, inputs: dict[str, Any]) -> dict[str, Any]:
         from blite_cap_quantum.zne import (
             DEFAULT_SCALE_FACTORS,
             EXTRAPOLATOR_RICHARDSON,

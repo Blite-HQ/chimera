@@ -398,13 +398,28 @@ def prepare_circuit(  # noqa: PLR0913 — misma superficie de arranque que `solv
 
 
 def sample_counts(
-    circuit: Any, *, seed: int, shots: int = _SHOTS, noise_model: Any = None
+    circuit: Any,
+    *,
+    seed: int,
+    shots: int = _SHOTS,
+    noise_model: Any = None,
+    optimization_level: int | None = None,
 ) -> dict[str, int]:
     """Mide el circuito en Aer con la seed pinneada (freeze §15.4).
 
     `noise_model` (V4/M6) es el modo demostración honesto: ruido LOCAL
     declarado con digest, jamás presentado como el del emulador del evento.
     `None` = ideal.
+
+    `optimization_level` (V9, aditivo — `None` deja `transpile()` en su
+    default de siempre, cero cambio de comportamiento para los llamantes que
+    no lo pasan): las pasadas de layout/routing del nivel por defecto (SABRE)
+    NO son perfectamente reproducibles entre llamadas con el MISMO
+    `seed_transpiler` — verificado en la exploración de V9 (hasta 2 circuitos
+    compilados distintos en 8 llamadas idénticas, mismo circuito, mismo
+    seed). `optimization_level=0` evita esas pasadas estocásticas; es lo que
+    `blite_cap_quantum.corrector` pide cuando necesita determinismo
+    bit-a-bit para el `training_digest`.
     """
     from qiskit import transpile
     from qiskit_aer import AerSimulator
@@ -412,7 +427,10 @@ def sample_counts(
     medido = circuit.copy()
     medido.measure_all()
     simulator = AerSimulator(seed_simulator=seed, noise_model=noise_model)
-    compiled = transpile(medido, simulator, seed_transpiler=seed)
+    transpile_kwargs: dict[str, Any] = {"seed_transpiler": seed}
+    if optimization_level is not None:
+        transpile_kwargs["optimization_level"] = optimization_level
+    compiled = transpile(medido, simulator, **transpile_kwargs)
     return cast(
         "dict[str, int]", simulator.run(compiled, shots=shots).result().get_counts()
     )

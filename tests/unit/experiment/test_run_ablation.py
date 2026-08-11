@@ -118,21 +118,40 @@ class TestExtraccionSinDrift:
 
 
 class TestBrazosDeclarados:
-    def test_declara_los_tres_que_tienen_productor_real(self) -> None:
+    def test_declara_los_cuatro_que_tienen_productor_real(self) -> None:
+        """V9 le dio productor a `mitigated` (`blite.quantum.zne` con
+        `method="ml-rf"`) — declarado cuando sklearn está instalado, que es
+        el caso de este entorno de test."""
+        # Act
+        brazos = prod.build_arms([[1, -1], [-1, 1]], layers=1, seed=1)
+
+        # Assert
+        assert [b.variant for b in brazos] == [
+            "quantum",
+            "classical",
+            "zne",
+            "mitigated",
+        ]
+        mitigado = next(b for b in brazos if b.variant == "mitigated")
+        assert mitigado.capability_id == "blite.quantum.zne"
+        assert mitigado.inputs["method"] == "ml-rf"
+
+    def test_no_declara_mitigated_sin_su_productor(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Un brazo declarado sin productor sería una barra vacía CON nombre
+        — peor que una barra ausente, porque anuncia una comparación que no
+        ocurrió. Simula la ausencia de sklearn sin desinstalarlo de verdad."""
+        # Arrange
+        from blite.runtime import ablation as motor
+
+        monkeypatch.setattr(motor, "_mitigated_producer_available", lambda: False)
+
         # Act
         brazos = prod.build_arms([[1, -1], [-1, 1]], layers=1, seed=1)
 
         # Assert
         assert [b.variant for b in brazos] == ["quantum", "classical", "zne"]
-
-    def test_no_declara_mitigated_porque_su_productor_es_v9(self) -> None:
-        """Un brazo declarado sin productor sería una barra vacía CON nombre —
-        peor que una barra ausente, porque anuncia una comparación que no
-        ocurrió."""
-        # Act
-        brazos = prod.build_arms([[1, -1], [-1, 1]], layers=1, seed=1)
-
-        # Assert
         assert "mitigated" not in {b.variant for b in brazos}
 
     def test_ningun_brazo_declara_su_costo_por_adelantado(self) -> None:

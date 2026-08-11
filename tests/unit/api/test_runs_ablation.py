@@ -95,10 +95,11 @@ class _FakeZne:
 
 
 def _make_ablation_registry() -> EntryPointRegistry:
-    """Registry hermético que SÍ resuelve los 3 `capability_id` que
-    `build_arms` declara — a diferencia del registry por defecto de
-    `test_runs.py` (`cap.echo`/`cap.mission-echo`), que deliberadamente no
-    los conoce."""
+    """Registry hermético que SÍ resuelve los `capability_id` que
+    `build_arms` declara (`blite.quantum.zne` sirve tanto al brazo `zne`
+    como a `mitigated` — V9, mismo `capability_id`, `method` distinto) — a
+    diferencia del registry por defecto de `test_runs.py`
+    (`cap.echo`/`cap.mission-echo`), que deliberadamente no los conoce."""
     return EntryPointRegistry(
         {
             "blite.quantum.qaoa": _FakeQaoa(),
@@ -198,12 +199,13 @@ class TestAblacionArrancaComoSubRuns:
         # streams anidados).
         raiz = store.read_stream(run_id)
         assert raiz[0].type == "run.created"
-        assert len(_sub_run_ids_of(store, run_id)) == 3
+        assert len(_sub_run_ids_of(store, run_id)) == 4
 
-    def test_get_ablation_del_raiz_agrega_las_filas_de_los_tres_brazos(self) -> None:
+    def test_get_ablation_del_raiz_agrega_las_filas_de_los_cuatro_brazos(self) -> None:
         """El set de variantes lo produce LA REGLA (`build_arms`), no el
-        caller: el body no trae forma de pedir un subconjunto, y estas son
-        SIEMPRE las tres declaradas con productor real."""
+        caller: el body no trae forma de pedir un subconjunto. V9 le dio
+        productor a `mitigated` — con sklearn instalado (este entorno) son
+        SIEMPRE las cuatro declaradas con productor real."""
         # Arrange
         store = create_event_store()
         client = _make_client(store, registry=_make_ablation_registry())
@@ -217,10 +219,10 @@ class TestAblacionArrancaComoSubRuns:
         # Assert
         assert sorted(fila["variant"] for fila in panel) == [
             "classical",
+            "mitigated",
             "quantum",
             "zne",
         ]
-        assert "mitigated" not in {fila["variant"] for fila in panel}
         for fila in panel:
             assert isinstance(fila["cut_cost"], float)
 
@@ -340,7 +342,7 @@ class TestFailLoudInstanciaDesconocida:
 
     def test_instancia_desconocida_no_deja_sub_runs_colgados(self) -> None:
         """Sin matriz no hay con qué construir brazos — cero sub-runs, no
-        tres sub-runs a medio arrancar."""
+        cuatro sub-runs a medio arrancar."""
         # Arrange
         store = create_event_store()
         client = _make_client(store, registry=_make_ablation_registry())
@@ -378,7 +380,7 @@ class TestCapabilityDelRegistryDelApi:
         assert response.status_code == 202
         run_id = response.json()["run_id"]
         sub_run_ids = _sub_run_ids_of(store, run_id)
-        assert len(sub_run_ids) == 3
+        assert len(sub_run_ids) == 4
         for sub_run_id in sub_run_ids:
             tipos = [e.type for e in store.read_stream(sub_run_id)]
             assert "run.failed" in tipos
