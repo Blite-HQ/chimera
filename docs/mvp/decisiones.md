@@ -5073,3 +5073,42 @@ selector de proyecto vivo, y **P10 verificado VIVO** (abierto desde 2026-08-04).
    `router.test.tsx` usa `routeTree.addChildren([])` y TanStack Router **muta en
    sitio**, dejando el singleton vacío para el resto del archivo; ese test además
    pasa de forma vacua. No se tocó.
+
+### #189 — P8 cerrado: la marca de Chimera es un racimo, y el acento es violeta
+
+Estaba abierto desde el handoff P-ui («BLOQUEADO-POR-DYLAN») y desbloqueado en #175.
+Dylan reencuadró el ítem: no era el logo de un producto, era **definir el estilo
+propio de Blite**. La propuesta completa se entregó aparte; acá quedan las dos
+decisiones que tocan este repo.
+
+**El acento pasa de turquesa a violeta** (`violet-700` claro / `violet-400` oscuro,
+misma regla de pasos que el resto del sistema). Razón, y no es de gusto: se
+investigaron **14 plataformas** (AWS, Azure, GCP, Vercel, Cloudflare, Supabase,
+Netlify, Render, Railway, Anthropic, OpenAI, Hugging Face, Microsoft Foundry,
+Databricks) parseando sus paquetes de iconos oficiales. Dos resultados mandan acá:
+
+1. **La categoría de Chimera es AGENTES, no «verificación».** «Verificación y
+   confianza» **no existe como categoría de primer nivel en ninguna** de las 14 —
+   negativo verificado, no asumido. Se reparte entre _Evaluation_, _Observability_ y
+   _Compliance_ (portal legal, fuera del producto). La verificación es el FEATURE
+   diferenciador de Chimera, no su clasificación. Corrección de Dylan, confirmada
+   por fuente.
+2. **El violeta es la convención de esa familia**, y el design system de Blite
+   (`blite-ui`) ya se lo había asignado a Chimera. Deja de ser «provisional».
+
+**El logomark deja de ser tres barras.** El anterior reutilizaba la geometría del
+glifo de datos `AssuranceScale`: el usuario veía tres barras en el sidebar y tres
+barras en cada badge de confianza, así que **la marca dejaba de leerse como marca**.
+El racimo —núcleo acentuado + anillo de seis medianos + seis pequeños— la separa del
+dato. Variante compacta (núcleo + anillo) para 16 px y favicon. Supersede registrado
+en `DESIGN.md` §1/§2/§4/§7/§9 con la convención de reobra del propio documento.
+
+**Frontera encontrada al aplicarlo:** `--ring` está declarado como línea propia con el
+mismo valor que `--brand`, no como `var(--brand)`. Moviendo solo `--brand`, el anillo
+de foco quedaba turquesa contra una marca violeta — acento partido en dos. Se movieron
+ambos, y queda anotado por si alguien quiere desacoplarlos a propósito.
+
+Gates: studio **354 passed / 35 files**, eslint 0, tsc 0, `arch` 0 violaciones,
+docs y format limpios. Cero hex fuera de `index.css` salvo el favicon, que es un
+documento SVG suelto y no puede leer custom properties (excepción que el archivo
+anterior ya declaraba para sí mismo).
