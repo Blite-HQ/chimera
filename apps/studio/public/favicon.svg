@@ -1,10 +1,18 @@
-<!-- Logomark Chimera (DESIGN.md §7): la progresión de clases de verificación
-     (niveles AL) reducida a tres barras descendentes en turquesa (teal-400)
-     sobre el neutro oscuro del chasis Blite. Asset de marca: único lugar
-     (junto a BrandMark) donde el hex es legal. -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="7" fill="#171717" />
-  <rect x="6" y="7" width="5.5" height="18" rx="1.5" fill="#2DD4BF" />
-  <rect x="13.25" y="13" width="5.5" height="12" rx="1.5" fill="#2DD4BF" />
-  <rect x="20.5" y="19" width="5.5" height="6" rx="1.5" fill="#2DD4BF" />
+<!-- Logomark Chimera (DESIGN.md §7), variante compacta: el racimo de
+     BrandMark.tsx reducido a núcleo + los seis medianos (a 16-32px los seis
+     pequeños quedan bajo 1px y son ruido). Núcleo en violeta, equivalente
+     sRGB del token de marca oscuro oklch(0.702 0.183 293.541); anillo en
+     blanco (tinta) sobre el neutro oscuro del chasis Blite. Este SVG es un
+     documento aparte que no puede leer los custom properties de index.css,
+     así que — junto con BrandMark, que sí consume el token vía CSS — es el
+     único lugar donde el color va hardcodeado. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <rect width="24" height="24" rx="5" fill="#171717" />
+  <circle cx="19.18" cy="13.01" r="2.7" fill="#FFFFFF" />
+  <circle cx="14.60" cy="18.44" r="2.4" fill="#FFFFFF" />
+  <circle cx="7.21" cy="17.71" r="2.9" fill="#FFFFFF" />
+  <circle cx="5.06" cy="10.78" r="2.5" fill="#FFFFFF" />
+  <circle cx="9.25" cy="5.18" r="2.8" fill="#FFFFFF" />
+  <circle cx="16.40" cy="6.75" r="2.3" fill="#FFFFFF" />
+  <circle cx="12" cy="12" r="4" fill="#A684FF" />
 </svg>
