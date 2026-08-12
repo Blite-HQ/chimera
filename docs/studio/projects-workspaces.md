@@ -40,12 +40,18 @@ ninguna base. Lo único que existe es un **segmento de la URL** del Studio:
 definitiva (decidida en F2a para no reescribir rutas después), pero `:ws` hoy es
 una constante, no un dato que salga de ningún lado.
 
-Frontera conocida y NO tocada por F1.1: `DEFAULT_PROJECT` del mismo router sigue
-siendo el literal `'islanding-ieee14'` (declarado como excepción doctrinal en
-`tests/invariants/agnosticism_exceptions.toml`, entrada `apps/studio/src/router.tsx`)
-— un default de FRONTEND que no coincide con el `id="default"` que el backend
-siembra ahora. Nadie los concilia todavía; ese trabajo es de quien persista
-`workspace` de verdad (ver abajo), no de este ítem.
+`DEFAULT_PROJECT` ya está conciliado: vale `'default'`, el mismo `id` que el
+backend siembra en cada arranque. Antes era el literal `'islanding-ieee14'` —
+un default de FRONTEND que nombraba un caso de uso concreto en el código y que
+además no existía en la base. Se cerró junto con el selector por la decisión
+del ledger #173.1 (los datos de un caso de uso son material de prueba, jamás un
+activo del producto) y porque un default que apunta a una fila inexistente rompe
+el arranque limpio.
+
+Frontera que SÍ queda abierta: el Studio todavía no manda `project_id` al crear
+un run (`apps/studio/src/data/mutations.ts`), aunque el API ya valida esa FK y
+responde 422 si no la reconoce. El selector cambia de proyecto en la URL, pero
+los runs que se creen desde ahí no quedan atribuidos al proyecto.
 
 ## Qué implicaría persistir `workspace`
 
