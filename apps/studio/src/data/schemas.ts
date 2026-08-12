@@ -16,6 +16,7 @@ import type {
   Attestation,
   EventAssurance,
   KnowledgeClaim,
+  Project,
   ProjectArtifact,
   ProjectedEvent,
   RunSummary,
@@ -251,6 +252,30 @@ export const meWireSchema = z.object({
 });
 
 export type Me = z.infer<typeof meWireSchema>;
+
+/**
+ * F1.1 (ceremonia #176, `docs/studio/projects-workspaces.md`) — espejo de
+ * `GET /projects` / `POST /projects` (`docs/specs/endpoints-studio.md`
+ * §"GET/POST /projects"): `{id, domain_id, name, created_at}[]`. `id` es el
+ * slug validado en el server (`^[a-z0-9][a-z0-9-]{0,62}$`) — se re-valida
+ * acá, misma regla que el resto de la frontera: un wire externo se confirma,
+ * no se asume.
+ */
+export const projectWireSchema = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/),
+  domain_id: z.string().min(1),
+  name: z.string().min(1),
+  created_at: z.string().min(1)
+});
+
+export function toProject(wire: z.infer<typeof projectWireSchema>): Project {
+  return {
+    id: wire.id,
+    domainId: wire.domain_id,
+    name: wire.name,
+    createdAt: wire.created_at
+  };
+}
 
 /**
  * P10/M24 — espejo de `GET /files` (`chimera_api.files`). El `digest` es la

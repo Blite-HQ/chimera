@@ -19,6 +19,7 @@ import {
   getMe,
   getProjectArtifacts,
   getProjectKnowledge,
+  getProjects,
   getRuns,
   getRvsp,
   getStepEvidence,
@@ -37,6 +38,7 @@ import {
   ablationWireSchema,
   meWireSchema,
   projectFileWireSchema,
+  projectWireSchema,
   certificateBundleWireSchema,
   knowledgeClaimWireSchema,
   projectArtifactWireSchema,
@@ -50,6 +52,7 @@ import {
   topologySnapshotSchema,
   toRvsPExperiment,
   toKnowledgeClaim,
+  toProject,
   toProjectArtifact,
   toRunSummary,
   toStepDetail,
@@ -61,6 +64,7 @@ import type {
   AblationMetric,
   DsseEnvelope,
   KnowledgeClaim,
+  Project,
   ProjectArtifact,
   ProjectedEvent,
   RunSummary,
@@ -422,6 +426,26 @@ export async function loadMe(): Promise<Me | null> {
 
 export function meQueryOptions() {
   return queryOptions({ queryKey: ['me'] as const, queryFn: loadMe });
+}
+
+/**
+ * F1.1 (ceremonia #176) — proyectos del dominio de la identidad
+ * (`GET /projects`). En réplica no hay servidor a quien preguntarle: `[]`
+ * honesto, mismo patrón que `loadFiles`/`loadMe` — el selector del sidebar
+ * (`AppShell.ProjectPicker`) ya no dibuja nada con menos de dos proyectos,
+ * así que una réplica de un solo proyecto implícito se sigue viendo igual.
+ */
+export async function loadProjects(): Promise<readonly Project[]> {
+  if (!isLiveMode()) return [];
+  const res = await getProjects();
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudieron obtener los proyectos');
+  }
+  return z.array(projectWireSchema).parse(res.data).map(toProject);
+}
+
+export function projectsQueryOptions() {
+  return queryOptions({ queryKey: ['projects'] as const, queryFn: loadProjects });
 }
 
 /**

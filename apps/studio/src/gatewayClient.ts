@@ -340,6 +340,18 @@ export function fileDownloadUrl(digest: string): string {
 }
 
 /**
+ * F1.1 — `GET {VITE_API_URL}/projects` (ceremonia #176,
+ * `docs/specs/endpoints-studio.md` §"GET/POST /projects"): los proyectos del
+ * DOMINIO de la identidad que pregunta — `domain_id` sale de la sesión en
+ * el server, jamás de un parámetro acá (mismo patrón que `/files`, SO2).
+ * Único lugar del Studio que hace este GET (INV-1); el schema Zod + el
+ * mapeo a `Project` viven en data/schemas.ts + data/queries.ts, no acá.
+ */
+export async function getProjects(): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/projects`);
+}
+
+/**
  * D3 — `GET {VITE_API_URL}/runs` (endpoints-studio.md tabla, fila 1):
  * `RunSummary[]` wire snake_case. Único lugar del Studio que hace este GET
  * (INV-1); la validación Zod + el mapeo a `RunSummary` viven en

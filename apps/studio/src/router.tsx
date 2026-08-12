@@ -25,7 +25,7 @@ import {
   SECTIONS
 } from './screens';
 import { isLiveMode } from './data/env';
-import { meQueryOptions } from './data/queries';
+import { meQueryOptions, projectsQueryOptions } from './data/queries';
 
 /**
  * Router del Studio (P7/M17) — **TanStack Router**, decidido con Dylan
@@ -48,9 +48,18 @@ import { meQueryOptions } from './data/queries';
  * cuelgan de `/w/…`, que el bloque `try_files … /index.html` sí sirve.
  */
 
-/** Defaults hasta que P6/M15 traiga workspaces y projects reales. */
+/**
+ * Defaults hasta que persistir `workspace` (`docs/studio/projects-workspaces.md`
+ * §"Qué implicaría persistir workspace") traiga workspaces reales.
+ *
+ * `DEFAULT_PROJECT` — F1.1 (ceremonia #176): antes era `'islanding-ieee14'`,
+ * un caso de uso nombrado en código (contra la decisión #173.1). Ahora
+ * coincide con el proyecto neutro que el bootstrap del api siembra siempre
+ * (`chimera_api.projects.ensure_default_project`, `id="default"`) — el
+ * mismo id que `GET /projects` devuelve en cualquier despliegue nuevo.
+ */
 export const DEFAULT_WORKSPACE = 'local';
-export const DEFAULT_PROJECT = 'islanding-ieee14';
+export const DEFAULT_PROJECT = 'default';
 
 /** Tab por defecto de un run: la conversación (D6, decisión #93). */
 const DEFAULT_TAB = 'hilo';
@@ -81,10 +90,18 @@ function ProjectLayout(): React.ReactElement {
   // P6 — quién opera sale del API, no de una constante: el bloque de usuario
   // muestra la MISMA identidad que quedará en `actor_id` de los eventos.
   const me = useQuery(meQueryOptions()).data;
+  // F1.1 — proyectos reales del dominio (`GET /projects`). En réplica llega
+  // `[]` (loadProjects, honest-empty): AppShell ya sabe no dibujar un
+  // selector con menos de dos, así que no hace falta ramificar acá.
+  const projects = useQuery(projectsQueryOptions()).data;
 
   return (
     <AppShell
       projectName={proj}
+      projects={projects}
+      onProjectChange={siguienteProj =>
+        void navigate({ to: `/w/$ws/p/$proj/${section}`, params: { ws, proj: siguienteProj } })
+      }
       {...(me !== null &&
         me !== undefined && { user: { id: me.id, label: me.id.split(':')[1] ?? me.id } })}
       sections={SECTIONS}

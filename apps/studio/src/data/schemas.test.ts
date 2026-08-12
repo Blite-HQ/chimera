@@ -23,6 +23,7 @@ import {
   planItemUpdatedSchema,
   projectArtifactWireSchema,
   projectedEventSchema,
+  projectWireSchema,
   runSummaryWireSchema,
   rvspSchema,
   sseProjectedEventSchema,
@@ -31,6 +32,7 @@ import {
   stepDetailWireSchema,
   toAblationMetric,
   toKnowledgeClaim,
+  toProject,
   toProjectArtifact,
   toProjectedEvent,
   toRunSummary,
@@ -235,6 +237,33 @@ describe('runSummaryWireSchema / toRunSummary (D3 — GET /runs)', () => {
   it.each(['fallido', 'cancelado'] as const)('acepta status=%s (extensión aditiva)', status => {
     const wire = runSummaryWireSchema.parse({ ...WIRE, status });
     expect(toRunSummary(wire)).toMatchObject({ status });
+  });
+});
+
+describe('projectWireSchema / toProject (F1.1 — GET /projects)', () => {
+  const WIRE = {
+    id: 'default',
+    domain_id: 'domain-default',
+    name: 'Proyecto por defecto',
+    created_at: '2026-08-11T00:00:00.000000Z'
+  };
+
+  it('parsea el wire y lo mapea a camelCase', () => {
+    const wire = projectWireSchema.parse(WIRE);
+    expect(toProject(wire)).toEqual({
+      id: 'default',
+      domainId: 'domain-default',
+      name: 'Proyecto por defecto',
+      createdAt: '2026-08-11T00:00:00.000000Z'
+    });
+  });
+
+  it('acepta un slug con guiones y dígitos (^[a-z0-9][a-z0-9-]{0,62}$)', () => {
+    expect(() => projectWireSchema.parse({ ...WIRE, id: 'mi-investigacion-2' })).not.toThrow();
+  });
+
+  it('rechaza un id que no matchea el slug del contrato (mayúsculas, espacios)', () => {
+    expect(() => projectWireSchema.parse({ ...WIRE, id: 'Mi Proyecto' })).toThrow();
   });
 });
 

@@ -5,6 +5,7 @@ import {
   getArtifacts,
   getCertificate,
   getKnowledge,
+  getProjects,
   getRuns,
   getStepEvidence,
   openRunEventStream,
@@ -240,6 +241,73 @@ describe('getRuns', () => {
 
     // Act
     const result = await getRuns();
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+    expect(result.data).toBeNull();
+  });
+});
+
+/**
+ * F1.1 (ceremonia #176) — `GET /projects`, mismo patrón AAA que `getRuns`.
+ */
+describe('getProjects', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('envía GET a {VITE_API_URL}/projects y devuelve el wire crudo como data', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = [
+      {
+        id: 'default',
+        domain_id: 'domain-default',
+        name: 'Proyecto por defecto',
+        created_at: '2026-08-11T00:00:00.000000Z'
+      }
+    ];
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => wire
+    } as Response);
+
+    // Act
+    const result = await getProjects();
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/projects', {
+      credentials: 'include'
+    });
+    expect(result).toEqual({ success: true, data: wire, error: null });
+  });
+
+  it('devuelve error cuando la respuesta no es OK', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable'
+    } as Response);
+
+    // Act
+    const result = await getProjects();
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('503');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    // Act
+    const result = await getProjects();
 
     // Assert
     expect(result.success).toBe(false);
