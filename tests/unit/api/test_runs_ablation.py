@@ -28,6 +28,7 @@ from blite.events import create_event_store
 from blite.events.store import EventStore
 from blite.runtime.registry import EntryPointRegistry
 from blite_capability.manifest import CapabilityManifest
+from tests.conftest import authenticated
 
 _RUN_ID_PATTERN = re.compile(r"^run-[0-9a-f]{32}$")
 
@@ -112,8 +113,10 @@ def _make_ablation_registry() -> EntryPointRegistry:
 def _make_client(
     store: EventStore | None = None, *, registry: EntryPointRegistry | None = None
 ) -> TestClient:
+    # Integración F1+F2 (#178): POST /runs exige sesión desde el flip 401 (#180),
+    # así que el client de ablación se autentica igual que el resto del API.
     event_store = store if store is not None else create_event_store()
-    return TestClient(create_app(event_store, registry=registry))
+    return authenticated(TestClient(create_app(event_store, registry=registry)))
 
 
 def _get(client: TestClient, url: str) -> httpx.Response:

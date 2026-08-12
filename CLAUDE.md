@@ -47,8 +47,10 @@ pnpm run docs:lint && pnpm run format:check
 ## Gotchas del entorno
 
 - **Worktrees**: `uv sync` NO instala los editables → usar el python del repo
-  principal + `PYTHONPATH` del worktree. Git NO corre hooks en worktrees.
-  `scripts/smoke_infra.sh` no corre desde un worktree.
+  principal + `PYTHONPATH` del worktree (pyright TAMBIÉN necesita ese
+  `PYTHONPATH`, o inventa decenas de errores fantasma — #213). Los hooks de git
+  SÍ corren en worktrees (#213 corrigió el mito). `scripts/smoke_infra.sh` no
+  corre desde un worktree.
 - Tras mergear paquetes nuevos: `uv sync --locked --all-packages --all-extras`
   (sin `--all-packages` DESINSTALA miembros del workspace).
 - La suite del Studio es sensible a carga de máquina (timeouts de 5s).

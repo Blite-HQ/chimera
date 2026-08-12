@@ -5517,3 +5517,46 @@ ver el bloque de gates de cierre más abajo. **Nada pusheado**, por regla.
 8. **M.4 de REGRID no aplica a esta formulación** (#210) y la etapa 2 de M.3 es
    inerte para un Max-Cut puro. El código es fiel al paper; el hallazgo es del
    algoritmo, no de la implementación.
+
+### #178 — CHECKPOINT F1+F2: validados y MERGEADOS, con la fricción que solo el merge vio
+
+**Fecha:** 2026-08-11. **Sesión de control.**
+
+**Topología y desviación registrada:** F2 se AUTO-MERGEÓ a `mejorado/base`
+(1d5eaed) pese a la regla de cerrar en su rama — sin daño porque F1 sí cerró en
+la suya, pero la regla existe para el caso general y se reitera. F1 entró por
+merge de control (6c94f7d) con 3 conflictos, todos aditivo-contra-aditivo,
+resueltos conservando AMBOS lados: ledger (bloques reordenados numéricamente),
+`screens.tsx` (certificado-solo-completado de F1 + queries files/ablation de
+F2), `gatewayClient.ts` (las dos funciones nuevas).
+
+**Fricción de integración que ninguna sesión podía ver:** 6 tests de
+`test_runs_ablation.py` (F2) rojos SOLO en el árbol combinado — el flip 401 de
+F1 (#180) exige sesión en `POST /runs` y el client de ablación iba pelado.
+Arreglo: `authenticated()` de conftest, el mismo patrón de #180. La lección de
+CP1 se repite: los números de sesión no se heredan, se re-corren en el merge.
+
+**Acciones de control ejecutadas de los handoffs:** `CLAUDE.md` corregido
+(#213: los hooks SÍ corren en worktrees; pyright necesita `PYTHONPATH` en
+worktrees o inventa errores fantasma) · re-sync del venv (`uv.lock` ganó el
+extra `dwave`, #203). `cp6-ablacion.png` (evidencia CP6 de F2) queda sin
+committear a propósito — la evidencia vive en el ledger, no en la raíz.
+
+**Decisiones de Dylan (hoy):** 1) **P11 ENTRA al cierre** — addendum corto de
+F1: registrar la app procrastinate + worker en compose para que el approval
+humano ocurra VIVO (era lo único que faltaba de «chat completo», #173.4). 2) **P12 queda en tramo 1** (#185) — la ingesta RAG/KB completa pertenece a la
+suite de datos que la sesión estratégica ordenará en VISIÓN.
+
+**Hereda a F3/control (de los handoffs):** ceremonia `DatasetSpec.unpublished`
+(#208) · extensión C-15 de `RvspBaselines` con `sa` (#211) · fusión C-12
+(heredada) · **residual de licencia del ICE ABIERTA** (#201, `NOTICE` §2 no se
+da por cerrado; fixtures/ice a F3) · representación del brazo `zne` rechazado y
+del run raíz de ablación «eternamente en curso» (#207, decisiones de contrato)
+· umbral O7 de FPS real (#206) · declarar sklearn/xgboost en
+`capabilities/quantum` con el criterio de #203.
+
+**Gates vivos sobre el merge (tras el arreglo):** pytest **1877 passed / 18
+skipped / 0 xfailed / 4 xpassed / 91.23%** (los 6 skips nuevos: extras
+opcionales declarados de F2) · studio **357 passed / 33 files** · eslint 0 ·
+`arch` 0 violaciones (141 módulos) · 19 contratos de imports · ruff+format
+limpios · pyright 0 · docs verdes.

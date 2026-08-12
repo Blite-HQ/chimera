@@ -98,7 +98,35 @@ Editor tipo Overleaf · sistema completo de artifacts de chat · suite de datos
 benchmark vs co-scientist y afines · V7 QEC medido · destino del diferenciador
 de confianza (análisis Marco).
 
-## 5 · Prompts de lanzamiento
+## 5 · Estado post-merge (#178, 2026-08-11)
+
+F1 y F2 VALIDADOS Y MERGEADOS en `mejorado/base` (checkpoint #178; fricción de
+integración 401↔ablación arreglada por control). Decisiones de Dylan: **P11
+entra al cierre** (addendum de F1: app procrastinate + worker en compose →
+approval humano VIVO) y **P12 queda en tramo 1**. Orden restante:
+
+1. **Addendum P11** (sesión corta, rango #190–#199 del bloque F1).
+2. **Grabación de la sesión real** (Dylan, runbook #145) — contra este árbol.
+3. **F3 saneamiento-final** (prompt §6) — suma los ítems heredados de #178.
+4. Auditoría de fase (tres llaves de #101) → cierre de Mejorado.
+
+## 6 · Prompts de lanzamiento
+
+### Addendum P11 (post-#178, decisión de Dylan)
+
+> Eres la sesión ADDENDUM-P11 del cierre de Mejorado. Creá el worktree
+> `mejorado/addendum-p11` desde `mejorado/base`. Lee PRIMERO: `CLAUDE.md` ·
+> `docs/mvp/decisiones.md` #148 (el puerto JobQueue), #183/#184 (el gate de
+> aprobación y la card) y #178 (este encargo) · el bloque REGLAS de
+> `docs/mejorado/05-plan-paralelo.md` §4. Tu rango de ledger: **#190–#199**.
+>
+> Alcance ÚNICO: registrar la app procrastinate del worker y prenderla en
+> compose (hoy el perfil `queue` existe pero el worker crashea sin app
+> registrada, #146-nota) para que una capability `interaction: job` se ejecute
+> de verdad y un `approval.requested` REAL llegue a la card del Studio. DoD:
+> compose up con worker vivo + un run que pide aprobación, se aprueba desde el
+> Studio y termina — VIVO, no fixtures. Nada fuera de ese alcance; cierra en tu
+> rama sin mergear, registro + handoff a control.
 
 Los tres se pegan tal cual en una sesión nueva del repo principal. CLAUDE.md ya
 carga el contexto base; el bloque REGLAS de `05-plan-paralelo.md` §4 sigue
