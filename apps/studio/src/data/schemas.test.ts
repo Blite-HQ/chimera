@@ -23,6 +23,7 @@ import {
   planItemUpdatedSchema,
   projectArtifactWireSchema,
   projectedEventSchema,
+  projectWireSchema,
   runSummaryWireSchema,
   rvspSchema,
   sseProjectedEventSchema,
@@ -31,6 +32,7 @@ import {
   stepDetailWireSchema,
   toAblationMetric,
   toKnowledgeClaim,
+  toProject,
   toProjectArtifact,
   toProjectedEvent,
   toRunSummary,
@@ -238,6 +240,33 @@ describe('runSummaryWireSchema / toRunSummary (D3 — GET /runs)', () => {
   });
 });
 
+describe('projectWireSchema / toProject (F1.1 — GET /projects)', () => {
+  const WIRE = {
+    id: 'default',
+    domain_id: 'domain-default',
+    name: 'Proyecto por defecto',
+    created_at: '2026-08-11T00:00:00.000000Z'
+  };
+
+  it('parsea el wire y lo mapea a camelCase', () => {
+    const wire = projectWireSchema.parse(WIRE);
+    expect(toProject(wire)).toEqual({
+      id: 'default',
+      domainId: 'domain-default',
+      name: 'Proyecto por defecto',
+      createdAt: '2026-08-11T00:00:00.000000Z'
+    });
+  });
+
+  it('acepta un slug con guiones y dígitos (^[a-z0-9][a-z0-9-]{0,62}$)', () => {
+    expect(() => projectWireSchema.parse({ ...WIRE, id: 'mi-investigacion-2' })).not.toThrow();
+  });
+
+  it('rechaza un id que no matchea el slug del contrato (mayúsculas, espacios)', () => {
+    expect(() => projectWireSchema.parse({ ...WIRE, id: 'Mi Proyecto' })).toThrow();
+  });
+});
+
 describe('projectArtifactWireSchema / toProjectArtifact (D3 — GET /runs/{id}/artifacts)', () => {
   it('parsea el wire y lo mapea a camelCase', () => {
     const wire = projectArtifactWireSchema.parse({
@@ -411,14 +440,39 @@ describe('Zod espejo de approval.* contra los fixtures de costura (S-A #123, con
   it('approval-requested.json valida contra approvalRequestedSchema', () => {
     const parsed = approvalRequestedSchema.parse(APPROVAL_REQUESTED_CONTRACT_FIXTURE);
     expect(parsed.approval_id).toBe('approval-1');
-    expect(parsed.step_id).toBe('step-1');
+    // F1.3: el fixture ahora representa lo que el ÚNICO emisor real produce
+    // — la clave AUSENTE (Pydantic omite optativos `None` con
+    // `exclude_none=True`), jamás un `"step-1"` inventado.
+    expect(parsed.step_id).toBeUndefined();
     expect(parsed.json_schema).toHaveProperty('required');
+  });
+
+  it('approval-requested con step_id NULO (la forma literal que emite loop.py) produce un valor parseado, no un descarte', () => {
+    // Regresión del bug real: Zod v4 `.optional()` rechaza `null` (solo
+    // tolera la clave ausente) — un `safeParse` fallido acá es
+    // exactamente lo que hacía que `RunThread` descartara la card en
+    // silencio (`if (!parsed.success) continue`).
+    const conNulo = { ...APPROVAL_REQUESTED_CONTRACT_FIXTURE, step_id: null };
+    const parsed = approvalRequestedSchema.safeParse(conNulo);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.step_id).toBeNull();
+    }
   });
 
   it('approval-responded.json valida contra approvalRespondedSchema', () => {
     const parsed = approvalRespondedSchema.parse(APPROVAL_RESPONDED_CONTRACT_FIXTURE);
     expect(parsed.authorized_by).toBe('user:dylan');
     expect(parsed.response).toEqual({ aprobado: true });
+  });
+
+  it('una respuesta booleana de tope (json_schema={"type":"boolean"}) valida — Any de Pydantic, no solo objeto', () => {
+    // El segundo desajuste del diagnóstico: `ApprovalRespondedPayload.
+    // response` es `Any` en Pydantic; `z.record()` solo aceptaba objetos y
+    // un `true` de tope (justo lo que produce un json_schema booleano)
+    // fallaba el espejo.
+    const conBooleano = { ...APPROVAL_RESPONDED_CONTRACT_FIXTURE, response: true };
+    expect(approvalRespondedSchema.safeParse(conBooleano).success).toBe(true);
   });
 
   it('una respuesta sin authorized_by explota (AX2: la relajación exige humano identificable)', () => {

@@ -32,6 +32,10 @@ from blite.certificate.assemble import (
 )
 from blite.certificate.bundle_check import check_bundle
 from blite.certificate.keys import LocalKeyProvider
+from blite.certificate.retrieval_boundary import (
+    RetrievedContentInEvidenceError,
+    RetrievedRef,
+)
 from blite.events import create_event_store
 from blite.events.event import Event
 from blite.runtime.content_store import InMemoryContentStore
@@ -191,7 +195,10 @@ def _run_stream(
     return store.read_stream("run-cert")
 
 
-def _assemble(stream: tuple[Event, ...]) -> dict[str, Any]:
+def _assemble(
+    stream: tuple[Event, ...],
+    retrieved_refs: tuple[RetrievedRef, ...] = (),
+) -> dict[str, Any]:
     return assemble_bundle(
         stream=stream,
         conclusions=(
@@ -203,6 +210,7 @@ def _assemble(stream: tuple[Event, ...]) -> dict[str, Any]:
         key_provider=LocalKeyProvider(ed25519.Ed25519PrivateKey.generate()),
         anchor_descriptors=ANCHOR_DESCRIPTORS,
         deliverables=(("partition.json", b'{"assignment":[0,0,1]}\n'),),
+        retrieved_refs=retrieved_refs,
     )
 
 
@@ -406,3 +414,57 @@ class TestFailClosed:
                 key_provider=LocalKeyProvider(ed25519.Ed25519PrivateKey.generate()),
                 anchor_descriptors=ANCHOR_DESCRIPTORS,
             )
+
+
+class TestRetrievalBoundary:
+    """La frontera freeze §7 nota 10, ejercitada contra un ensamblado real
+    (run vivo → stream → `assemble_bundle`) — no solo contra el guard puro.
+    [P12 tramo 1] Sin productor de retrieval hoy, este es el único lugar
+    donde `retrieved_refs` se ejercita en el camino de producción."""
+
+    def test_a_retrieved_ref_that_never_becomes_evidence_still_assembles(
+        self,
+    ) -> None:
+        # Arrange — un fragmento recuperado cuyo digest no coincide con
+        # ningún claim_digest ni attestation del run: el camino feliz.
+        stream = _run_stream((_cpsat(), _ExecutionDouble()))
+        retrieved = RetrievedRef(
+            name="doc:kb-42",
+            digest=hashlib.sha256(b"un fragmento del corpus").hexdigest(),
+        )
+
+        # Act
+        bundle = _assemble(stream, retrieved_refs=(retrieved,))
+        results = check_bundle(bundle)
+
+        # Assert — el bundle sigue siendo 7/7, la frontera no lo tocó
+        assert all(r.ok for r in results), [
+            (r.number, r.failures) for r in results if not r.ok
+        ]
+
+    def test_retrieved_digest_reused_as_the_conclusion_claim_digest_explodes(
+        self,
+    ) -> None:
+        # Arrange — el fragmento recuperado se marca con el MISMO digest que
+        # el claim del camino crítico terminará usando como conclusion.
+        stream = _run_stream((_cpsat(), _ExecutionDouble()))
+        conclusion_digest = claim_view_digest(STATEMENT, SCOPE)
+        retrieved = RetrievedRef(name="doc:kb-42", digest=conclusion_digest)
+
+        # Act / Assert — fail-loud, cita la frontera del freeze
+        with pytest.raises(RetrievedContentInEvidenceError, match="freeze §7"):
+            _assemble(stream, retrieved_refs=(retrieved,))
+
+    def test_retrieved_digest_reused_as_an_attestation_anchor_digest_explodes(
+        self,
+    ) -> None:
+        # Arrange — el fragmento recuperado se marca con el MISMO digest que
+        # `ANCHOR_EXEC`, el `anchor_digest` real de la attestation execution
+        # que el run ya emitió (no es claim_digest ni evidence_digests: es
+        # el tercer campo que el guard también cubre).
+        stream = _run_stream((_cpsat(), _ExecutionDouble()))
+        retrieved = RetrievedRef(name="doc:kb-42", digest=ANCHOR_EXEC)
+
+        # Act / Assert
+        with pytest.raises(RetrievedContentInEvidenceError, match="Attestation"):
+            _assemble(stream, retrieved_refs=(retrieved,))

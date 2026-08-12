@@ -5,6 +5,7 @@ import {
   getArtifacts,
   getCertificate,
   getKnowledge,
+  getProjects,
   getRuns,
   getStepEvidence,
   openRunEventStream,
@@ -50,7 +51,8 @@ describe('postRun', () => {
     expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(BODY)
+      body: JSON.stringify(BODY),
+      credentials: 'include'
     });
     expect(result.success).toBe(true);
     expect(result.data).toEqual({ run_id: 'run-123' });
@@ -133,7 +135,9 @@ describe('getCertificate', () => {
     const result = await getCertificate('8f2c1a9b');
 
     // Assert
-    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/certificate');
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/certificate', {
+      credentials: 'include'
+    });
     expect(result).toEqual({ success: true, data: wire, error: null });
   });
 
@@ -146,7 +150,9 @@ describe('getCertificate', () => {
 
     await getCertificate('run/with slash');
 
-    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run%2Fwith%20slash/certificate');
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run%2Fwith%20slash/certificate', {
+      credentials: 'include'
+    });
   });
 
   it('devuelve error cuando la respuesta no es OK', async () => {
@@ -206,7 +212,7 @@ describe('getRuns', () => {
     const result = await getRuns();
 
     // Assert
-    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs');
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs', { credentials: 'include' });
     expect(result).toEqual({ success: true, data: wire, error: null });
   });
 
@@ -243,6 +249,142 @@ describe('getRuns', () => {
   });
 });
 
+/**
+ * F1.1 (ceremonia #176) — `GET /projects`, mismo patrón AAA que `getRuns`.
+ */
+describe('getProjects', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('envía GET a {VITE_API_URL}/projects y devuelve el wire crudo como data', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = [
+      {
+        id: 'default',
+        domain_id: 'domain-default',
+        name: 'Proyecto por defecto',
+        created_at: '2026-08-11T00:00:00.000000Z'
+      }
+    ];
+    const mockFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => wire
+    } as Response);
+
+    // Act
+    const result = await getProjects();
+
+    // Assert
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/projects', {
+      credentials: 'include'
+    });
+    expect(result).toEqual({ success: true, data: wire, error: null });
+  });
+
+  it('devuelve error cuando la respuesta no es OK', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable'
+    } as Response);
+
+    // Act
+    const result = await getProjects();
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('503');
+    expect(result.data).toBeNull();
+  });
+
+  it('devuelve error cuando la petición de red falla', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ERR_NETWORK'));
+
+    // Act
+    const result = await getProjects();
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR_NETWORK');
+    expect(result.data).toBeNull();
+  });
+});
+
+/**
+ * F1.2 (flip a 401-obligatorio) — el Studio nunca llamaba `POST
+ * /auth/session` porque el fallback del servidor lo cubría; ver
+ * `api/src/chimera_api/auth.py`. Ahora que el servidor exige cookie
+ * SIEMPRE, cada función de egress pide sesión una vez si el primer intento
+ * da 401, reintenta EXACTAMENTE una vez, y si el reintento también da 401
+ * falla honesto — jamás un bucle. `getRuns` alcanza para probar el
+ * mecanismo compartido (`fetchWithSession`): las demás funciones de egress
+ * lo reusan, no lo reimplementan (DRY) — repetirlo por función sería el
+ * mismo bug de sincronización arreglado N veces distintas.
+ */
+describe('sesión — reintento tras 401 (F1.2)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('un 401 dispara POST /auth/session y reintenta la request original UNA vez', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const wire = [{ run_id: '8f2c1a9b', status: 'completado' }];
+    const mockFetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => wire } as Response);
+    // `fetch` es un spy COMPARTIDO por todo el archivo (nunca restaurado
+    // entre tests): `mockClear()` zanja la cuenta de llamadas previas sin
+    // tocar la cola de `mockResolvedValueOnce` recién armada.
+    mockFetch.mockClear();
+
+    // Act
+    const result = await getRuns();
+
+    // Assert — 3 llamadas: el 401 original, el bootstrap de sesión, el reintento.
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(mockFetch).toHaveBeenNthCalledWith(1, 'http://api.test/runs', {
+      credentials: 'include'
+    });
+    expect(mockFetch).toHaveBeenNthCalledWith(2, 'http://api.test/auth/session', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    expect(mockFetch).toHaveBeenNthCalledWith(3, 'http://api.test/runs', {
+      credentials: 'include'
+    });
+    expect(result).toEqual({ success: true, data: wire, error: null, status: 200 });
+  });
+
+  it('un segundo 401 (tras el reintento) falla honesto — jamás un bucle', async () => {
+    // Arrange — el bootstrap de sesión "funciona" (200) pero el reintento
+    // vuelve a dar 401 igual (p.ej. sesión rechazada por el server).
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    const mockFetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' } as Response)
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
+      .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' } as Response);
+    mockFetch.mockClear();
+
+    // Act
+    const result = await getRuns();
+
+    // Assert — exactamente 3 llamadas: ni una cuarta (sería el bucle prohibido).
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(result.success).toBe(false);
+    expect(result.status).toBe(401);
+  });
+});
+
 describe('getArtifacts', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -261,7 +403,9 @@ describe('getArtifacts', () => {
     const result = await getArtifacts('8f2c1a9b');
 
     // Assert
-    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/artifacts');
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/artifacts', {
+      credentials: 'include'
+    });
     expect(result).toEqual({ success: true, data: wire, error: null });
   });
 
@@ -273,7 +417,9 @@ describe('getArtifacts', () => {
 
     await getArtifacts('run/with slash');
 
-    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run%2Fwith%20slash/artifacts');
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run%2Fwith%20slash/artifacts', {
+      credentials: 'include'
+    });
   });
 
   it('devuelve error cuando la respuesta no es OK (404 — run desconocido)', async () => {
@@ -327,7 +473,9 @@ describe('getKnowledge', () => {
     const result = await getKnowledge('8f2c1a9b');
 
     // Assert
-    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/knowledge');
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/knowledge', {
+      credentials: 'include'
+    });
     expect(result).toEqual({ success: true, data: wire, error: null });
   });
 
@@ -377,7 +525,8 @@ describe('getStepEvidence', () => {
 
     // Assert
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://api.test/runs/8f2c1a9b/steps/step-solver/evidence'
+      'http://api.test/runs/8f2c1a9b/steps/step-solver/evidence',
+      { credentials: 'include' }
     );
     expect(result).toEqual({ success: true, data: wire, error: null });
   });
@@ -391,7 +540,8 @@ describe('getStepEvidence', () => {
     await getStepEvidence('run/with slash', 'step/with slash');
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://api.test/runs/run%2Fwith%20slash/steps/step%2Fwith%20slash/evidence'
+      'http://api.test/runs/run%2Fwith%20slash/steps/step%2Fwith%20slash/evidence',
+      { credentials: 'include' }
     );
   });
 
@@ -440,7 +590,9 @@ describe('getAblation', () => {
     const result = await getAblation('8f2c1a9b');
 
     // Assert
-    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/ablation');
+    expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/8f2c1a9b/ablation', {
+      credentials: 'include'
+    });
     expect(result).toEqual({ success: true, data: wire, error: null });
   });
 
@@ -471,16 +623,23 @@ describe('getAblation', () => {
   });
 });
 
-/** Fake EventSource — captura los listeners registrados por tipo + close(). */
+/**
+ * Fake EventSource — captura los listeners registrados por tipo + close().
+ * También captura `eventSourceInitDict` (F1.2): el SSE nativo no manda
+ * headers, pero SÍ manda cookies same-origin; `withCredentials: true` es lo
+ * que las manda también cross-origin.
+ */
 class FakeEventSource {
   static instances: FakeEventSource[] = [];
   readonly url: string;
+  readonly withCredentials: boolean;
   readonly listenersByType = new Map<string, ((event: MessageEvent<string>) => void)[]>();
   onerror: (() => void) | null = null;
   closed = false;
 
-  constructor(url: string) {
+  constructor(url: string, eventSourceInitDict?: EventSourceInit) {
     this.url = url;
+    this.withCredentials = eventSourceInitDict?.withCredentials ?? false;
     FakeEventSource.instances.push(this);
   }
 
@@ -523,6 +682,11 @@ describe('openRunEventStream', () => {
 
     // Assert
     expect(source?.url).toBe('http://api.test/runs/8f2c1a9b/events');
+    // F1.2 — cross-origin (VITE_API_URL apunta a otro origen que el Studio)
+    // necesita withCredentials para que el navegador mande la cookie de
+    // sesión; same-origin la manda igual, así que encenderlo siempre es
+    // seguro y cubre los dos despliegues con un solo camino de código.
+    expect(source?.withCredentials).toBe(true);
 
     source?.dispatch(
       'verification.completed',
@@ -732,7 +896,8 @@ describe('postRunMessage / postRunCancel / postApprovalResponse (P3-D)', () => {
     expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run-1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: 'probá con 3 islas' })
+      body: JSON.stringify({ text: 'probá con 3 islas' }),
+      credentials: 'include'
     });
     expect(result.success).toBe(true);
     expect(result.data).toEqual({ message_id: 'msg-abc' });
@@ -786,7 +951,8 @@ describe('postRunMessage / postRunCancel / postApprovalResponse (P3-D)', () => {
     expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run-1/cancel', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: 'ya no lo necesito' })
+      body: JSON.stringify({ reason: 'ya no lo necesito' }),
+      credentials: 'include'
     });
     expect(result.success).toBe(true);
   });
@@ -820,7 +986,8 @@ describe('postRunMessage / postRunCancel / postApprovalResponse (P3-D)', () => {
     expect(mockFetch).toHaveBeenCalledWith('http://api.test/runs/run-1/approvals/approval-1', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ response: { aprobado: true } })
+      body: JSON.stringify({ response: { aprobado: true } }),
+      credentials: 'include'
     });
     expect(result.success).toBe(true);
   });

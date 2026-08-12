@@ -29,6 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -217,14 +218,26 @@ def _to_artifact(raw: dict[str, object]) -> Artifact:
 
 
 def _domain_of(ctx: object) -> str:
-    """El puerto deja el tipo del ctx al gateway; acá se exige que porte dominio.
+    """El puerto deja el tipo del ctx al gateway; acá se exige que porte dominio,
+    sea por ATRIBUTO (`FileContext`, lo que arma `files.py`) o por MAPPING (el
+    dict plano que arma `digest_via()`, `engine/src/blite/runtime/digests.py` —
+    el mismo caller que alimenta `RunResources.content`, F1.6). Dos callers
+    legítimos describen el mismo campo de dos formas; el puerto congelado deja
+    el tipo del ctx al gateway (freeze §8) y este adapter no le exige elegir
+    una — mismo criterio que `InMemoryContentStore._domain_of`
+    (`blite.runtime.content_store`), que ya acepta Mapping.
 
-    Sin dominio no hay visibilidad (SO2), así que un contexto que no lo trae es
-    un error de programación, no un caso a degradar en silencio."""
+    Sin dominio no hay visibilidad (SO2), así que un contexto que no lo trae
+    por NINGUNA vía es un error de programación, no un caso a degradar en
+    silencio."""
     domain_id = getattr(ctx, "domain_id", None)
-    if not isinstance(domain_id, str) or not domain_id:
-        raise TypeError("el contexto de contenido debe portar un domain_id (SO2)")
-    return domain_id
+    if isinstance(domain_id, str) and domain_id:
+        return domain_id
+    if isinstance(ctx, Mapping):
+        mapped = cast("Mapping[str, object]", ctx).get("domain_id")
+        if isinstance(mapped, str) and mapped:
+            return mapped
+    raise TypeError("el contexto de contenido debe portar un domain_id (SO2)")
 
 
 __all__ = ["FileContext", "FilesystemContentStore"]

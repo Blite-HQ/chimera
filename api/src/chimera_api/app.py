@@ -36,6 +36,7 @@ from chimera_api.certificate import create_certificate_router
 from chimera_api.chat import create_chat_router
 from chimera_api.files import create_files_router
 from chimera_api.projection import sse_frame
+from chimera_api.projects import create_projects_router
 from chimera_api.reads import create_reads_router
 from chimera_api.runs import (
     DISTRIBUTION_MANIFEST_PATH,
@@ -110,6 +111,10 @@ def create_app(
     app.include_router(create_reads_router(resources))
     # P10/M24 — archivos del proyecto (insumos con procedencia, freeze §7).
     app.include_router(create_files_router(resources.session_auth))
+    # F1.1 — sistema organizacional: projects reales dentro del dominio.
+    app.include_router(
+        create_projects_router(resources.session_auth, resources.project_repo)
+    )
     # O4/M10 — catálogo de datasets: lo que ESTE despliegue declara publicar.
     # Sin `datasets:` en el manifest el router se monta igual y responde una
     # lista vacía: «este despliegue no publica datos» es una respuesta, no un

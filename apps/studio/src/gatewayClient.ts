@@ -116,6 +116,31 @@ export async function postRun(
 }
 
 /**
+ * F1.2 (flip a 401-obligatorio, `api/src/chimera_api/auth.py`) — punto ÚNICO
+ * de egress con cookie del Studio. Dos responsabilidades, nunca repetidas
+ * función por función:
+ *
+ * 1. `credentials: 'include'` en TODO fetch — sin esto el navegador ni manda
+ *    ni guarda la cookie de sesión (HttpOnly, `chimera_session`), y cada
+ *    ruta que resuelve identidad devuelve 401 aunque la sesión exista.
+ * 2. Ante un 401, pide sesión (`POST /auth/session`) UNA vez y reintenta la
+ *    request original UNA vez. Si el reintento también da 401, se devuelve
+ *    tal cual — jamás un tercer intento, jamás un bucle. El Studio nunca
+ *    llamaba `/auth/session` porque el fallback del servidor lo cubría
+ *    (decisión muerta); ahora lo pide él mismo, la primera vez que lo
+ *    necesita.
+ */
+async function fetchWithSession(url: string, init: RequestInit = {}): Promise<Response> {
+  const withCredentials: RequestInit = { ...init, credentials: 'include' };
+  const first = await fetch(url, withCredentials);
+  if (first.status !== 401) {
+    return first;
+  }
+  await fetch(`${apiBaseUrl()}/auth/session`, { method: 'POST', credentials: 'include' });
+  return fetch(url, withCredentials);
+}
+
+/**
  * D3 — GET compartido para las rutas de lectura de `chimera_api`
  * (`docs/specs/endpoints-studio.md`): el body de la respuesta ES el wire
  * crudo (lista u objeto snake_case), no un GatewayResponse ya envuelto —
@@ -129,7 +154,7 @@ async function fetchWireGet<T>(url: string): Promise<GatewayResponse<T>> {
   let response: Response;
 
   try {
-    response = await fetch(url);
+    response = await fetchWithSession(url);
   } catch (networkErr) {
     return {
       success: false,
@@ -171,7 +196,7 @@ async function fetchWirePost<T>(url: string, body: object): Promise<GatewayRespo
   let response: Response;
 
   try {
-    response = await fetch(url, {
+    response = await fetchWithSession(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -283,7 +308,7 @@ export async function getFiles(): Promise<GatewayResponse<unknown>> {
 export async function postFile(file: File): Promise<GatewayResponse<unknown>> {
   let response: Response;
   try {
-    response = await fetch(`${apiBaseUrl()}/files`, {
+    response = await fetchWithSession(`${apiBaseUrl()}/files`, {
       method: 'POST',
       headers: {
         'Content-Type': file.type || 'application/octet-stream',
@@ -324,6 +349,18 @@ export function fileDownloadUrl(digest: string): string {
  */
 export async function getFileContent(digest: string): Promise<GatewayResponse<unknown>> {
   return fetchWireGet(`${apiBaseUrl()}/files/${encodeURIComponent(digest)}`);
+}
+
+/**
+ * F1.1 — `GET {VITE_API_URL}/projects` (ceremonia #176,
+ * `docs/specs/endpoints-studio.md` §"GET/POST /projects"): los proyectos del
+ * DOMINIO de la identidad que pregunta — `domain_id` sale de la sesión en
+ * el server, jamás de un parámetro acá (mismo patrón que `/files`, SO2).
+ * Único lugar del Studio que hace este GET (INV-1); el schema Zod + el
+ * mapeo a `Project` viven en data/schemas.ts + data/queries.ts, no acá.
+ */
+export async function getProjects(): Promise<GatewayResponse<unknown>> {
+  return fetchWireGet(`${apiBaseUrl()}/projects`);
 }
 
 /**
@@ -494,7 +531,15 @@ export function openRunEventStream(
     return { close: () => {} };
   }
 
-  const source = new EventSource(`${base}/runs/${encodeURIComponent(runId)}/events`);
+  // F1.2 — el EventSource nativo no manda headers (no puede llevar la
+  // request de sesión), pero SÍ manda cookies same-origin de por sí;
+  // `withCredentials: true` es lo único que le falta para hacer lo mismo
+  // cross-origin (`VITE_API_URL` apuntando a otro origen que el Studio).
+  // Encenderlo siempre es seguro — same-origin ya las mandaba — y cubre
+  // los dos despliegues con un solo camino de código.
+  const source = new EventSource(`${base}/runs/${encodeURIComponent(runId)}/events`, {
+    withCredentials: true
+  });
 
   const handleFrame = (event: MessageEvent<string>): void => {
     try {

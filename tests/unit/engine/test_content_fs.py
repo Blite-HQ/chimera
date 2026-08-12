@@ -120,6 +120,34 @@ def test_artifact_es_el_modelo_congelado(store: FilesystemContentStore) -> None:
     assert isinstance(store.put(b"x", "text/plain", _CTX), Artifact)
 
 
+def test_put_acepta_ctx_tipo_mapping(store: FilesystemContentStore) -> None:
+    """F1.6: el runtime pasa un dict plano, NO `FileContext` — `digest_via`
+    (`engine/src/blite/runtime/digests.py`) llama
+    `content.put(data, media_type, {"domain_id": domain_id})`. Antes de este
+    fix, `_domain_of` solo leía `getattr(ctx, "domain_id", None)`: un dict no
+    tiene ese atributo, así que cablear este adapter detrás de
+    `RunResources.content` (F1.6) reventaba con `TypeError` en la PRIMERA
+    llamada a `digest_via()` — cada `run.step.started`/`capability.job.*`."""
+    data = b'{"evidencia":"de un run"}'
+
+    artifact = store.put(data, "application/json", {"domain_id": "d-default"})
+
+    assert artifact.digest == hashlib.sha256(data).hexdigest()
+    assert artifact.domain_id == "d-default"
+    assert store.get(artifact.digest, {"domain_id": "d-default"}) == data
+    assert store.stat(artifact.digest, {"domain_id": "d-default"}) == artifact
+
+
+def test_ctx_tipo_mapping_sin_domain_id_falla_fuerte(
+    store: FilesystemContentStore,
+) -> None:
+    """SO2 no se debilita por aceptar Mapping: sin dominio, por NINGUNA vía,
+    sigue siendo fail-closed — mismo criterio que
+    `InMemoryContentStore._domain_of` (`test_content_store.py`)."""
+    with pytest.raises(TypeError, match="domain_id"):
+        store.put(b"x", "text/plain", {})
+
+
 class TestAislamientoDeDominioSinColisiones:
     """SO2 es la propiedad que este adapter existe para cumplir, así que su
     implementación no puede ser una sanitización con PÉRDIDA.

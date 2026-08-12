@@ -33,8 +33,9 @@
 /*
  * Tokens del sistema (DESIGN.md §2): tres niveles independientes.
  *   1. MARCA — chasis neutro heredado verbatim de la landing de Blite
- *      (escala neutral de Tailwind) + una sola voz de acento: turquesa
- *      (teal de Tailwind; el valor exacto se anota en cada token).
+ *      (escala neutral de Tailwind) + una sola voz de acento: violeta
+ *      (violet de Tailwind — supersede P8 de turquesa, DESIGN.md §7; el
+ *      valor exacto se anota en cada token).
  *   2. STATUS — info/success/warning/danger: funcionales, aparte de la
  *      marca (sky/emerald/amber/red de Tailwind).
  *   3. DATOS — escala para charts/categóricos; puede salirse de la paleta
@@ -64,9 +65,11 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
 
-  /* Nivel 1b — la voz: turquesa (teal-600); también firma el foco */
-  --brand: oklch(0.6 0.118 184.704);
-  --ring: oklch(0.6 0.118 184.704);
+  /* Nivel 1b — la voz: violeta (violet-700); también firma el foco.
+     Supersede P8 (DESIGN.md §7): turquesa no es la familia de Chimera —
+     la categoría es AGENTES y ese color de familia es violeta. */
+  --brand: oklch(0.491 0.27 292.581);
+  --ring: oklch(0.491 0.27 292.581);
 
   /* Nivel 2 — status (sky/emerald/amber/red-600) */
   --status-info: oklch(0.588 0.158 241.966);
@@ -113,9 +116,9 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
 
-  /* Nivel 1b — la voz: turquesa (teal-400) */
-  --brand: oklch(0.777 0.152 181.912);
-  --ring: oklch(0.777 0.152 181.912);
+  /* Nivel 1b — la voz: violeta (violet-400) */
+  --brand: oklch(0.702 0.183 293.541);
+  --ring: oklch(0.702 0.183 293.541);
 
   /* Nivel 2 — status (sky/emerald/amber/red-400) */
   --status-info: oklch(0.746 0.16 232.661);

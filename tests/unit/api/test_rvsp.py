@@ -25,6 +25,7 @@ from blite.events import create_event_store
 from blite.events.store import EventStore
 from blite.runtime.registry import EntryPointRegistry
 from blite_capability.manifest import CapabilityManifest
+from tests.conftest import authenticated
 
 _EDGES_4BUS = ((0, 1, 0), (2, 3, 0), (1, 2, 5))
 _STATEMENT = "la partición propuesta es óptima y electricamente factible"
@@ -50,10 +51,12 @@ class _EchoCapability:
 
 
 def _make_client(store: EventStore | None = None) -> TestClient:
-    return TestClient(
-        create_app(
-            store if store is not None else create_event_store(),
-            registry=EntryPointRegistry({"cap.echo": _EchoCapability()}),
+    return authenticated(
+        TestClient(
+            create_app(
+                store if store is not None else create_event_store(),
+                registry=EntryPointRegistry({"cap.echo": _EchoCapability()}),
+            )
         )
     )
 

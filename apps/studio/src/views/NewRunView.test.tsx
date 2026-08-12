@@ -21,7 +21,7 @@ describe('NewRunView', () => {
   });
 
   test('envía la misión que el usuario escribió, sin pistas cuando no las eligió', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const onSubmit = vi.fn();
     render(<NewRunView onSubmit={onSubmit} />);
 
@@ -35,7 +35,7 @@ describe('NewRunView', () => {
   });
 
   test('una misión de puros espacios no alcanza (se recorta antes de decidir)', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<NewRunView onSubmit={vi.fn()} />);
 
     await user.type(screen.getByRole('textbox', { name: /misión/i }), '   ');
@@ -44,7 +44,7 @@ describe('NewRunView', () => {
   });
 
   test('las pistas son opcionales y viajan solo cuando se eligen', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const onSubmit = vi.fn();
     render(<NewRunView onSubmit={onSubmit} />);
 
@@ -69,7 +69,7 @@ describe('NewRunView', () => {
   });
 
   test('el threadId viaja en el submit — es lo que enhebra la conversación', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const onSubmit = vi.fn();
     render(<NewRunView onSubmit={onSubmit} threadId="run-raiz" />);
 
@@ -90,7 +90,7 @@ describe('NewRunView', () => {
   });
 
   test('el botón Cancelar llama a onCancel', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const onCancel = vi.fn();
     render(<NewRunView onSubmit={vi.fn()} onCancel={onCancel} />);
 

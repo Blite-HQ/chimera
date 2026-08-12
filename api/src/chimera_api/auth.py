@@ -1,5 +1,6 @@
 """
-Sesión del API — JWT en cookie (freeze §9 P1-9, decidido) hecho código. [C2/M2]
+Sesión del API — JWT en cookie (freeze §9 P1-9) hecho código, 401-obligatorio
+en toda ruta que resuelve identidad. [C2/M2 → F1.2]
 
 La identidad del actor es dato del despliegue (doctrina §7: «el keypair
 pertenece a la organización operadora, no al software»): `POST /auth/session`
@@ -8,13 +9,20 @@ emite el JWT del OPERADOR configurado (`CHIMERA_OPERATOR_ID` /
 (escalón 1: llave efímera en memoria — misma custodia que la llave del
 certificado del API; OpenBao Transit es el escalón 2, ítem C8 de C-2).
 
-Reglas fail-closed:
-- cookie INVÁLIDA (expirada/manipulada/ajena) ⇒ 401 — jamás fallback.
-- cookie AUSENTE ⇒ la identidad default del operador local (la MISMA que
-  `/auth/session` emitiría). Decisión registrada en el ledger: el flip a
-  401-obligatorio espera a que el Studio bootstrapee su sesión (frontera
-  P-ui); el placeholder `user:api` MURIÓ — este default es una Identity
-  real del despliegue con permisos que la etapa 2 del gateway evalúa.
+Regla fail-closed, sin excepción (F1.2 aplicado):
+- cookie AUSENTE ⇒ 401.
+- cookie INVÁLIDA (expirada/manipulada/ajena) ⇒ 401.
+Los dos casos reciben el mismo trato: ningún camino de código fabrica una
+Identity, ni siquiera la del operador por default. El placeholder `user:api`
+ya había muerto; ahora también murió el fallback que ocupaba su lugar.
+
+Honestidad sobre lo que este flip agrega y lo que NO agrega, para que nadie
+lo lea como más de lo que es: `SessionAuth.issue()` no recibe nada de la
+request — siempre emite la identidad del operador configurado por el
+despliegue (`CHIMERA_OPERATOR_ID`, default `user:local-operator`). O sea que
+el flip no agrega seguridad real — cualquiera pide cookie primero. Lo que sí
+logra: que la identidad venga SIEMPRE de un token firmado y que ningún
+camino de código la fabrique.
 """
 
 # pyright: reportUnusedFunction=false
@@ -151,14 +159,19 @@ class SessionAuth:
         }
 
     def identity_from(self, request: Request) -> Identity:
-        """La Identity de la request: cookie válida, o el default del operador.
+        """La Identity de la request: SIEMPRE de una cookie de sesión válida.
 
-        Cookie presente pero inválida ⇒ 401 fail-closed — un token roto
-        JAMÁS degrada al default (sería un bypass silencioso de la sesión).
+        Cookie AUSENTE ⇒ 401. Cookie presente pero INVÁLIDA (expirada,
+        manipulada, ajena) ⇒ 401. Mismo trato para las dos — fail-closed
+        sin fallback (F1.2): este método jamás fabrica una Identity, ni
+        siquiera la del operador por default.
         """
         token = request.cookies.get(SESSION_COOKIE)
         if token is None:
-            return _operator_identity(self._domain_id)
+            raise HTTPException(
+                status_code=401,
+                detail="sesión requerida — autenticar con POST /auth/session",
+            )
         try:
             return verify_session_jwt(
                 token,

@@ -37,10 +37,12 @@ import {
   loadArtifacts,
   loadCertificate,
   loadKnowledge,
+  loadProjects,
   loadRunEvents,
   loadRunSummaries,
   loadRvsP,
   loadStepEvidence,
+  projectsQueryOptions,
   runEventsQueryOptions,
   runSummariesQueryOptions,
   rvspQueryOptions,
@@ -54,6 +56,7 @@ vi.mock('../gatewayClient', () => ({
   getKnowledge: vi.fn(),
   getProjectArtifacts: vi.fn(),
   getProjectKnowledge: vi.fn(),
+  getProjects: vi.fn(),
   getStepEvidence: vi.fn(),
   getAblation: vi.fn(),
   getRvsp: vi.fn()
@@ -134,6 +137,24 @@ describe('certificateQueryOptions', () => {
     expect(retry(0, new Error('Network error: fetch failed'))).toBe(true);
     expect(retry(2, new Error('Network error: fetch failed'))).toBe(true);
     expect(retry(3, new Error('Network error: fetch failed'))).toBe(false);
+  });
+
+  /**
+   * P-cierre B — `enabled` por defecto en `true` (retrocompatible con los
+   * call sites previos a esta frontera, incluidos los tests de arriba).
+   * `screens.tsx` es el único llamador que pasa `false` explícito, mientras
+   * el run no está `completado` (`docs/mvp/decisiones.md:2797-2800`).
+   */
+  it('está habilitada por defecto — retrocompatible con los call sites previos', () => {
+    expect(certificateQueryOptions('run-42').enabled).toBe(true);
+  });
+
+  it('se puede deshabilitar explícitamente (run sin completar: nada que pedir)', () => {
+    expect(certificateQueryOptions('run-42', false).enabled).toBe(false);
+  });
+
+  it('habilitada explícita se comporta igual que el default', () => {
+    expect(certificateQueryOptions('run-42', true).enabled).toBe(true);
   });
 });
 
@@ -328,6 +349,108 @@ describe('runSummariesQueryOptions', () => {
   it('arma la queryKey de proyecto', () => {
     const options = runSummariesQueryOptions();
     expect(options.queryKey).toEqual(['runs']);
+  });
+});
+
+/**
+ * F1.1 (ceremonia #176) — `GET /projects`, mismo patrón demo/live que
+ * `loadRunSummaries`: en réplica no hay servidor a quien preguntarle
+ * (honest-empty, `[]`), en vivo se valida el wire y se mapea a `Project[]`.
+ */
+describe('loadProjects (rama demo/live)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.mocked(gatewayClient.getProjects).mockReset();
+  });
+
+  it('modo demo: no hay servidor a quien preguntarle — [] honesto, sin llamar al gateway', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', undefined);
+
+    // Act
+    const projects = await loadProjects();
+
+    // Assert
+    expect(projects).toEqual([]);
+    expect(gatewayClient.getProjects).not.toHaveBeenCalled();
+  });
+
+  it('modo live: llama a getProjects, valida el wire y lo mapea a Project[]', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getProjects).mockResolvedValueOnce({
+      success: true,
+      data: [
+        {
+          id: 'default',
+          domain_id: 'domain-default',
+          name: 'Proyecto por defecto',
+          created_at: '2026-08-11T00:00:00.000000Z'
+        },
+        {
+          id: 'mi-investigacion',
+          domain_id: 'domain-default',
+          name: 'Mi investigación',
+          created_at: '2026-08-11T00:05:00.000000Z'
+        }
+      ],
+      error: null
+    });
+
+    // Act
+    const projects = await loadProjects();
+
+    // Assert
+    expect(projects).toEqual([
+      {
+        id: 'default',
+        domainId: 'domain-default',
+        name: 'Proyecto por defecto',
+        createdAt: '2026-08-11T00:00:00.000000Z'
+      },
+      {
+        id: 'mi-investigacion',
+        domainId: 'domain-default',
+        name: 'Mi investigación',
+        createdAt: '2026-08-11T00:05:00.000000Z'
+      }
+    ]);
+  });
+
+  it('modo live: lista vacía es honest-empty, no un error', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getProjects).mockResolvedValueOnce({
+      success: true,
+      data: [],
+      error: null
+    });
+
+    // Act
+    const projects = await loadProjects();
+
+    // Assert
+    expect(projects).toEqual([]);
+  });
+
+  it('modo live: rechaza cuando getProjects devuelve success:false (surge como error, jamás una lista fabricada)', async () => {
+    // Arrange
+    vi.stubEnv('VITE_API_URL', 'http://api.test');
+    vi.mocked(gatewayClient.getProjects).mockResolvedValueOnce({
+      success: false,
+      data: null,
+      error: 'Gateway error: 503 Service Unavailable'
+    });
+
+    // Act & Assert
+    await expect(loadProjects()).rejects.toThrow('Gateway error: 503 Service Unavailable');
+  });
+});
+
+describe('projectsQueryOptions', () => {
+  it('arma la queryKey de proyectos', () => {
+    const options = projectsQueryOptions();
+    expect(options.queryKey).toEqual(['projects']);
   });
 });
 

@@ -176,12 +176,40 @@ def create_chat_router(resources: RunResources) -> APIRouter:
         Tres compuertas, todas fail-closed y en este orden:
         1. **existe el request** — un `approval.responded` sin su
            `approval.requested` sería una respuesta a una pregunta que nadie
-           hizo (404);
+           hizo (404 si el run ni existe, 409 si ya es terminal —
+           `_require_open_stream`, sin excepción para esta ruta);
         2. **no fue respondido ya** — el par es 1:1 (409);
         3. **el valor valida contra el `json_schema` que el request declaró**
            (422) y **la identidad porta `override:apply:<scope>`** (403,
            `authorize_approval_response` — maquinaria §8/§10 ya congelada,
            que esta ruta REUSA sin reabrir).
+
+        **Por qué el 409 post-terminal aplica ACÁ también, a propósito
+        (F1.3, revisión de control):** freeze §2 deja los eventos
+        post-terminales FUERA del `provenance_hash` (el corte va de
+        `run.created` al terminal, inclusive; solo las familias de CIERRE —
+        `run.metrics.recorded`, `●CaseClosed`, `●CertificateIssued` —
+        se admiten después). Responder una aprobación es una decisión de
+        GOBIERNO, no una familia de cierre: dejarla entrar post-terminal la
+        journalizaría FUERA de lo que el certificado ampara — una aprobación
+        que el bundle no puede demostrar. Y es un hueco semántico además de
+        uno criptográfico: aprobar un run que ya falló no revive nada, así
+        que el 202 mentiría que hubo gobierno cuando no lo hubo.
+
+        Consecuencia honesta: con el gate SÍNCRONO de hoy
+        (`chimera_api.runs._build_approval_gate`, `mission.py:132-141` — «tu
+        gate NO debe bloquear esperando respuesta humana»), el ÚNICO
+        `approval.requested` que puede existir nace de un turno que YA negó
+        y cerró el run (`run.failed`) en el mismo turno que lo pidió. Contra
+        ese run, esta ruta da 409 — correcto, no un defecto. Un par
+        request→response que de verdad se cierre EN VIVO (stream abierto,
+        202 legítimo, `approval.responded` dentro del hash) exige que el
+        gate pueda esperar sin bloquear un hilo — eso es la cola durable de
+        P11 (`JobQueue`), no esta ruta. Hasta que P11 exista, "aprobación
+        humana en el lazo" es un mecanismo demostrado (el `approval.
+        requested` real, ver `tests/unit/api/test_mission_approval_gate.
+        py::TestApprovalMechanismoSinCierreEnVivo`) sin política de cierre
+        en vivo — declarado, no rodeado.
         """
         identity = resources.session_auth.identity_from(request)
         stream = _require_open_stream(resources, run_id)

@@ -16,6 +16,13 @@ una conclusión declarada que el run jamás emitió NO producen certificado.
 Determinismo: todo se deriva de los inputs (el `valid_as_of` es el
 `occurred_at` del evento terminal) — mismo stream + misma llave ⇒ mismos
 bytes firmables. La llave la trae el caller (custodia = KeyProvider futuro).
+
+Frontera freeze §7 nota 10 [P12 tramo 1]: `retrieved_refs` deja que el
+caller declare qué digests son contenido RECUPERADO (no evidencia) —
+`assert_retrieved_not_in_evidence` (`blite.certificate.retrieval_boundary`)
+revienta si alguno de esos digests terminó en `conclusions` o como
+`Attestation`. Sin argumento (el default, y el único caso real hoy — no hay
+productor de retrieval) es un no-op puro: la forma del Bundle no cambia.
 """
 
 from __future__ import annotations
@@ -40,6 +47,10 @@ from blite.certificate.predicate import (
     Conclusion,
     ConclusionVerdict,
     compute_titular_level,
+)
+from blite.certificate.retrieval_boundary import (
+    RetrievedRef,
+    assert_retrieved_not_in_evidence,
 )
 from blite.certificate.status_list import StatusListEntry
 from blite.certificate.vsa import envelope_to_wire, sign_attestation
@@ -163,6 +174,7 @@ def assemble_bundle(
     key_provider: KeyProvider,
     anchor_descriptors: Sequence[dict[str, Any]] = (),
     deliverables: Sequence[tuple[str, bytes]] = (),
+    retrieved_refs: Sequence[RetrievedRef] = (),
     sub_run_streams: Mapping[str, Sequence[Event]] = MappingProxyType({}),
     status_list_entry: StatusListEntry | None = None,
     calculus_version: str = "cal-2.4",
@@ -172,6 +184,11 @@ def assemble_bundle(
 
     El retorno es el dict que `check_bundle` consume — el caller decide si lo
     valida (los tests lo hacen SIEMPRE: el emisor no se auto-declara 7/7).
+
+    `retrieved_refs` declara qué digests son contenido recuperado (freeze §7
+    nota 10) — revienta ANTES de firmar si alguno terminó en `conclusions` o
+    como `Attestation` (`RetrievedContentInEvidenceError`). Vacío por
+    default: no-op, la forma del Bundle no cambia.
     """
     views = [event_view(e) for e in stream]
     _validate_stream(views)
@@ -198,6 +215,9 @@ def assemble_bundle(
     conclusion_models = tuple(
         _conclusion_from(d, attestations, emitted_digests) for d in conclusions
     )
+    # Frontera freeze §7 nota 10 [P12 tramo 1]: fail-loud ANTES de firmar si
+    # un digest declarado `retrieved_refs` se coló como evidencia.
+    assert_retrieved_not_in_evidence(retrieved_refs, conclusion_models, attestations)
     titular = compute_titular_level(conclusion_models)
     policy_digest = hashlib.sha256(policy_yaml).hexdigest()
 

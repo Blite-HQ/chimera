@@ -20,6 +20,7 @@ import {
   getMe,
   getProjectArtifacts,
   getProjectKnowledge,
+  getProjects,
   getRuns,
   getRvsp,
   getStepEvidence,
@@ -39,6 +40,7 @@ import {
   ablationWireSchema,
   meWireSchema,
   projectFileWireSchema,
+  projectWireSchema,
   certificateBundleWireSchema,
   knowledgeClaimWireSchema,
   projectArtifactWireSchema,
@@ -52,6 +54,7 @@ import {
   topologySnapshotSchema,
   toRvsPExperiment,
   toKnowledgeClaim,
+  toProject,
   toProjectArtifact,
   toRunSummary,
   toStepDetail,
@@ -64,6 +67,7 @@ import type {
   AblationMetric,
   DsseEnvelope,
   KnowledgeClaim,
+  Project,
   ProjectArtifact,
   ProjectedEvent,
   RunSummary,
@@ -299,10 +303,19 @@ function isClientErrorMessage(error: unknown): boolean {
   return status >= 400 && status < 500;
 }
 
-export function certificateQueryOptions(runId: string) {
+/**
+ * P-cierre B — `enabled` opcional (default `true`, retrocompatible con los
+ * call sites/tests previos a esta frontera). El consumidor real
+ * (`screens.tsx`) lo pasa en `false` mientras el run no está `completado`:
+ * un run `en_curso`/`fallido`/`cancelado` no tiene certificado que pedir, y
+ * pedirlo igual solo producía un 409 ruidoso (honesto pero evitable — ver
+ * `docs/mvp/decisiones.md:2797-2800`).
+ */
+export function certificateQueryOptions(runId: string, enabled = true) {
   return queryOptions({
     queryKey: ['runs', runId, 'certificate'] as const,
     queryFn: () => loadCertificate(runId),
+    enabled,
     // 4xx se muestra una vez (honesto, no transitorio); todo lo demás
     // (red, 5xx) conserva el default previo de 3 reintentos.
     retry: (failureCount, error) => !isClientErrorMessage(error) && failureCount < 3
@@ -416,6 +429,26 @@ export async function loadMe(): Promise<Me | null> {
 
 export function meQueryOptions() {
   return queryOptions({ queryKey: ['me'] as const, queryFn: loadMe });
+}
+
+/**
+ * F1.1 (ceremonia #176) — proyectos del dominio de la identidad
+ * (`GET /projects`). En réplica no hay servidor a quien preguntarle: `[]`
+ * honesto, mismo patrón que `loadFiles`/`loadMe` — el selector del sidebar
+ * (`AppShell.ProjectPicker`) ya no dibuja nada con menos de dos proyectos,
+ * así que una réplica de un solo proyecto implícito se sigue viendo igual.
+ */
+export async function loadProjects(): Promise<readonly Project[]> {
+  if (!isLiveMode()) return [];
+  const res = await getProjects();
+  if (!res.success || res.data === null) {
+    throw new Error(res.error ?? 'No se pudieron obtener los proyectos');
+  }
+  return z.array(projectWireSchema).parse(res.data).map(toProject);
+}
+
+export function projectsQueryOptions() {
+  return queryOptions({ queryKey: ['projects'] as const, queryFn: loadProjects });
 }
 
 /**

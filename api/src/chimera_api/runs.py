@@ -57,10 +57,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from blite.certificate.assemble import ConclusionDeclaration
 from blite.certificate.keys import KeyProvider, LocalKeyProvider
 from blite.content import ContentStore
+from blite.content_fs import FilesystemContentStore
 from blite.events.rules import TERMINAL_RUN_EVENTS
 from blite.events.store import EventStore
 from blite.gateway.crossing import RunCrossing, build_run_pipeline
 from blite.identity.identity import Identity
+from blite.organization import ProjectRepository, create_project_repository
 from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
 from blite.runtime.ablation import (
     DEFAULT_LAYERS,
@@ -80,6 +82,7 @@ from blite.runtime.loop import (
     execute_run,
 )
 from blite.runtime.metrics import record_run_metrics
+from blite.runtime.mission import ApprovalDecision, ApprovalGate, ApprovalRequest
 from blite.runtime.plan import PlanItem
 from blite.runtime.registry import Registry, load_registry
 from blite.serving.model_port import ModelPort
@@ -92,12 +95,15 @@ from chimera_api.instance_verifiers import (
 )
 from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import load_session
+from chimera_api.projects import ensure_default_project
 
 # El actor viene de la sesión JWT en cookie (C2/M2, freeze §9 P1-9) — el
 # placeholder `_API_ACTOR = "user:api"` MURIÓ con el cruce del gateway:
 # `SessionAuth.identity_from(request)` resuelve la Identity real y el
 # pipeline inyectado la estampa en los eventos del job (AX1).
 _DEFAULT_DOMAIN = "domain-default"
+
+_LOGGER = logging.getLogger(__name__)
 
 # [C8/M8 pieza 4] Custodia por env, con la escalera del freeze §7 (P1-3):
 #   sin variables            → escalón 1 efímero (despliegue local, dev)
@@ -297,8 +303,9 @@ class MissionRequest(BaseModel):
     es un run NUEVO con su propio stream y su propio certificado."""
     project_id: str | None = None
     """Referencia OPACA a la fila relacional `project` (M15, FUERA del event
-    store). El evento no valida FK: la valida el API al crear el run cuando
-    P6 exista — hoy viaja tal cual, sin inventar una tabla que no está."""
+    store). El evento no valida FK: la valida el API al crear el run
+    (F1.1, `_validate_project_reference`) — desconocido ⇒ 422 antes de
+    agendar nada."""
 
 
 class AblationSpec(BaseModel):
@@ -476,6 +483,10 @@ class RunResources:
     certificado deja de vivir en la memoria del proceso. El api no distingue."""
     run_tickets: dict[str, RunTicket]
     session_auth: SessionAuth
+    project_repo: ProjectRepository
+    """[F1.1] El puerto `projects` (`blite.organization`) — `POST /runs`
+    modo misión lo consulta para validar `project_id` ANTES de agendar
+    nada (§Contrato-4: el evento no valida FK, el API sí)."""
     _registry: Registry | None = None
     model_backend: ModelBackendConfig | None = None
 
@@ -513,12 +524,54 @@ def _build_dispatcher() -> Dispatcher:
     return ProfileDispatcher(service=ServiceStrategy(build_mcp_invoker(manifest)))
 
 
+_CONTENT_DIR_ENV = "CHIMERA_CONTENT_DIR"
+
+
+def _build_content_store() -> ContentStore:
+    """[F1.6] La evidencia de los runs (`RunResources.content`) — el store que
+    `digest_via()` usa para CADA `run.step.started`/`capability.job.*`/llamada
+    de modelo (freeze §12). Distinto plano de confianza que `files.py` (P10):
+    ahí es contenido que un USUARIO sube; acá es lo que el propio runtime
+    produce y el certificado termina citando — por eso una env var PROPIA, no
+    `CHIMERA_FILES_DIR` (`files.py:73-84` ya argumenta esa separación).
+
+    Con `CHIMERA_CONTENT_DIR` configurada (compose.yaml SIEMPRE la define
+    para el servicio `api`) la evidencia sobrevive un `docker compose up
+    --build` — ESE es el cambio de plano de confianza que este ítem entrega:
+    antes se evaporaba con cada reinicio del proceso. Sigue siendo
+    almacenamiento LOCAL en volumen, no verificable ni replicado.
+
+    Ausente ⇒ `InMemoryContentStore` (Fase 1, comportamiento intacto para
+    quien no la configura — tests incluidos, que construyen `RunResources`
+    sin tocar el filesystem). Pero jamás en silencio: un operador que la
+    olvidó fuera de compose se entera por el log, no cuando ya necesita la
+    evidencia de un run viejo y no está."""
+    content_dir = os.environ.get(_CONTENT_DIR_ENV)
+    if content_dir is None:
+        _LOGGER.warning(
+            "%s ausente: la evidencia de los runs es EFÍMERA (in-memory, "
+            "Fase 1) y se pierde al reiniciar el proceso. compose.yaml ya la "
+            "define para el servicio api; fuera de compose, configurala "
+            "explícitamente si necesitás que sobreviva un reinicio.",
+            _CONTENT_DIR_ENV,
+        )
+        return InMemoryContentStore()
+    return FilesystemContentStore(root=Path(content_dir))
+
+
 def build_run_resources(
     store: EventStore, *, registry: Registry | None = None
 ) -> RunResources:
     """Construye la infra de vida-de-app de `/runs` sobre el `store` del
-    caller — el mismo que sirve el SSE (un solo EventStore por app)."""
-    content = InMemoryContentStore()
+    caller — el mismo que sirve el SSE (un solo EventStore por app).
+
+    [F1.1] El puerto `projects` se construye acá (mismo criterio que
+    `create_event_store`: DSN vía `CHIMERA_DATABASE_URL`, in-memory si no) y
+    el bootstrap del dominio/proyecto neutro corre UNA vez por app, en el
+    wiring — nunca al importar el módulo."""
+    content = _build_content_store()
+    project_repo = create_project_repository()
+    ensure_default_project(project_repo)
     return RunResources(
         store=store,
         dispatcher=_build_dispatcher(),
@@ -527,12 +580,11 @@ def build_run_resources(
         key_provider=_build_key_provider(),
         run_tickets={},
         session_auth=SessionAuth(_DEFAULT_DOMAIN),
+        project_repo=project_repo,
         _registry=registry,
         model_backend=_build_model_backend(content),
     )
 
-
-_LOGGER = logging.getLogger(__name__)
 
 _LAST_RESORT_ERROR_KIND_UNKNOWN = "BackgroundTaskError"
 """`error_kind` cuando ni el tipo de la excepción es legible — nunca un
@@ -751,6 +803,90 @@ def _resolve_proposer(
     )
 
 
+_APPROVAL_SIDE_EFFECTS_ENV = "CHIMERA_APPROVAL_REQUIRED_SIDE_EFFECTS"
+"""F1.3 — política de DESPLIEGUE, jamás hardcode (`ApprovalGate` es un puerto
+inyectable, `mission.py:130`): lista de `side_effects` (`CapabilityManifest`,
+separados por coma) que exigen aprobación humana antes de invocarse. AUSENTE
+o vacía ⇒ ningún `capability_id` la requiere — `_build_approval_gate`
+devuelve `None` y `execute_run` queda EXACTAMENTE como antes de esta sesión
+(doctrina `mission.py:130`: «el default del despliegue es SIN gate — cero
+aprobaciones fingidas»)."""
+
+_APPROVAL_REQUIRED_CAUSE = "approval_required"
+"""`error_kind`/`cause` cuando el gate corta por falta de aprobación — DISTINTO
+del `cause` genérico `"approval_denied"` de `ApprovalDecision` (ese es el
+default de un rechazo EXPLÍCITO; este es honesto sobre que nadie decidió
+nada todavía)."""
+
+_APPROVAL_DECISION_FIELD = "approved"
+_APPROVAL_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {_APPROVAL_DECISION_FIELD: {"type": "boolean"}},
+    "required": [_APPROVAL_DECISION_FIELD],
+}
+"""Booleano-en-objeto — el caso que `booleanDecisionField` (Studio,
+`RunThread.tsx`) YA sabe renderizar como botones Aprobar/Rechazar, sin que
+esta ruta tenga que inventar vocabulario nuevo del lado del Studio."""
+
+
+def _approval_required_side_effects() -> frozenset[str]:
+    """Lee `CHIMERA_APPROVAL_REQUIRED_SIDE_EFFECTS` POR LLAMADA (mismo
+    criterio que `_operator_identity` en `chimera_api.auth`: configuración
+    viva del despliegue, jamás cache de import)."""
+    raw = os.environ.get(_APPROVAL_SIDE_EFFECTS_ENV, "")
+    return frozenset(part.strip() for part in raw.split(",") if part.strip())
+
+
+def _build_approval_gate(resources: RunResources) -> ApprovalGate | None:
+    """Construye el `ApprovalGate` del camino de misión (harness-agentico.md
+    §Contrato-6) — MECANISMO, no política: el runtime (`loop.py`) no decide
+    qué necesita aprobación (INV-2), y este wiring tampoco decide sobre qué
+    postura tomar frente a un side_effect nuevo — solo traduce la lista que
+    el DESPLIEGUE declaró (`_APPROVAL_SIDE_EFFECTS_ENV`) contra el manifest
+    real de la capability propuesta.
+
+    Sin la env var configurada ⇒ `None`: `execute_run` ni se entera de que
+    este puerto existe (mismo comportamiento que antes de F1.3).
+
+    El gate NO puede bloquear esperando una respuesta humana — con
+    `BackgroundTasks` (decisión #11) un gate bloqueante clava un hilo
+    (`mission.py:132-141`); decide con lo que tiene: `required=True` +
+    `granted=False`, fail-closed, mismo patrón que `_GateQueAprueba(granted=
+    False)` en `test_agentic_loop.py`. El turno corta ahí (`run.failed
+    {error_kind: "approval_required"}`) con el `approval.requested` REAL ya
+    journalizado — la cola durable (P11) es el hogar de un gate que sí
+    espere y deje el turno vivo."""
+    required_side_effects = _approval_required_side_effects()
+    if not required_side_effects:
+        return None
+
+    def _gate(request: ApprovalRequest) -> ApprovalDecision:
+        try:
+            manifest = resources.registry().get(request.capability_id).manifest
+        except KeyError:
+            # Capability desconocida: problema del paso resolve→invoke que
+            # sigue (fail-loud ahí), no de esta compuerta — jamás se inventa
+            # una aprobación para algo que ni siquiera se sabe invocar.
+            return ApprovalDecision()
+        if manifest.side_effects not in required_side_effects:
+            return ApprovalDecision()
+        return ApprovalDecision(
+            required=True,
+            granted=False,
+            approval_id=f"approval-{uuid4().hex}",
+            prompt=(
+                f"La capability {request.capability_id!r} declara "
+                f"side_effects={manifest.side_effects!r} — requiere "
+                "aprobación humana antes de invocarse "
+                f"({_APPROVAL_SIDE_EFFECTS_ENV})."
+            ),
+            json_schema=_APPROVAL_JSON_SCHEMA,
+            cause=_APPROVAL_REQUIRED_CAUSE,
+        )
+
+    return _gate
+
+
 def _start_claim_run(
     resources: RunResources,
     body: CreateRunRequest,
@@ -838,6 +974,24 @@ def _start_claim_run(
     return CreateRunResponse(run_id=run_id)
 
 
+def _validate_project_reference(
+    resources: RunResources, project_id: str | None
+) -> None:
+    """[F1.1] `project_id` es la referencia OPACA que `MissionRequest`
+    declara (`docs/esquema-datos-v2.md` §2) — el EVENTO no valida esa FK
+    (`run.created` la lleva tal cual), la valida el API ACÁ, ANTES de
+    agendar nada: ni `run_tickets`, ni `background_tasks`, ni un solo
+    evento en el stream por un `project_id` que no existe. Ausente ⇒ nada
+    que validar — el modo misión sigue funcionando sin proyecto."""
+    if project_id is None:
+        return
+    if resources.project_repo.get(project_id) is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"project_id desconocido: {project_id}",
+        )
+
+
 def _start_mission_run(
     resources: RunResources,
     body: MissionRequest,
@@ -852,7 +1006,14 @@ def _start_mission_run(
     Sin gate de verificación (`post_invoke` ausente A PROPÓSITO): `done` ⟺
     el verifier pasa (§Contrato-3) — hoy no hay verifier del lado misión,
     así que el run termina `run.failed {error_kind: "exhausted"}`; el gate
-    real llega con los claims de sub-runs/steps (frontera P4)."""
+    real llega con los claims de sub-runs/steps (frontera P4).
+
+    F1.3 — `approval_gate` SÍ se cablea acá (`_build_approval_gate`): es el
+    único camino agéntico (`proposer is not None`), así que es el único que
+    `execute_run` puede alcanzar (`loop.py:837`). El claim-first
+    (`_start_claim_run`) es turno único sin loop agéntico — fuera de
+    alcance, no tiene la costura."""
+    _validate_project_reference(resources, body.project_id)
     run_id = f"run-{uuid4().hex}"
 
     # Ticket VACÍO: el modo misión no declara conclusiones — los claims los
@@ -913,6 +1074,7 @@ def _start_mission_run(
             crossing=_make_crossing(resources, identity),
             thread_id=body.thread_id,
             project_id=body.project_id,
+            approval_gate=_build_approval_gate(resources),
         ),
     )
 

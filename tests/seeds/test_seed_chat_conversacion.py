@@ -66,8 +66,9 @@ def _store_con_run_abierto() -> Any:
 def _client(store: Any) -> Any:
     from chimera_api.app import create_app
     from fastapi.testclient import TestClient
+    from tests.conftest import authenticated
 
-    return TestClient(create_app(store))
+    return authenticated(TestClient(create_app(store)))
 
 
 def test_mission_message_payload_forma() -> None:
@@ -173,7 +174,12 @@ def test_post_cancel_rechaza_parent_cancelled() -> None:
 
 
 def test_run_created_porta_thread_y_project() -> None:
-    """§Contrato-4: los aditivos del body de misión llegan al payload fundacional."""
+    """§Contrato-4: los aditivos del body de misión llegan al payload fundacional.
+
+    `project_id="default"` — F1.1 materializó la FK que este seed dejaba
+    opaca: `create_app()` siembra ese proyecto en cada arranque
+    (`chimera_api.projects.ensure_default_project`), así que sigue siendo
+    la referencia MÁS simple que el API valida de verdad antes de agendar."""
     from blite.events import create_event_store
 
     store = create_event_store()
@@ -184,7 +190,7 @@ def test_run_created_porta_thread_y_project() -> None:
             "mission": "particioná la red",
             "max_turns": 1,
             "thread_id": "run-raiz",
-            "project_id": "proj-1",
+            "project_id": "default",
         },
     )
     assert respuesta.status_code == 202
@@ -193,4 +199,4 @@ def test_run_created_porta_thread_y_project() -> None:
         evento for evento in store.read_stream(run_id) if evento.type == "run.created"
     )
     assert creado.payload["thread_id"] == "run-raiz"
-    assert creado.payload["project_id"] == "proj-1"
+    assert creado.payload["project_id"] == "default"

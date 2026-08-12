@@ -4806,6 +4806,313 @@ cierre métrico se DERIVA del log (V2/M19); los brazos NO los elige el caller
 implementa F2. Con #176+#177 **F1 y F2 quedan desbloqueados**; prompts de
 lanzamiento en `09-cierre.md` §5.
 
+## Sesión CIERRE-PRODUCTO (F1) — worktree `mejorado/cierre-producto`, 2026-08-11
+
+> Alcance: `docs/mejorado/09-cierre.md` §2·F1 completo. Rango asignado por
+> control (regla #170): **#180–#199**. Modo #121: Opus orquesta → Sonnet
+> implementa → Opus valida. Rama desde `mejorado/base` @`000e242`, 11 commits,
+> **sin push**.
+
+### #180 — Flip a 401-obligatorio, con el caveat que lo hace honesto
+
+`SessionAuth.identity_from` ya no fabrica identidad cuando falta la cookie:
+ausente e inválida reciben el MISMO trato, 401. Murió el fallback al operador
+local que ocupaba el lugar del difunto `_API_ACTOR`.
+
+**Lo que este flip NO agrega, escrito en el docstring del módulo para que nadie
+lo lea como más de lo que es:** `SessionAuth.issue()` no recibe nada de la
+request — siempre emite la identidad del operador configurado. Cualquiera pide
+cookie primero, así que **no agrega seguridad real**. Lo que sí logra: que la
+identidad venga SIEMPRE de un token firmado y que ningún camino de código la
+fabrique (AX1 pasa a ser cierto por construcción), y que el Studio tenga ciclo
+de sesión — el prerrequisito de un IdP de verdad. Cerrar el minteo es otra
+decisión y no estaba en el alcance enumerado de #173.4.
+
+El Studio nunca llamaba `/auth/session` ni mandaba `credentials`: se agregó un
+punto ÚNICO de egress (`fetchWithSession`) que manda la cookie siempre y, ante
+un 401, pide sesión una vez y reintenta una vez — jamás un bucle. Los ~50 call
+sites de test se resolvieron con un helper compartido en `tests/conftest.py`
+(estaba vacío), que **falla ruidoso** si la sesión no se emite: sin eso, un
+`/auth/session` roto haría fallar 50 tests con 401 y taparía la causa.
+
+**Frontera declarada, no forzada:** el SSE (`GET /runs/{id}/events`) NO quedó
+cableado a identidad. `EventSource` no expone el status HTTP a `onerror`, así
+que un 401 mataría el stream permanentemente sin señal para disparar el mismo
+reintento; y por spec WHATWG un error HTTP no reintenta solo. Cablearlo exige
+volver `openRunEventStream` asíncrono y tocar sus llamadores. Preferimos una
+frontera declarada a un hilo de eventos roto.
+
+### #181 — `projects`: la primera capa relacional fuera del event store
+
+La tabla existía desde #176 pero **no había NINGÚN acceso relacional
+no-event-store en el árbol**. Se creó `blite.organization` con la forma de la
+casa (Protocol + factory por DSN + adapter Postgres cercado por import-linter,
+espejo de `blite.events`), y el contrato nuevo hace 19 kept.
+
+- `GET/POST /projects` entran **sin ceremonia de freeze**: `endpoints-studio.md`
+  no está en `contract-freeze.md` (solo «gobernada por» §9/§7/§3/§14) y las
+  rutas no tocan ningún wire congelado. Precedente directo: `/me` y `/files`
+  entraron igual. `projects` se agregó a la allowlist de nginx en el MISMO
+  cambio, que es lo que exige `test_studio_nginx_config.py`.
+- **FK viva:** `POST /runs` en modo misión valida `project_id` contra el
+  repositorio y responde **422** antes de agendar nada — exactamente lo que
+  #176 dejó asignado («el evento NO valida FK; la valida el API»).
+- **La semilla es NEUTRA** (`id="default"`, «Proyecto por defecto»), y
+  `DEFAULT_PROJECT` del router pasó de `'islanding-ieee14'` a `'default'`. Un
+  default de frontend que nombra un caso de uso concreto contradice #173.1 y
+  además apuntaba a una fila inexistente. `domains` tampoco tenía semilla: el
+  bootstrap idempotente crea dominio y proyecto en el wiring, nunca al importar.
+- Doc nuevo `docs/studio/projects-workspaces.md`: `project` es fila persistida;
+  **`workspace` NO es entidad, es un segmento de ruta**. Se documenta qué
+  implicaría persistirlo, marcado como no implementado.
+
+**Queda abierto:** el Studio todavía no manda `project_id` al crear un run, así
+que el selector cambia la URL pero los runs no quedan atribuidos al proyecto.
+
+### #182 — Content store durable: el handoff se equivocaba, y el bug solo se vio VIVO
+
+El handoff decía que migrar la evidencia a disco era «un cambio de una línea».
+**Es falso:** `InMemoryContentStore._domain_of` lee un Mapping (`ctx.get`) y
+`FilesystemContentStore._domain_of` lee un atributo (`getattr`), y el runtime
+pasa un dict (`digests.py:30`). Voltear la línea tal cual reventaba cada
+`digest_via()` con `TypeError`. Se unificó el adapter para aceptar ambas formas,
+conservando el fail-loud cuando no hay `domain_id` por ninguna vía (protege SO2).
+
+**Y después la suite entera en verde mintió.** Con 1792 tests pasando, el
+despliegue REAL fallaba con `PermissionError` en cada run: el volumen nombrado
+nuevo se monta propiedad de root porque `/app/var/content` **no existía en la
+imagen**. Los tests del adapter usan `tmp_path`, así que ninguno podía verlo.
+El comentario de `docker/api.Dockerfile` ya enunciaba la regla —«un volumen
+montado sobre un directorio inexistente queda propiedad de root»— y el cambio
+la incumplió. Arreglado y anotado ahí mismo: **todo volumen nuevo entra en esa
+línea, sin excepción**.
+
+Verificado VIVO tras el arreglo: run `completado`/`verified`/**AL3**, 8 archivos
+de evidencia en disco, y **los 8 siguen ahí tras reiniciar el contenedor**.
+
+### #183 — El gate de aprobación se cablea como MECANISMO; el 409 no se afloja
+
+`approval.requested` tiene un solo emisor (`loop.py:854`) y solo dispara si hay
+`approval_gate`, un `Callable` inyectable que **la API nunca pasaba**. Se cableó
+en el camino de misión, disparado por configuración de despliegue
+(`CHIMERA_APPROVAL_REQUIRED_SIDE_EFFECTS`, **default vacío = sin gate**, que
+preserva la doctrina ya escrita en `mission.py:130`: «cero aprobaciones
+fingidas»). La política de escalación §13 sigue siendo de F2: acá va el
+mecanismo, no la política.
+
+**Ceremonia de validación — se rechazó una entrega.** La implementación inicial
+aflojó el 409 post-terminal para que la respuesta de aprobación pudiera cerrarse.
+Se revirtió, porque freeze §2 deja los eventos post-terminales **fuera del hash
+de procedencia**: un `approval.responded` tardío sería una decisión de GOBIERNO
+que el certificado no cubre, y aprobar un run que ya falló no cambia nada —
+parecería que hubo gobierno donde no lo hubo. En un producto cuya tesis es que
+lo afirmado sea demostrable, ese es el canje equivocado.
+
+**La conclusión honesta, que es el verdadero hallazgo del ítem:** sin **P11**
+(cola durable) un approval humano-en-el-lazo genuino NO PUEDE existir, porque el
+gate no puede bloquear esperando a una persona. Con el gate síncrono de hoy, el
+único `approval.requested` posible nace de un turno que ya cerró el run. Se
+declara como frontera de infraestructura; **si P11 entra al cierre, lo decide
+control**.
+
+### #184 — La card de approval nunca habría renderizado un evento real
+
+Defecto propio del árbol, no introducido por esta sesión y no registrado por
+nadie: el loop emite `"step_id": None` literal, el espejo Zod lo declaraba
+`.optional()` (zod v4 **rechaza `null`**) y `RunThread.tsx:149` hace
+`if (!parsed.success) continue`. Con un `approval.requested` REAL la card se
+descartaba **en silencio**. Los fixtures lo tapaban porque el generador ponía
+`step_id="step-1"`, un valor que el emisor no puede producir. Mismo patrón que
+el bug de `postRun` que cazó P-ui: **el doble codificaba un contrato que el
+servidor no cumple**.
+
+Se corrigió el espejo (aditivo; el wire está congelado) y **se regeneró el
+fixture con el script generador** para que el anti-drift vigile la forma que el
+servidor emite de verdad. Segundo desajuste igual: `response` era `Any` en
+Pydantic y `z.record(...)` en el espejo, o sea solo objetos — un `true`, que es
+exactamente lo que produce un `json_schema` booleano, fallaba.
+
+### #185 — P12 tramo 1: la frontera de contenido recuperado deja de vivir en prosa
+
+`contract-freeze.md:144` dice que el contenido recuperado (RAG) jamás es
+evidencia y entra solo como `assumptions`. **No existía ni un chequeo.** Se
+implementó el guard con fallo ruidoso, con tests que ejercitan las dos caras
+(recuperado→assumptions pasa; recuperado→conclusions/Attestation revienta), y
+**etiquetado como trinquete SIN productor**: hoy no hay retrieval en el árbol,
+así que el guard solo lo ejercitan sus tests. Está declarado, no disfrazado.
+Los bundles ya emitidos no cambian de veredicto (12/12, exit 0).
+
+**Alcance abierto:** P12 completo («ingesta RAG/KB») no existe — no hay chunk
+store, ni índice, ni una sola llamada de embeddings. Construir el pipeline es de
+otra magnitud que el resto de F1; **entra al cierre o va a VISIÓN: lo decide
+Dylan** (#173.5 mandó research/deep-search a VISIÓN).
+
+### #186 — El certificado no sobrevive a un reinicio del API
+
+Hallazgo de la verificación viva, aislado con experimento limpio: certificado
+**200 (31 307 bytes) antes** de reiniciar el contenedor, **404 después**, con el
+run intacto y `completado` en Postgres. Los eventos son durables y la evidencia
+ahora también (#182), pero el certificado vive en memoria del proceso.
+
+Lo atenúa que el bundle descargado es autocontenido y verifica **12/12 offline**
+sin servidor — que es el diseño buscado. El hueco es de **recuperabilidad**, no
+de verificabilidad: quien guarde el link y vuelva tras un despliegue recibe 404.
+**No se arregló**: es otro puerto y merece decisión propia, con el mismo
+criterio con que el content store la mereció.
+
+### #187 — Rechazo registrado: la lista de excepciones de agnosticismo solo encoge
+
+Una entrega agregó una entrada a `tests/invariants/agnosticism_exceptions.toml`
+para poder nombrar el caso de uso en un docstring. La cabecera del propio
+archivo lo prohíbe («Añadir una entrada NO es el camino barato: el arreglo por
+defecto es… reformularlo») y C-2 ya había sentado el precedente (#175.4). Se
+reformularon los dos docstrings y se revirtió la entrada: **el trinquete pasa
+igual (88 passed)**. La entrada solo cubría redacción perezosa.
+
+### #188 — Gotchas del entorno que estaban mintiendo (para CLAUDE.md / F3)
+
+1. **`pyright` sin `--pythonpath <venv>` da 3230 errores falsos** en un worktree
+   y —más grave— resuelve `blite`/`chimera_api` contra el editable del repo
+   PRINCIPAL, así que **puede saltarse en silencio módulos que solo existen en
+   el worktree**. Hace falta además un `pyrightconfig.json` en la raíz del
+   worktree. Todo «pyright verde» reportado desde un worktree sin esa bandera
+   es sospechoso.
+2. **Los hooks de git SÍ corren en worktrees** (lint-staged, prettier, ruff,
+   pre-commit): el gotcha de `CLAUDE.md` que afirma lo contrario está
+   desactualizado.
+3. **`python -m importlinter.cli lint` no imprime nada**; el entry point
+   `.venv/bin/lint-imports` sí (19 kept, 0 broken).
+4. **Sesiones paralelas colisionan de verdad.** F2 tenía su stack arriba en
+   5544/8000/3000: un `curl localhost:8000/health` devolvía **200 de SU api**.
+   Casi se valida contra el stack ajeno. Para verificar en paralelo hace falta
+   un override de puertos con la etiqueta **`!override`** — Compose CONCATENA
+   las listas de `ports`, así que sin ella sigue intentando el puerto original.
+5. **Si faltan los archivos de `secrets/`, Docker los crea como DIRECTORIOS
+   propiedad de root** y el mount queda roto hasta limpiarlos a mano. Correr
+   `scripts/generate-secrets.sh` ANTES del primer `up`.
+6. **El probe de `test_esquema_migration.py` exige base VIRGEN**: contra una que
+   ya tiene el esquema aplicado (la de compose) revienta con `DuplicateTable`.
+
+### Tabla de interacciones (interfaces tocadas)
+
+| Interfaz                                                 | Dominio | Estado del contrato                                                                 |
+| -------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------- |
+| `GET /projects` · `POST /projects`                       | E↔D     | **NUEVAS** — aditivas, sin ceremonia (precedente `/me`, `/files`); allowlist nginx  |
+| `POST /runs` valida FK de `project_id`                   | E       | **ENDURECIDO** — 422 donde antes pasaba cualquier string opaco                      |
+| `identity_from`: sin cookie ⇒ 401                        | E↔D     | **ROTO A PROPÓSITO** — frontera P-ui cerrada; ~50 call sites de test migrados       |
+| `ProjectRepository` (`blite.organization`)               | ENGINE  | **NUEVO PUERTO** — Protocol + factory + adapter cercado; contrato import-linter #19 |
+| `RunResources.content` → adapter durable                 | E       | ADITIVO — mismo puerto, adapter distinto; cambia el plano de confianza              |
+| `FilesystemContentStore._domain_of` acepta Mapping       | ENGINE  | **AMPLIADO** — antes solo atributo; fail-loud sin `domain_id` intacto               |
+| `approval_gate` inyectado en `execute_run`               | E       | ADITIVO — mecanismo; default vacío = sin gate                                       |
+| `approvalRequestedSchema.step_id` acepta `null`          | D       | **CORREGIDO** — el espejo rechazaba lo que el emisor produce                        |
+| `approvalRespondedSchema.response` acepta cualquier JSON | D       | **CORREGIDO** — era objeto-solo; Pydantic declara `Any`                             |
+| fixture `approval-requested.json` (ambos lados)          | A↔D     | REGENERADO con el script — ahora refleja la forma real                              |
+| `certificateQueryOptions(runId, enabled)`                | D       | ADITIVO — default `true`, retrocompatible                                           |
+| `RetrievedRef` + guard de evidencia                      | ENGINE  | **NUEVO** — trinquete sin productor, etiquetado                                     |
+| `docker/api.Dockerfile` crea `/app/var/content`          | INFRA   | **ARREGLO** — sin esto el despliegue vivo fallaba con la suite en verde             |
+
+### Gates al cierre (re-corridos en el worktree, no heredados)
+
+| gate                                      | resultado                                                    |
+| ----------------------------------------- | ------------------------------------------------------------ |
+| `pytest`                                  | **1792 passed** / 26 skipped / 4 xpassed                     |
+| cobertura                                 | **91.06 %** (baseline #175: 90.84 %)                         |
+| `lint-imports`                            | **19 kept, 0 broken** (baseline 18)                          |
+| `ruff check` + `format --check`           | limpios (405 archivos)                                       |
+| `pyright`                                 | **0 errores** (con `--pythonpath`)                           |
+| studio `test:run`                         | **354 passed / 35 files** (baseline 327/34)                  |
+| studio `lint` + `typecheck`               | limpios                                                      |
+| `pnpm run arch`                           | **0 violaciones** (147 módulos, 515 deps)                    |
+| `docs:lint` + `format:check`              | limpios                                                      |
+| `verify-bundle` sobre bundle vigente      | **12/12**, exit 0                                            |
+| Postgres REAL (integración + invariantes) | **18 passed** — cierra la cobertura 0–49 % del adapter nuevo |
+
+Los 26 skips son TODOS ambientales (espejo nexus no montado, Postgres sin DSN,
+gitleaks no instalado). Ninguna lógica se salta en silencio.
+
+### Verificación VIVA contra compose (el DoD que ningún test verde reemplaza)
+
+Stack propio en puertos aislados (API 8100, Postgres 5644) para no validar
+contra el de F2.
+
+| comprobación                                               | resultado                                                              |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `/me`, `POST /runs`, `/projects`, `POST /files` SIN cookie | **401** las cuatro                                                     |
+| `POST /auth/session`                                       | 200 `{actor_id, expires_at}`                                           |
+| `/me` con cookie                                           | 200, y **`override:apply:run` presente** (arregla el 403 de approvals) |
+| `GET /projects`                                            | 200 — proyecto neutro sembrado **en Postgres real**                    |
+| `POST /projects`                                           | 201 · duplicado **409** · slug inválido **422**                        |
+| `POST /runs` con `project_id` inexistente                  | **422** `{"detail":"project_id desconocido: fantasma"}`                |
+| `POST /runs` con `project_id` válido                       | **202**                                                                |
+| `POST /files` · `GET /files` (**P10**)                     | **201** con digest · **200** con el listado                            |
+| Run real punta a punta                                     | **completado**, `verdict=verified`, **AL3**                            |
+| Evidencia durable                                          | 8 archivos en disco, **8 tras reiniciar**                              |
+| Certificado                                                | **200 (31 307 B) antes** del reinicio, **404 después** (#186)          |
+| Bundle offline                                             | **12/12**, exit 0                                                      |
+
+### Handoff a control
+
+**Cerrado:** flip 401 (con caveat), `projects` punta a punta + doc, content store
+durable + arreglo de imagen, gate de aprobación como mecanismo, los dos espejos
+Zod rotos, guard de frontera RAG, cert 409 silenciado, flake de `NewRunView`,
+selector de proyecto vivo, y **P10 verificado VIVO** (abierto desde 2026-08-04).
+
+**Abierto, con causa:**
+
+1. **P8 branding** — la decisión salió del alcance de «un logo»: Dylan pidió un
+   design system de Blite. Propuesta completa entregada aparte (auditoría del
+   repo de la web + tres marcas + mapa de color por entidad + costo medido).
+   **Espera su elección**; nada se implementó.
+2. **Approval humano-en-el-lazo** — bloqueado por **P11**, no por tiempo (#183).
+3. **P12 completo** — no existe retrieval; decisión de alcance pendiente (#185).
+4. **Certificado no durable** (#186) — merece decisión propia.
+5. **El Studio no manda `project_id`** al crear runs (#181).
+6. `CHIMERA_OPERATOR_ID` y `CHIMERA_SESSION_COOKIE_SECURE` siguen fuera de
+   `compose.yaml`: un despliegue TLS descartaría la cookie en silencio.
+7. **Landmine de aislamiento de tests** (preexistente, hallado de paso):
+   `router.test.tsx` usa `routeTree.addChildren([])` y TanStack Router **muta en
+   sitio**, dejando el singleton vacío para el resto del archivo; ese test además
+   pasa de forma vacua. No se tocó.
+
+### #189 — P8 cerrado: la marca de Chimera es un racimo, y el acento es violeta
+
+Estaba abierto desde el handoff P-ui («BLOQUEADO-POR-DYLAN») y desbloqueado en #175.
+Dylan reencuadró el ítem: no era el logo de un producto, era **definir el estilo
+propio de Blite**. La propuesta completa se entregó aparte; acá quedan las dos
+decisiones que tocan este repo.
+
+**El acento pasa de turquesa a violeta** (`violet-700` claro / `violet-400` oscuro,
+misma regla de pasos que el resto del sistema). Razón, y no es de gusto: se
+investigaron **14 plataformas** (AWS, Azure, GCP, Vercel, Cloudflare, Supabase,
+Netlify, Render, Railway, Anthropic, OpenAI, Hugging Face, Microsoft Foundry,
+Databricks) parseando sus paquetes de iconos oficiales. Dos resultados mandan acá:
+
+1. **La categoría de Chimera es AGENTES, no «verificación».** «Verificación y
+   confianza» **no existe como categoría de primer nivel en ninguna** de las 14 —
+   negativo verificado, no asumido. Se reparte entre _Evaluation_, _Observability_ y
+   _Compliance_ (portal legal, fuera del producto). La verificación es el FEATURE
+   diferenciador de Chimera, no su clasificación. Corrección de Dylan, confirmada
+   por fuente.
+2. **El violeta es la convención de esa familia**, y el design system de Blite
+   (`blite-ui`) ya se lo había asignado a Chimera. Deja de ser «provisional».
+
+**El logomark deja de ser tres barras.** El anterior reutilizaba la geometría del
+glifo de datos `AssuranceScale`: el usuario veía tres barras en el sidebar y tres
+barras en cada badge de confianza, así que **la marca dejaba de leerse como marca**.
+El racimo —núcleo acentuado + anillo de seis medianos + seis pequeños— la separa del
+dato. Variante compacta (núcleo + anillo) para 16 px y favicon. Supersede registrado
+en `DESIGN.md` §1/§2/§4/§7/§9 con la convención de reobra del propio documento.
+
+**Frontera encontrada al aplicarlo:** `--ring` está declarado como línea propia con el
+mismo valor que `--brand`, no como `var(--brand)`. Moviendo solo `--brand`, el anillo
+de foco quedaba turquesa contra una marca violeta — acento partido en dos. Se movieron
+ambos, y queda anotado por si alguien quiere desacoplarlos a propósito.
+
+Gates: studio **354 passed / 35 files**, eslint 0, tsc 0, `arch` 0 violaciones,
+docs y format limpios. Cero hex fuera de `index.css` salvo el favicon, que es un
+documento SVG suelto y no puede leer custom properties (excepción que el archivo
+anterior ya declaraba para sí mismo).
+
 ## Sesión CIERRE-PLATAFORMA/CIENCIA — frente F2 (worktree `mejorado/cierre-plataforma`, 2026-08-11)
 
 > Alcance: `docs/mejorado/09-cierre.md` §2·F2 completo. Rango asignado por

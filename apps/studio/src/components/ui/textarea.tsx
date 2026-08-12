@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 /**
  * Textarea — shadcn, alineado al mismo lenguaje de superficie que
  * `SelectTrigger` (DESIGN.md §3b): radio `lg`, borde de 1px sobre
- * `border-input`, foco por `ring-3 ring-ring/50` (turquesa), transición solo
+ * `border-input`, foco por `ring-3 ring-ring/50` (el acento de marca), transición solo
  * de colores. No tiene altura del eje 32/40/48 porque no es un control de una
  * línea: la altura la fija el consumidor (`min-h-*` en potencias de 2).
  */

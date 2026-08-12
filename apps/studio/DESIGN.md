@@ -1,6 +1,11 @@
 # Chimera Studio — Sistema de diseño
 
-> **Estado: VIGENTE (2026-07-30).** §4 quedó reconciliado con el código real
+> **Estado: VIGENTE (2026-08-12).** §7 quedó reconciliado con el código real
+> [P8 2026-08-12]: la voz de marca pasa de turquesa a violeta y el logomark deja de
+> reutilizar la geometría de `AssuranceScale` — ahora es un racimo de círculos
+> (`BrandMark.tsx`). Detalle y porqué en §7.
+>
+> **Estado previo (2026-07-30).** §4 quedó reconciliado con el código real
 > [S3 2026-07-30]: el glifo `AssuranceScale` es TRES barras / CUATRO estados por la
 > directriz #99.1 (`packages/assurance-ui/src/AssuranceScale.tsx`, `BAR_COUNT = 3`);
 > el texto de cinco barras se conserva abajo como registro supersedido.
@@ -24,9 +29,9 @@ científico en vivo.
 
 **Chimera es un producto Blite y se ve como uno.** El Studio hereda el design system de
 la landing de Blite (`blite/brand/clean/website`): chasis acromático disciplinado,
-Plus Jakarta Sans + Inter, radios contenidos, espaciado en potencias de 2, pesos máximos 500. Sobre ese chasis, Chimera agrega UNA voz de acento propia: **turquesa**. El
-resultado: una UI 99% neutra donde el color, cuando aparece, significa algo — estética
-de instrumento científico.
+Plus Jakarta Sans + Inter, radios contenidos, espaciado en potencias de 2, pesos máximos 500. Sobre ese chasis, Chimera agrega UNA voz de acento propia: **violeta** (supersede
+P8 de turquesa — §7). El resultado: una UI 99% neutra donde el color, cuando aparece,
+significa algo — estética de instrumento científico.
 
 **Proceso (regla de Dylan, no negociable):** el diseño va de lo general a lo específico.
 Sentimiento → paleta → asignación a elementos. Ningún elemento del dominio define un
@@ -39,10 +44,10 @@ valores salen de la paleta nombrada de Tailwind — cero colores inventados.
 
 ### Nivel 1 — Marca (look & feel)
 
-| Rol                          | Valor                                                        | Notas                                                                                                                |
-| ---------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| Chasis                       | escala **neutral** de Tailwind, verbatim de la landing Blite | light: fondo blanco, tinta `neutral-950`; dark: fondo `neutral-950`, superficies `neutral-900`, bordes blanco al 10% |
-| La voz: **Turquesa Chimera** | `teal-400` (dark) / `teal-600` (light) → token `brand`       | la única voz de acento; firma el foco (`ring`), el subrayado de tab activa y la marca                                |
+| Rol                         | Valor                                                        | Notas                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Chasis                      | escala **neutral** de Tailwind, verbatim de la landing Blite | light: fondo blanco, tinta `neutral-950`; dark: fondo `neutral-950`, superficies `neutral-900`, bordes blanco al 10%  |
+| La voz: **Violeta Chimera** | `violet-400` (dark) / `violet-700` (light) → token `brand`   | la única voz de acento; firma el foco (`ring`), el subrayado de tab activa y la marca — supersede P8 de turquesa (§7) |
 
 ### Nivel 2 — Status (funcional, aparte de la marca)
 
@@ -182,8 +187,10 @@ el **mínimo** del camino crítico — jamás promedio (freeze §7).
   mono — trust/18 §2.3: clase+AL como badge, jamás como titular); `detail` reemplaza
   la etiqueta de clase cuando el contexto aporta otra (p. ej. `verifierId`). Es la
   única forma de decir "confianza" en toda la plataforma.
-- El logomark (§7) conserva su geometría F1 (tres barras): es marca, no dato — no
-  sigue la dirección semántica del glifo.
+- El logomark (§7): ~~conserva su geometría F1 (tres barras): es marca, no dato — no
+  sigue la dirección semántica del glifo~~ _[supersedido P8]_ dejó de reutilizar el
+  dibujo de este glifo — ahora es un racimo de círculos, geometría propia que no se
+  confunde con ningún dato de confianza. Ver §7.
 
 ## 5 · Tokens semánticos (contrato anti-retrabajo)
 
@@ -222,21 +229,41 @@ Reglas de consumo:
 > SUPERSEDIDO — el Studio muestra el PROYECTO, no solo el reto, y la navegación
 > escaló a un shell con sidebar (mockups `docs/archivo/mockups/studio-layout-v1.html`,
 > shell B validado por Dylan + equipo).
+>
+> **Reobra P8 (2026-08-12, decisión de Dylan tras investigar 14 plataformas):** el
+> logomark F1 (tres barras) y la voz turquesa quedan SUPERSEDIDOS. Por qué: el
+> logomark reutilizaba sin querer el dibujo del glifo de dato `AssuranceScale`
+> (§4) — el usuario ve tres barras en el sidebar y tres barras en cada badge de
+> confianza, y la marca deja de leerse como marca. Categoría de Chimera:
+> **AGENTES** (no "verificación" — eso no existe como categoría en ninguna de las
+> 14 plataformas relevadas; la verificación es un feature del producto, no la
+> categoría). El color de familia de agentes es **violeta**, y el design system
+> de Blite (`blite-ui`) ya lo tenía asignado a Chimera — queda ratificado acá.
+> Logomark nuevo: un **racimo** de tres escalas de círculo — separa la marca del
+> dato de una vez.
 
 - **Sidebar** (navegación del proyecto, `w-64`): logomark + wordmark "Chimera
   **STUDIO**" (display 500 + mono apagado) arriba, selector de proyecto debajo, y las
   secciones del proyecto (Runs, Artifacts, Papers, Knowledge) como nav vertical — la
-  activa con tinte `foreground/5` y regla turquesa al borde izquierdo. El toggle de
-  tema vive al pie del sidebar.
+  activa con tinte `foreground/5` y regla violeta al borde izquierdo (P8). El toggle
+  de tema vive al pie del sidebar.
 - **Barra superior delgada** (`h-12`): breadcrumb de contexto
   (`proyecto / sección / …`) sobre el contenido; el contenido ocupa el resto del
   ancho.
 - **Dentro de un run:** header persistente (id + estado + AL titular + acciones) y
   sub-tabs variante línea (Timeline, Verificación, Red, Ablación, Procedencia) con
-  subrayado turquesa en la activa — las tabs línea del topbar v3 sobreviven acá.
-- **Logomark:** el motivo de barras de la escala reducido a tres, en turquesa
+  subrayado violeta en la activa (P8) — las tabs línea del topbar v3 sobreviven acá.
+- **Logomark:** ~~el motivo de barras de la escala reducido a tres, en turquesa
   (`--color-brand` en la UI; `#2DD4BF` sobre `#171717` en el favicon). La marca ES el
-  elemento de firma; su geometría es fija (F1) y no sigue la dirección del glifo (§4).
+  elemento de firma; su geometría es fija (F1) y no sigue la dirección del glifo
+  (§4).~~ _[supersedido P8]_ un **racimo de círculos** (`BrandMark.tsx`,
+  `viewBox="0 0 24 24"`): núcleo grande (`cx=12 cy=12 r=4`) en el token de marca —
+  único elemento con croma — rodeado de un anillo de seis medianos (radios 2.3–2.9)
+  y seis pequeños (radios 0.9–1.3) en tinta (`currentColor`). Color: **violeta**
+  (`--color-brand` en la UI; núcleo `#A684FF` sobre `#171717`, anillo blanco, en el
+  favicon — variante compacta: núcleo + los seis medianos, sin los pequeños, que a
+  16–32px quedan bajo 1px). La marca ES el elemento de firma; su geometría es fija
+  (P8) y no sigue la dirección del glifo (§4).
 
 ## 8 · Voz
 
@@ -247,13 +274,26 @@ invitan a actuar.
 
 ## 9 · Piso de calidad (no negociable, sin anunciarlo)
 
-Foco visible en todo interactivo (ring turquesa), `prefers-reduced-motion` respetado
+Foco visible en todo interactivo (ring violeta, P8), `prefers-reduced-motion` respetado
 globalmente, contraste AA en texto de ambos temas, jerarquía de headings por vista (se
 completa en F2/F7).
 
 ---
 
 ## Registro de decisiones
+
+- **2026-08-12 (P8):** tras investigar 14 plataformas para derivar cómo se clasifican
+  los servicios, Dylan cierra dos cosas: la categoría de Chimera es **AGENTES** (no
+  "verificación" — esa categoría no existe en ninguna de las 14; verificación es un
+  feature del producto), y el color de familia de agentes es **violeta** — ya asignado
+  a Chimera en el design system de Blite (`blite-ui`), queda ratificado. Se reemplaza
+  el logomark (`BrandMark.tsx` + `public/favicon.svg`): dejaba de leerse como marca por
+  reutilizar el dibujo del glifo de dato `AssuranceScale` (tres barras en el sidebar,
+  tres barras en cada badge de confianza). Nuevo logomark: racimo de círculos (núcleo +
+  anillo de seis medianos + seis pequeños); variante compacta (núcleo + medianos, sin
+  pequeños) para favicon y usos ≤16px. `--brand`/`--ring` pasan de teal-600/400 a
+  violet-700/400 (`src/index.css`); `chart-1..5` (Nivel 3, independiente de marca) no
+  cambia. Supersede el logomark F1 (tres barras, §4/§7) y la voz turquesa (§1/§2).
 
 - **2026-07-23 (carril 2, F3):** nace `@chimera/assurance-ui` (`packages/assurance-ui`)
   por EXTRACCIÓN real: la semántica clase+AL (`assurance.ts`) y los componentes

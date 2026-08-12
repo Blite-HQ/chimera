@@ -16,6 +16,7 @@ sondear ni dormir.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any, cast
@@ -27,6 +28,7 @@ from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import write_session
 from fastapi.testclient import TestClient
 
+from blite.content_fs import FilesystemContentStore
 from blite.events import create_event_store
 from blite.events.store import EventStore
 from blite.protocols.model_server import InMemoryReplayManifest, ModelServer
@@ -34,6 +36,7 @@ from blite.runtime.content_store import InMemoryContentStore
 from blite.runtime.loop import TurnContext
 from blite.runtime.registry import EntryPointRegistry
 from blite_capability.manifest import CapabilityManifest
+from tests.conftest import authenticated
 
 _RUN_ID_PATTERN = re.compile(r"^run-[0-9a-f]{32}$")
 
@@ -94,7 +97,7 @@ def _make_registry() -> EntryPointRegistry:
 
 def _make_client(store: EventStore | None = None) -> TestClient:
     event_store = store if store is not None else create_event_store()
-    return TestClient(create_app(event_store, registry=_make_registry()))
+    return authenticated(TestClient(create_app(event_store, registry=_make_registry())))
 
 
 # starlette.testclient.TestClient anota `.get()`/`.post()` contra el paquete
@@ -449,6 +452,47 @@ class TestModoMision:
         assert response.status_code == 422
         assert store.read_all() == ()
 
+    def test_project_id_desconocido_da_422_y_no_agenda_nada(self) -> None:
+        # Arrange — F1.1: el API valida la FK opaca ANTES de agendar nada
+        # (el evento NO la valida, `docs/esquema-datos-v2.md` §2/ceremonia
+        # #176) — ni ticket, ni background task, ni un evento en el stream.
+        store = create_event_store()
+        client = _make_client(store)
+
+        # Act
+        response = _post(
+            client,
+            "/runs",
+            json_body={
+                "mission": "una misión con proyecto inventado",
+                "project_id": "proyecto-inexistente",
+            },
+        )
+
+        # Assert
+        assert response.status_code == 422
+        assert "proyecto-inexistente" in response.json()["detail"]
+        assert store.read_all() == ()
+
+    def test_project_id_conocido_arranca_202(self) -> None:
+        # Arrange — cada `create_app()` siembra el proyecto neutro "default"
+        # (F1.1 ítem 2, dominio `domain-default`) — existe sin crear nada.
+        client = _make_client()
+
+        # Act
+        response = _post(
+            client,
+            "/runs",
+            json_body={
+                "mission": "una misión con proyecto real",
+                "project_id": "default",
+            },
+        )
+
+        # Assert
+        assert response.status_code == 202
+        assert _RUN_ID_PATTERN.match(response.json()["run_id"])
+
 
 _MODEL_CTX = {"domain_id": "domain-default"}
 _MODEL_BACKEND_ID = "anthropic/claude-sonnet-test"
@@ -644,6 +688,49 @@ class TestModoMisionProposerReal:
             _make_client()
 
 
+class TestContentStoreDurable:
+    """F1.6 — `RunResources.content` (la evidencia de cada
+    `run.step.started`/`capability.job.*`/llamada de modelo, vía
+    `digest_via()`) deja de vivir SOLO en memoria: con `CHIMERA_CONTENT_DIR`
+    configurada (compose.yaml SIEMPRE la define para `api`) sobrevive un
+    reinicio del proceso. Sin la env var el fallback declarado sigue siendo
+    memoria — pero nunca en silencio (decisión del handoff: el cableado de
+    una sola línea que el handoff prometía era falso porque los dos adapters
+    leían el ctx de forma incompatible; `test_content_fs.py` cubre ESE fix)."""
+
+    def test_sin_env_var_el_fallback_es_in_memory_y_se_loguea(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from chimera_api.runs import build_run_resources
+
+        monkeypatch.delenv("CHIMERA_CONTENT_DIR", raising=False)
+
+        with caplog.at_level(logging.WARNING, logger="chimera_api.runs"):
+            resources = build_run_resources(create_event_store())
+
+        assert isinstance(resources.content, InMemoryContentStore)
+        assert any("CHIMERA_CONTENT_DIR" in record.message for record in caplog.records)
+
+    def test_con_env_var_la_evidencia_sobrevive_una_instancia_nueva(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Nunca la MISMA instancia de Python — dos `build_run_resources()`
+        distintos sobre el MISMO volumen, como lo estarían un proceso viejo y
+        uno nuevo tras `docker compose up --build`."""
+        from chimera_api.runs import build_run_resources
+
+        monkeypatch.setenv("CHIMERA_CONTENT_DIR", str(tmp_path))
+        resources_antes = build_run_resources(create_event_store())
+        assert isinstance(resources_antes.content, FilesystemContentStore)
+        data = b'{"evidencia":true}'
+        artifact = resources_antes.content.put(data, "application/json", _MODEL_CTX)
+
+        resources_despues = build_run_resources(create_event_store())
+
+        assert isinstance(resources_despues.content, FilesystemContentStore)
+        assert resources_despues.content.get(artifact.digest, _MODEL_CTX) == data
+
+
 class TestContratoFixtureStudio:
     """El body EXACTO que el Studio produce (fixture de costura single-origin,
     `tests/fixtures/contract/endpoints/post-runs-mission.json`) responde 202 —
@@ -697,7 +784,7 @@ class TestModoMisionInstanciaReal:
         # perezosamente `load_registry(store)` sobre los entry points
         # REALES `blite.capabilities` instalados en el venv (no un doble).
         store = create_event_store()
-        client = TestClient(create_app(store))
+        client = authenticated(TestClient(create_app(store)))
         body = {
             "mission": "particionar cr6-uniforme y certificar el corte",
             "instance_id": "cr6-uniforme",

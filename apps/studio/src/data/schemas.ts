@@ -16,6 +16,7 @@ import type {
   Attestation,
   EventAssurance,
   KnowledgeClaim,
+  Project,
   ProjectArtifact,
   ProjectedEvent,
   RunSummary,
@@ -183,19 +184,36 @@ export type PlanItemUpdated = z.infer<typeof planItemUpdatedSchema>;
  * del request es dato opaco para el wire: la validación semántica de la
  * respuesta contra ese schema es del engine (`authorize_approval_response`),
  * jamás de este espejo.
+ *
+ * `step_id` — F1.3: el ÚNICO emisor real (`loop.py` §Contrato-6) journaliza
+ * `step_id: null` LITERAL — la aprobación corre ANTES de abrir el `RunStep`
+ * del turno, así que jamás hay un id de step que citar. `.optional()` a
+ * secas rechaza `null` en Zod v4 (solo tolera la clave AUSENTE), así que un
+ * `approval.requested` real fallaba `safeParse` en silencio
+ * (`RunThread.tsx`: `if (!parsed.success) continue`) y la card nunca se
+ * renderizaba. `.nullish()` acepta AMBOS — clave ausente (fixtures/replays
+ * viejos) y `null` (el wire real) — sin resucitar el `"step-1"` que el
+ * emisor no puede producir.
+ *
+ * `response` — espejo de `ApprovalRespondedPayload.response: Any` en
+ * Pydantic (`blite.gateway.approval`): CUALQUIER JSON válido, no solo un
+ * objeto. `z.record()` rechazaba un booleano/string/número de tope
+ * (`json_schema={"type":"boolean"}` produce exactamente eso) — `z.unknown()`
+ * iguala el ancho real del campo; la forma concreta la valida el emisor
+ * contra el `json_schema` del request, jamás este espejo.
  */
 export const approvalRequestedSchema = z.object({
   run_id: z.string().min(1),
   approval_id: z.string().min(1),
   json_schema: z.record(z.string(), z.unknown()),
   prompt: z.string().min(1),
-  step_id: z.string().min(1).optional()
+  step_id: z.string().min(1).nullish()
 });
 
 export const approvalRespondedSchema = z.object({
   run_id: z.string().min(1),
   approval_id: z.string().min(1),
-  response: z.record(z.string(), z.unknown()),
+  response: z.unknown(),
   authorized_by: z.string().min(1)
 });
 
@@ -234,6 +252,30 @@ export const meWireSchema = z.object({
 });
 
 export type Me = z.infer<typeof meWireSchema>;
+
+/**
+ * F1.1 (ceremonia #176, `docs/studio/projects-workspaces.md`) — espejo de
+ * `GET /projects` / `POST /projects` (`docs/specs/endpoints-studio.md`
+ * §"GET/POST /projects"): `{id, domain_id, name, created_at}[]`. `id` es el
+ * slug validado en el server (`^[a-z0-9][a-z0-9-]{0,62}$`) — se re-valida
+ * acá, misma regla que el resto de la frontera: un wire externo se confirma,
+ * no se asume.
+ */
+export const projectWireSchema = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/),
+  domain_id: z.string().min(1),
+  name: z.string().min(1),
+  created_at: z.string().min(1)
+});
+
+export function toProject(wire: z.infer<typeof projectWireSchema>): Project {
+  return {
+    id: wire.id,
+    domainId: wire.domain_id,
+    name: wire.name,
+    createdAt: wire.created_at
+  };
+}
 
 /**
  * P10/M24 — espejo de `GET /files` (`chimera_api.files`). El `digest` es la

@@ -35,6 +35,7 @@ from blite.certificate.bundle_check import check_bundle
 from blite.events import create_event_store
 from blite.runtime.registry import EntryPointRegistry
 from blite_capability.manifest import CapabilityManifest
+from tests.conftest import authenticated
 
 _STATEMENT_4BUS = "la partición propuesta es óptima y electricamente factible"
 _SCOPE_4BUS: dict[str, Any] = {"instancia": "sintetica-4bus"}
@@ -64,7 +65,7 @@ class _EchoCapability:
 def _make_client() -> TestClient:
     store = create_event_store()
     registry = EntryPointRegistry({"cap.echo": _EchoCapability()})
-    return TestClient(create_app(store, registry=registry))
+    return authenticated(TestClient(create_app(store, registry=registry)))
 
 
 # starlette.testclient.TestClient anota `.get()`/`.post()` contra el paquete

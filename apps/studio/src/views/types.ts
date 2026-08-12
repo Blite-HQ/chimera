@@ -182,6 +182,21 @@ export interface DsseEnvelope {
 export type RunStatus = 'en_curso' | 'completado' | 'fallido' | 'cancelado';
 
 /**
+ * F1.1 (ceremonia #176, `docs/studio/projects-workspaces.md`) — fila real de
+ * la tabla `projects` (`GET /projects`): lo que el selector del sidebar
+ * lista. `domainId` sale de la identidad de quien pregunta, nunca de un
+ * parámetro del cliente. El shell (`AppShellProject`) hoy solo consume
+ * `id`/`name`; los cuatro campos viajan igual para no fabricar un espejo
+ * recortado del wire.
+ */
+export interface Project {
+  readonly id: string;
+  readonly domainId: string;
+  readonly name: string;
+  readonly createdAt: string;
+}
+
+/**
  * dominio Studio F2 — fila de la lista de Runs (proyección del certificado + los
  * eventos del run). La confianza (clase + AL) es columna de primera clase:
  * un run jamás se lista sin su badge.

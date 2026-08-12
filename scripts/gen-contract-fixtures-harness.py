@@ -75,7 +75,13 @@ def _cases() -> dict[str, object]:
                 "required": ["aprobado"],
             },
             prompt="El paso escribe al mundo (irreversible). ¿Aprobás?",
-            step_id="step-1",
+            # `step_id` se deja en su default `None` A PROPÓSITO (F1.3):
+            # el ÚNICO emisor real (`loop.py` §Contrato-6) journaliza
+            # `step_id: None` literal — la aprobación corre ANTES de abrir
+            # el `RunStep` del turno, así que jamás existe un `"step-1"` que
+            # citar. El fixture anterior lo inventaba; `exclude_none=True`
+            # en `serialize()` omite la clave, igual que hace Pydantic con
+            # cualquier otro optativo ausente.
         ),
         # `mission.message` (spec `chat-conversacion.md` §"Tests de contrato"):
         # el fixture quedó DECLARADO en Fase 0 porque el modelo origen aún no
