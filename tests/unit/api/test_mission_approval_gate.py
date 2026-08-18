@@ -32,12 +32,14 @@ el run ya falló, así que un 202 ahí mentiría que hubo gobierno cuando no lo
 hubo. `POST .../approvals/{id}` sigue con `_require_open_stream` — MISMA
 guardia que `messages`/`cancel` — y da 409 (ver
 `test_chat.py::test_responder_un_approval_de_un_run_ya_terminal_es_409_fail_closed_a_proposito`).
-Un par request→response que cierre EN VIVO (202 legítimo, `approval.
-responded` dentro del hash) exige que el gate pueda esperar sin bloquear un
-hilo — eso es la cola durable de P11, no este ítem. Sin P11, "aprobación
-humana en el lazo" es un mecanismo demostrado, no una política de cierre en
-vivo — y esta suite lo prueba honestamente en vez de aflojar el contrato
-para que un test pase.
+
+**[P11, 2026-08-17] Este archivo ya no describe el único mundo posible: es
+el camino SIN cola.** La conclusión de arriba se cumplió al pie de la letra
+—el cierre en vivo llegó por la cola durable, no aflojando el 409— y vive en
+`test_approval_wait.py`. Lo que estos tests cuidan ahora es que el
+despliegue Fase 1, sin worker, siga comportándose exactamente como antes:
+gate que niega en el mismo turno, `approval.requested` real igual, y 409 al
+responder. Dos caminos, dos suites, ninguna simulando al otro.
 """
 
 from __future__ import annotations

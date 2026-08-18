@@ -108,6 +108,33 @@ class ApprovalRequest(BaseModel):
     inputs: dict[str, object]
 
 
+class ApprovalOutcome(BaseModel):
+    """[P11] El veredicto que trae una ESPERA (`ApprovalDecision.wait`).
+
+    Existe separado de `ApprovalDecision` porque se conoce en otro momento:
+    la decisión de PEDIR aprobación se toma antes de publicar el request; el
+    veredicto, después de que un humano responda. `cause` viaja acá y no en
+    la decisión porque solo la espera sabe por qué terminó — negar porque
+    alguien contestó "no" y negar porque nadie contestó son hechos distintos,
+    y el `error_kind` del terminal debe poder distinguirlos."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    granted: bool
+    cause: str = "approval_denied"
+
+
+ApprovalWait = Callable[[], ApprovalOutcome]
+"""[P11] La espera de la respuesta humana — BLOQUEANTE por contrato.
+
+Se llama en el hilo del run, DESPUÉS de que el loop journalizó
+`approval.requested`: recién ahí la pregunta existe para quien deba
+contestarla. Quién puede permitirse bloquear ahí lo decide el despliegue, no
+el runtime: en la cola durable (P11) un worker esperando es lo normal; en
+`BackgroundTasks` sería clavar un hilo del servidor — por eso el default
+sigue siendo `None`."""
+
+
 class ApprovalDecision(BaseModel):
     """Lo que la compuerta responde. `required=False` ⇒ el turno sigue sin
     emitir NADA (el caso por defecto: sin compuerta cableada no hay
@@ -115,7 +142,14 @@ class ApprovalDecision(BaseModel):
 
     `required=True` + `granted=False` ⇒ el turno se corta con `cause`: una
     aprobación negada NO es un error del sistema, es una decisión humana
-    registrada — por eso viaja con causa propia y no como excepción."""
+    registrada — por eso viaja con causa propia y no como excepción.
+
+    `wait` (P11, ADITIVO) ⇒ el veredicto NO se conoce todavía: el loop
+    publica el request y llama a la espera, cuyo `ApprovalOutcome` reemplaza
+    a `granted`/`cause`. Ausente (default) el comportamiento es el de
+    siempre. Fail-closed intacto: una compuerta que quiere esperar sigue
+    declarando `granted=False`, así que si el despliegue decidiera ignorar la
+    espera, lo que queda es la negativa — jamás una aprobación por omisión."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -125,17 +159,21 @@ class ApprovalDecision(BaseModel):
     prompt: str = ""
     json_schema: dict[str, object] = {}
     cause: str = "approval_denied"
+    wait: ApprovalWait | None = None
 
 
 ApprovalGate = Callable[[ApprovalRequest], ApprovalDecision]
 """Puerto inyectable de aprobación humana — mismo patrón que `proposer` y
 `crossing` (freeze §8 C-5: se INYECTA, el runtime solo conoce la firma).
 
-**Frontera declarada:** cómo se ESPERA la respuesta humana (bloquear el
-worker, suspender el run, reanudar por cola) es decisión del adapter, no del
-loop; con `BackgroundTasks` un gate bloqueante retiene un hilo, y por eso la
-cola durable (P11/`JobQueue`) es la casa natural del gate que espera de
-verdad. El default del despliegue es SIN gate — cero aprobaciones fingidas."""
+**Frontera declarada (P11 la mueve, no la borra):** cómo se ESPERA la
+respuesta humana sigue siendo decisión del adapter, no del loop — lo que
+cambió es que ahora hay dónde esperar. El loop ofrece el momento
+(`ApprovalDecision.wait`, llamado después de publicar el request) y la cola
+durable ofrece el proceso: un worker de `chimera_api.jobs` puede bloquearse
+minutos sin retener un hilo del servidor HTTP, que es lo que
+`BackgroundTasks` no podía. El default del despliegue sigue siendo SIN gate
+— cero aprobaciones fingidas."""
 
 
 __all__ = [
@@ -144,7 +182,9 @@ __all__ = [
     "MISSION_MESSAGE_EVENT",
     "ApprovalDecision",
     "ApprovalGate",
+    "ApprovalOutcome",
     "ApprovalRequest",
+    "ApprovalWait",
     "MissionMessagePayload",
     "PendingMessage",
     "pending_messages_for",

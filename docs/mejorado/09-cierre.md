@@ -105,9 +105,17 @@ integración 401↔ablación arreglada por control). Decisiones de Dylan: **P11
 entra al cierre** (addendum de F1: app procrastinate + worker en compose →
 approval humano VIVO) y **P12 queda en tramo 1**. Orden restante:
 
-1. **Addendum P11** (sesión corta, rango #190–#199 del bloque F1).
+1. ~~**Addendum P11**~~ — **CERRADO 2026-08-17** en `mejorado/addendum-p11`
+   (#190–#199), sin mergear: espera a control. Entregó el worker prendido y la
+   aprobación humana VIVA verificada contra compose con clic de navegador
+   (#193). Dejó a control: **ratificación de la extensión aditiva del puerto
+   `ApprovalGate`** (#191, `blite.runtime`; el wire NO se tocó) · **ceremonia
+   de contrato para `execution_profile: remote-job`** (#197 — qué journaliza el
+   loop ante un trabajo encolado y no ejecutado) · dos hallazgos del Studio
+   para F3 (#198).
 2. **Grabación de la sesión real** (Dylan, runbook #145) — contra este árbol.
-3. **F3 saneamiento-final** (prompt §6) — suma los ítems heredados de #178.
+3. **F3 saneamiento-final** (prompt §6) — suma los ítems heredados de #178 y
+   los de #198.
 4. Auditoría de fase (tres llaves de #101) → cierre de Mejorado.
 
 ## 6 · Prompts de lanzamiento

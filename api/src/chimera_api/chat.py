@@ -196,20 +196,29 @@ def create_chat_router(resources: RunResources) -> APIRouter:
         uno criptográfico: aprobar un run que ya falló no revive nada, así
         que el 202 mentiría que hubo gobierno cuando no lo hubo.
 
-        Consecuencia honesta: con el gate SÍNCRONO de hoy
-        (`chimera_api.runs._build_approval_gate`, `mission.py:132-141` — «tu
-        gate NO debe bloquear esperando respuesta humana»), el ÚNICO
-        `approval.requested` que puede existir nace de un turno que YA negó
-        y cerró el run (`run.failed`) en el mismo turno que lo pidió. Contra
-        ese run, esta ruta da 409 — correcto, no un defecto. Un par
-        request→response que de verdad se cierre EN VIVO (stream abierto,
-        202 legítimo, `approval.responded` dentro del hash) exige que el
-        gate pueda esperar sin bloquear un hilo — eso es la cola durable de
-        P11 (`JobQueue`), no esta ruta. Hasta que P11 exista, "aprobación
-        humana en el lazo" es un mecanismo demostrado (el `approval.
-        requested` real, ver `tests/unit/api/test_mission_approval_gate.
-        py::TestApprovalMechanismoSinCierreEnVivo`) sin política de cierre
-        en vivo — declarado, no rodeado.
+        **[P11, 2026-08-17] El cierre en vivo ya existe — y esta ruta no
+        cambió una línea para conseguirlo.** Lo que cambió es DÓNDE corre el
+        run: con la cola durable prendida (`CHIMERA_JOB_QUEUE`) el modo
+        misión se ejecuta en el worker, donde la compuerta puede esperar a
+        una persona sin clavar un hilo del servidor. El stream sigue
+        ABIERTO cuando la respuesta entra, así que el camino natural de esta
+        ruta —202, `approval.responded` DENTRO del corte de procedencia— es
+        el que se recorre. Que la regla del 409 no se haya tocado para
+        habilitarlo es la comprobación de que era la regla correcta: el
+        problema nunca estuvo acá, estuvo en que el run moría antes de que
+        un humano pudiera contestar.
+
+        Sigue habiendo un caso 409 legítimo, y es el mismo de siempre:
+        responder un approval de un run que YA terminó (venció la espera,
+        lo cancelaron, falló por otra causa). Ahí el 409 es correcto —
+        aprobar un run muerto no revive nada y el certificado no ampararía
+        esa decisión.
+
+        Sin la cola (`BackgroundTasks`, Fase 1) el comportamiento anterior
+        se mantiene intacto: el gate niega en el mismo turno y responder da
+        409. Cubierto en `tests/unit/api/test_mission_approval_gate.py`; el
+        ciclo vivo, en `tests/unit/api/test_approval_wait.py::
+        TestCicloVivoCompleto`.
         """
         identity = resources.session_auth.identity_from(request)
         stream = _require_open_stream(resources, run_id)

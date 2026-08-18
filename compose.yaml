@@ -1,6 +1,7 @@
 # Chimera — compose canónico del mes (freeze §15.4: todo LOCAL, sin AWS/cloud).
 #
 # Cuatro servicios de primera clase: postgres + api + worker + studio.
+# (El `worker` lo es DE VERDAD desde P11 — antes arrancaba y moría, #146.)
 # `ollama` queda FUERA de este compose (perfil opcional archivado — EG-1).
 #
 # Custodia de credenciales EG-3/EG-4: NUNCA una contraseña literal en este
@@ -42,9 +43,21 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # [P11] Con la cola prendida, `POST /runs` en modo misión ENCOLA en vez
+      # de ejecutar: sin el esquema de la cola aplicado (lo hace el worker al
+      # arrancar) ese encolado fallaría con un 500 en la cara del usuario.
+      # Esperar acá convierte una carrera de arranque en una dependencia
+      # declarada — y hace legible el modo de falla: si el worker no está
+      # sano, el stack lo dice en vez de aceptar runs que nadie va a correr.
+      worker:
+        condition: service_healthy
     environment:
       # *_FILE únicamente — el valor real nunca vive en este YAML (EG-3).
       CHIMERA_DB_PASSWORD_FILE: /run/secrets/postgres_password
+      # [P11] A dónde van los runs de misión. Ausente ⇒ `BackgroundTasks`
+      # (Fase 1, sin esperas humanas); con esto, a la cola durable y al
+      # worker, que es el único proceso donde una aprobación puede esperar.
+      CHIMERA_JOB_QUEUE: procrastinate
       # F1.3 — permisos del operador local (`chimera_api.auth`). Setear esta
       # var REEMPLAZA el default entero (`_DEFAULT_OPERATOR_PERMISSIONS`), así
       # que acá van los tres de siempre MÁS `override:apply:run`: sin él,
@@ -122,39 +135,86 @@ services:
       timeout: 5s
       retries: 5
 
-  # CONFIG-presente-e-INERTE (decisión #6, docs/mvp/decisiones.md): usa la
-  # MISMA imagen que `api` con el comando `procrastinate worker`, pero no
-  # existe todavía una app procrastinate registrada en el engine (eso es el
-  # ítem P11 del backlog: la cola durable detrás del puerto JobQueue).
+  # [P11] La cola durable — SERVICIO DE PRIMERA CLASE desde 2026-08-17.
   #
-  # **P5/M27 — arreglo de `docker compose up` (2026-08-02).** Este servicio
-  # NO es inofensivo: `procrastinate worker` sin app registrada **FALLA al
-  # arrancar**, así que un `docker compose up` pelado —lo primero que hace un
-  # tercero siguiendo el quickstart— mostraba un contenedor en crash-loop y
-  # un exit code sucio, sin ninguna pista de que era esperado. Eso rompe la
-  # autoridad 2 (un externo sin contexto) por una razón puramente cosmética.
+  # Historia, porque la condición para llegar acá estaba escrita: #146 lo
+  # mandó al perfil `queue` porque `procrastinate worker` **sin app
+  # registrada FALLA al arrancar** (un `docker compose up` pelado mostraba un
+  # crash-loop sin pista de que era esperado), y dejó dicho que «se saca el
+  # perfil cuando la cola exista, no antes». La app existe
+  # (`chimera_api.jobs`), así que el perfil sale.
   #
-  # Solución: PERFIL `queue`. Compose no arranca servicios con `profiles:` a
-  # menos que se pidan explícitamente, así que `docker compose up` levanta el
-  # stack que de verdad funciona (postgres + api + studio) y el worker espera
-  # a que P11 le dé una app. Cuando exista, se saca el perfil — no antes: un
-  # servicio declarado como de primera clase que crashea es peor que uno
-  # honestamente apagado.
+  # Qué hace que valga la pena tenerlo prendido: con `BackgroundTasks` un run
+  # vive en un hilo del servidor HTTP, así que la compuerta de aprobación no
+  # puede esperar a una persona sin clavar ese hilo (#183). Acá sí: el run se
+  # queda VIVO mientras un humano decide en el Studio, y su respuesta entra
+  # sobre un stream abierto — dentro del `provenance_hash`, no después.
   #
-  # Para levantarlo igual (probar la cola cuando llegue): `--profile queue`.
+  # Comparte imagen con `api` (mismas capabilities por entry points) y los
+  # MISMOS volúmenes de contenido: la evidencia que el worker produce es la
+  # que el api sirve. Si divergieran, un certificado citaría bytes que su
+  # propio servidor no encuentra.
   worker:
-    profiles: ['queue']
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    command: ['procrastinate', 'worker']
+    # Entrypoint propio en vez de `procrastinate worker`: aplica el esquema
+    # de la librería la primera vez (su CLI no es idempotente) y recién
+    # entonces consume. Ver `api/src/chimera_api/worker.py`.
+    command: ['python', '-m', 'chimera_api.worker']
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       CHIMERA_DB_PASSWORD_FILE: /run/secrets/postgres_password
+      # La evidencia y los archivos son los MISMOS que ve el api (ver arriba):
+      # el worker es otro proceso, no otro despliegue.
+      CHIMERA_CONTENT_DIR: /app/var/content
+      CHIMERA_FILES_DIR: /app/var/files
+      UV_CACHE_DIR: /app/var/uv-cache
+      UV_TOOL_DIR: /app/var/uv-cache/tools
+      UV_TOOL_BIN_DIR: /app/var/uv-cache/bin
+      # [P11] La política de aprobación se declara ACÁ, no en `api`: con la
+      # cola prendida el loop agéntico corre en ESTE proceso, así que es este
+      # el que consulta la lista. AUSENTE por default — «cero aprobaciones
+      # fingidas» (#183 / `blite/runtime/mission.py`). Para exigir permiso
+      # humano antes de invocar capabilities con efecto externo:
+      #
+      # CHIMERA_APPROVAL_REQUIRED_SIDE_EFFECTS: 'irreversible-external,reversible-external'
+      #
+      # (y el operador necesita `override:apply:run`, que `api` ya declara.)
+      #
+      # Cuánto espera el worker a que un humano conteste antes de cortar
+      # fail-closed (`approval_timeout`), y cada cuánto relee el stream:
+      # CHIMERA_APPROVAL_WAIT_TIMEOUT_S: '900'
+      # CHIMERA_APPROVAL_POLL_INTERVAL_S: '1'
+      #
+      # Trabajos en paralelo. >1 no es afinamiento: un run esperando una
+      # aprobación ocupa su slot hasta que alguien conteste, y con 1 la
+      # primera aprobación pendiente congelaría la cola entera.
+      CHIMERA_WORKER_CONCURRENCY: '4'
+    volumes:
+      - filesdata:/app/var/files
+      - contentdata:/app/var/content
+      - uvcache:/app/var/uv-cache
     secrets:
       - postgres_password
+    healthcheck:
+      # "Arriba" no alcanza: un worker sin esquema de cola no consume nada.
+      #
+      # Pasa por el ENTRYPOINT a propósito. Un `test: ['CMD', 'python', ...]`
+      # lo saltea —Docker no lo usa para el healthcheck— y entonces
+      # `CHIMERA_DATABASE_URL` no existe, porque quien la arma a partir del
+      # secreto montado es `docker/api-entrypoint.sh`. Verificado en vivo:
+      # sin esta línea el worker corría perfecto y se reportaba unhealthy,
+      # arrastrando al api con él. La alternativa —replicar el armado del DSN
+      # en Python— duplicaría en el engine algo que es infra por diseño.
+      test:
+        ['CMD', '/usr/local/bin/entrypoint.sh', 'python', '-m', 'chimera_api.worker', 'healthcheck']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # ── Perfil `otel` — observabilidad, OPCIONAL por diseño (S-F §1) ──────────
   # El camino por defecto del stack NO lo incluye: un proyector caído jamás debe

@@ -52,15 +52,17 @@ docker compose up -d --build
 docker compose ps        # esperá a que `api` diga healthy
 ```
 
-Levanta tres servicios: `postgres` (event store) · `api` (runtime + verificación) ·
-`studio` (UI en <http://localhost:3000>).
+Levanta cuatro servicios: `postgres` (event store) · `worker` (cola durable) ·
+`api` (runtime + verificación) · `studio` (UI en <http://localhost:3000>).
 
-> **Por qué no ves un `worker`:** existe un cuarto servicio declarado en el compose,
-> pero está **detrás del perfil `queue`** y no arranca por defecto. El motivo es
-> honesto: la cola durable todavía no tiene una app registrada (ítem P11 del backlog),
-> así que ese contenedor **falla al arrancar** — y un crash-loop en el primer
-> `docker compose up` de alguien que recién llega es ruido puro. Hoy los runs corren en
-> el proceso de la API. Cuando la cola exista, el perfil se saca.
+> **Qué hace el `worker`:** corre los runs de misión fuera del proceso de la API.
+> Esto no es solo prolijidad operativa — es lo que permite que un run **se detenga
+> a esperar a una persona**: si una capability exige aprobación humana, el run se
+> queda vivo, la pregunta aparece en el chat del Studio y la respuesta entra al
+> mismo log del run (o sea, queda dentro de lo que el certificado ampara). Ese
+> servicio estuvo apagado hasta 2026-08-17 porque su cola no tenía app registrada
+> y el contenedor moría al arrancar; ahora es de primera clase, y `api` espera a
+> que esté sano antes de aceptar runs.
 
 ## 4 · Correr algo de verdad (1 min)
 

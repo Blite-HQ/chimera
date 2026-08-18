@@ -45,10 +45,11 @@ import json
 import logging
 import os
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -58,6 +59,7 @@ from blite.certificate.assemble import ConclusionDeclaration
 from blite.certificate.keys import KeyProvider, LocalKeyProvider
 from blite.content import ContentStore
 from blite.content_fs import FilesystemContentStore
+from blite.events import create_event_store
 from blite.events.rules import TERMINAL_RUN_EVENTS
 from blite.events.store import EventStore
 from blite.gateway.crossing import RunCrossing, build_run_pipeline
@@ -82,7 +84,13 @@ from blite.runtime.loop import (
     execute_run,
 )
 from blite.runtime.metrics import record_run_metrics
-from blite.runtime.mission import ApprovalDecision, ApprovalGate, ApprovalRequest
+from blite.runtime.mission import (
+    ApprovalDecision,
+    ApprovalGate,
+    ApprovalOutcome,
+    ApprovalRequest,
+    ApprovalWait,
+)
 from blite.runtime.plan import PlanItem
 from blite.runtime.registry import Registry, load_registry
 from blite.serving.model_port import ModelPort
@@ -96,6 +104,12 @@ from chimera_api.instance_verifiers import (
 from chimera_api.model_proposer import make_model_proposer
 from chimera_api.model_session import load_session
 from chimera_api.projects import ensure_default_project
+
+if TYPE_CHECKING:  # pragma: no cover - solo para el tipo del job de la cola
+    # Import diferido: en runtime la flecha va al revés (`chimera_api.jobs`
+    # importa este módulo), y el ciclo se rompe con imports perezosos en las
+    # dos funciones que lo cruzan.
+    from chimera_api.jobs import MissionJob
 
 # El actor viene de la sesión JWT en cookie (C2/M2, freeze §9 P1-9) — el
 # placeholder `_API_ACTOR = "user:api"` MURIÓ con el cruce del gateway:
@@ -828,6 +842,137 @@ _APPROVAL_JSON_SCHEMA: dict[str, Any] = {
 `RunThread.tsx`) YA sabe renderizar como botones Aprobar/Rechazar, sin que
 esta ruta tenga que inventar vocabulario nuevo del lado del Studio."""
 
+_APPROVAL_DENIED_CAUSE = "approval_denied"
+"""[P11] Un humano contestó que NO. Decisión registrada, no falla del
+sistema — mismo default que `ApprovalDecision.cause`."""
+
+_APPROVAL_TIMEOUT_CAUSE = "approval_timeout"
+"""[P11] Nadie contestó dentro de la ventana. Es un hecho DISTINTO de un "no"
+y por eso tiene causa propia: el terminal del run debe poder decir si hubo
+gobierno humano o si el gobierno faltó."""
+
+_APPROVAL_WAIT_TIMEOUT_ENV = "CHIMERA_APPROVAL_WAIT_TIMEOUT_S"
+_DEFAULT_APPROVAL_WAIT_TIMEOUT_S = 900.0
+"""Cuánto espera un worker a que un humano decida (15 min por defecto).
+
+Acotado a propósito: una espera infinita retiene un slot del worker para
+siempre y convierte un olvido humano en una fuga de capacidad. Vencer es
+fail-closed (`approval_timeout`), nunca "seguí sin permiso"."""
+
+_APPROVAL_POLL_INTERVAL_ENV = "CHIMERA_APPROVAL_POLL_INTERVAL_S"
+_DEFAULT_APPROVAL_POLL_INTERVAL_S = 1.0
+"""Cada cuánto se relee el stream esperando la respuesta. Polling y no
+LISTEN/NOTIFY por la misma razón que el SSE (`chimera_api.app`): la espera
+vive detrás del PUERTO `EventStore`, así que funciona igual con el store
+in-memory y con Postgres; el notify real llega cuando el puerto lo ofrezca."""
+
+
+class RunTerminatedWhileWaitingError(RuntimeError):
+    """[P11] El run terminó (típicamente cancelado) mientras la espera de
+    aprobación seguía viva.
+
+    No es una falla: es la otra respuesta posible del humano. Se propaga como
+    excepción —en vez de devolver un veredicto— porque el stream YA tiene su
+    terminal, y devolver "negado" haría que el loop journalizara un SEGUNDO
+    terminal sobre un run cerrado. El arranque de la tarea la distingue de un
+    error real y no vuelve a cerrar nada."""
+
+
+def _approval_granted(response: object) -> bool:
+    """Lee el `response` del wire — las DOS formas que el sistema produce.
+
+    `{"approved": true}` es la que emite `_APPROVAL_JSON_SCHEMA`; el booleano
+    pelado es lo que produce un `json_schema` booleano (#184). Cualquier otra
+    forma es una respuesta que nadie sabe leer: NO concede. Interpretarla
+    como "sí" fabricaría exactamente la aprobación que este sistema promete
+    no fabricar."""
+    if isinstance(response, bool):
+        return response
+    if isinstance(response, dict):
+        valor = cast(dict[str, Any], response).get(_APPROVAL_DECISION_FIELD)
+        return valor is True
+    return False
+
+
+def _positive_float_env(name: str, default: float) -> float:
+    """Config numérica del despliegue: un valor ilegible o no positivo cae al
+    default CON aviso — jamás una espera de cero (que aprobaría por
+    vencimiento inmediato) por un typo en una env var."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        valor = float(raw)
+    except ValueError:
+        valor = 0.0
+    if valor <= 0:
+        _LOGGER.warning(
+            "%s=%r no es un número positivo: se usa el default %s", name, raw, default
+        )
+        return default
+    return valor
+
+
+def _wait_for_approval_response(
+    resources: RunResources,
+    *,
+    run_id: str,
+    approval_id: str,
+    timeout_s: float | None = None,
+    poll_interval_s: float | None = None,
+) -> ApprovalOutcome:
+    """[P11] Bloquea hasta que el `approval.responded` de ESTE `approval_id`
+    aparezca en el stream del run (§Contrato-7, par 1:1).
+
+    Solo es legítimo llamarla donde bloquear no le quita el hilo a nadie más
+    —el worker de la cola durable—, y por eso el gate la enchufa únicamente
+    con `wait_for_human=True`. Tres salidas, todas explícitas: respondido
+    (concede o niega según el wire), vencido (`approval_timeout`, fail-closed)
+    o run ya terminal (`RunTerminatedWhileWaitingError`).
+
+    La fuente es el STREAM, no un canal lateral: la respuesta que gobierna el
+    turno es exactamente la que quedó journalizada y que el certificado
+    ampara — si existiera un segundo camino, uno de los dos mentiría."""
+    limite = time.monotonic() + (
+        timeout_s
+        if timeout_s is not None
+        else _positive_float_env(
+            _APPROVAL_WAIT_TIMEOUT_ENV, _DEFAULT_APPROVAL_WAIT_TIMEOUT_S
+        )
+    )
+    intervalo = (
+        poll_interval_s
+        if poll_interval_s is not None
+        else _positive_float_env(
+            _APPROVAL_POLL_INTERVAL_ENV, _DEFAULT_APPROVAL_POLL_INTERVAL_S
+        )
+    )
+    while True:
+        for event in resources.store.read_stream(run_id):
+            if (
+                event.type == "approval.responded"
+                and str(event.payload.get("approval_id")) == approval_id
+            ):
+                granted = _approval_granted(event.payload.get("response"))
+                return ApprovalOutcome(
+                    granted=granted,
+                    cause=_APPROVAL_DENIED_CAUSE,
+                )
+            if event.type in TERMINAL_RUN_EVENTS:
+                msg = (
+                    f"run {run_id}: terminó ({event.type}) mientras se esperaba "
+                    f"la respuesta del approval {approval_id}"
+                )
+                raise RunTerminatedWhileWaitingError(msg)
+        if time.monotonic() >= limite:
+            _LOGGER.warning(
+                "run %s: nadie respondió el approval %s dentro de la ventana",
+                run_id,
+                approval_id,
+            )
+            return ApprovalOutcome(granted=False, cause=_APPROVAL_TIMEOUT_CAUSE)
+        time.sleep(intervalo)
+
 
 def _approval_required_side_effects() -> frozenset[str]:
     """Lee `CHIMERA_APPROVAL_REQUIRED_SIDE_EFFECTS` POR LLAMADA (mismo
@@ -837,7 +982,9 @@ def _approval_required_side_effects() -> frozenset[str]:
     return frozenset(part.strip() for part in raw.split(",") if part.strip())
 
 
-def _build_approval_gate(resources: RunResources) -> ApprovalGate | None:
+def _build_approval_gate(
+    resources: RunResources, *, wait_for_human: bool = False
+) -> ApprovalGate | None:
     """Construye el `ApprovalGate` del camino de misión (harness-agentico.md
     §Contrato-6) — MECANISMO, no política: el runtime (`loop.py`) no decide
     qué necesita aprobación (INV-2), y este wiring tampoco decide sobre qué
@@ -848,14 +995,17 @@ def _build_approval_gate(resources: RunResources) -> ApprovalGate | None:
     Sin la env var configurada ⇒ `None`: `execute_run` ni se entera de que
     este puerto existe (mismo comportamiento que antes de F1.3).
 
-    El gate NO puede bloquear esperando una respuesta humana — con
-    `BackgroundTasks` (decisión #11) un gate bloqueante clava un hilo
-    (`mission.py:132-141`); decide con lo que tiene: `required=True` +
-    `granted=False`, fail-closed, mismo patrón que `_GateQueAprueba(granted=
-    False)` en `test_agentic_loop.py`. El turno corta ahí (`run.failed
-    {error_kind: "approval_required"}`) con el `approval.requested` REAL ya
-    journalizado — la cola durable (P11) es el hogar de un gate que sí
-    espere y deje el turno vivo."""
+    **`wait_for_human` — la diferencia que P11 trajo.** Es una propiedad del
+    PROCESO, no de la política: bajo `BackgroundTasks` (decisión #11)
+    bloquear clava un hilo del servidor HTTP (`mission.py`), así que ahí el
+    gate decide con lo que tiene — `required=True` + `granted=False`,
+    fail-closed, y el turno corta con el `approval.requested` REAL ya
+    journalizado (`run.failed {error_kind: "approval_required"}`). En el
+    worker de la cola durable (`chimera_api.jobs`) esperar es lo normal: el
+    gate adjunta `wait`, el loop publica el request y recién entonces
+    bloquea, así que el humano ve la pregunta, contesta con 202 sobre un
+    stream ABIERTO y el turno sigue. En los dos casos `granted=False` en la
+    decisión: conceder solo puede venir de la espera."""
     required_side_effects = _approval_required_side_effects()
     if not required_side_effects:
         return None
@@ -870,10 +1020,19 @@ def _build_approval_gate(resources: RunResources) -> ApprovalGate | None:
             return ApprovalDecision()
         if manifest.side_effects not in required_side_effects:
             return ApprovalDecision()
+        approval_id = f"approval-{uuid4().hex}"
+        wait: ApprovalWait | None = None
+        if wait_for_human:
+            wait = functools.partial(
+                _wait_for_approval_response,
+                resources,
+                run_id=request.run_id,
+                approval_id=approval_id,
+            )
         return ApprovalDecision(
             required=True,
             granted=False,
-            approval_id=f"approval-{uuid4().hex}",
+            approval_id=approval_id,
             prompt=(
                 f"La capability {request.capability_id!r} declara "
                 f"side_effects={manifest.side_effects!r} — requiere "
@@ -882,6 +1041,7 @@ def _build_approval_gate(resources: RunResources) -> ApprovalGate | None:
             ),
             json_schema=_APPROVAL_JSON_SCHEMA,
             cause=_APPROVAL_REQUIRED_CAUSE,
+            wait=wait,
         )
 
     return _gate
@@ -1012,13 +1172,25 @@ def _start_mission_run(
     único camino agéntico (`proposer is not None`), así que es el único que
     `execute_run` puede alcanzar (`loop.py:837`). El claim-first
     (`_start_claim_run`) es turno único sin loop agéntico — fuera de
-    alcance, no tiene la costura."""
+    alcance, no tiene la costura.
+
+    P11 — **dónde** corre el run lo decide el despliegue, no esta ruta: con
+    la cola durable declarada (`CHIMERA_JOB_QUEUE`) el trabajo se ENCOLA y lo
+    levanta el worker, que sí puede esperar a un humano; sin ella sigue
+    siendo `BackgroundTasks`, byte-idéntico a antes. Lo que NO cambia en
+    ninguno de los dos casos es lo que pasa ANTES de agendar: validar el
+    proyecto, mintear el `run_id` y dejar el ticket — un run que se encola es
+    un run que el api ya aceptó."""
     _validate_project_reference(resources, body.project_id)
     run_id = f"run-{uuid4().hex}"
 
     # Ticket VACÍO: el modo misión no declara conclusiones — los claims los
     # emiten los sub-runs/steps. `GET /runs/{id}/certificate` no responde
     # 404 por desconocido; sin conclusiones no se fabrica certificado.
+    #
+    # [P11] Vive en el proceso del API aunque el run corra en el worker: es
+    # el api quien sirve `/certificate`, y para misión el ticket está vacío
+    # de todos modos — nada que el worker pudiera tener que decirle.
     resources.run_tickets[run_id] = RunTicket(
         conclusions=(), anchor_descriptors=(), instance_id=body.instance_id
     )
@@ -1035,6 +1207,28 @@ def _start_mission_run(
         if body.budget is not None
         else None
     )
+
+    # Import perezoso (mismo criterio que el invocador MCP): `chimera_api.
+    # jobs` arrastra procrastinate y un despliegue Fase 1 sin cola no debe
+    # pagarlo — ni fallar por no tener DSN.
+    from chimera_api.jobs import MissionJob, defer_mission, job_queue_enabled
+
+    if job_queue_enabled():
+        defer_mission(
+            MissionJob(
+                run_id=run_id,
+                identity=identity.model_dump(mode="json"),
+                mission=body.mission,
+                capability_id=capability_id,
+                inputs=inputs,
+                max_turns=body.max_turns,
+                max_steps=body.max_turns * _STEPS_PER_TURN,
+                budget=budget.model_dump() if budget is not None else None,
+                thread_id=body.thread_id,
+                project_id=body.project_id,
+            )
+        )
+        return CreateRunResponse(run_id=run_id)
 
     background_tasks.add_task(
         run_in_background,
@@ -1063,14 +1257,7 @@ def _start_mission_run(
                 mission_author=identity.id,
                 emit=_model_call_emitter(resources, run_id, identity),
             ),
-            plan_items=(
-                PlanItem(
-                    id="mission-1",
-                    description=body.mission,
-                    verification="delegate",
-                    status="pending",
-                ),
-            ),
+            plan_items=_mission_plan_items(body.mission),
             crossing=_make_crossing(resources, identity),
             thread_id=body.thread_id,
             project_id=body.project_id,
@@ -1079,6 +1266,102 @@ def _start_mission_run(
     )
 
     return CreateRunResponse(run_id=run_id)
+
+
+def _mission_plan_items(mission: str) -> tuple[PlanItem, ...]:
+    """El ítem fundacional del plan — la misión, journalizada DENTRO del
+    `provenance_hash` sin extender `run.created` (spec §modo misión).
+
+    Compartido por los dos caminos (`BackgroundTasks` y worker) a propósito:
+    si divergieran, dos runs con la misma misión tendrían planes distintos
+    según dónde les tocó correr, y el certificado ampararía cosas distintas
+    por una razón de infraestructura."""
+    return (
+        PlanItem(
+            id="mission-1",
+            description=mission,
+            verification="delegate",
+            status="pending",
+        ),
+    )
+
+
+@functools.cache
+def _worker_resources() -> RunResources:
+    """[P11] La infra de vida-de-proceso DEL WORKER.
+
+    Cacheada por proceso y no por job: `load_registry` recorre entry points
+    y `create_project_repository` abre conexión — pagarlo en cada trabajo
+    convertiría la cola en su propio cuello de botella. Es el análogo exacto
+    de lo que `create_app` hace una vez al arrancar el api.
+
+    Construida con `create_event_store()` sin argumentos: el worker lee
+    `CHIMERA_DATABASE_URL` del entorno igual que el api (mismo entrypoint,
+    misma imagen), así que ambos escriben en el MISMO log de eventos — que
+    es lo que hace posible que el api vea el `approval.requested` que el
+    worker emitió, y el worker el `approval.responded` que el api journalizó.
+    """
+    return build_run_resources(create_event_store())
+
+
+def execute_mission_job(job: MissionJob) -> None:
+    """[P11] El run de misión ejecutado EN EL WORKER — el mismo armado que
+    `_start_mission_run` agenda, con la única diferencia que justifica todo
+    el ítem: acá la compuerta de aprobación puede esperar a una persona.
+
+    Vive en este módulo y no en `chimera_api.jobs` porque acá viven el
+    proposer, el cruce del gateway y el ticket: la cola aporta el proceso, no
+    una segunda forma de armar un run."""
+    identity = Identity.model_validate(job.identity)
+    resources = _worker_resources()
+    budget = RunBudget(**job.budget) if job.budget is not None else None
+
+    def _correr() -> None:
+        try:
+            execute_run(
+                resources.store,
+                resources.registry(),
+                resources.dispatcher,
+                resources.content,
+                run_id=job.run_id,
+                actor_id=identity.id,
+                domain_id=_DEFAULT_DOMAIN,
+                max_steps=job.max_steps,
+                # Recomputado ACÁ, no heredado del api: `run.created` declara
+                # bajo qué política corrió el run, y quien corre es este
+                # proceso. Heredar el digest del otro haría que el evento
+                # afirmara una política que no fue la vigente.
+                policy_digest=hashlib.sha256(resources.policy_bytes).hexdigest(),
+                capability_id=job.capability_id,
+                inputs=job.inputs,
+                max_turns=job.max_turns,
+                budget=budget,
+                proposer=_resolve_proposer(
+                    resources,
+                    job.capability_id,
+                    job.inputs,
+                    mission=job.mission,
+                    mission_author=identity.id,
+                    emit=_model_call_emitter(resources, job.run_id, identity),
+                ),
+                plan_items=_mission_plan_items(job.mission),
+                crossing=_make_crossing(resources, identity),
+                thread_id=job.thread_id,
+                project_id=job.project_id,
+                # LA diferencia con `BackgroundTasks`: acá esperar a un
+                # humano no le quita el hilo a nadie.
+                approval_gate=_build_approval_gate(resources, wait_for_human=True),
+            )
+        except RunTerminatedWhileWaitingError:
+            # Cancelaron el run mientras esperaba: su terminal YA está en el
+            # stream. No es una falla, y dejarla subir al guard de último
+            # recurso la reportaría como excepción escapada — que es otra
+            # cosa, y ensuciaría los logs del worker con un falso incidente.
+            _LOGGER.info("run %s: cancelado mientras esperaba aprobación", job.run_id)
+
+    # El MISMO guard del camino `BackgroundTasks`: ningún run queda sin
+    # terminal (P1/M32) y el cierre métrico se emite igual (V2/M19).
+    run_in_background(resources.store, job.run_id, _correr)
 
 
 _ABLATION_ROOT_MAX_STEPS = 8

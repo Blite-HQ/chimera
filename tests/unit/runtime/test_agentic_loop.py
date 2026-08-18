@@ -152,8 +152,9 @@ def _run(
     registry: EntryPointRegistry | None = None,
     run_id: str = "run-agentic",
     approval_gate: Any = None,
+    store: Any = None,
 ) -> tuple[Any, Any]:
-    store = create_event_store()
+    store = store if store is not None else create_event_store()
     row = execute_run(
         store,
         registry if registry is not None else _registry(_EchoCapability()),
@@ -570,6 +571,124 @@ def test_el_payload_emitido_valida_contra_el_wire_congelado() -> None:
     assert payload.approval_id == "apr-1"
     assert payload.json_schema == {"type": "boolean"}
     assert payload.prompt
+
+
+class _GateQueEspera:
+    """[P11] Compuerta que DELEGA la decisión a una espera.
+
+    El caso que el gate síncrono no podía cubrir (#183): la respuesta humana
+    llega DESPUÉS de que el request se publique. La espera lee el stream —
+    igual que el adapter durable real— así que si el loop la llamara antes de
+    journalizar `approval.requested`, `stream_al_esperar` lo delataría."""
+
+    def __init__(
+        self,
+        store: Any,
+        *,
+        granted: bool = True,
+        cause: str = "approval_denied",
+        run_id: str = "run-agentic",
+    ) -> None:
+        self._store = store
+        self._granted = granted
+        self._cause = cause
+        self._run_id = run_id
+        self.esperas = 0
+        self.stream_al_esperar: list[str] = []
+
+    def __call__(self, request: Any) -> Any:
+        from blite.runtime.mission import ApprovalDecision, ApprovalOutcome
+
+        def _esperar() -> ApprovalOutcome:
+            self.esperas += 1
+            self.stream_al_esperar = [
+                e.type for e in self._store.read_stream(self._run_id)
+            ]
+            return ApprovalOutcome(granted=self._granted, cause=self._cause)
+
+        return ApprovalDecision(
+            required=request.turn == 1,
+            # `granted=False` a propósito: sin espera, este mismo objeto
+            # NIEGA. La espera es lo único que puede conceder — el default
+            # fail-closed no se afloja para habilitarla.
+            granted=False,
+            approval_id="apr-1",
+            prompt="¿autorizás invocar esta capability?",
+            json_schema={"type": "boolean"},
+            wait=_esperar,
+        )
+
+
+def test_la_espera_decide_despues_de_publicar_el_request() -> None:
+    """[P11] El orden que hace posible la aprobación humana VIVA: el loop
+    journaliza `approval.requested` y RECIÉN ahí le pregunta a la espera.
+    Invertido, ningún humano podría ver la pregunta que se le hace."""
+    store = create_event_store()
+    gate = _GateQueEspera(store)
+
+    row, store = _run(
+        proposer=_FixedProposer(),
+        post_invoke=_GateAtTurn(1),
+        approval_gate=gate,
+        store=store,
+    )
+
+    assert gate.esperas == 1
+    # El request YA estaba publicado cuando la espera corrió.
+    assert "approval.requested" in gate.stream_al_esperar
+    assert "run.step.started" not in gate.stream_al_esperar
+    assert row.status == "completed"
+    tipos = [e.type for e in store.read_stream("run-agentic")]
+    assert tipos.index("approval.requested") < tipos.index("run.step.started")
+
+
+def test_la_espera_que_niega_corta_con_la_causa_que_ella_declara() -> None:
+    """La espera decide TODO el veredicto, causa incluida: negar por respuesta
+    humana y negar por vencimiento son hechos distintos y el `error_kind` los
+    distingue — nunca una causa genérica que borre cuál de los dos pasó."""
+    store = create_event_store()
+    gate = _GateQueEspera(store, granted=False, cause="approval_timeout")
+
+    row, store = _run(
+        proposer=_FixedProposer(),
+        post_invoke=_GateAtTurn(1),
+        approval_gate=gate,
+        store=store,
+        plan_items=(
+            PlanItem(
+                id="item-1",
+                description="turno que espera aprobación",
+                verification="delegate",
+                status="pending",
+            ),
+        ),
+    )
+
+    assert row.status == "failed"
+    assert row.error_kind == "approval_timeout"
+    eventos = store.read_stream("run-agentic")
+    tipos = [e.type for e in eventos]
+    assert "approval.requested" in tipos
+    # Ni un solo step: la negativa sigue cortando ANTES de ejecutar.
+    assert not [t for t in tipos if t.startswith("run.step.")]
+    assert tipos[-2:] == ["plan.item_updated", "run.failed"]
+    assert eventos[-2].payload["cause"] == "approval_timeout"
+
+
+def test_sin_espera_la_decision_sincrona_sigue_mandando() -> None:
+    """Regresión de la extensión: `wait` es ADITIVO y su default es `None` —
+    una compuerta que no lo usa se comporta byte-idéntico a antes de P11."""
+    from blite.runtime.mission import ApprovalDecision
+
+    assert ApprovalDecision().wait is None
+    row, store = _run(
+        proposer=_FixedProposer(),
+        post_invoke=_GateAtTurn(1),
+        approval_gate=_GateQueAprueba(granted=False),
+    )
+    assert row.status == "failed"
+    assert row.error_kind == "approval_denied"
+    assert "approval.requested" in [e.type for e in store.read_stream("run-agentic")]
 
 
 def test_el_payload_de_plan_created_es_json_nativo() -> None:

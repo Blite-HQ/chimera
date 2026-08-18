@@ -351,6 +351,20 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "P11: the JobQueue port stays a port — the engine never imports procrastinate"
+type = "forbidden"
+# #148 entregó `blite.runtime.jobs` (el puerto `JobQueue`) con una regla
+# explícita: «`blite.runtime` no importa `procrastinate` — mismo principio que
+# `ModelPort` con litellm (AX3-b): la casa legítima del SDK está afuera del
+# runtime». P11 escribió esa casa (`chimera_api.jobs`, la app del worker) y
+# este contrato convierte la regla en un trinquete: si un día el adapter se
+# colara dentro del engine, el puerto habría dejado de ser un puerto y el
+# runtime tendría una cola concreta cableada adentro. La flecha legítima es
+# api→procrastinate, y por eso `chimera_api` NO está en la lista.
+source_modules = ["blite", "blite_capability"]
+forbidden_modules = ["procrastinate"]
+
+[[tool.importlinter.contracts]]
 name = "Inv-E: egress is governed only by authorization, never by verification"
 type = "forbidden"
 # Base lógica Inv-E: "el egreso lo gobierna SOLO la autorización... ninguna

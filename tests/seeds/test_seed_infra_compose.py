@@ -1,8 +1,9 @@
 """SEED · infra (Geovanni) — el compose canónico del mes, config-only.
 
 freeze §15 [S-F] (O6): `postgres + api + worker + studio` (worker = misma
-imagen que api, proceso `procrastinate worker`; `ollama` SOLO perfil opcional
-archivado — EG-1). EG-3: llaves por convención `*_FILE`. EG-4: DATABASE_URL
+imagen que api, hoy con el entrypoint propio `python -m chimera_api.worker`
+que P11 le dio — antes `procrastinate worker`, que sin app registrada moría
+al arrancar; `ollama` SOLO perfil opcional archivado — EG-1). EG-3: llaves por convención `*_FILE`. EG-4: DATABASE_URL
 con credencial vía secret, migraciones aplicadas (I6). infra/03 §record:
 override `compose.record.yml` para el modo grabación. Sin levantar
 contenedores: este seed valida la CONFIG, no el runtime.

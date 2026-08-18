@@ -962,7 +962,15 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
                     "step_id": None,
                 },
             )
-            if not decision.granted:
+            # [P11] La espera corre ACÁ y no antes: el request ya está en el
+            # stream, así que la pregunta EXISTE para quien deba contestarla
+            # (por SSE, en la card del Studio). Sin `wait` —el default— esto
+            # no se ejecuta y el veredicto es el síncrono de siempre.
+            granted, cause = decision.granted, decision.cause
+            if decision.wait is not None:
+                outcome = decision.wait()
+                granted, cause = outcome.granted, outcome.cause
+            if not granted:
                 # Negada: decisión humana registrada, no falla del sistema —
                 # `plan.item_updated` ANTES del terminal, como todo corte.
                 _emit_plan_item_update(
@@ -971,9 +979,9 @@ def _run_agentic_turn(  # noqa: PLR0913 — un turno completo (proponer→gobern
                     plan_id=plan_id,
                     run_id=run_id,
                     status="failed",
-                    cause=decision.cause,
+                    cause=cause,
                 )
-                recorder.fail_run(decision.cause)
+                recorder.fail_run(cause)
                 return _TurnResult(
                     terminal=True,
                     done=False,

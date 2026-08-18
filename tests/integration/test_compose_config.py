@@ -21,14 +21,16 @@ def _load_compose() -> dict[str, Any]:
     return yaml.safe_load(COMPOSE_PATH.read_text(encoding="utf-8"))
 
 
-def test_the_default_path_is_exactly_the_three_services_that_work() -> None:
+def test_the_default_path_is_exactly_the_four_services_that_work() -> None:
     """Lo que `docker compose up` levanta sin argumentos.
 
     Un servicio SIN `profiles:` arranca siempre, así que este conjunto es la
-    promesa que le hacemos a un externo: postgres + api + studio y nada más.
-    `worker` salió a un perfil en #146 (arrancaba y moría sin cola), y O3 sumó
-    el perfil `otel` — pero el camino por defecto no puede crecer sin que este
-    test lo diga.
+    promesa que le hacemos a un externo: postgres + api + worker + studio y
+    nada más. `worker` había salido a un perfil en #146 (arrancaba y moría sin
+    app procrastinate registrada) con una condición explícita — «se saca el
+    perfil cuando la cola exista, no antes»; P11 la cumplió. O3 sumó el perfil
+    `otel`, pero el camino por defecto no puede crecer sin que este test lo
+    diga.
     """
     # Arrange
     compose = _load_compose()
@@ -41,7 +43,7 @@ def test_the_default_path_is_exactly_the_three_services_that_work() -> None:
     }
 
     # Assert
-    assert default_path == {"postgres", "api", "studio"}
+    assert default_path == {"postgres", "api", "worker", "studio"}
 
 
 def test_every_optional_service_declares_the_profile_that_gates_it() -> None:
@@ -62,7 +64,6 @@ def test_every_optional_service_declares_the_profile_that_gates_it() -> None:
 
     # Assert
     assert profiled == {
-        "worker": {"queue"},
         "otel-collector": {"otel"},
         "otel-projector": {"otel"},
         # C8/C9: custodia de llaves y testigo de transparencia — opcionales

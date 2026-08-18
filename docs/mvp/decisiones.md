@@ -5560,3 +5560,290 @@ skipped / 0 xfailed / 4 xpassed / 91.23%** (los 6 skips nuevos: extras
 opcionales declarados de F2) · studio **357 passed / 33 files** · eslint 0 ·
 `arch` 0 violaciones (141 módulos) · 19 contratos de imports · ruff+format
 limpios · pyright 0 · docs verdes.
+
+### #190 — P11: el worker existe, y con él la aprobación humana EN VIVO
+
+**Fecha:** 2026-08-17. **Sesión ADDENDUM-P11** (rango #190–#199), decidida por
+Dylan en #178.
+
+**La condición estaba escrita y se cumplió.** #146 mandó el servicio `worker`
+al perfil `queue` porque `procrastinate worker` **sin app registrada falla al
+arrancar**, y dejó una regla: «se saca el perfil cuando la cola exista, no
+antes». La app existe (`chimera_api.jobs`), así que el perfil salió y el worker
+es servicio de primera clase del camino por defecto.
+
+**Pero el ítem no es tener un worker — es lo que el worker hace posible.** #183
+cerró con una conclusión incómoda: sin cola durable, un approval humano genuino
+NO PUEDE existir, porque con `BackgroundTasks` (decisión #11) el run vive en un
+hilo del servidor HTTP y una compuerta que espere a una persona lo clava. El
+único `approval.requested` posible nacía de un turno que ya había cerrado el
+run, y responderlo daba 409 — correctamente (freeze §2: gobierno post-terminal
+queda fuera del `provenance_hash`). Con el run corriendo en el worker, esperar
+es lo normal: el run se queda VIVO, la card del Studio muestra la pregunta, la
+respuesta entra sobre un stream ABIERTO y `approval.responded` cae DENTRO del
+corte de procedencia. **El certificado ampara la decisión humana.**
+
+**Lo que NO hubo que tocar para conseguirlo, y por qué importa.**
+`POST /runs/{id}/approvals/{id}` no cambió ni una línea: sigue con
+`_require_open_stream`, sigue dando 409 sobre un run terminal. Que el cierre en
+vivo se haya logrado sin aflojar esa guardia es la comprobación de que la
+guardia era correcta — el problema nunca estuvo en la ruta, estuvo en que el
+run moría antes de que un humano pudiera contestar. #183 apostó exactamente a
+eso cuando rechazó la entrega que aflojaba el 409; la apuesta se cobró.
+
+### Tabla de interacciones — #190
+
+| Interfaz tocada                             | Dominio afectado | Estado del contrato                                                       |
+| ------------------------------------------- | ---------------- | ------------------------------------------------------------------------- |
+| `chimera_api.jobs` (app + tarea + encolado) | E (api/infra)    | NUEVO — la app que le faltaba al worker desde el MVP                      |
+| `chimera_api.worker` (entrypoint)           | infra            | NUEVO — arranque idempotente del esquema + worker                         |
+| `compose.yaml` — `worker` sin perfil        | infra            | **CAMBIO DE COMPORTAMIENTO**: `up` levanta 4 servicios (#146 revertido)   |
+| `compose.yaml` — `api` espera al worker     | infra            | ADITIVO — `depends_on: worker: service_healthy`                           |
+| `POST /runs` modo misión                    | E↔A              | ADITIVO — con `CHIMERA_JOB_QUEUE` encola; sin ella, byte-idéntico a antes |
+| `POST /runs/{id}/approvals/{id}`            | E                | **NO TOCADO** — el 202 en vivo sale de su camino natural                  |
+
+### #191 — El loop gana el momento de esperar (`ApprovalDecision.wait`), no la política
+
+**El problema real, que no era la cola.** Aun con worker, la costura no
+alcanzaba: el loop llamaba a la compuerta y **después** journalizaba
+`approval.requested` (`loop.py`). Una compuerta que bloqueara ahí esperaría la
+respuesta a una pregunta que todavía no existía para nadie — deadlock, no
+aprobación. La cola durable era condición necesaria y **no suficiente**.
+
+**La extensión, ADITIVA y mínima:** `ApprovalDecision` gana un campo opcional
+`wait: ApprovalWait | None`, y `ApprovalOutcome{granted, cause}` es lo que esa
+espera devuelve. El loop publica el request y RECIÉN entonces llama a `wait`.
+Sin `wait` (default `None`) el comportamiento es byte-idéntico al de F1.3 —hay
+test de regresión— y el camino `BackgroundTasks` no cambia.
+
+**Por qué esto NO es ceremonia de contrato.** No se tocó el wire: los payloads
+`approval.requested`/`approval.responded` (`blite.gateway.approval`, catálogo
+§14) están intactos, y el test anti-drift que valida el dict emitido contra el
+modelo congelado sigue verde. Lo que cambió es un puerto Python interno del
+runtime, y su propio docstring ya declaraba esta frontera: «cómo se ESPERA la
+respuesta humana es decisión del ADAPTER, no del loop… la cola durable
+(P11/`JobQueue`) es la casa natural del gate que espera de verdad». P11 no
+movió la frontera: le construyó la casa. **Igual se marca para ratificación de
+control**, porque toca `blite.runtime` y el criterio de esta fase es que un
+cambio de costura se mire dos veces.
+
+**`cause` viaja en el outcome y no en la decisión** porque solo la espera sabe
+por qué terminó: negar porque alguien contestó "no" (`approval_denied`) y negar
+porque nadie contestó (`approval_timeout`) son hechos distintos, y el
+`error_kind` del terminal tiene que poder distinguirlos. Un `cause` genérico
+habría borrado justo la información que un auditor necesita.
+
+### Tabla de interacciones — #191
+
+| Interfaz tocada                       | Dominio afectado | Estado del contrato                                                   |
+| ------------------------------------- | ---------------- | --------------------------------------------------------------------- |
+| `ApprovalDecision.wait` (nuevo campo) | A (runtime)      | ADITIVO — default `None` ⇒ comportamiento previo byte-idéntico        |
+| `ApprovalOutcome` / `ApprovalWait`    | A (runtime)      | NUEVOS — el veredicto y su causa, conocidos después del request       |
+| `loop.py` — orden request→espera      | A (runtime)      | ADITIVO — `wait` se llama DESPUÉS de journalizar `approval.requested` |
+| wire `approval.*` (catálogo §14)      | confianza        | **NO TOCADO** — anti-drift verde                                      |
+
+### #192 — La espera es fail-closed por los TRES lados
+
+`_wait_for_approval_response` relee el stream del run (fuente única: la
+respuesta que gobierna el turno es exactamente la que quedó journalizada) y
+tiene tres salidas, ninguna implícita:
+
+1. **Respondida** — `{"approved": true}` o el booleano pelado que produce un
+   `json_schema` booleano (#184). **Cualquier otra forma NO concede**: una
+   respuesta que nadie sabe leer, leída como "sí", sería exactamente la
+   aprobación fabricada que este sistema promete no fabricar.
+2. **Vencida** — `CHIMERA_APPROVAL_WAIT_TIMEOUT_S` (15 min por defecto) ⇒
+   `approval_timeout`. Acotada a propósito: una espera infinita retiene un slot
+   del worker para siempre y convierte un olvido humano en fuga de capacidad.
+   Vencer no es aprobar.
+3. **Run ya terminal** — cancelaron en vez de contestar ⇒
+   `RunTerminatedWhileWaitingError`, que el arranque de la tarea distingue de
+   una falla real. Se propaga como excepción y no como veredicto **porque
+   devolver "negado" haría que el loop journalizara un SEGUNDO terminal sobre
+   un stream ya cerrado**.
+
+`CHIMERA_WORKER_CONCURRENCY` por defecto 4, y eso tampoco es afinamiento
+prematuro: un run detenido esperando a una persona ocupa su slot hasta que
+alguien conteste, así que con concurrencia 1 la primera aprobación pendiente
+congelaría la cola entera. Es consecuencia directa de tener esperas largas.
+
+### #193 — VERIFICACIÓN VIVA: los cuatro caminos, contra compose, con el navegador
+
+Stack real (`docker compose -p chimera-p11 up -d`, 4/4 sanos: postgres · worker
+· api · studio), Postgres real, worker real consumiendo de
+`procrastinate_jobs`. **7 jobs, 7 `succeeded`.**
+
+1. **Aprobado desde el Studio, con clic de navegador.** Run lanzado desde el
+   formulario «Nuevo run» del propio Studio; la card renderizó el
+   `approval.requested` REAL («APROBACIÓN PENDIENTE» + el prompt que emitió el
+   gate + «El agente está detenido en este punto»), el run quedó **en curso con
+   4 eventos** sin terminal, y el clic en **Aprobar** produjo **202**. Stream
+   resultante:
+
+   ```
+   run.created · run.started · plan.created · approval.requested ·
+   approval.responded {authorized_by: "user:local-operator",
+                       response: {"approved": true}} ·
+   plan.item_updated · run.step.started · run.step.completed ·
+   run.step.started · capability.job.submitted · capability.job.completed ·
+   run.step.completed · plan.item_updated · run.failed {exhausted} ·
+   run.metrics.recorded
+   ```
+
+   `approval.responded` **antes** del terminal ⇒ dentro del corte de
+   procedencia. Y `capability.job.completed`: el solver QUBO corrió DE VERDAD,
+   y solo después de que un humano dijera que sí.
+
+2. **Rechazado** — `run.failed {approval_denied}` con **cero** `run.step.*`:
+   la negativa corta antes de ejecutar nada.
+3. **Vencido** (timeout bajado a 20 s para la prueba) — `run.failed
+{approval_timeout}`, `plan.item_updated {cause: approval_timeout}`.
+4. **Cancelado mientras esperaba** — `run.cancelled` es el ÚNICO terminal (sin
+   duplicado), el worker loguea `cancelado mientras esperaba aprobación` y el
+   job cierra `Success`.
+
+**Comprobación de la costura entre procesos:** la evidencia que escribe el
+worker (`/app/var/content`, 14 archivos) se lee desde el contenedor del `api` —
+volumen compartido, como exige que un certificado no cite bytes que su propio
+servidor no encuentra.
+
+### #194 — Lo que la corrida viva cazó y la config no: el healthcheck saltea el entrypoint
+
+Con el worker corriendo **perfecto** (esquema aplicado, `Starting worker on
+queues chimera`), Docker lo reportaba `unhealthy` y arrastraba al `api`, que lo
+espera. Causa: `CHIMERA_DATABASE_URL` no existe como variable del contenedor —
+la arma `docker/api-entrypoint.sh` a partir del secreto montado, y **Docker no
+pasa el healthcheck por el ENTRYPOINT**. El `test:` corría `python` pelado y
+moría con el error correcto por la razón equivocada.
+
+Arreglo: el healthcheck invoca `/usr/local/bin/entrypoint.sh python -m
+chimera_api.worker healthcheck`. La alternativa —replicar el armado del DSN en
+Python— habría duplicado dentro del engine algo que es infra por diseño
+(«infra-owned, sin tocar engine/», encabezado del compose).
+
+Vale como patrón, no como anécdota: **el `api` no tenía el problema porque su
+healthcheck es un `urlopen` que no necesita el DSN**. Todo healthcheck que
+dependa de una variable que arma el entrypoint tiene este defecto latente.
+
+### #195 — Trampa de procrastinate: `add_tasks_from` MUTA el blueprint de origen
+
+Un `Blueprint` de módulo montado en dos apps produce
+`chimera:chimera:run_mission` en la segunda, y la app queda **sin la tarea que
+cree tener** (`add_tasks_from` antepone el namespace y reasigna el dueño _in
+place_ — leído en la fuente de la librería, no supuesto). En producción hay una
+sola app por proceso y no se nota; en tests, la segunda app está rota.
+
+Por eso `_blueprint()` es una FÁBRICA, no una constante de módulo. Y por eso la
+app tampoco es de módulo: construir una `App` exige conector —y DSN—, así que
+importar `chimera_api.jobs` sin base (el api en Fase 1, los tests) fallaría.
+Esa es también la razón de que el compose corra `python -m chimera_api.worker`
+en vez de `procrastinate worker`: la CLI quiere un `--app` importable.
+
+### #196 — El esquema de la cola se aplica en el arranque, y se PREGUNTA antes
+
+`procrastinate schema --apply` no es idempotente (su propia ayuda:
+«won't work if the schema has already been applied»), así que
+`apply_schema_if_missing` consulta `check_connection()` primero: un worker que
+se reinicia no puede morir por haber arrancado dos veces. **No va en
+`engine/sql/init_v2.sql`** porque ese DDL no es nuestro — es de la librería y
+está atado a SU versión; copiarlo ahí lo congelaría contra un upgrade.
+
+Consecuencia declarada: `api` ahora depende de `worker: service_healthy`. Es
+acoplamiento real y se acepta con los ojos abiertos — con la cola prendida,
+`POST /runs` en modo misión ENCOLA, y sin esquema aplicado eso sería un 500 en
+la cara del usuario. Preferimos una dependencia declarada (y un `unhealthy`
+legible) a una carrera de arranque.
+
+### #197 — `remote-job` NO se cableó, y el motivo es una decisión de contrato pendiente
+
+**Hallazgo, con prueba.** El puerto de #148 nunca se recorrió de punta a punta:
+inyectar la cola en el dispatcher y correr un run con una capability
+`execution_profile: remote-job` **revienta** —
+`TypeError: Object of type JobRef is not JSON serializable`— y deja el stream
+en `capability.job.submitted` sin terminal (lo cierra el guard de último
+recurso). El loop journaliza el submitted y después le pide `digest_of(...)` a
+lo que la estrategia devolvió, que es un `JobRef`, no un `Result`.
+
+**El `TypeError` es el síntoma; el problema es la pregunta que hay detrás:**
+¿qué emite el loop cuando un trabajo fue ENCOLADO y no ejecutado?
+`capability.job.completed` mentiría —encolar no es ejecutar, #148— y el turno
+tampoco tiene `output_digest` con el que seguir. Eso es catálogo §14 + freeze
+§1, o sea **ceremonia de contrato**, y las REGLAS del plan mandan reportarla a
+control en vez de resolverla en una sesión de alcance acotado.
+
+**Decisión: `remote-job` sigue sin estrategia** — falla fuerte, que es la
+postura correcta mientras la pregunta esté abierta, y jamás degrada a síncrono
+(nota execution/06 §6). Queda un test que estampa la frontera
+(`test_el_loop_todavia_no_sabe_journalizar_un_trabajo_encolado`): cuando la
+decisión se tome, ese test cambia, y su cambio será el registro.
+
+**Por lo mismo NO se escribió un `ProcrastinateJobQueue`**: un adapter sin
+consumidor legítimo es código no verificado en la pieza cuyo único valor es que
+corra de verdad — exactamente lo que #148 se negó a entregar.
+
+### #198 — Dos hallazgos del Studio que solo el navegador podía ver (a F3)
+
+1. **El formulario «Nuevo run» ofrece instancias que el corpus no tiene.**
+   `NewRunView.tsx` manda `ieee9`/`ieee14`/`ieee30`, pero el corpus desplegado
+   son `ieee9-uniforme`, `ieee9-flujo`, `ieee14-uniforme`, … (sufijo de
+   variante). `_resolve_mission_inputs` no encuentra el archivo, cae al
+   fallback honesto `{mission, instance_id}` y el solver rechaza la matriz
+   ausente: **todo run lanzado desde el propio formulario con una pista de
+   instancia muere en `capability.job.failed {ValueError}`**. Verificado en
+   vivo. Preexistente y ajeno a P11; se registra porque nadie lo había visto.
+2. **El hilo se vacía al llegar el terminal, hasta recargar.** Cuando el run
+   cierra en vivo, la pestaña «Hilo» pasa a decir «Este run no arrancó de una
+   misión conversacional» — con `plan.created` en el stream y 15 eventos
+   contados en el encabezado. Un F5 lo arregla y muestra todo correcto
+   («APROBACIÓN RESUELTA · Respondida por user:local-operator:
+   {"approved":true}» + el bloque de cierre). Es la transición vivo→terminal
+   del proyector del Studio. P11 no lo causó, pero lo vuelve fácil de encontrar:
+   antes los runs cerraban antes de que alguien alcanzara a mirarlos.
+
+### #199 — Cierre de la sesión ADDENDUM-P11
+
+**Alcance entregado:** app procrastinate registrada · worker prendido en el
+camino por defecto · runs de misión ejecutados en la cola durable · aprobación
+humana VIVA de punta a punta (#190–#193). **Alcance NO entregado, con causa
+probada:** `execution_profile: remote-job` cableado (#197 — ceremonia de
+contrato para control).
+
+**Frontera preexistente que NO se disimuló:** un run de misión exitoso termina
+`run.failed {exhausted}`, porque el modo misión no tiene gate de verificación
+(`post_invoke` ausente A PROPÓSITO — «hoy no hay verifier del lado misión», el
+gate real llega con los claims de sub-runs, frontera P4). O sea: «se aprueba y
+termina» se cumple, y el terminal honesto de hoy es `exhausted`. Cambiar eso es
+otro ítem, no este.
+
+`procrastinate` se movió de `chimera-engine` a `chimera-api` —donde de verdad
+se importa— y un contrato nuevo de import-linter lo vuelve verificable:
+**«P11: the JobQueue port stays a port — the engine never imports
+procrastinate»**. 20 contratos, 0 rotos.
+
+**Gates de la sesión (worktree `mejorado/addendum-p11`, python del venv
+principal + `PYTHONPATH` del worktree + `pyrightconfig.json` local):** pytest
+**1909 passed / 15 skipped / 4 xpassed / 90.77 % de cobertura** (baseline #178:
+1877 — los 32 nuevos son de esta sesión) · studio **357 passed / 33 files** ·
+eslint 0 · `arch` 0 violaciones (141 módulos) · **20 contratos de imports, 0
+rotos** · ruff check + format limpios · **pyright 0 errores** · prettier y
+markdownlint verdes.
+
+**Roce con un documento CONGELADO — reportado, NO tocado.**
+`docs/contract-freeze.md:426` [S-F] fija el compose canónico del mes como
+`postgres + api + worker + studio` y agrega, entre paréntesis, «worker = misma
+imagen que api, proceso `procrastinate worker`». Lo normativo —los cuatro
+servicios, el worker compartiendo imagen con el api— esta sesión lo **cumple
+por primera vez**: el perfil `queue` de #146 era la desviación temporal, no la
+letra. Lo que quedó desactualizado es el detalle del argv: hoy el comando es
+`python -m chimera_api.worker` (la CLI de procrastinate exige un `--app`
+importable, o sea una `App` construida al importar, y el arranque necesita
+además el paso idempotente del esquema — #195/#196). No se editó el freeze:
+esa prosa se toca por ceremonia de supersede registrada, y **decidir si este
+detalle la amerita es de control**, no de una sesión de addendum.
+
+**Nota de arnés (para control):** un `pyrightconfig.json` en el worktree que
+solo declare `extraPaths` **apaga el `[tool.pyright]` del pyproject** — pyright
+ignora el TOML cuando existe el JSON, así que se pierden `include` y
+`typeCheckingMode = "strict"` y el gate pasa a analizar `scripts/` en modo
+standard. Hay que volcar la tabla entera al JSON. El «pyright verde» de un
+worktree con config parcial no vale.
